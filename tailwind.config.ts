@@ -7,7 +7,7 @@ const config = {
     './components/**/*.{ts,tsx}',
     './app/**/*.{ts,tsx}',
     './src/**/*.{ts,tsx}',
-	],
+  ],
   prefix: "",
   theme: {
     container: {
@@ -74,9 +74,10 @@ const config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
-} satisfies Config
-
-
+  plugins: [
+    require("tailwindcss-animate"), // ваш плагин для анимаций
+    require("tailwind-scrollbar"),   // добавьте этот плагин для кастомизации полос прокрутки
+  ],
+}
 
 export default config

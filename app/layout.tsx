@@ -2,7 +2,13 @@ import type { Metadata } from "next";
 import { Nunito } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/shared/header";
-import { TitleProvider } from "@/context/TitleContext"; // Импортируем провайдер
+import { TitleProvider } from "@/context/TitleContext";
+import { CartProvider } from "@/context/CartContext";
+import { DiscountProvider } from "@/context/DiscountContext";
+import { ToastProvider } from '@/context/ToastContext';
+import { ToastContainer } from '@/components/ui/ToastContainer';
+import { UserProvider } from "@/user/UserContext";
+import ClientLayout from "@/components/ClientLayout";
 
 const nunito = Nunito({ 
   subsets: ['cyrillic'],
@@ -22,13 +28,17 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={nunito.className}>
-        <TitleProvider> {/* Оборачиваем в контекст заголовка */}
-          <main className="min-h-screen">
-            <link rel="icon" href="/favicon.ico" sizes="any" />
-            <Header/>
-            {children}
-          </main>
-        </TitleProvider>
+        <CartProvider>
+          <UserProvider>
+            <ToastProvider>
+              <TitleProvider>
+                <DiscountProvider>
+                  <ClientLayout>{children}</ClientLayout>
+                </DiscountProvider>
+              </TitleProvider>
+            </ToastProvider>
+          </UserProvider>
+        </CartProvider>
       </body>
     </html>
   );
