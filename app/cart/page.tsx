@@ -32,6 +32,12 @@ export default function CartPage() {
   }, []);
   const CheckoutModal = dynamic(() => import("@/components/CheckoutModal"), { ssr: false });
 
+  // Определяем премиум-товар по данным каталога
+  const isPremiumProduct = (id: number) => {
+    const src = products.find(p => p.id === id) as any;
+    return !!(src?.isPremium || src?.premium || src?.category === 'premium' || src?.tags?.includes?.('premium'));
+  };
+
   const handleRemove = (index: number) => {
     const item = cartItems[index];
     removeFromCart(index);
@@ -76,7 +82,7 @@ useEffect(() => {
 
   // Применение промокода
   const handleApplyPromo = () => {
-    if (promoCode.trim().toLowerCase() === "stage10") {
+    if (promoCode.trim().toLowerCase() === "stage10", "zelenskiypidor10") {
       setDiscount(0.1);
       localStorage.setItem("promoCode", promoCode);
       setApplied(true);
@@ -134,7 +140,8 @@ useEffect(() => {
                           />
                         </div>
                         <div className="p-3">
-                          <h3 className="text-sm font-semibold text-gray-800 group-hover:text-black truncate">
+                          <h3 title={item.name} className="text-sm font-semibold text-gray-800 group-hover:text-black truncate">
+                            {isPremiumProduct(item.id) && <span className="text-black mr-1" aria-label="premium">★</span>}
                             {item.name}
                           </h3>
                           <p className="text-sm text-gray-500 mt-1">
@@ -175,6 +182,7 @@ useEffect(() => {
               <Link key={index} href={`/product/${item.id}`} className="block">
                 <div className="flex items-center gap-6 border-b pb-4 transition">
                   <div className="relative w-24 h-24 flex-shrink-0">
+                    
                     <Image
                       src={item.image}
                       alt={item.name}
@@ -183,9 +191,20 @@ useEffect(() => {
                     />
                   </div>
                   <div className="flex-1">
-                    <h3 className={`font-semibold ${postponedItems.includes(item.id) ? 'line-through text-gray-400' : ''}`}>
-                      {item.name}
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      <h3
+                        title={item.name}
+                        className={`flex-1 truncate font-semibold ${postponedItems.includes(item.id) ? 'line-through text-gray-400' : ''}`}
+                      >
+                        {item.name}
+                      </h3>
+                      {isPremiumProduct(item.id) && (
+                        <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-black text-white border border-black/20">
+                          <span aria-hidden>★</span>
+                          <span className="hidden sm:inline">Premium</span>
+                        </span>
+                      )}
+                    </div>
                     <p className="text-gray-500">
                       {item.name.toLowerCase().includes("parfum") || item.name.toLowerCase().includes("духи")
                         ? `Объем: ${item.size} мл`

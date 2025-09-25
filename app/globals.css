@@ -6,7 +6,7 @@ html {
   scroll-behavior: auto;
 }
 
-@media screen and (prefects-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
@@ -39,6 +39,8 @@ html {
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+    --header-h: 80px; /* default header height; will be overwritten from JS */
+    --safe-top: env(safe-area-inset-top);
   }
 
   .dark {
@@ -60,7 +62,7 @@ html {
     --destructive-foreground: 210 40% 98%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9;
+    --ring: 212.7 26.8% 83.9%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
@@ -95,4 +97,176 @@ html {
 
 .transform-style-preserve-3d {
   transform-style: preserve-3d;
+}
+.swiper-pagination {
+  bottom: 20px !important;
+  z-index: 20 !important;
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.swiper-pagination-bullet {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background-color: black;
+  opacity: 0.5;
+  transition: all 0.3s ease;
+}
+
+.swiper-pagination-bullet-active {
+  opacity: 1;
+  background-color: black;
+}
+
+.swiper-slide:nth-child(2n) .swiper-pagination-bullet,
+.swiper-slide:nth-child(2n) .swiper-pagination-bullet-active {
+  background-color: white;
+}
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  min-height: 100%;
+  height: auto;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  line-height: 1.6;
+  color: #333;
+  /* do not lock global scroll */
+  overflow-x: hidden;
+  overflow-y: auto;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: auto;
+}
+
+#__next {
+  min-height: 100%;
+}
+
+/* Анимации для плавного появления */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.frame {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+/* Кастомный скроллбар */
+.container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.container::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+.container::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* Utility: stick element right under header, accounting for safe area */
+.sticky-under-header {
+  position: sticky;
+  top: calc(var(--header-h, 80px) + var(--safe-top, 0px));
+}
+.parallax-section {
+  position: relative;
+  /* Экран минус шапка: чтобы слайды не залезали на хедер */
+  height: calc(100vh - var(--header-h, 80px));
+  /* Никаких просветов из-под предыдущего блока */
+  background: #000;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  contain: layout paint;
+}
+
+.parallax-slide {
+  position: absolute; /* раньше было fixed — именно это перекрывало интро */
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  pointer-events: none; /* клики пропускаем сквозь фон */
+}
+
+/* Картинка внутри слайда — безопасный cover */
+.parallax-slide > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.parallax-content {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  color: white;
+  padding: 0 2rem;
+  max-width: 800px;
+  pointer-events: auto; /* содержимое снова кликабельно */
+  text-shadow: 0 8px 40px rgba(0, 0, 0, .35);
+}
+
+.parallax-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.22); /* мягче, чтобы фото не "грязнились" */
+}
+
+/* Мягкие фейды по краям секции */
+.parallax-section::before,
+.parallax-section::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 64px;
+  pointer-events: none;
+  z-index: 5;
+}
+.parallax-section::before {
+  top: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,.6), rgba(0,0,0,0));
+}
+.parallax-section::after {
+  bottom: 0;
+  background: linear-gradient(to top, rgba(0,0,0,.6), rgba(0,0,0,0));
+}
+
+@media (max-width: 768px) {
+  .parallax-overlay { background: rgba(0,0,0,.32); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .parallax-slide {
+    transform: none !important;
+    will-change: auto;
+  }
 }
