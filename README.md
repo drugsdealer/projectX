@@ -42,3 +42,10 @@ used in the project https://vercel.com / for the Postgresql database and linked 
 
 <p><img align="center" src="https://github.com/2DJoker/2DJoker/assets/109986015/942f02bb-b4c5-4aeb-a25e-bbb30468b596"/></p>
 # STAGESTORE.FNL
+
+## DB safety / backups
+
+- Для прод базы не используем `prisma migrate dev`, `prisma db push --force`, `prisma migrate reset`. Только `npm run prisma:migrate:deploy`.
+- Для разработки держите отдельный DATABASE_URL в `.env.local`, продовый URL в репо не коммитим.
+- Резервная копия: `npm run db:backup` (создаст `backups/backup-YYYY-MM-DD-HHMM.sql`, нужен установленный `pg_dump`).
+- Перед миграциями/сидом на боевой — обязательно сделать бэкап и убедиться, что смотрите в отдельную dev/test базу.

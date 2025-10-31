@@ -25,7 +25,8 @@
   "@/lib/*": ["./lib/*"],
   "@/store/*": ["./store/*"],
   "@/context/*": ["./context/*"],
-  "@/user/*": ["./app/user/*"]
+  "@/user/*": ["./app/user/*"],
+  "@/types*": ["./types/*"]
 },
     "plugins": [
       {

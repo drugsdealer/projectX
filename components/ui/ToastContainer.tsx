@@ -12,7 +12,10 @@ export const ToastContainer = () => {
     <div className="fixed top-5 right-5 space-y-4 z-[9999]">
       <AnimatePresence>
         {toasts.map((toast) => (
-          <Link key={toast.id} href="/cart">
+          <Link
+            key={toast.id}
+            href={/зарегистр/i.test(`${toast.title} ${toast.details}`) ? "/register" : "/cart"}
+          >
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -28,7 +31,9 @@ export const ToastContainer = () => {
                 <p className="text-sm text-gray-300 mt-1">{toast.details}</p>
               )}
               <p className="text-xs text-gray-400 mt-1 italic">
-                Нажмите, чтобы перейти в корзину
+                {/зарегистр/i.test(`${toast.title} ${toast.details}`)
+                  ? "Нажмите, чтобы перейти к регистрации"
+                  : "Нажмите, чтобы перейти в корзину"}
               </p>
             </motion.div>
           </Link>

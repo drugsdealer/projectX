@@ -1,19 +1,44 @@
 'use client';
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useCart } from "@/context/CartContext";
 import { useDiscount } from "@/context/DiscountContext";
 import Image from 'next/image';
 import Link from 'next/link';
 import { Trash2, ShoppingBag } from "lucide-react";
-import { motion } from "framer-motion";
-import { Product, products } from "@/data/products";
+import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
 import dynamic from "next/dynamic";
+import { useUser } from "@/user/UserContext";
+import { useRouter } from "next/navigation";
+
+// --- Local Product shape (API-backed) ---
+type Product = {
+  id: number;
+  name: string;
+  price?: number | null;
+  imageUrl?: string | null;
+  images?: string[];
+  premium?: boolean;
+  badge?: string | null;
+  category?: string | null;
+  tags?: string[] | null;
+  sizes?: any;
+};
+
+// Heuristic: determine "premium" tagging from available fields
+const isPremiumProduct = (obj: any) =>
+  !!(obj?.premium || obj?.badge === 'EXCLUSIVE' || obj?.category === 'premium' || obj?.tags?.includes?.('premium'));
+
+function setCookie(name: string, value: string, maxAgeSec = 1800) {
+  try {
+    document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAgeSec}; SameSite=Lax`;
+  } catch {}
+}
 
 export default function CartPage() {
   const { cartItems, removeFromCart, postponedItems, setPostponedItems, togglePostponed } = useCart();
-  const { discount, setDiscount, resetDiscount } = useDiscount();
+  const { discount, applyDiscount, resetDiscount } = useDiscount();
   const { showToast } = useToast();
 
   const [promoCode, setPromoCode] = useState('');
@@ -24,6 +49,11 @@ export default function CartPage() {
   const [loadingRecent, setLoadingRecent] = useState(true);
   const [showCheckout, setShowCheckout] = useState(false);
   const [hasCheckoutData, setHasCheckoutData] = useState(false);
+  const { user } = useUser();
+  const router = useRouter();
+  const [posting, setPosting] = useState(false);
+  const summaryRef = useRef<HTMLDivElement | null>(null);
+  const [isBottomSummaryVisible, setIsBottomSummaryVisible] = useState(false);
   useEffect(() => {
     const savedCheckout = localStorage.getItem("checkoutState");
     if (savedCheckout) {
@@ -32,15 +62,11 @@ export default function CartPage() {
   }, []);
   const CheckoutModal = dynamic(() => import("@/components/CheckoutModal"), { ssr: false });
 
-  // Определяем премиум-товар по данным каталога
-  const isPremiumProduct = (id: number) => {
-    const src = products.find(p => p.id === id) as any;
-    return !!(src?.isPremium || src?.premium || src?.category === 'premium' || src?.tags?.includes?.('premium'));
-  };
+  // Определение premium вынесено в isPremiumProduct(obj) выше
 
   const handleRemove = (index: number) => {
     const item = cartItems[index];
-    removeFromCart(index);
+    if (item?.id != null) removeFromCart(item.id);
     if (cartItems.length === 1) {
       resetDiscount();
       setApplied(false);
@@ -48,19 +74,42 @@ export default function CartPage() {
   };
 
 useEffect(() => {
-  const viewedIds = JSON.parse(localStorage.getItem("recentlyViewed") || "[]");
-  const viewedProducts = viewedIds
-    .map((id: number) => products.find(p => p.id === id))
-    .filter((p: Product | undefined): p is Product => !!p)
-    .slice(0, 6);
-
-  setRecentProducts(viewedProducts);
-  setTimeout(() => {
-    setLoadingRecent(false);
-  }, 800);
+  (async () => {
+    try {
+      const raw = localStorage.getItem("recentlyViewed") || "[]";
+      const ids = JSON.parse(raw);
+      const list: number[] = Array.isArray(ids) ? ids.filter((v) => Number.isFinite(v)) : [];
+      if (!list.length) {
+        setRecentProducts([]);
+        setLoadingRecent(false);
+        return;
+      }
+      // Берём первые 6 и тянем по одному через /api/products/[id]
+      const first = list.slice(0, 6);
+      const results = await Promise.all(
+        first.map(async (id: number) => {
+          try {
+            const res = await fetch(`/api/products/${id}`, { cache: 'no-store' });
+            if (!res.ok) return null;
+            const data = await res.json().catch(() => null);
+            // допускаем форму { product } или сам объект
+            return (data && (data.product || data)) || null;
+          } catch {
+            return null;
+          }
+        })
+      );
+      const items = results.filter(Boolean) as Product[];
+      setRecentProducts(items);
+    } catch {
+      setRecentProducts([]);
+    } finally {
+      setTimeout(() => setLoadingRecent(false), 300);
+    }
+  })();
 }, []);
 
-  // Загрузка состояния промокода
+  // Загрузка состояния промокода из локального хранилища (старое поведение)
   useEffect(() => {
     const storedPromo = localStorage.getItem("promoCode");
     const storedDiscount = localStorage.getItem("discount");
@@ -68,8 +117,27 @@ useEffect(() => {
     if (storedPromo && storedDiscount && !applied) {
       setPromoCode(storedPromo);
       setApplied(true);
-      setDiscount(parseFloat(storedDiscount));
+      applyDiscount(parseFloat(storedDiscount));
     }
+  }, []);
+
+  // Загрузка активного промокода с сервера
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/promocodes/active", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data?.promo?.code && data?.promo?.discount) {
+          setPromoCode(data.promo.code);
+          applyDiscount(data.promo.discount / 100);
+          setApplied(true);
+          setPromoError(false);
+        }
+      } catch (err) {
+        console.error("Ошибка загрузки промокода:", err);
+      }
+    })();
   }, []);
 
   // Сброс промокода, если корзина пуста
@@ -80,26 +148,217 @@ useEffect(() => {
     }
   }, [cartItems]);
 
-  // Применение промокода
-  const handleApplyPromo = () => {
-    if (promoCode.trim().toLowerCase() === "stage10", "zelenskiypidor10") {
-      setDiscount(0.1);
-      localStorage.setItem("promoCode", promoCode);
-      setApplied(true);
-      setPromoError(false);
-    } else {
-      resetDiscount();
-      setApplied(false);
-      setPromoError(true);
+  useEffect(() => {
+    const node = summaryRef.current;
+    if (!node) {
+      setIsBottomSummaryVisible(false);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsBottomSummaryVisible(entry.isIntersecting);
+      },
+      { threshold: 0.3 }
+    );
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+    };
+  }, [cartItems.length]);
+
+
+  const activeCartItems = cartItems.filter(item => !postponedItems.includes(item.id));
+  const total = activeCartItems.reduce((sum, item) => {
+    const qty = Number(item.quantity ?? 1);
+    const unitPrice =
+      item?.finalPrice ??
+      item?.priceAfterDiscount ??
+      item?.discountPrice ??
+      item?.salePrice ??
+      (
+        item?.origPrice && item?.discountPercent
+          ? Math.round((item.origPrice * (100 - item.discountPercent * 100)) / 100)
+          : item?.price
+      );
+    return sum + (unitPrice ?? 0) * qty;
+  }, 0);
+  const discountedTotal = total * (1 - discount);
+  const formatPrice = (value: number | null | undefined) =>
+    Number(value ?? 0).toLocaleString('ru-RU');
+
+  const openCheckout = () => {
+    try {
+      const draft = {
+        items: activeCartItems.map((it: any) => ({
+          productId: (it as any).productId || it.id,
+          name: it.name,
+          size: (it as any).size ?? null,
+          quantity: (it as any).quantity ?? 1,
+          // сохраняем уже уценённую цену (с учётом промо-скидки) для оплаты
+          price: Math.max(0, Math.round((Number(it.price) || 0) * (1 - discount))),
+          // опционально — сохраняем исходную цену и процент скидки для возможного отображения
+          origPrice: Number(it.price) || 0,
+          discountPercent: discount,
+          image:
+            (it as any).image ||
+            (it as any).imageUrl ||
+            ((it as any).images && (it as any).images[0]) ||
+            null,
+        })),
+        totals: {
+          subtotal: total,
+          discount,
+          total: discountedTotal,
+        },
+        customer: {
+          fullName: (user as any)?.fullName ?? (user as any)?.name ?? "",
+          email: (user as any)?.email ?? "",
+          phone: (user as any)?.phone ?? "",
+          address: (user as any)?.address ?? "",
+        },
+        createdAt: Date.now(),
+      };
+      localStorage.setItem("checkoutState", JSON.stringify(draft));
+      setHasCheckoutData(true);
+      console.debug("[cart] checkoutState saved", draft);
+    } catch (e) {
+      console.error("[cart] failed to save checkoutState", e);
+    }
+    setShowCheckout(true);
+  };
+
+  const startCheckout = async () => {
+    if (posting) return;
+
+    const active = activeCartItems;
+    if (!active.length) {
+      showToast({ title: "Корзина пуста", details: "Добавьте товары для оформления заказа" });
+      return;
+    }
+
+    const customer = {
+      fullName: (user as any)?.fullName ?? (user as any)?.name ?? "",
+      email: (user as any)?.email ?? "",
+      phone: (user as any)?.phone ?? "",
+      address: (user as any)?.address ?? "",
+    };
+
+    const draft = {
+      items: active.map((it: any) => ({
+        productId: it.id,
+        name: it.name,
+        size: (it as any).size ?? null,
+        quantity: (it as any).quantity ?? 1,
+        price: Number(it.price) || 0,
+        image:
+          (it as any).image ||
+          (it as any).imageUrl ||
+          ((it as any).images && (it as any).images[0]) ||
+          null,
+      })),
+      totals: { subtotal: total, discount, total: discountedTotal },
+      customer,
+      createdAt: Date.now(),
+    };
+
+    try {
+      localStorage.setItem("checkoutState", JSON.stringify(draft));
+    } catch {}
+
+    if (!customer.fullName || !customer.email || !customer.phone || !customer.address) {
+      setShowCheckout(true);
+      return;
+    }
+
+    try {
+      setPosting(true);
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include',
+        body: JSON.stringify({
+          items: active.map((it: any) => ({
+            productId: it.id,
+            name: it.name,
+            // отправляем уценённую цену на бэкенд, чтобы заказ оплачивался со скидкой
+            price: Math.max(0, Math.round((Number(it.price) || 0) * (1 - discount))),
+            origPrice: Number(it.price) || 0,
+            discountPercent: discount,
+            quantity: Number((it as any).quantity ?? 1),
+            size: (it as any).size ?? null,
+            image:
+              (it as any).image ||
+              (it as any).imageUrl ||
+              ((it as any).images && (it as any).images[0]) ||
+              null,
+          })),
+          fullName: customer.fullName,
+          email: customer.email,
+          phone: customer.phone,
+          address: customer.address,
+          comment: "",
+          promo: {
+            percent: discount
+          },
+        }),
+      });
+
+      const data = await res.json().catch(() => ({} as any));
+      if (!res.ok || !data?.orderId) {
+        console.error("[cart] checkout failed", { status: res.status, data });
+        showToast({ title: "Ошибка оформления", details: data?.message || "Попробуйте чуть позже" });
+        return;
+      }
+
+      // Persist order id/token in multiple client-visible cookies for compatibility with mock-bank
+      try {
+        const orderIdStr = String(data.orderId);
+        const expiry = 60 * 30; // 30 minutes
+
+        // main ids
+        setCookie('order_id', orderIdStr, expiry);
+        setCookie('pending_order_id', orderIdStr, expiry);
+        setCookie('orderId', orderIdStr, expiry);
+        // some UIs read "oid" or "last_order_id"
+        setCookie('oid', orderIdStr, expiry);
+        setCookie('last_order_id', orderIdStr, expiry);
+
+        // token alias (non-HttpOnly), API may also set a secure HttpOnly one
+        if (data?.token) {
+          setCookie('order_token', String(data.token), 60 * 60 * 24 * 30);
+        }
+      } catch {}
+
+      // also keep in web storage for same-tab access
+      try {
+        sessionStorage.setItem('last_order_id', String(data.orderId));
+        localStorage.setItem('last_order_id', String(data.orderId));
+      } catch {}
+
+      // give the browser a microtask to flush cookies before navigation
+      await new Promise((r) => setTimeout(r, 0));
+
+      // Деактивация промокода после успешного оформления заказа
+      if (promoCode && discount > 0) {
+        try {
+          await fetch("/api/promocodes/redeem", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code: promoCode }),
+          });
+        } catch (err) {
+          console.error("Ошибка при деактивации промокода:", err);
+        }
+      }
+
+      router.push(`/mock-bank?orderId=${data.orderId}`);
+    } finally {
+      setPosting(false);
     }
   };
 
-  const activeCartItems = cartItems.filter(item => !postponedItems.includes(item.id));
-  const total = activeCartItems.reduce((sum, item) => sum + item.price, 0);
-  const discountedTotal = total * (1 - discount);
-
   return (
-    <div className="max-w-6xl mx-auto py-12 px-4">
+    <div className="max-w-6xl mx-auto px-3 sm:px-5 lg:px-8 py-8 sm:py-12 pb-32 sm:pb-12">
       <h1 className="text-3xl font-bold mb-6">Корзина</h1>
 
       {cartItems.length === 0 ? (
@@ -133,7 +392,7 @@ useEffect(() => {
                       <div className="group border rounded-xl overflow-hidden shadow hover:shadow-lg transition-all bg-white hover:ring-2 hover:ring-gray-300">
                         <div className="relative w-full h-48 bg-gray-100">
                           <Image
-                            src={item.images[0]}
+                            src={item.images?.[0] || item.imageUrl || "/img/placeholder.png"}
                             alt={item.name}
                             fill
                             className="object-cover object-center group-hover:scale-105 transition-transform duration-300"
@@ -141,17 +400,17 @@ useEffect(() => {
                         </div>
                         <div className="p-3">
                           <h3 title={item.name} className="text-sm font-semibold text-gray-800 group-hover:text-black truncate">
-                            {isPremiumProduct(item.id) && <span className="text-black mr-1" aria-label="premium">★</span>}
+                            {isPremiumProduct(item) && <span className="text-black mr-1" aria-label="premium">★</span>}
                             {item.name}
                           </h3>
                           <p className="text-sm text-gray-500 mt-1">
                             {(() => {
                               const sizes = (item as any)?.sizes;
                               if (sizes?.prices) {
-                               const minPrice = Math.min(...Object.values(sizes.prices) as number[]);
+                                const minPrice = Math.min(...Object.values(sizes.prices) as number[]);
                                 return `от ${minPrice.toLocaleString('ru-RU')}₽`;
                               }
-                              return `${item.price.toLocaleString('ru-RU')}₽`;
+                              return `${Number(item.price ?? 0).toLocaleString('ru-RU')}₽`;
                             })()}
                           </p>
                         </div>
@@ -177,183 +436,225 @@ useEffect(() => {
         </>
       ) : (
         <>
-          <div className="space-y-6">
-            {cartItems.map((item, index) => (
-              <Link key={index} href={`/product/${item.id}`} className="block">
-                <div className="flex items-center gap-6 border-b pb-4 transition">
-                  <div className="relative w-24 h-24 flex-shrink-0">
-                    
-                    <Image
-                      src={item.image}
-                      alt={item.name}
-                      fill
-                      className="object-cover rounded"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3
-                        title={item.name}
-                        className={`flex-1 truncate font-semibold ${postponedItems.includes(item.id) ? 'line-through text-gray-400' : ''}`}
-                      >
-                        {item.name}
-                      </h3>
-                      {isPremiumProduct(item.id) && (
-                        <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-black text-white border border-black/20">
-                          <span aria-hidden>★</span>
-                          <span className="hidden sm:inline">Premium</span>
+          <div className="space-y-4 sm:space-y-6">
+            {cartItems.map((item, index) => {
+              const qty = Number((item as any).quantity ?? 1);
+              const basePrice = Number(item.price ?? 0);
+              const unitFinalPrice = applied ? Math.max(0, Math.round(basePrice * (1 - discount))) : basePrice;
+              const lineFinalPrice = unitFinalPrice * qty;
+              const lineBasePrice = basePrice * qty;
+              const isPostponed = postponedItems.includes(item.id);
+              const sizeValue = (item as any).size ?? (item as any).sizeLabel ?? (item as any).ProductItem?.sizeLabel ?? "—";
+              const sizeLabel =
+                item.name.toLowerCase().includes("parfum") || item.name.toLowerCase().includes("духи")
+                  ? `Объём: ${sizeValue} мл`
+                  : `Размер: ${sizeValue}`;
+              const productId = (item as any).productId || (item as any).id;
+
+              return (
+                <Link key={index} href={`/product/${productId}`} className="block">
+                  <div
+                    className={`flex flex-col sm:flex-row gap-4 sm:gap-6 p-4 sm:p-5 rounded-2xl border ${
+                      isPostponed ? 'border-dashed border-gray-300 bg-gray-50' : 'border-gray-200 bg-white/90'
+                    } shadow-[0_25px_50px_rgba(15,23,42,0.08)] transition`}
+                  >
+                    <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gray-100 sm:w-32 sm:h-32">
+                      <Image
+                        src={
+                          (item as any).image ||
+                          (item as any).imageUrl ||
+                          ((item as any).images && (item as any).images[0]) ||
+                          "/img/placeholder.png"
+                        }
+                        alt={item.name}
+                        fill
+                        className="object-cover object-center"
+                      />
+                      {isPostponed && (
+                        <span className="absolute top-3 left-3 px-3 py-1 text-xs font-semibold rounded-full bg-white/90 text-gray-700 shadow-sm">
+                          Отложено
                         </span>
                       )}
                     </div>
-                    <p className="text-gray-500">
-                      {item.name.toLowerCase().includes("parfum") || item.name.toLowerCase().includes("духи")
-                        ? `Объем: ${item.size} мл`
-                        : `Размер: ${item.size}`}
-                    </p>
-                    {/* Булавка для отложенных */}
-                  </div>
-                  <div className="text-lg font-bold whitespace-nowrap">
-                    {applied ? (
-                      <>
-                        <span className="line-through text-gray-400 mr-2">${item.price.toLocaleString()}</span>
-                        <span>${(item.price * (1 - discount)).toLocaleString()}</span>
-                      </>
-                    ) : (
-                      <span>${item.price.toLocaleString()}</span>
-                    )}
-                  </div>
-                  <div className="flex flex-col items-center relative group" aria-label="Отложить товар">
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        togglePostponed(item.id);
-                        const isPostponed = postponedItems.includes(item.id);
-                        setTimeout(() => {
-                          showToast({
-                            title: isPostponed ? 'Возвращён в корзину' : 'Товар отложен',
-                            details: item.name,
-                          });
-                        }, 0);
-                      }}
-                      className={`transition-transform duration-300 hover:scale-110 ${
-                        postponedItems.includes(item.id) ? 'text-yellow-500' : 'text-gray-400'
-                      }`}
-                    >
-                      📌
-                    </button>
+                    <div className="flex-1 flex flex-col gap-3">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                        <div className="space-y-1">
+                          <h3
+                            title={item.name}
+                            className={`text-lg font-semibold leading-snug ${isPostponed ? 'text-gray-400 line-through' : 'text-gray-900'}`}
+                          >
+                            {item.name}
+                          </h3>
+                          <p className="text-sm text-gray-500">{sizeLabel}</p>
+                        </div>
+                        {isPremiumProduct(item) && (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-black text-white text-xs font-semibold">
+                            <span aria-hidden>★</span>
+                            Premium
+                          </span>
+                        )}
+                      </div>
 
-                    {/* Подпись для мобильных */}
-                    <p className="block sm:hidden text-xs text-gray-400 mt-1">Отложить</p>
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                        {qty > 1 && (
+                          <span className="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-gray-100 font-medium">
+                            <span>Количество: {qty}</span>
+                            <span className="text-gray-400 text-xs">
+                              + {formatPrice(basePrice * (qty - 1))}₽
+                            </span>
+                          </span>
+                        )}
+                        {item.badge && <span className="px-2 py-1 rounded-full bg-gray-100 font-medium">{item.badge}</span>}
+                      </div>
 
-                    {/* Тултип для десктопа */}
-                    <div className="hidden sm:block absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition">
-                      Отложить
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                          <p className="text-xl font-semibold text-gray-900">
+                            {formatPrice(lineFinalPrice)}₽
+                          </p>
+                          {applied ? (
+                            <div className="text-sm text-gray-500 space-y-0.5">
+                              <p className="line-through">{formatPrice(lineBasePrice)}₽</p>
+                              {qty > 1 && (
+                                <p className="text-xs text-gray-400">
+                                  {qty} × {formatPrice(unitFinalPrice)}₽
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            qty > 1 && (
+                              <p className="text-xs text-gray-500">
+                                {qty} × {formatPrice(unitFinalPrice)}₽
+                              </p>
+                            )
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              togglePostponed(item.id);
+                              const wasPostponed = postponedItems.includes(item.id);
+                              setTimeout(() => {
+                                showToast({
+                                  title: wasPostponed ? 'Возвращён в корзину' : 'Товар отложен',
+                                  details: item.name,
+                                });
+                              }, 0);
+                            }}
+                            className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg border text-sm font-medium transition ${
+                              isPostponed
+                                ? 'border-yellow-400 text-yellow-600 bg-yellow-50'
+                                : 'border-gray-200 text-gray-600 hover:border-gray-400'
+                            }`}
+                          >
+                            <span aria-hidden>📌</span>
+                            {isPostponed ? 'Вернуть' : 'Отложить'}
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleRemove(index);
+                            }}
+                            className="p-2 rounded-lg border border-transparent text-gray-400 hover:text-red-600 hover:border-red-100 transition"
+                            aria-label="Удалить"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleRemove(index);
-                    }}
-                    className="text-gray-400 hover:text-red-600 transition-transform duration-300 hover:scale-110"
-                    aria-label="Удалить"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
 
           {/* Промокод */}
-          <div className="mt-10">
-            <h3 className="text-lg font-semibold mb-3">Промокод</h3>
-            <div className={`max-w-md bg-white rounded-xl shadow p-4 flex items-center gap-3 border transition duration-300
-              ${promoCode.length > 0 ? 'border-black ring-2 ring-black' : 'border-gray-200'}
-            `}>
-              <motion.span
-                key={inputBounceTrigger}
-                className="text-xl"
-                animate={{ rotate: [0, -10, 10, -5, 5, 0] }}
-                transition={{ duration: 0.6 }}
-              >
-                🎁
-              </motion.span>
-              <input
-                type="text"
-                value={promoCode}
-                onChange={(e) => {
-                  setPromoCode(e.target.value);
-                  setInputBounceTrigger(prev => prev + 1);
-                }}
-                placeholder="Введите промокод"
-                className="flex-1 outline-none text-sm text-gray-800 placeholder-gray-400"
-              />
-              <button
-                onClick={handleApplyPromo}
-                className="bg-black text-white text-sm px-4 py-2 rounded-md hover:bg-gray-800 transition font-medium"
-              >
-                Применить
-              </button>
-            </div>
-            {applied && (
-              <p className="text-green-600 text-sm mt-2">
-                ✅ Промокод применен. Скидка {discount * 100}%
-              </p>
-            )}
-            {promoError && (
-              <p className="text-red-600 text-sm mt-2">
-                ❌ Промокод недействителен, попробуй ещё раз!
-              </p>
-            )}
-          </div>
-
-          {/* Итог + кнопка */}
-          <div className="mt-6 flex justify-between items-center border-t pt-6">
-            <div>
-              <h2 className="text-xl font-semibold">Итого:</h2>
-              {applied && (
-                <>
-                  <p className="text-sm text-gray-500">Скидка: {discount * 100}%</p>
-                  <p className="text-sm text-gray-400">
-                    Учтено товаров: {activeCartItems.length} из {cartItems.length}
-                  </p>
-                </>
+          <div className="mt-8 space-y-2">
+            <h3 className="text-lg font-semibold">Промокод</h3>
+            <div
+              className={`text-sm sm:text-base rounded-2xl border px-4 py-4 ${
+                applied
+                  ? 'bg-green-50 border-green-200 text-green-800'
+                  : 'bg-gray-50 border-gray-200 text-gray-600'
+              }`}
+            >
+              {applied ? (
+                <>✅ Активен промокод <strong>{promoCode}</strong> — скидка {discount * 100}%</>
+              ) : (
+                "Промокод не найден"
               )}
             </div>
-            <div className="mt-8 flex justify-end items-center gap-6">
-              <div className="text-right">
-                <p className="text-xl font-bold">
-                  ${discountedTotal.toLocaleString()}
+          </div>
+
+          {/* Итог + кнопки */}
+          <div
+            ref={summaryRef}
+            className="mt-8 rounded-2xl border border-gray-200 bg-white/90 px-4 py-5 sm:px-6 sm:py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-[0_25px_45px_rgba(15,23,42,0.08)]"
+          >
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-gray-400 mb-1">Итого</p>
+              <p className="text-3xl font-semibold text-gray-900">
+                {formatPrice(discountedTotal)}₽
+              </p>
+              {discount > 0 && (
+                <p className="text-sm text-gray-400 line-through">
+                  {formatPrice(total)}₽
                 </p>
-                {discount > 0 && (
-                  <p className="text-sm text-gray-400 line-through">
-                    ${total.toLocaleString()}
-                  </p>
-                )}
-              </div>
+              )}
+              {applied && (
+                <p className="text-sm text-gray-500 mt-2">
+                  Скидка {discount * 100}% · {activeCartItems.length} из {cartItems.length} товаров участвуют
+                </p>
+              )}
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
               <button
-                onClick={() => setShowCheckout(true)}
-                className="group relative px-5 py-2.5 bg-black text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-all duration-300"
+                onClick={startCheckout}
+                disabled={posting}
+                className="inline-flex items-center justify-center rounded-xl bg-black text-white px-4 py-2.5 text-sm font-semibold shadow-lg shadow-black/20 transition disabled:opacity-60 disabled:pointer-events-none"
               >
-                <span>{hasCheckoutData ? "Продолжить оформление" : "Перейти к оформлению"}</span>
-                <span className="opacity-0 group-hover:opacity-100 translate-x-1 group-hover:translate-x-0 transition-all duration-300">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-4 h-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </span>
+                {hasCheckoutData ? "Продолжить оформление" : "Перейти к оформлению"}
               </button>
             </div>
           </div>
         </>
       )}
       <CheckoutModal visible={showCheckout} onClose={() => setShowCheckout(false)} />
+      <AnimatePresence>
+        {cartItems.length > 0 && !isBottomSummaryVisible && (
+          <motion.div
+            key="mobile-summary"
+            initial={{ opacity: 0, y: 80 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 80 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className="sm:hidden fixed bottom-0 left-0 right-0 z-40 px-4 pb-4"
+          >
+            <div className="flex items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white/95 px-4 py-4 shadow-[0_-15px_30px_rgba(15,23,42,0.18)]">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-gray-500 mb-1">Итого</p>
+                <p className="text-2xl font-semibold text-gray-900">
+                  {formatPrice(discountedTotal)}₽
+                </p>
+                {discount > 0 && (
+                  <p className="text-xs text-gray-400 line-through">
+                    {formatPrice(total)}₽
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={startCheckout}
+                disabled={posting}
+                className="flex-1 inline-flex items-center justify-center rounded-xl bg-black text-white px-4 py-3 text-base font-semibold shadow-lg shadow-black/20 transition disabled:opacity-60 disabled:pointer-events-none"
+              >
+                Оформить
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

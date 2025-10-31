@@ -22,35 +22,104 @@ function brandSlugFrom(name: string): string {
     .replace(/^-|-$/g, '');
 }
 import { useParams, useSearchParams } from "next/navigation";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Mousewheel, Navigation } from "swiper/modules";
-import "swiper/css/effect-fade";
-import { EffectFade } from "swiper/modules";
+import { Mousewheel, Navigation, Pagination } from "swiper/modules";
 import SizeSelector from '@/components/shared/SizeSelector';
 import { useToast } from "@/context/ToastContext";
 import { useCart } from "@/context/CartContext";
+import { useUser } from "@/user/UserContext";
 import "swiper/css";
 import "swiper/css/mousewheel";
-import { cn } from "@/lib/utils";
 import "swiper/css/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { 
-  products, 
-  sizeCharts, 
-  Product, 
-  ClothingProduct, 
-  ShoeProduct, 
-  JewelryProduct, 
-  RingProduct, 
-  BagProduct, 
-  PerfumeProduct, 
-  BagDimensions, 
-  BagCapacity 
-} from "@/data/products";
+import "swiper/css/pagination";
+
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import { normalizeProduct, type NormalizedProduct } from "@/lib/normalizeProduct";
+
+
+// --- Local minimal types to replace removed "@/data/products" ---
+type BagDimensions = { width: number; height: number; depth: number };
+
+// Use the shared normalized product shape everywhere on this page
+type Product = NormalizedProduct;
+
+// Narrow helper type for bags (kept only for casts where needed)
+type BagProduct = {
+  category: "bags";
+  dimensions: BagDimensions;
+  sizes?: any;
+  images: string[];
+  name: string;
+  price: number;
+  id: number;
+};
+
+// Narrow helper type for perfumes, using fragranceNotes from NormalizedProduct
+type PerfumeProduct = {
+  category: "perfume";
+  fragranceNotes: NonNullable<NormalizedProduct["fragranceNotes"]>;
+};
+
+// Узкий тип для цветовых вариантов (то, что прилетает в product.colorVariants)
+type ColorVariant = {
+  id: number;
+  name: string;
+  price: number;
+  images: string[];
+};
+
+// Fallback size charts used by the local SizeChartTable if needed
+const sizeCharts = {
+  // Верх (футболки, худи, свитшоты, куртки и т.п.)
+  clothingTop: [
+    { label: 'XXS', ru: 40, chestCm: 80, shouldersCm: 38, lengthCm: 64 },
+    { label: 'XS',  ru: 42, chestCm: 84, shouldersCm: 40, lengthCm: 66 },
+    { label: 'S',   ru: 44, chestCm: 88, shouldersCm: 42, lengthCm: 68 },
+    { label: 'M',   ru: 46, chestCm: 92, shouldersCm: 44, lengthCm: 70 },
+    { label: 'L',   ru: 48, chestCm: 96, shouldersCm: 46, lengthCm: 72 },
+  ],
+  // Низ (штаны, джинсы, джоггеры и т.п.)
+  clothingBottom: [
+    { label: 'XXS', ru: 40, waistCm: 60, hipsCm: 86, inseamCm: 76 },
+    { label: 'XS',  ru: 42, waistCm: 64, hipsCm: 90, inseamCm: 78 },
+    { label: 'S',   ru: 44, waistCm: 68, hipsCm: 94, inseamCm: 80 },
+    { label: 'M',   ru: 46, waistCm: 72, hipsCm: 98, inseamCm: 82 },
+    { label: 'L',   ru: 48, waistCm: 76, hipsCm: 102, inseamCm: 84 },
+  ],
+  shoes: [
+    { eu: 35,   ru: 35,   us: 4.5, footCm: 22.5 },
+    { eu: 35.5, ru: 35.5, us: 5,   footCm: 23.0 },
+    { eu: 36,   ru: 36,   us: 5.5, footCm: 23.5 },
+    { eu: 36.5, ru: 36.5, us: 6,   footCm: 23.8 },
+    { eu: 37,   ru: 37,   us: 6.5, footCm: 24.0 },
+    { eu: 38,   ru: 38,   us: 7.5, footCm: 24.5 },
+    { eu: 39,   ru: 39,   us: 8,   footCm: 25.0 },
+    { eu: 40,   ru: 40,   us: 8.5, footCm: 25.5 },
+    { eu: 41,   ru: 41,   us: 9,   footCm: 26.0 },
+    { eu: 42,   ru: 42,   us: 9.5, footCm: 26.5 },
+    { eu: 43,   ru: 43,   us: 10,  footCm: 27.0 },
+    { eu: 44,   ru: 44,   us: 10.5, footCm: 27.5 },
+    { eu: 45,   ru: 45,   us: 11,  footCm: 28.0 },
+  ],
+  rings: [
+    { size: 15, fingerCm: 4.7 },
+    { size: 16, fingerCm: 5.0 },
+    { size: 17, fingerCm: 5.3 },
+    { size: 18, fingerCm: 5.6 },
+    { size: 19, fingerCm: 5.9 },
+  ],
+  bracelets: [
+    { size: 'XS', wristCm: 14 },
+    { size: 'S',  wristCm: 16 },
+    { size: 'M',  wristCm: 18 },
+    { size: 'L',  wristCm: 20 },
+    { size: 'XL', wristCm: 22 },
+  ],
+};
+
 
 
 const BagVisualization = ({
@@ -142,10 +211,10 @@ const ItemCheck = ({ ok, label, size }: {
 
 
 
-const SizeChartTable = ({ 
-  rows, 
-  matchKey, 
-  selectedSize 
+const SizeChartTable = ({
+  rows,
+  matchKey,
+  selectedSize
 }: {
   rows: any[];
   matchKey: string;
@@ -154,38 +223,147 @@ const SizeChartTable = ({
   <table className="w-full text-sm text-left border border-gray-300 bg-white rounded-md shadow">
     <thead className="bg-gray-100 text-xs uppercase text-gray-600">
       <tr>
-        {Object.keys(rows[0]).map((key) => (
-          <th key={key} className="px-3 py-2 border">
-            {key === 'ru' ? '🇷🇺 RU' : 
-             key === 'eu' ? '🇪🇺 EU' : 
-             key === 'us' ? '🇺🇸 US' : key.toUpperCase()}
-          </th>
-        ))}
+        {Object.keys(rows[0]).map((key) => {
+          let label: string;
+          switch (key) {
+            case 'label':
+              label = 'РАЗМЕР';
+              break;
+            case 'ru':
+              label = '🇷🇺 RUS';
+              break;
+            case 'eu':
+              label = '🇪🇺 EU';
+              break;
+            case 'us':
+              label = '🇺🇸 US';
+              break;
+            case 'chestCm':
+              label = 'ГРУДЬ, СМ';
+              break;
+            case 'shouldersCm':
+              label = 'ПЛЕЧИ, СМ';
+              break;
+            case 'lengthCm':
+              label = 'ДЛИНА ИЗДЕЛИЯ, СМ';
+              break;
+            case 'waistCm':
+              label = 'ТАЛИЯ, СМ';
+              break;
+            case 'hipsCm':
+              label = 'БЁДРА, СМ';
+              break;
+            case 'inseamCm':
+              label = 'ДЛИНА НОГИ, СМ';
+              break;
+            case 'footCm':
+              label = 'ДЛИНА СТОПЫ, СМ';
+              break;
+            case 'wristCm':
+              label = 'ОБХВАТ ЗАПЯСТЬЯ, СМ';
+              break;
+            case 'fingerCm':
+              label = 'ОБХВАТ ПАЛЬЦА, СМ';
+              break;
+            default:
+              label = key.toUpperCase();
+          }
+          return (
+            <th key={key} className="px-3 py-2 border">
+              {label}
+            </th>
+          );
+        })}
       </tr>
     </thead>
     <tbody>
-      {rows.map((row, i) => (
-        <tr
-          key={i}
-          className={`transition-colors border ${
-            row[matchKey] === selectedSize ? 'bg-blue-100 font-semibold' : ''
-          }`}
-        >
-          {Object.values(row).map((value, j) => (
-            <td key={j} className="px-3 py-2 border">{String(value)}</td>
-          ))}
-        </tr>
-      ))}
+      {rows.map((row, i) => {
+        const isActive =
+          selectedSize != null && String(row[matchKey]) === String(selectedSize);
+
+        return (
+          <tr
+            key={i}
+            className={`transition-colors border ${
+              isActive ? 'bg-blue-100 font-semibold' : ''
+            }`}
+          >
+            {Object.values(row).map((value, j) => (
+              <td key={j} className="px-3 py-2 border">{String(value)}</td>
+            ))}
+          </tr>
+        );
+      })}
     </tbody>
   </table>
 );
 
 export default function ProductPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const productId = isNaN(Number(id)) ? -1 : Number(id);
-  const product: Product | undefined = products.find(p => p.id === productId);
+  const [product, setProduct] = useState<Product | null>(null);
+  // сырой объект из API, без normalizeProduct — нужен как безопасный источник размеров/объёма
+  const [rawProduct, setRawProduct] = useState<any | null>(null);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Всегда начинаем просмотр товара с вершины страницы
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    }
+  }, [productId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const [oneRes, listRes] = await Promise.all([
+          fetch(`/api/products/${productId}?include=relations`, { cache: 'no-store' }),
+          fetch(`/api/products`, { cache: 'no-store' }),
+        ]);
+        const oneJson = oneRes.ok ? await oneRes.json() : null;
+        const listJson = listRes.ok ? await listRes.json() : null;
+
+        // Нормализованный товар с бэка
+        const p = oneJson?.product ? normalizeProduct(oneJson.product) : null;
+        const raw = oneJson?.product ?? null;
+
+        // Цветовые варианты приходят отдельным полем из API — аккуратно пробрасываем их в объект товара
+        const serverColorVariants = Array.isArray(oneJson?.colorVariants)
+          ? oneJson.colorVariants
+          : [];
+
+        if (p && serverColorVariants.length) {
+          (p as any).colorVariants = serverColorVariants;
+        }
+        if (raw && serverColorVariants.length) {
+          (raw as any).colorVariants = serverColorVariants;
+        }
+
+        const list = Array.isArray(listJson?.products)
+          ? listJson.products.map((item: any) => normalizeProduct(item))
+          : [];
+
+        if (!cancelled) {
+          setRawProduct(raw);
+          setProduct(p);
+          setAllProducts(list);
+          setDisplayedImages(
+            p?.images?.length ? p.images : p?.imageUrl ? [p.imageUrl] : []
+          );
+          setLoading(false);
+        }
+      } catch (e) {
+        console.error('[product page] load failed:', e);
+        setLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [productId]);
   // Premium flag
   const isPremium = Boolean((product as any)?.premium);
   // Remember section, gender and last viewed product for header logo navigation
@@ -214,15 +392,18 @@ export default function ProductPage() {
     if (typeof src === "string" && src) return [src];
     return [];
   }, [product]);
-  const primaryBrand: string | null = React.useMemo(() => (productBrands[0] ?? null), [productBrands]);
-  const brandLogoSrc: string | undefined = (product as any)?.brandLogo;
-  const { addToCart } = useCart();
-  const [selectedVariant, setSelectedVariant] = useState<any | null>(null);
-  const [displayedImages, setDisplayedImages] = useState<string[]>(product?.images || []);
+const primaryBrand: string | null = React.useMemo(() => (productBrands[0] ?? null), [productBrands]);
+const brandLogoSrc: string | undefined = (product as any)?.brandLogo;
+const { addToCart } = useCart();
+const [selectedVariant, setSelectedVariant] = useState<any | null>(null);
+const [displayedImages, setDisplayedImages] = useState<string[]>([]);
+const [isFavProduct, setIsFavProduct] = useState(false);
+const { user } = useUser();
 
   // Sticky header state and refs
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const titleRef = useRef<HTMLDivElement | null>(null);
+  const badgeRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -246,23 +427,91 @@ export default function ProductPage() {
     };
   }, []);
 
+
   const getPriceBySize = () => {
-  if (!product) return 0;
-  if (!selectedSize) return product.price;
+    if (!product) return 0;
+    if (!selectedSize) return product.price;
 
-  const prices = (product as any)?.sizes?.prices;
-  if (prices && typeof prices === 'object') {
-    return prices[selectedSize] ?? product.price;
-  }
+    const sourceSizes: any =
+      (product as any)?.sizes ??
+      (rawProduct as any)?.sizes ??
+      null;
 
-  return product?.price;
-};
+    const prices = sourceSizes?.prices as Record<string, number> | undefined;
+    if (prices && typeof prices === "object") {
+      const key = String(selectedSize);
+      const value = prices[key];
+      if (typeof value === "number") {
+        return value;
+      }
+    }
 
-  const baseName = product?.name?.split('(')[0]?.trim() ?? '';
-  const relatedColorProducts = product
-  ? products.filter((p) => p.name.startsWith(baseName) && p.id !== product.id)
-  : [];
-  
+    return product.price;
+  };
+  const getMinPriceInfo = (p: Product | null | undefined) => {
+    if (!p) return { price: 0, sizeLabel: null as string | null };
+    const priceMap = (p as any)?.sizes?.prices;
+    if (priceMap && typeof priceMap === 'object') {
+      const entries = Object.entries(priceMap).filter(
+        ([, value]) => typeof value === 'number'
+      ) as Array<[string, number]>;
+      if (entries.length > 0) {
+        let minEntry = entries[0];
+        for (let i = 1; i < entries.length; i++) {
+          if (entries[i][1] < minEntry[1]) {
+            minEntry = entries[i];
+          }
+        }
+        const [sizeLabel, price] = minEntry;
+        return { price, sizeLabel };
+      }
+    }
+    return { price: p.price, sizeLabel: null as string | null };
+  };
+
+  const relatedColorProducts: ColorVariant[] = React.useMemo(() => {
+    if (!product) return [];
+
+    // 1) Нормальный путь — используем colorVariants, которые вернул API для этого товара
+    const fromApi = (product as any).colorVariants as any[] | undefined;
+
+    if (Array.isArray(fromApi) && fromApi.length) {
+      return fromApi
+        .filter((v) => v && typeof v.id === 'number' && v.id !== product.id)
+        .map((v) => {
+          const images: string[] = Array.isArray(v.images) && v.images.length
+            ? v.images
+            : v.imageUrl
+            ? [String(v.imageUrl)]
+            : [];
+
+          return {
+            id: Number(v.id),
+            name: String(v.name ?? ''),
+            price: typeof v.price === 'number' ? v.price : product.price,
+            images,
+          };
+        });
+    }
+
+    // 2) Fallback — старое поведение по имени, но только внутри той же категории
+    const baseName = product.name?.split('(')[0]?.trim() ?? '';
+
+    return allProducts
+      .filter(
+        (p) =>
+          p.id !== product.id &&
+          p.category === product.category &&
+          p.name.startsWith(baseName)
+      )
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        images: p.images,
+      }));
+  }, [product, allProducts]);
+
   // States
   const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
   const [selectedSize, setSelectedSize] = useState<string | number | null>(() => {
@@ -273,10 +522,33 @@ export default function ProductPage() {
   const [cartStatus, setCartStatus] = useState<
     "default" | "pending" | "canceled" | "added"
   >("default");
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [showMobileBar, setShowMobileBar] = useState(true);
   const [showBadgeText, setShowBadgeText] = useState(false);
-  const cancelTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const [sliderStyle, setSliderStyle] = useState<React.CSSProperties>({});
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!showBadgeText) return;
+      if (badgeRef.current && !badgeRef.current.contains(event.target as Node)) {
+        setShowBadgeText(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [showBadgeText]);
+  useEffect(() => {
+    // Авто-показ бейджа при заходе на страницу товара
+    setShowBadgeText(true);
+    const timer = setTimeout(() => {
+      setShowBadgeText(false);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
+  const cancelTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [galleryProgress, setGalleryProgress] = useState(0);
+  const galleryRef = useRef<HTMLDivElement | null>(null);
   const [showSizeChart, setShowSizeChart] = useState(false);
   // Restock notify modal state
   const [showRestockModal, setShowRestockModal] = useState(false);
@@ -286,15 +558,18 @@ export default function ProductPage() {
   // Restock size state and available sizes helper
   const [restockSize, setRestockSize] = useState<string | number | null>(null);
   const availableSizes: Array<string | number> = React.useMemo(() => {
-    return ((product as any)?.sizes?.available ?? []) as Array<string | number>;
-  }, [product]);
+    const fromProduct = (product as any)?.sizes?.available;
+    const fromRaw = (rawProduct as any)?.sizes?.available;
+
+    const src = fromProduct ?? fromRaw ?? [];
+    return Array.isArray(src) ? (src as Array<string | number>) : [];
+  }, [product, rawProduct]);
   const { showToast } = useToast();
   const [recentProducts, setRecentProducts] = useState<Product[]>([]);
   // Delivery modal state
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   // Moscow availability modal state
   const [showMoscowModal, setShowMoscowModal] = useState(false);
-
   // Brand logo tooltip state
   const [showBrandTooltip, setShowBrandTooltip] = useState(false);
 
@@ -313,7 +588,24 @@ export default function ProductPage() {
 
   
   const sizeRefs = useRef<Record<string | number, HTMLButtonElement | null>>({});
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastScrollY = useRef(0);
+  const scrollRaf = useRef<number | null>(null);
+  const { scrollY } = useScroll();
+  const heroParallax = useTransform(scrollY, [0, 300], [0, -70]);
+  const heroFade = useTransform(scrollY, [0, 200], [1, 0.85]);
+
+useEffect(() => {
+  if (!product?.id) return;
+  try {
+    const raw = localStorage.getItem("favoriteProducts");
+    const arr: any[] = raw ? JSON.parse(raw) : [];
+    const exists = Array.isArray(arr) && arr.some((p) => String(p.id) === String(product.id));
+    setIsFavProduct(Boolean(exists));
+  } catch {
+    setIsFavProduct(false);
+  }
+}, [product?.id]);
 
 
 useEffect(() => {
@@ -329,8 +621,49 @@ useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (cancelTimerRef.current) clearTimeout(cancelTimerRef.current);
     if (brandOverlayTimeout.current) clearTimeout(brandOverlayTimeout.current);
+    if (scrollRaf.current) cancelAnimationFrame(scrollRaf.current);
   };
 }, []);
+
+useEffect(() => {
+  lastScrollY.current = typeof window !== 'undefined' ? window.scrollY : 0;
+  const handleScroll = () => {
+    if (scrollRaf.current) return;
+    scrollRaf.current = window.requestAnimationFrame(() => {
+      const currentY = window.scrollY;
+      const delta = currentY - lastScrollY.current;
+      if (Math.abs(delta) > 6) {
+        if (delta > 0 && currentY > 120) {
+          setShowMobileBar(false);
+        } else {
+          setShowMobileBar(true);
+        }
+        lastScrollY.current = currentY;
+      }
+      scrollRaf.current = null;
+    });
+  };
+
+  window.addEventListener('scroll', handleScroll, { passive: true });
+  return () => {
+    window.removeEventListener('scroll', handleScroll);
+    if (scrollRaf.current) {
+      cancelAnimationFrame(scrollRaf.current);
+      scrollRaf.current = null;
+    }
+  };
+}, []);
+
+  const handleGalleryScroll = () => {
+    const el = galleryRef.current;
+    if (!el) return;
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    if (maxScroll <= 0) {
+      setGalleryProgress(0);
+      return;
+    }
+    setGalleryProgress(el.scrollLeft / maxScroll);
+  };
 
   useEffect(() => {
     // Автовыбор первого доступного размера (если есть) и приведение типов
@@ -350,7 +683,7 @@ useEffect(() => {
     if (!product) return;
 
     // Базовый пул: та же категория, исключаем текущий товар
-    const basePool = products.filter((p) => p.id !== product.id && p.category === product.category);
+    const basePool = allProducts.filter((p) => p.id !== product.id && p.category === (product as any).category);
 
     // Если текущий товар премиум — показываем только премиум в рекомендациях.
     // Если нет — оставляем текущую логику (скрываем премиум из рекомендаций).
@@ -378,7 +711,7 @@ useEffect(() => {
     }
 
     setSimilarProducts(prioritized);
-  }, [product]);
+  }, [product, allProducts]);
 
 // Основная логика добавления товара
 const handleAddToCart = () => {
@@ -397,20 +730,58 @@ const handleAddToCart = () => {
   timerRef.current = setTimeout(() => {
     addToCart({
       id: product.id,
+      productId: product.id,
       name: product.name,
-      price: getPriceBySize(),
+      price: currentPrice,
       image: displayedImages?.[0] ?? product.images?.[0] ?? "/img/fallback.jpg",
-      size: selectedSize ?? "N/A"
+      size: selectedSize != null ? String(selectedSize) : undefined,
     });
-     showToast({
+    showToast({
       title: product.name,
-      details: `${selectedSize ?? "—"} · ${getPriceBySize().toLocaleString('ru-RU')}₽`
+      details: `${selectedSize ?? "—"} · ${currentPrice.toLocaleString('ru-RU')}₽`
     });
     setCartStatus("added");
     cancelTimerRef.current = setTimeout(() => {
       setCartStatus("default");
     }, 2800); 
   }, 2800); 
+};
+
+const handleToggleFavorite = () => {
+  if (!user) {
+    showToast({ title: "Только для зарегистрированных", details: "Перейдите к регистрации, чтобы добавлять избранное" });
+    return;
+  }
+  if (!product) return;
+  const favItem = {
+    id: product.id,
+    name: product.name,
+    price: currentPrice,
+    size: selectedSize != null ? selectedSize : undefined,
+    imageUrl: displayedImages?.[0] ?? product.images?.[0] ?? product.imageUrl ?? null,
+    brand: primaryBrand ?? null,
+  };
+  try {
+    const raw = localStorage.getItem("favoriteProducts");
+    const arr: any[] = raw ? JSON.parse(raw) : [];
+    const exists = Array.isArray(arr) && arr.some((p) => String(p.id) === String(favItem.id));
+    let next: any[] = Array.isArray(arr) ? [...arr] : [];
+    if (exists) {
+      next = next.filter((p) => String(p.id) !== String(favItem.id));
+      setIsFavProduct(false);
+      showToast({ title: "Убрано из избранного", details: favItem.name });
+    } else {
+      next.push(favItem);
+      setIsFavProduct(true);
+      showToast({ title: "Добавлено в избранное", details: favItem.name });
+    }
+    localStorage.setItem("favoriteProducts", JSON.stringify(next));
+    try {
+      window.dispatchEvent(new Event("favorites:products:update"));
+    } catch {}
+  } catch {
+    // ignore storage errors
+  }
 };
 
 const handleCancel = () => {
@@ -462,27 +833,48 @@ const handleCancel = () => {
 
   // Helper functions
   const requiresSizeSelection = () => {
-    if (!product || product.oneSize) return false;
-    return (
-      product.category === 'clothing' ||
-      product.category === 'shoes' ||
-      product.category === 'perfume' ||
-      (product.category === 'jewelry' && (product as JewelryProduct).jewelryType === 'ring')
-    );
+    if (!product) return false;
+
+    const sizesObj: any =
+      (product as any)?.sizes ??
+      (rawProduct as any)?.sizes ??
+      null;
+    const hasAvailableSizes =
+      sizesObj &&
+      Array.isArray(sizesObj.available) &&
+      sizesObj.available.length > 0;
+
+    if (!hasAvailableSizes) return false;
+
+    if (product.category === "clothing" || product.category === "clothes") return true;
+    if (product.category === "shoes") return true;
+    if (product.category === "jewelry" && product.jewelryType === "ring") return true;
+    if (product.category === "perfume" || product.category === "fragrance") return true;
+
+    return false;
   };
 
   const renderSizeSelector = () => {
     if (!product) return null;
 
-    const sizes = (product as any).sizes;
+    const sizes =
+      (product as any)?.sizes ??
+      (rawProduct as any)?.sizes ??
+      null;
     if (!sizes) return null;
 
     const isBag = product.category === 'bags';
 
     return (
-      <div className={isBag ? 'w-full max-w-full' : ''}>
+      <div
+        className={
+          isBag
+            ? 'w-full max-w-full overflow-x-auto px-2 sm:px-0'
+            : 'w-full max-w-full overflow-x-auto px-2 sm:px-0'
+        }
+      >
         <SizeSelector
-          type={product.category as 'clothing' | 'shoes' | 'jewelry' | 'perfume'}
+          type={(product.category === 'fragrance' ? 'perfume' : product.category) as 'clothing' | 'shoes' | 'jewelry' | 'perfume'}
           sizes={sizes}
           selectedSize={selectedSize}
           onSelect={handleSizeSelect}
@@ -493,16 +885,61 @@ const handleCancel = () => {
 
   const renderSizeChartTable = () => {
     if (!product) return null;
-    
+
     switch (product.category) {
       case 'clothing':
-        return <SizeChartTable rows={sizeCharts.clothing} matchKey="label" selectedSize={selectedSize} />;
-      case 'shoes':
-        return <SizeChartTable rows={sizeCharts.shoes} matchKey="size" selectedSize={selectedSize} />;
+      case 'clothes': {
+        const name = product.name?.toLowerCase() ?? '';
+        const sub = ((product as any).subcategory ?? '').toString().toLowerCase();
+        const text = `${name} ${sub}`;
+
+        const isBottom = /джинс|брюк|штан|pants|shorts|шорты|джоггер|jogger|cargo|карго/.test(text);
+        const rows = isBottom ? sizeCharts.clothingBottom : sizeCharts.clothingTop;
+
+        return (
+          <SizeChartTable
+            rows={rows}
+            matchKey="label"
+            selectedSize={selectedSize}
+          />
+        );
+      }
+      case 'shoes': {
+        const normalizedShoesSize =
+          selectedSize != null
+            ? parseFloat(
+                String(selectedSize)
+                  .replace(/,/g, '.')
+                  .replace(/[^0-9.]/g, ''),
+              )
+            : null;
+
+        return (
+          <SizeChartTable
+            rows={sizeCharts.shoes}
+            matchKey="eu"
+            selectedSize={normalizedShoesSize}
+          />
+        );
+      }
       case 'jewelry': {
-        const type = (product as JewelryProduct).jewelryType;
-        if (type === 'ring') return <SizeChartTable rows={sizeCharts.rings} matchKey="size" selectedSize={selectedSize} />;
-        if (type === 'bracelet') return <SizeChartTable rows={sizeCharts.bracelets} matchKey="size" selectedSize={selectedSize} />;
+          const type = product.jewelryType;
+        if (type === 'ring')
+          return (
+            <SizeChartTable
+              rows={sizeCharts.rings}
+              matchKey="size"
+              selectedSize={selectedSize}
+            />
+          );
+        if (type === 'bracelet')
+          return (
+            <SizeChartTable
+              rows={sizeCharts.bracelets}
+              matchKey="size"
+              selectedSize={selectedSize}
+            />
+          );
         break;
       }
       default:
@@ -512,33 +949,81 @@ const handleCancel = () => {
 
   const renderBagDimensions = () => {
     if (!product || product.category !== 'bags') return null;
+
+    const dims = (product as any).dimensions as BagDimensions | undefined | null;
+    if (!dims) return null;
+
     return (
       <BagVisualization
-        dimensions={(product as BagProduct).dimensions}
+        dimensions={dims}
         product={product}
       />
     );
   };
 
   // Define fittedItems for bags only (все значения — в сантиметрах)
-  const fittedItems = product?.category === 'bags'
-    ? [
-        { label: "iPhone 16", dimensions: { width: 7.15, height: 14.66, depth: 0.78 }, diagonal: 6.1 },
-        { label: "iPhone 16 Pro Max", dimensions: { width: 7.78, height: 16.07, depth: 0.83 }, diagonal: 6.7 },
-        { label: "MacBook Air 13", dimensions: { width: 30.41, height: 21.24, depth: 1.13 }, diagonal: 13.6 },
-        { label: "Косметичка", dimensions: { width: 6, height: 9, depth: 4 }, diagonal: 3.5 },
-        { label: "Книга (A5)", dimensions: { width: 14.8, height: 21, depth: 1 }, diagonal: 9.7 }
-      ]
-      .sort((a, b) => a.diagonal - b.diagonal)
-      .map(item => ({
-        ...item,
-        fits:
-          item.dimensions.width <= (product as BagProduct).dimensions.width &&
-          item.dimensions.height <= (product as BagProduct).dimensions.height &&
-          item.dimensions.depth <= (product as BagProduct).dimensions.depth,
-      }))
-    : [];
+  const fittedItems =
+    product?.category === 'bags' && (product as any).dimensions
+      ? (() => {
+          const dims = (product as any).dimensions as BagDimensions;
 
+          return [
+            { label: "iPhone 16", dimensions: { width: 7.15, height: 14.66, depth: 0.78 }, diagonal: 6.1 },
+            { label: "iPhone 16 Pro Max", dimensions: { width: 7.78, height: 16.07, depth: 0.83 }, diagonal: 6.7 },
+            { label: "MacBook Air 13", dimensions: { width: 30.41, height: 21.24, depth: 1.13 }, diagonal: 13.6 },
+            { label: "Косметичка", dimensions: { width: 6, height: 9, depth: 4 }, diagonal: 3.5 },
+            { label: "Книга (A5)", dimensions: { width: 14.8, height: 21, depth: 1 }, diagonal: 9.7 },
+          ]
+            .sort((a, b) => a.diagonal - b.diagonal)
+            .map((item) => ({
+              ...item,
+              fits:
+                item.dimensions.width <= dims.width &&
+                item.dimensions.height <= dims.height &&
+                item.dimensions.depth <= dims.depth,
+            }));
+        })()
+      : [];
+  const currentPrice = getPriceBySize();
+  const oldPriceValue = product ? ((product as any).oldPrice as number | undefined) : undefined;
+  const showOldPrice = typeof oldPriceValue === 'number' && oldPriceValue > currentPrice;
+
+  // Объём флакона для духов (ml)
+  const perfumeVolume = React.useMemo(() => {
+    if (
+      !product ||
+      (product.category !== "perfume" && product.category !== "fragrance")
+    )
+      return null;
+
+    const anyProduct: any = product;
+    const anyRaw: any = rawProduct;
+
+    // 1) Если в sizes.available ровно одно значение — считаем его объёмом (например [100])
+    const fromSizes =
+      anyProduct?.sizes?.available ??
+      anyRaw?.sizes?.available ??
+      null;
+    if (Array.isArray(fromSizes) && fromSizes.length === 1) {
+      return fromSizes[0];
+    }
+
+    // 2) Иначе пробуем взять явное поле из нормализованного продукта / БД
+    if (typeof anyProduct.volumeMl === "number") return anyProduct.volumeMl;
+    if (typeof anyProduct.volume === "number") return anyProduct.volume;
+    if (typeof anyRaw?.volumeMl === "number") return anyRaw.volumeMl;
+    if (typeof anyRaw?.volume === "number") return anyRaw.volume;
+
+    return null;
+  }, [product, rawProduct]);
+
+  if (loading) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center">
+        <p className="text-xl text-gray-500">Загрузка товара...</p>
+      </div>
+    );
+  }
   if (!product) {
     return (
       <div className="w-full h-screen flex items-center justify-center">
@@ -550,7 +1035,7 @@ const handleCancel = () => {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <main className="flex-grow pt-20 px-4 sm:px-6 lg:px-8 mx-auto w-full max-w-[1800px] relative">
+      <main className="flex-grow pt-6 md:pt-20 pb-32 md:pb-20 lg:pb-24 px-3 sm:px-6 lg:px-8 mx-auto w-full max-w-[1800px] relative z-10">
 
         <AnimatePresence>
           {showStickyHeader && (
@@ -565,7 +1050,7 @@ const handleCancel = () => {
                 <div className="flex items-center gap-3">
                   <div className="relative w-10 h-10 rounded overflow-hidden">
                     <Image
-                      src={product.images[0]}
+                      src={displayedImages[0] ?? "/img/fallback.jpg"}
                       alt={product.name}
                       fill
                       className="object-cover"
@@ -575,7 +1060,7 @@ const handleCancel = () => {
                   <div className="flex flex-col">
                     <p className="text-sm font-semibold text-gray-800 line-clamp-1">{product.name}</p>
                     <p className="text-sm text-gray-600">
-                      {getPriceBySize().toLocaleString('ru-RU')}₽
+                      {currentPrice.toLocaleString('ru-RU')}₽
                     </p>
                   </div>
                 </div>
@@ -590,64 +1075,37 @@ const handleCancel = () => {
           )}
         </AnimatePresence>
         {/* Premium badge mouse position handler */}
-        {(() => {
-          // Handler and ref for Premium badge hover effect
-          const premiumRef = React.useRef<HTMLButtonElement | null>(null);
-          const onPremiumMove = (e: React.MouseEvent<HTMLButtonElement>) => {
-            const el = e.currentTarget;
-            const rect = el.getBoundingClientRect();
-            const x = ((e.clientX - rect.left) / rect.width) * 100;
-            const y = ((e.clientY - rect.top) / rect.height) * 100;
-            el.style.setProperty('--x', x + '%');
-            el.style.setProperty('--y', y + '%');
-          };
-          return (
-            <div
-              ref={titleRef}
-              className="absolute z-20 top-22 left-[55%] transform -translate-x-1/2 pointer-events-none select-none max-w-[90%] break-words"
-            >
-              <div className="flex items-center gap-3">
-                <h1 className="text-[clamp(1.2rem,3.5vw,2rem)] font-bold text-black leading-tight text-left break-words whitespace-normal">
-                  {product.name}
-                </h1>
-                {isPremium && (
-                  <button
-                    type="button"
-                    ref={premiumRef}
-                    onMouseMove={onPremiumMove}
-                    className="relative inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white text-black border border-black/20 text-[11px] font-semibold shadow-sm cursor-pointer overflow-hidden group"
-                    aria-label="Товар премиум-категории"
-                  >
-                    {/* мягкий подсвет под курсором */}
-                    <span className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{background: "radial-gradient(120px 60px at var(--x,50%) var(--y,50%), rgba(0,0,0,0.06), transparent 60%)"}} />
-
-                    {/* звёздочка — плавный твинг при наведении */}
-                    <motion.svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      className="relative z-[1] w-3.5 h-3.5 fill-current"
-                      whileHover={{ rotate: [0, 12, -12, 0], scale: [1, 1.12, 1] }}
-                      transition={{ duration: 0.6, ease: "easeInOut" }}
-                      aria-hidden="true"
-                    >
-                      <path d="M12 2.5l2.8 6.1 6.7.6-5.1 4.4 1.6 6.6L12 16.9 6 20.2l1.6-6.6-5.1-4.4 6.7-.6L12 2.5z"/>
-                    </motion.svg>
-
-                    <span className="relative z-[1]">Premium</span>
-
-                    {/* маленькая вспышка‑спарк при ховере */}
-                    <span className="pointer-events-none absolute -right-1 -top-1 w-2 h-2 rounded-full bg-black opacity-0 group-hover:opacity-100 animate-ping" />
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })()}
-        <div className="grid grid-cols-1 lg:grid-cols-2 items-start w-full max-w-none gap-12">
-          {/* Product gallery */}
-          <div
-            className={"relative w-full h-[80vh] lg:h-[90vh] overflow-hidden rounded-2xl shadow-2xl z-10 bg-white p-4"}
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 items-start w-full max-w-none gap-10 lg:gap-12">
+          {/* Product gallery (desktop / tablet + mobile) */}
+          <motion.div
+            className="relative w-full h-auto overflow-visible"
+            initial={{ opacity: 0, y: 55, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+            style={{ y: heroParallax, opacity: heroFade }}
           >
+            <button
+              type="button"
+              onClick={handleToggleFavorite}
+              aria-pressed={isFavProduct}
+              className="absolute top-4 right-4 z-[50] bg-transparent p-0 hover:scale-110 transition outline-none focus:outline-none"
+              aria-label="Добавить в избранное"
+            >
+              <div className="w-10 h-10 rounded-full bg-white/80 backdrop-blur flex items-center justify-center shadow">
+                <svg
+                  viewBox="0 0 24 24"
+                  className={`h-5 w-5 transition-colors ${
+                    isFavProduct ? "text-red-500" : "text-gray-700"
+                  }`}
+                  fill={isFavProduct ? "currentColor" : "none"}
+                  stroke="currentColor"
+                  strokeWidth={1.7}
+                >
+                  <path d="M12 21s-5.5-3.6-8.2-7.3C2.1 12.7 2 11.1 2.5 9.9 3.3 7.9 5.2 7 6.8 7c1.5 0 2.6.7 3.2 1.7.6-1 1.7-1.7 3.2-1.7 1.6 0 3.5.9 4.3 2.9.5 1.2.4 2.8-1.3 3.9C17.5 17.4 12 21 12 21z" />
+                </svg>
+              </div>
+            </button>
             {primaryBrand && (
               <>
                 {/* Centered brand logo overlay */}
@@ -688,7 +1146,7 @@ const handleCancel = () => {
                       onMouseLeave={() => scheduleCloseBrandPanel(220)}
                     >
                       <Link
-                        href={`/brand/${encodeURIComponent(brandSlugFrom(primaryBrand!))}${(product as any)?.gender ? `?gender=${encodeURIComponent((product as any).gender)}` : ''}`}
+                        href={`/brand/${encodeURIComponent(((product as any)?.brandSlug) || (primaryBrand ? brandSlugFrom(primaryBrand) : ''))}${(product as any)?.gender ? `?gender=${encodeURIComponent((product as any).gender)}` : ''}`}
                         className="w-full overflow-hidden rounded-2xl border border-gray-200 bg-white/80 backdrop-blur shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:shadow-xl transition flex items-center justify-between gap-3 px-4 py-3"
                       >
                         <div className="flex items-center gap-3">
@@ -716,10 +1174,13 @@ const handleCancel = () => {
                 </AnimatePresence>
               </>
             )}
-            <div
-              className="absolute top-4 left-4 flex items-center gap-2 rounded-xl bg-white/90 backdrop-blur-sm border border-black/10 shadow-lg z-40 cursor-pointer px-3 h-10 select-none"
-              onMouseEnter={() => setShowBadgeText(true)}
-              onMouseLeave={() => setShowBadgeText(false)}
+                        <motion.div
+              ref={badgeRef}
+              className="absolute top-4 left-4 inline-flex items-center gap-2 rounded-full bg-white/95 backdrop-blur-sm border border-black/10 shadow-lg z-40 cursor-pointer px-2 py-1 select-none"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowBadgeText((prev) => !prev);
+              }}
               aria-label="Все товары в StageStore строго оригинальные"
             >
               <motion.div
@@ -727,7 +1188,7 @@ const handleCancel = () => {
                 animate={{ scale: showBadgeText ? 1.05 : 1, opacity: 1 }}
                 whileHover={{ scale: 1.08 }}
                 transition={{ duration: 0.2, ease: 'easeOut' }}
-                className="relative w-5 h-5 flex items-center justify-center"
+                className="relative w-5 h-5 flex items-center justify-center flex-shrink-0"
               >
                 <Image
                   src="/img/галочка 2.png"
@@ -738,146 +1199,488 @@ const handleCancel = () => {
                   priority={false}
                 />
               </motion.div>
-              <motion.span
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: showBadgeText ? 1 : 0, width: showBadgeText ? 'auto' : 0 }}
-                transition={{ duration: 0.35 }}
-                className="overflow-hidden whitespace-nowrap"
+
+              <div
+                className="overflow-hidden transition-all duration-300 ease-in-out"
+                style={{
+                  maxWidth: showBadgeText ? 320 : 0,
+                  opacity: showBadgeText ? 1 : 0,
+                }}
               >
-                Все товары в StageStore строго оригинальные.
-              </motion.span>
-            </div>
-
-            <Swiper
-             key={product.id}
-              direction="vertical"
-              mousewheel={{
-                forceToAxis: true,
-                releaseOnEdges: true,
-                sensitivity: 1,
-              }}
-              loop={true}
-              modules={[Mousewheel]}
-              className="w-full h-full pt-20"
-              onSlideChange={(swiper) => setActiveIndex(swiper.realIndex)}
-            >
-              {product.images.map((image, index) => (
-                <SwiperSlide key={index} className="relative">
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.5 }}
-                  >
-                    <Image
-                      src={image}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                      priority
-                    />
-                  </motion.div>
-                </SwiperSlide>
-              ))}
-            </Swiper>
-
-            <div className="absolute right-8 top-1/2 transform -translate-y-1/2 flex flex-col gap-2 z-10">
-              {product.images.map((_, index) => (
-                <span
-                  key={index}
-                  className={`w-2.5 h-2.5 rounded-full transition ${
-                    activeIndex === index ? 'bg-white' : 'bg-gray-400 opacity-50'
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-          <div className="sticky top-8 space-y-8">
-            <div className="flex items-center justify-between flex-wrap gap-6">
-              <div className="flex items-center gap-3 min-h-[32px]">
-                {/* Бейджи брендов под заголовком товара удалены по требованию */}
+                <span className="text-[11px] sm:text-xs text-gray-800 leading-snug whitespace-nowrap">
+                  Все товары в StageStore строго оригинальные.
+                </span>
               </div>
-            <div className="flex items-center h-full">
-              {(() => {
-                const current = getPriceBySize();
-                const oldPrice = (product as any)?.oldPrice as number | undefined;
-                const showOld = typeof oldPrice === 'number' && oldPrice > current;
-                return (
-                  <div className="flex items-baseline gap-2">
-                    {showOld && (
-                      <span className="relative inline-block text-gray-400 text-xl lg:text-2xl old-price-strike">
-                        {oldPrice.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}₽
-                        <style jsx>{`
-                          .old-price-strike {
-                            /* fallback for non-Tailwind environments */
-                            /* position: relative; display: inline-block; */
-                          }
-                          .old-price-strike::before,
-                          .old-price-strike::after {
-                            content: '';
-                            position: absolute;
-                            left: 0;
-                            width: 100%;
-                            height: 2px;
-                            background: rgba(239, 68, 68, 0.7); /* bg-red-500/70 */
-                            pointer-events: none;
-                          }
-                          .old-price-strike::before {
-                            top: 30%;
-                            transform: rotate(-5deg);
-                          }
-                          .old-price-strike::after {
-                            top: 62%;
-                            transform: rotate(4deg);
-                          }
-                          .old-price-strike span.strike-3 {
-                            position: absolute;
-                            left: 0;
-                            width: 100%;
-                            height: 2px;
-                            background: rgba(239, 68, 68, 0.7);
-                            top: 52%;
-                            transform: rotate(-13deg);
-                            pointer-events: none;
-                            content: '';
-                            display: block;
-                          }
-                        `}</style>
-                        <span className="strike-3"></span>
-                      </span>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <p className="text-3xl lg:text-4xl font-bold text-black mt-1 lg:mt-0 drop-shadow-sm">
-                        {current.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}₽
-                      </p>
+            </motion.div>
+            {/* Product images slider or fallback */}
+            {product.images && product.images.length > 0 ? (
+              <>
+                <div
+                  ref={galleryRef}
+                  onScroll={handleGalleryScroll}
+                  className="w-full h-[320px] sm:h-[440px] lg:h-[500px] mt-10 overflow-x-auto overflow-y-hidden whitespace-nowrap cursor-grab active:cursor-grabbing gallery-scroll"
+                >
+                  {product.images.map((url, index) =>
+                    url ? (
+                      <div
+                        key={index}
+                        className="inline-block align-top w-full h-full mr-4 last:mr-0"
+                      >
+                        <div className="w-full h-full rounded-lg bg-white flex items-center justify-center overflow-hidden">
+                          <Image
+                            src={url as string}
+                            alt={`Product image ${index + 1}`}
+                            width={800}
+                            height={800}
+                            className="object-contain w-full h-full select-none pointer-events-none"
+                            draggable={false}
+                          />
+                        </div>
+                      </div>
+                    ) : null
+                  )}
+                </div>
+                {product.images.length > 1 && (
+                  <div className="mt-4 px-6 sm:px-10">
+                    <div className="h-[2px] w-full bg-black/10 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-black/60 rounded-full transition-[width] duration-150 ease-out"
+                        style={{ width: `${Math.max(0, Math.min(1, galleryProgress)) * 100}%` }}
+                      />
                     </div>
                   </div>
-                );
-              })()}
+                )}
+                <style jsx>{`
+                  .gallery-scroll::-webkit-scrollbar {
+                    display: none;
+                  }
+                  .gallery-scroll {
+                    -ms-overflow-style: none;
+                    scrollbar-width: none;
+                  }
+                `}</style>
+              </>
+            ) : (
+              product.imageUrl && (
+                <div className="w-full h-[320px] sm:h-[440px] lg:h-[500px] mt-10 rounded-lg bg-white flex items-center justify-center overflow-hidden">
+                  <Image
+                    src={product.imageUrl as string}
+                    alt={product.name}
+                    width={800}
+                    height={800}
+                    className="object-contain w-full h-full"
+                  />
+                </div>
+              )
+            )}
+            {/* Trust Block — под слайдером (desktop) */}
+            <div className="hidden lg:block w-full mt-10 mb-10 px-2">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.45 }}
+                className="w-full rounded-2xl border border-gray-200 bg-white/95 backdrop-blur-sm shadow-md px-3 py-3 sm:px-5 sm:py-5 md:px-7 md:py-6 flex flex-col gap-3"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-11 h-11 rounded-full bg-green-100 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+
+                  <div className="space-y-2 max-w-2xl">
+                    <p className="text-xs uppercase tracking-[0.16em] text-gray-500">
+                      Гарантии StageStore
+                    </p>
+
+                    <h3 className="text-lg md:text-xl font-semibold text-gray-900">
+                      Только оригинальные товары. Ответственность на всех этапах заказа.
+                    </h3>
+
+                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                      Мы работаем только с проверенными поставщиками, фиксируем каждый этап движения пары и вручную проверяем коробку,
+                      комплектацию и состояние товара перед отправкой. Если с заказом что-то идёт не так, мы берём ответственность на себя
+                      и сопровождаем вас до фактического получения и проверки покупки.
+                    </p>
+                    <div className="hidden sm:block">
+                      <div className="mt-3 pt-3 border-t border-dashed border-gray-200">
+                        <p className="text-xs text-gray-500 mb-2">
+                          Как мы контролируем каждый заказ:
+                        </p>
+                        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                          {[
+                            'Подбор у проверенного поставщика',
+                            'Проверка пары и комплектации',
+                            'Аккуратная упаковка',
+                            'Передача в службу доставки',
+                          ].map((label, index) => (
+                            <motion.div
+                              key={index}
+                              whileHover={{ y: -2, scale: 1.02 }}
+                              className="flex items-center gap-2"
+                            >
+                              <div className="w-6 h-6 rounded-full bg-black text-white text-[11px] flex items-center justify-center">
+                                {index + 1}
+                              </div>
+                              <span className="text-[11px] sm:text-xs text-gray-700 max-w-[150px]">
+                                {label}
+                              </span>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Поддержка */}
+                <div className="pt-1 flex flex-wrap items-center gap-1">
+                  <span className="text-xs text-gray-500">Нужна помощь с заказом?</span>
+
+                  <a
+                    href="mailto:info@stagestore.ru"
+                    className="px-2 py-1 rounded-full border border-gray-300 bg-white text-[10px] sm:text-xs font-medium text-gray-800 hover:bg-gray-50 transition"
+                  >
+                    Написать на почту
+                  </a>
+
+                  <a
+                    href="https://t.me/i_like_drugs"
+                    target="_blank"
+                    className="px-2 py-1 rounded-full border border-gray-900 bg-black text-[10px] sm:text-xs font-medium text-white hover:bg-gray-900 transition"
+                  >
+                    Telegram поддержка
+                  </a>
+                </div>
+              </motion.div>
             </div>
+          </motion.div>
+          <motion.div
+            className="lg:sticky lg:top-8 space-y-8"
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
+          >
+            <div ref={titleRef} className="mb-2 pr-4">
+              {/* Brand logo and name above product title */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-[clamp(1.4rem,3.2vw,2.2rem)] font-bold text-black leading-tight">
+                  {product.name}
+                </h1>
+                {isPremium && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white text-black border border-black/20 text-[11px] font-semibold shadow-sm"
+                    aria-label="Товар премиум-категории"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current" aria-hidden="true">
+                      <path d="M12 2.5l2.8 6.1 6.7.6-5.1 4.4 1.6 6.6L12 16.9 6 20.2l1.6-6.6-5.1-4.4 6.7-.6L12 2.5z"/>
+                    </svg>
+                    Premium
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center justify-between flex-wrap gap-6">
+              <div className="flex items-center h-full">
+                {(() => {
+                  return (
+                    <div className="flex items-center gap-3">
+                      {showOldPrice && oldPriceValue && (
+                        <span className="relative inline-block text-gray-400 text-3xl lg:text-4xl old-price-strike">
+                          {oldPriceValue.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}₽
+                          <span className="strike-3"></span>
+                        </span>
+                      )}
+                      <p className="text-3xl lg:text-4xl font-bold text-black">
+                        {currentPrice.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}₽
+                      </p>
+                      <style jsx>{`
+                        .old-price-strike::before,
+                        .old-price-strike::after {
+                          content: '';
+                          position: absolute;
+                          left: 0;
+                          width: 100%;
+                          height: 2px;
+                          background: rgba(239, 68, 68, 0.7);
+                          pointer-events: none;
+                        }
+                        .old-price-strike::before {
+                          top: 30%;
+                          transform: rotate(-5deg);
+                        }
+                        .old-price-strike::after {
+                          top: 62%;
+                          transform: rotate(4deg);
+                        }
+                        .old-price-strike span.strike-3 {
+                          position: absolute;
+                          left: 0;
+                          width: 100%;
+                          height: 2px;
+                          background: rgba(239, 68, 68, 0.7);
+                          top: 52%;
+                          transform: rotate(-13deg);
+                          pointer-events: none;
+                          content: '';
+                          display: block;
+                        }
+                      `}</style>
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
             {product && (
-              <div className="p-6 border rounded-xl bg-gray-50 mt-6 space-y-4">
+              <div className="p-4 md:p-6 border rounded-xl bg-gray-50 mt-6 space-y-4">
                 <div className="flex items-center gap-3 mb-2">
                   <Image src="/img/информация.png" alt="Информация" width={24} height={24} />
                   <h3 className="text-lg lg:text-xl font-semibold">Описание товара</h3>
                 </div>
+
                 <div className="text-gray-700 text-sm leading-relaxed space-y-2">
-                  {product.category === 'perfume' ? (
-                    <>
-                      <p><strong>• Аромат:</strong> Стойкий, раскрывается постепенно, подходит как для дня, так и для вечера</p>
-                      <p><strong>• Ассоциации:</strong> {product.fragranceNotes.top.includes('ваниль') ? '🍦' : ''}{product.fragranceNotes.top.includes('роза') ? '🌹' : ''}{product.fragranceNotes.top.includes('бергамот') ? '🍋' : ''} и другие ноты</p>
-                    </>
-                  ) : (
-                    <>
-                      <p><strong>• Материалы:</strong> {product.material ?? "натуральная кожа / премиум текстиль"}</p>
-                      <p><strong>• Комфорт:</strong> {product.features ?? "лёгкость, гибкость и поддержка стопы"}</p>
-                      <p><strong>• Дизайн:</strong> {product.styleNotes ?? "минимализм, адаптивный силуэт"}</p>
-                    </>
+                  {(() => {
+                    const anyProduct: any = product;
+
+                    // ---------- ДУХИ / АРОМАТЫ ----------
+                    if (product.category === 'perfume' || product.category === 'fragrance') {
+                      const notes = anyProduct.fragranceNotes ?? {};
+                      const top: string[] = Array.isArray(notes.top) ? notes.top : [];
+                      const middle: string[] = Array.isArray(notes.middle) ? notes.middle : [];
+                      const base: string[] = Array.isArray(notes.base) ? notes.base : [];
+
+                      // очень простая эвристика по времени и сезону
+                      const allNotesText = [...top, ...middle, ...base].join(' ').toLowerCase();
+                      const isFresh =
+                        /цитрус|лимон|бергамот|лайм|зелень|морской|aquatic|фреш/.test(allNotesText);
+                      const isSweet =
+                        /ваниль|карамель|сладк|praline|тоффи/.test(allNotesText);
+                      const isWarm =
+                        /уд|амбра|мускус|сэндал|кедр|дерев|прян/.test(allNotesText);
+
+                      let dayTime = 'подходит и для дня, и для вечера';
+                      if (isFresh && !isWarm && !isSweet) {
+                        dayTime = 'идеален для дневного ношения, офиса и повседневных выходов';
+                      } else if (isWarm || isSweet) {
+                        dayTime = 'лучше всего раскрывается вечером и на особых случаях';
+                      }
+
+                      let season = 'круглогодичный аромат';
+                      if (isFresh && !isWarm) {
+                        season = 'особенно хорошо звучит весной и летом';
+                      } else if (isWarm || isSweet) {
+                        season = 'максимально комфортен осенью и зимой';
+                      }
+
+                      return (
+                        <>
+                          {perfumeVolume && (
+                            <p>
+                              <strong>• Объём флакона:</strong> {perfumeVolume} мл
+                            </p>
+                          )}
+                          {(top.length || middle.length || base.length) && (
+                            <p>
+                              <strong>• Основные ноты:</strong>{' '}
+                              {[...top, ...middle, ...base].slice(0, 6).join(', ') || 'аккуратно сбалансированная композиция'}
+                            </p>
+                          )}
+                          <p>
+                            <strong>• Когда носить:</strong> {dayTime}
+                          </p>
+                          <p>
+                            <strong>• Сезон:</strong> {season}
+                          </p>
+                          <p>
+                            <strong>• Характер:</strong>{' '}
+                            {anyProduct.sillageDescription ??
+                              'стойкий аромат с мягким шлейфом, который раскрывается постепенно в течение дня'}
+                          </p>
+                        </>
+                      );
+                    }
+
+                    // ---------- ЮВЕЛИРКА ----------
+                    if (product.category === 'jewelry') {
+                      const metal = anyProduct.metal ?? anyProduct.material ?? 'гипоаллергенный сплав';
+                      const stones = anyProduct.stones ?? anyProduct.inserts ?? null;
+                      const coating = anyProduct.coating ?? anyProduct.plating ?? null;
+                      const jewelryType = anyProduct.jewelryType ?? 'украшение';
+
+                      return (
+                        <>
+                          <p>
+                            <strong>• Тип изделия:</strong> {jewelryType}
+                          </p>
+                          <p>
+                            <strong>• Основной металл:</strong> {metal}
+                          </p>
+                          {stones && (
+                            <p>
+                              <strong>• Вставки / камни:</strong> {stones}
+                            </p>
+                          )}
+                          {coating && (
+                            <p>
+                              <strong>• Покрытие:</strong> {coating}
+                            </p>
+                          )}
+                          <p>
+                            <strong>• Где уместно:</strong>{' '}
+                            {anyProduct.occasion ??
+                              'подходит как для повседневных образов, так и для вечерних выходов'}
+                          </p>
+                          <p>
+                            <strong>• Уход:</strong> храните украшение отдельно от других,
+                            избегайте контакта с водой, духами и бытовой химией — так покрытие дольше сохранит блеск.
+                          </p>
+                        </>
+                      );
+                    }
+
+                    // ---------- СУМКИ ----------
+                    if (product.category === 'bags') {
+                      const outer = anyProduct.outerMaterial ?? anyProduct.material ?? 'натуральная или эко-кожа';
+                      const inner = anyProduct.innerMaterial ?? 'плотная подкладка из текстиля';
+                      const format = anyProduct.bagType ?? 'повседневная сумка';
+                      const dims = anyProduct.dimensions;
+
+                      return (
+                        <>
+                          <p>
+                            <strong>• Формат:</strong> {format}
+                          </p>
+                          <p>
+                            <strong>• Внешний материал:</strong> {outer}
+                          </p>
+                          <p>
+                            <strong>• Внутренняя отделка:</strong> {inner}
+                          </p>
+                          {dims && typeof dims === 'object' && (
+                            <p>
+                              <strong>• Габариты:</strong>{' '}
+                              {dims.width} × {dims.height} × {dims.depth} см
+                            </p>
+                          )}
+                          <p>
+                            <strong>• Вмещаемость:</strong>{' '}
+                            {anyProduct.capacityDescription ??
+                              'помещаются телефон, кошелёк, ключи и необходимые мелочи на каждый день'}
+                          </p>
+                          <p>
+                            <strong>• Особенности:</strong>{' '}
+                            {anyProduct.features ??
+                              'регулируемый ремень, удобный доступ к основному отделению и аккуратная фурнитура'}
+                          </p>
+                        </>
+                      );
+                    }
+
+                    // ---------- ОДЕЖДА / ОБУВЬ / ДРУГОЕ ----------
+                    const material =
+                      anyProduct.material ?? 'натуральная кожа / премиум текстиль';
+                    const comfort =
+                      anyProduct.features ??
+                      'лёгкость, хорошая посадка и комфорт на каждый день';
+                    const styleNotes =
+                      anyProduct.styleNotes ??
+                      'минималистичный дизайн, который просто сочетать с базовым гардеробом';
+
+                    return (
+                      <>
+                        <p>
+                          <strong>• Материалы:</strong> {material}
+                        </p>
+                        <p>
+                          <strong>• Комфорт:</strong> {comfort}
+                        </p>
+                        <p>
+                          <strong>• Дизайн:</strong> {styleNotes}
+                        </p>
+                      </>
+                    );
+                  })()}
+
+                  {product.description && (
+                    <p className="mt-2">
+                      {product.description}
+                    </p>
                   )}
-                  <p>{product.description}</p>
                 </div>
               </div>
             )}
+            {product.category === 'bags' ? (
+              <div className="space-y-6 mt-4">
+                {/* Слайдер размеров - на всю ширину */}
+                <div className="w-full">
+                  {(product as unknown as BagProduct).sizes && (
+                    <div className="w-full">
+                      {renderSizeSelector()}
+                    </div>
+                  )}
+                </div>
+
+                {/* Ниже два блока в ряд */}
+                <div className="flex flex-col lg:flex-row gap-6">
+                  {/* Блок с анимацией размеров - занимает половину */}
+                  <div className="lg:w-1/2">
+                    {renderBagDimensions()}
+                  </div>
+
+                  {/* Блок "что помещается" - занимает вторую половину */}
+                  <div className="lg:w-1/2 p-6 border rounded-xl bg-gray-50 space-y-4">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-lg lg:text-xl font-semibold">Что помещается в {product.name}</h3>
+                    </div>
+                    <ul className="space-y-2">
+                      {fittedItems.map(item => (
+                        <ItemCheck
+                          key={item.label}
+                          ok={item.fits}
+                          label={item.label}
+                          size={`${item.diagonal}"`}
+                        />
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            ) : (requiresSizeSelection() && product.category !== 'bags') ? (
+              <div className="space-y-4 mt-6">
+                {renderSizeSelector()}
+                {product.category !== 'perfume' && (
+                  <p
+                    onClick={toggleSizeChart}
+                    className="text-sm text-gray-500 hover:text-gray-700 cursor-pointer"
+                  >
+                    <span className="relative inline-block after:absolute after:left-0 after:bottom-0 after:w-full after:h-[1px] after:bg-gray-500 after:scale-x-0 hover:after:scale-x-100 after:origin-left after:transition-transform after:duration-300">
+                      Таблица размеров
+                    </span>
+                  </p>
+                )}
+                <AnimatePresence>
+                  {showSizeChart && product.category !== 'perfume' && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.4 }}
+                      className="overflow-hidden"
+                    >
+                      {renderSizeChartTable()}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                {showError && (
+                  <p className="mt-2 text-red-600 text-sm animate-fadeIn">
+                    ⚠ Выберите, пожалуйста, {product.category === 'perfume' || product.category === 'fragrance' ? 'объем' : 'размер'}
+                  </p>
+                )}
+              </div>
+            ) : null}
             {/* Delivery & Availability info */}
             {(() => {
               // Переключаем карточки по наличию конкретно выбранного размера в Москве
@@ -938,7 +1741,7 @@ const handleCancel = () => {
                       className="group relative w-[140px] sm:w-[160px] aspect-square overflow-hidden rounded-xl shadow-lg"
                     >
                       <Image
-                        src={colorProduct.images[0]}
+                        src={colorProduct.images[0] || '/img/fallback.jpg'}
                         alt={colorProduct.name}
                         fill
                         className="object-cover transition-transform duration-300 group-hover:scale-110"
@@ -955,85 +1758,37 @@ const handleCancel = () => {
                   ))}
                 </div>
               </div>
-            )}          
-            {product.category === 'perfume' && (
-              <div className="mt-6 space-y-1 text-sm text-gray-700">
-                <p><strong>Верхние ноты:</strong> {(product as PerfumeProduct).fragranceNotes.top.join(', ')}</p>
-                <p><strong>Средние ноты:</strong> {(product as PerfumeProduct).fragranceNotes.middle.join(', ')}</p>
-                <p><strong>Базовые ноты:</strong> {(product as PerfumeProduct).fragranceNotes.base.join(', ')}</p>
-              </div>
             )}
-            {product.category === 'bags' ? (
-              <div className="space-y-6 mt-4">
-                {/* Слайдер размеров - на всю ширину */}
-                <div className="w-full">
-                  {(product as BagProduct).sizes && (
-                    <div className="w-full">
-                      {renderSizeSelector()}
-                    </div>
-                  )}
-                </div>
+            {(product.category === 'perfume' || product.category === 'fragrance') && (() => {
+              const notes: any = (product as any)?.fragranceNotes ?? null;
+              if (!notes) return null;
 
-                {/* Ниже два блока в ряд */}
-                <div className="flex flex-col lg:flex-row gap-6">
-                  {/* Логотип и помощь — только для bags и только на десктопе */}
-                  {/* Блок с анимацией размеров - занимает половину */}
-                  <div className="lg:w-1/2">
-                    {renderBagDimensions()}
-                  </div>
+              const top: string[] = Array.isArray(notes.top) ? notes.top : [];
+              const middle: string[] = Array.isArray(notes.middle) ? notes.middle : [];
+              const base: string[] = Array.isArray(notes.base) ? notes.base : [];
 
-                  {/* Блок "что помещается" - занимает вторую половину */}
-                  <div className="lg:w-1/2 p-6 border rounded-xl bg-gray-50 space-y-4">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg lg:text-xl font-semibold">Что помещается в {product.name}</h3>
-                    </div>
-                    <ul className="space-y-2">
-                      {fittedItems.map(item => (
-                        <ItemCheck
-                          key={item.label}
-                          ok={item.fits}
-                          label={item.label}
-                          size={`${item.diagonal}"`}
-                        />
-                      ))}
-                    </ul>
-                    {/* Удалён блок логотипа и помощи */}
-                  </div>
+              if (!top.length && !middle.length && !base.length) {
+                // если ноты не заданы вообще — просто не показываем блок
+                return null;
+              }
+
+              return (
+                <div className="mt-6 space-y-1 text-sm text-gray-700">
+                  <p>
+                    <strong>Верхние ноты:</strong>{' '}
+                    {top.length ? top.join(', ') : '—'}
+                  </p>
+                  <p>
+                    <strong>Средние ноты:</strong>{' '}
+                    {middle.length ? middle.join(', ') : '—'}
+                  </p>
+                  <p>
+                    <strong>Базовые ноты:</strong>{' '}
+                    {base.length ? base.join(', ') : '—'}
+                  </p>
                 </div>
-              </div>
-            ) : (requiresSizeSelection() && product.category !== 'bags') ? (
-              <div className="space-y-4">
-                {renderSizeSelector()}
-                {product.category !== 'perfume' && (
-                  <p
-                    onClick={toggleSizeChart}
-                    className="text-sm text-gray-500 hover:text-gray-700 cursor-pointer"
-                  >
-                    <span className="relative inline-block after:absolute after:left-0 after:bottom-0 after:w-full after:h-[1px] after:bg-gray-500 after:scale-x-0 hover:after:scale-x-100 after:origin-left after:transition-transform after:duration-300">
-                      Таблица размеров
-                    </span>
-                  </p>
-                )}
-                <AnimatePresence>
-                  {showSizeChart && product.category !== 'perfume' && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.4 }}
-                      className="overflow-hidden"
-                    >
-                      {renderSizeChartTable()}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-                {showError && (
-                  <p className="mt-2 text-red-600 text-sm animate-fadeIn">
-                    ⚠ Выберите, пожалуйста, {product.category === 'perfume' ? 'объем' : 'размер'}
-                  </p>
-                )}
-              </div>
-            ) : null}
+              );
+            })()}
             <div className="flex gap-4 mt-6">
               <Button className="flex-grow">
                 С чем сочетать?
@@ -1046,7 +1801,10 @@ const handleCancel = () => {
                   "bg-black text-white"
                 }`}
                 onClick={cartStatus === "pending" ? handleCancel : handleAddToCart}
-                disabled={cartStatus === 'added'}
+                disabled={
+                  cartStatus === "added" ||
+                  (requiresSizeSelection() && selectedSize == null)
+                }
               >
                 <span className="relative z-10">
                 {cartStatus === "pending"
@@ -1055,7 +1813,7 @@ const handleCancel = () => {
                   ? "Отменено ❌"
                   : cartStatus === "added"
                   ? "Добавлено ✅"
-                  : `Добавить в корзину – ${getPriceBySize().toLocaleString('ru-RU')}₽`}
+                  : `Добавить в корзину – ${currentPrice.toLocaleString('ru-RU')}₽`}
               </span>
                 {cartStatus === "pending" && (
                   <motion.span
@@ -1067,11 +1825,63 @@ const handleCancel = () => {
                 )}
               </button>
             </div>
-          </div>
+          </motion.div>
         </div>
-        <div className="col-span-full mt-12 w-full max-w-[1800px] mx-auto px-4 relative">
-          <div className="relative z-0 mt-12">
-            <h2 className="text-xl font-semibold text-center text-gray-700 mb-6">
+        {/* Trust Block — мобильная версия (перед "Вам может понравиться") */}
+        <div className="block lg:hidden w-full mt-8 mb-4 px-2">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.45 }}
+            className="w-full rounded-2xl border border-gray-200 bg-white/95 backdrop-blur-sm shadow-md px-3 py-2.5 flex flex-col gap-2.5"
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-gray-500">
+                  Гарантии StageStore
+                </p>
+
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Только оригинальные товары
+                </h3>
+
+                <p className="text-[11px] text-gray-600 leading-relaxed">
+                  Мы работаем только с проверенными поставщиками и вручную проверяем пары перед отправкой.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-1 flex flex-wrap items-center gap-1">
+              <span className="text-[10px] text-gray-500">Нужна помощь с заказом?</span>
+
+              <a
+                href="mailto:info@stagestore.ru"
+                className="px-2 py-1 rounded-full border border-gray-300 bg-white text-[10px] font-medium text-gray-800 hover:bg-gray-50 transition"
+              >
+                Почта
+              </a>
+
+              <a
+                href="https://t.me/i_like_drugs"
+                target="_blank"
+                className="px-2 py-1 rounded-full border border-gray-900 bg-black text-[10px] font-medium text-white hover:bg-gray-900 transition"
+              >
+                Telegram
+              </a>
+            </div>
+          </motion.div>
+        </div>
+        <div className="col-span-full mt-8 w-full max-w-[1800px] mx-auto px-3 sm:px-4 relative">
+          <div className="relative z-0 mt-8">
+            <h2 className="text-lg sm:text-xl font-semibold text-center text-gray-700 mb-4 sm:mb-6">
               Вам может понравиться
             </h2>
             <Swiper
@@ -1079,20 +1889,23 @@ const handleCancel = () => {
               loop={false}
               freeMode={true}
               breakpoints={{
-                320: { slidesPerView: 1.2, spaceBetween: 12 },
-                640: { slidesPerView: 2.2, spaceBetween: 16 },
+                320: { slidesPerView: 1.6, spaceBetween: 10 },
+                480: { slidesPerView: 2.1, spaceBetween: 12 },
+                768: { slidesPerView: 3, spaceBetween: 16 },
                 1024: { slidesPerView: 4, spaceBetween: 20 },
                 1440: { slidesPerView: 5, spaceBetween: 24 },
               }}
               className="w-full max-w-full overflow-hidden"
             >
-              {similarProducts.map((similarProduct) => (
-                <SwiperSlide key={similarProduct.id} style={{ width: '260px' }}>
-                  <Link 
-                    href={`/product/${similarProduct.id}`} 
-                    className="block h-full group"
+            {similarProducts.map((similarProduct) => {
+              const minInfo = getMinPriceInfo(similarProduct);
+              return (
+                <SwiperSlide key={similarProduct.id} style={{ width: '190px' }}>
+                  <Link
+                    href={`/product/${similarProduct.id}`}
+                    className="block h-full group relative"
                   >
-                    <div className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow h-full flex flex-col">
+                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
                       <div className="relative aspect-square w-full bg-gray-50">
                         <Image
                           src={similarProduct.images[0] || "/img/fallback.jpg"}
@@ -1103,12 +1916,12 @@ const handleCancel = () => {
                           priority
                         />
                       </div>
-                      <div className="p-4 flex-grow">
+                      <div className="p-3 sm:p-4 flex-grow">
                         <div className="flex items-center gap-2">
-                          {similarProduct.brandLogo && (
-                            <div className="w-16 h-16 relative">
+                          {(similarProduct as any)?.brandLogo && (
+                            <div className="w-10 h-10 relative hidden sm:block">
                               <Image
-                                src={similarProduct.brandLogo}
+                                src={(similarProduct as any).brandLogo}
                                 alt="Логотип бренда"
                                 fill
                                 className="object-contain"
@@ -1116,7 +1929,7 @@ const handleCancel = () => {
                               />
                             </div>
                           )}
-                          <h3 className="font-semibold text-xs md:text-sm line-clamp-2">
+                          <h3 className="font-semibold text-[11px] md:text-sm line-clamp-2">
                             {similarProduct.name}
                           </h3>
                           {(similarProduct as any)?.premium && (
@@ -1128,16 +1941,80 @@ const handleCancel = () => {
                             </span>
                           )}
                         </div>
-                        <p className="text-gray-600 mt-1 text-xs md:text-sm">
-                          {similarProduct.price.toLocaleString()}₽
+                        <p className="text-gray-700 mt-1 text-[11px] md:text-sm">
+                          {`от ${minInfo.price.toLocaleString('ru-RU')}₽`}
+                          {minInfo.sizeLabel && (
+                            <span className="block text-[10px] text-gray-500 mt-0.5">
+                              {`размер ${minInfo.sizeLabel}`}
+                            </span>
+                          )}
                         </p>
                       </div>
                     </div>
                   </Link>
                 </SwiperSlide>
-              ))}
-            </Swiper>
-          </div>
+              );
+            })}
+          </Swiper>
+        </div>
+      </div>
+        {/* Бестселлеры StageStore */}
+        <div className="relative z-0 mt-10 px-3 sm:px-4">
+          <h2 className="text-lg sm:text-xl font-semibold text-center text-gray-700 mb-4 sm:mb-6">
+            Бестселлеры StageStore 🔥
+          </h2>
+          <Swiper
+            modules={[Navigation]}
+            loop={false}
+            freeMode={true}
+            breakpoints={{
+              320: { slidesPerView: 1.6, spaceBetween: 10 },
+              480: { slidesPerView: 2.1, spaceBetween: 12 },
+              768: { slidesPerView: 3, spaceBetween: 16 },
+              1024: { slidesPerView: 4, spaceBetween: 20 },
+              1440: { slidesPerView: 5, spaceBetween: 24 },
+            }}
+            className="w-full max-w-full overflow-hidden"
+          >
+            {allProducts
+              .filter((p) => !p.premium)
+              .slice(0, 10)
+              .map((best) => {
+                const minInfo = getMinPriceInfo(best);
+                return (
+                  <SwiperSlide key={best.id} style={{ width: '190px' }}>
+                    <Link
+                      href={`/product/${best.id}`}
+                      className="block h-full group relative"
+                  >
+                    <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
+                      <div className="relative aspect-square w-full bg-gray-50">
+                        <Image
+                          src={best.images[0] || "/img/fallback.jpg"}
+                          alt={best.name}
+                          fill
+                          className="object-cover transition-transform group-hover:scale-105"
+                        />
+                      </div>
+                      <div className="p-3 sm:p-4 flex-grow">
+                        <h3 className="font-semibold text-[11px] md:text-sm line-clamp-2">
+                          {best.name}
+                        </h3>
+                        <p className="text-gray-700 mt-1 text-[11px] md:text-sm">
+                          {`от ${minInfo.price.toLocaleString('ru-RU')}₽`}
+                          {minInfo.sizeLabel && (
+                            <span className="block text-[10px] text-gray-500 mt-0.5">
+                              {`размер ${minInfo.sizeLabel}`}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                </SwiperSlide>
+              );
+            })}
+          </Swiper>
         </div>
         {/* Moscow Availability Modal */}
         <AnimatePresence>
@@ -1287,6 +2164,45 @@ const handleCancel = () => {
                   Закрыть
                 </button>
               </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {product && showMobileBar && (
+            <motion.div
+              initial={{ y: 120, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 120, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="fixed bottom-3 left-0 right-0 z-40 px-3 lg:hidden pointer-events-none"
+            >
+              <div className="mx-auto max-w-[640px] pointer-events-auto rounded-[32px] border border-white/50 bg-white/80 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.2)] px-4 py-4 flex items-center gap-4">
+                <div className="flex-1">
+                  <p className="text-[11px] text-gray-500">
+                    {requiresSizeSelection()
+                      ? selectedSize
+                        ? `Размер ${selectedSize}`
+                        : 'Выберите размер'
+                      : 'Готов к отправке'}
+                  </p>
+                  <p className="text-xl font-semibold text-gray-900">
+                    {currentPrice.toLocaleString('ru-RU')}₽
+                  </p>
+                </div>
+                <Button
+                  onClick={cartStatus === "pending" ? handleCancel : handleAddToCart}
+                  className="flex-1 min-w-[150px]"
+                  disabled={cartStatus === 'added'}
+                >
+                  {cartStatus === "pending"
+                    ? "Отменить"
+                    : cartStatus === "canceled"
+                    ? "Отменено"
+                    : cartStatus === "added"
+                    ? "В корзине"
+                    : "В корзину"}
+                </Button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

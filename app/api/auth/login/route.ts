@@ -1,56 +1,125 @@
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { NextResponse } from "next/server";
-import { getUserByEmail, verifyPassword, publicUser } from "../_users";
-import { createSession, SESSION_COOKIE, withSessionCookie } from "../_session";
+import { prisma } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
+import { setSessionOnResponse } from "../../_utils/session";
+import { cookies as nextCookies } from "next/headers";
+import { handleApiError } from "@/lib/errors";
+import { logAction } from "@/lib/logAction";
 
+// Логин по email+password. Ставит httpOnly куку `session_user_id`,
+// которую читает твой getSessionUserId() / getUserIdFromRequest().
 export async function POST(req: Request) {
-  const { email, password } = await req.json().catch(() => ({}));
+  try {
+    const body = await req.json().catch(() => ({}));
+    const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
+    const password = typeof body?.password === "string" ? body.password : "";
 
-  if (!email || !password) {
-    return NextResponse.json(
-      { success: false, error: "Email и пароль обязательны" },
-      { status: 400 }
-    );
-  }
+    // Пробуем вытащить гостевой токен заказа из кук (если пользователь оформлял без авторизации)
+    const cookieStore = await nextCookies();
+    // NB: In Next 15 cookies()/headers() are async; we already awaited it above.
+    // Read potential guest order token created during checkout-as-guest.
+    const guestToken =
+      cookieStore.get("orderToken")?.value ??
+      cookieStore.get("order_token")?.value ??
+      null;
 
-  const normalizedEmail = String(email).trim().toLowerCase();
-  const user = getUserByEmail(normalizedEmail);
-
-  if (!user) {
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[LOGIN]", normalizedEmail, "User not found");
+    if (!email || !password) {
+      return NextResponse.json(
+        { success: false, message: "Введите email и пароль" },
+        { status: 400 }
+      );
     }
-    return NextResponse.json(
-      { success: false, error: "Неверный email или пароль" },
-      { status: 400 }
-    );
-  }
 
-  const isPasswordValid = verifyPassword(user, String(password));
-  if (!isPasswordValid) {
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[LOGIN]", normalizedEmail, "Invalid password");
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, email: true, fullName: true, role: true, password: true, deletedAt: true },
+    });
+
+    if (!user || !user.password) {
+      return NextResponse.json(
+        { success: false, message: "Неверный email или пароль" },
+        { status: 401 }
+      );
     }
-    return NextResponse.json(
-      { success: false, error: "Неверный email или пароль" },
-      { status: 400 }
-    );
-  }
 
-  if (user.verified !== true) {
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[LOGIN]", normalizedEmail, "Email not verified");
+    if (user.deletedAt) {
+      return NextResponse.json(
+        { success: false, message: "Профиль деактивирован" },
+        { status: 403 }
+      );
     }
-    return NextResponse.json(
-      { success: false, error: "Подтвердите email перед входом" },
-      { status: 403 }
-    );
-  }
 
-  // Создаём сессию и ставим HttpOnly cookie
-  const { cookie } = createSession(user.id);
-  const res = NextResponse.json({
-    success: true,
-    user: publicUser(user), // безопасный профиль без паролей
-  });
-  return withSessionCookie(res, cookie);
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) {
+      return NextResponse.json(
+        { success: false, message: "Неверный email или пароль" },
+        { status: 401 }
+      );
+    }
+
+    const res = NextResponse.json(
+      { success: true, user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role } },
+      { status: 200 }
+    );
+
+    const isProd = process.env.NODE_ENV === "production";
+    // Ставит основную httpOnly куку сессии (session_user_id)
+    setSessionOnResponse(res, user.id);
+
+    // Доп. не-httpOnly кука для клиентского UI (по желанию)
+    res.cookies.set("stage_session", JSON.stringify({
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+    }), {
+      httpOnly: false,
+      sameSite: "lax",
+      secure: isProd,
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+
+    // Совместимость: часть кода читает `uid`. Дублируем id в эту куку.
+    res.cookies.set("uid", String(user.id), {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: isProd,
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+
+    // Если есть гостевой токен заказа — привяжем все такие заказы к пользователю и очистим токен
+    if (guestToken) {
+      try {
+        await prisma.order.updateMany({
+          where: { token: guestToken, userId: null },
+          data: { userId: user.id },
+        });
+        // Чистим гостевой токен, чтобы не мешал истории
+        res.cookies.set("orderToken", "", { path: "/", maxAge: 0 });
+        res.cookies.set("order_token", "", { path: "/", maxAge: 0 });
+      } catch (e) {
+        console.warn("[LOGIN] failed to bind guest orders:", e);
+      }
+    }
+
+    try {
+      await logAction(user.id, "User", "LOGIN", {
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+      });
+    } catch (e) {
+      console.error("[LOGIN] failed to write audit log:", e);
+    }
+
+    return res;
+  } catch (error) {
+    console.error("[LOGIN] error:", error);
+    return handleApiError(error);
+}
 }

@@ -10,7 +10,7 @@ import React, {
 
 interface DiscountContextType {
   discount: number;
-  setDiscount: (value: number) => void;
+  applyDiscount: (percent: number) => void;
   resetDiscount: () => void;
 }
 
@@ -32,9 +32,9 @@ export const DiscountProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem("discount", discount.toString());
   }, [discount]);
 
-  // Установка скидки
-  const setDiscount = (value: number) => {
-    setDiscountState(value);
+  // Применение скидки
+  const applyDiscount = (percent: number) => {
+    setDiscountState(percent);
   };
 
   // Сброс скидки и удаление промокода
@@ -45,7 +45,7 @@ export const DiscountProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <DiscountContext.Provider value={{ discount, setDiscount, resetDiscount }}>
+    <DiscountContext.Provider value={{ discount, applyDiscount, resetDiscount }}>
       {children}
     </DiscountContext.Provider>
   );

@@ -1,42 +1,68 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import { useUser } from "@/user/UserContext";
+import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
 
 export default function VerifyClient() {
+  const router = useRouter();
   const { user } = useUser();
   const [code, setCode] = useState(Array(6).fill(""));
   const [activeIndex, setActiveIndex] = useState(0);
   const [cooldown, setCooldown] = useState(0);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [merged, setMerged] = useState(false);
+  const [isMerging, setIsMerging] = useState(false);
+  const [showCheckmark, setShowCheckmark] = useState(false);
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
   const [email, setEmail] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const storedEmail = sessionStorage.getItem("email") || localStorage.getItem("email");
+    const storedEmail = typeof window !== "undefined"
+      ? sessionStorage.getItem("email") || localStorage.getItem("email")
+      : null;
+
     if (storedEmail) {
-      setEmail(storedEmail);
+      setEmail(storedEmail.trim().toLowerCase());
     } else if (user?.email) {
-      setEmail(user.email);
+      setEmail(user.email.trim().toLowerCase());
     }
+    setInitialized(true);
   }, [user]);
 
-  // Auto send code on full input
   useEffect(() => {
-    if (email && code.every((digit) => digit !== "")) {
+    if (!initialized) return;
+    if (!email) {
+      // Если по какой‑то причине нет email, безопасно отправляем пользователя на регистрацию
+      try {
+        router.replace("/register");
+      } catch {
+        window.location.href = "/register";
+      }
+    }
+  }, [initialized, email, router]);
+
+  useEffect(() => {
+    if (
+      email &&
+      code.every((digit) => digit !== "") &&
+      !isVerifying &&
+      !success &&
+      !isMerging
+    ) {
       verifyCode();
     }
-  }, [code, email]);
+  }, [code, email, isVerifying, success, isMerging]);
 
-  // Cooldown timer for resend button
   useEffect(() => {
     if (cooldown <= 0) return;
     const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
     return () => clearTimeout(t);
   }, [cooldown]);
 
-  // Focus input on activeIndex change
   useEffect(() => {
     const el = inputsRef.current[activeIndex] ?? null;
     el?.focus();
@@ -87,36 +113,50 @@ export default function VerifyClient() {
   }
 
   async function verifyCode() {
+    if (isVerifying || success || isMerging) return;
+
     if (!email) {
       setError("Нет email для подтверждения");
       return;
     }
-    setError("");
-    setSuccess(false);
+
     const enteredCode = code.join("");
+    if (!/^\d{6}$/.test(enteredCode)) {
+      setError("Код должен состоять из 6 цифр");
+      return;
+    }
+
+    setError("");
+    setIsVerifying(true);
+
     try {
       const normalizedEmail = email.trim().toLowerCase();
       const res = await fetch("/api/auth/verify-email", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: normalizedEmail, code: enteredCode }),
+        credentials: "include",
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        inputsRef.current.forEach((el) => el?.blur());
-        try { (document.activeElement as HTMLElement | null)?.blur?.(); } catch {}
+        inputsRef.current.forEach((el) => {
+          if (el) el.disabled = true;
+          el?.blur();
+        });
+
+        setSuccess(true);
 
         setTimeout(() => {
-          setSuccess(true);
-        }, 100);
+          setIsMerging(true);
+        }, 800);
 
-        setTimeout(() => setMerged(true), 800);
+        setTimeout(() => {
+          setShowCheckmark(true);
+        }, 1600);
 
         setTimeout(() => {
           window.location.href = "/user";
-        }, 1700);
+        }, 2800);
       } else {
         setError(data.message || "Неверный код. Попробуйте ещё раз.");
         setCode(Array(6).fill(""));
@@ -124,12 +164,16 @@ export default function VerifyClient() {
       }
     } catch {
       setError("Ошибка сети");
+    } finally {
+      setIsVerifying(false);
     }
   }
 
   async function resendCode() {
     setError("");
     setSuccess(false);
+    setIsMerging(false);
+    setShowCheckmark(false);
     if (!email) {
       setError("Нет email для повторной отправки");
       return;
@@ -138,10 +182,9 @@ export default function VerifyClient() {
       const normalizedEmail = email.trim().toLowerCase();
       const res = await fetch("/api/auth/send-email-code", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: normalizedEmail }),
+        credentials: "include",
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -173,112 +216,242 @@ export default function VerifyClient() {
 
   return (
     <>
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-white">
-        <h1 className="text-4xl font-bold mb-6 text-center">Подтверждение почты</h1>
-        <img
-          src="/img/почта.avif"
-          alt="Verify Email"
-          className="mb-7 w-64 h-44 object-contain"
-          draggable={false}
-        />
-        <div className="relative inline-flex gap-4 mb-6">
-          {code.map((digit, i) => (
-            <input
-              key={i}
-              ref={(el) => { inputsRef.current[i] = el; }}
-              type="text"
-              inputMode="numeric"
-              maxLength={1}
-              value={digit}
-              onChange={(e) => handleChange(e, i)}
-              onKeyDown={(e) => handleKeyDown(e, i)}
-              onPaste={handlePaste}
-              className={`w-14 h-20 border rounded-md text-center text-2xl font-semibold outline-none transition-shadow duration-200
-                ${success ? "success-bounce" : ""} ${merged ? "merge-out" : ""}
-                ${digit !== "" ? "animate-pop-in" : ""}
-                ${success ? "border-green-600" : "border-gray-300"}
-                focus:border-blue-500 focus:shadow-[0_0_8px_rgba(59,130,246,0.5)]`}
-              style={{ ['--d' as any]: `${i * 100}ms`, ['--shift' as any]: `${(2.5 - i) * 12}px` }}
-              autoComplete="one-time-code"
-              spellCheck="false"
+      <div className="min-h-screen bg-white flex items-center justify-center px-4 py-8 sm:px-6">
+        <div className="w-full max-w-md rounded-2xl border border-slate-100 p-5 shadow-lg sm:p-7">
+          <div className="flex flex-col items-center text-center gap-4 sm:gap-5">
+            <h1 className="text-2xl font-bold sm:text-3xl">Подтверждение почты</h1>
+            <img
+              src="/img/почта.avif"
+              alt="Verify Email"
+              className="h-28 w-40 object-contain sm:h-32 sm:w-48"
+              draggable={false}
             />
-          ))}
-        </div>
-        <button
-          onClick={resendCode}
-          disabled={cooldown > 0}
-          className={`mb-4 px-6 py-2 rounded text-black font-semibold transition-colors duration-200 border border-black
-            ${cooldown > 0 ? "opacity-60 cursor-not-allowed" : "hover:bg-black hover:text-white"}`}
-          type="button"
-        >
-          {cooldown > 0 ? `Отправить повторно через ${cooldown}s` : "Отправить повторно"}
-        </button>
-        <a href="/register" className="text-sm text-black underline-animation">
-          Неверный email? Изменить
-        </a>
-        {error && <p className="mt-4 text-red-600 font-medium">{error}</p>}
-        {success && <p className="mt-4 text-green-600 font-medium">Почта успешно подтверждена!</p>}
-      </div>
-      <style jsx>{`
-        @keyframes pop-in {
-          0% {
-            transform: scale(0.8);
-            opacity: 0.4;
-          }
-          50% {
-            transform: scale(1.1);
-            opacity: 1;
-          }
-          100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-        .animate-pop-in {
-          animation: pop-in 0.3s ease forwards;
-        }
-        .underline-animation {
-          position: relative;
-          text-decoration: none;
-          cursor: pointer;
-        }
-        .underline-animation::after {
-          content: "";
-          position: absolute;
-          width: 100%;
-          transform: scaleX(0);
-          height: 1px;
-          bottom: 0;
-          left: 0;
-          background-color: black;
-          transform-origin: bottom right;
-          transition: transform 0.25s ease-out;
-        }
-        .underline-animation:hover::after {
-          transform: scaleX(1);
-          transform-origin: bottom left;
-        }
-        @keyframes bounceIn {
-          0% { transform: translateY(0); }
-          30% { transform: translateY(-14px); }
-          60% { transform: translateY(4px); }
-          100% { transform: translateY(0); }
-        }
-        .success-bounce {
-          animation: bounceIn 650ms ease-out both;
-          animation-delay: var(--d, 0ms);
-        }
+            <p className="text-sm text-slate-600 sm:text-base">Введите 6-значный код, отправленный на вашу почту.</p>
+          </div>
 
-        /* Each cell moves toward center and fades, giving a merge illusion */
-        @keyframes mergeOut {
-          0%   { transform: translateX(0) scale(1); opacity: 1; }
-          100% { transform: translateX(var(--shift, 0)) scaleX(0.2) scaleY(0.9); opacity: 0; }
+          <div className="mt-5 flex justify-center items-center">
+            <div className="relative w-full flex justify-center" style={{ height: "60px" }}>
+              <div className="relative flex gap-2 sm:gap-3 justify-center items-center" ref={containerRef}>
+                {code.map((digit, i) => {
+                  const isLeftSide = i < 3;
+                  const mergeX = isLeftSide ? 60 : -60;
+                  
+                  return (
+                    <motion.div
+                      key={i}
+                      className="relative"
+                      animate={isMerging ? {
+                        x: mergeX,
+                        scale: [1, 0.9, 0.6, 0.3, 0],
+                        opacity: [1, 0.9, 0.6, 0.3, 0],
+                        rotate: isLeftSide ? [0, 5, -5, 0] : [0, -5, 5, 0],
+                        transition: {
+                          x: { duration: 1.2, ease: "easeInOut" },
+                          scale: { duration: 1.2, ease: "easeInOut" },
+                          opacity: { duration: 1.2, ease: "easeInOut" },
+                          rotate: { duration: 1.2, ease: "easeInOut" }
+                        }
+                      } : success ? {
+                        y: [0, -16, 8, 0],
+                        scale: [1, 1.08, 0.98, 1],
+                        backgroundColor: ["#ffffff", "#f0fdf4", "#dcfce7", "#bbf7d0"],
+                        borderColor: ["#e5e7eb", "#22c55e", "#22c55e", "#22c55e"],
+                        transition: {
+                          y: {
+                            delay: i * 0.08,
+                            duration: 0.5,
+                            ease: "easeOut",
+                            times: [0, 0.3, 0.6, 1]
+                          },
+                          scale: {
+                            delay: i * 0.08,
+                            duration: 0.5,
+                            ease: "easeOut"
+                          },
+                          backgroundColor: {
+                            delay: i * 0.08,
+                            duration: 0.3
+                          },
+                          borderColor: {
+                            delay: i * 0.08,
+                            duration: 0.3
+                          }
+                        }
+                      } : {}}
+                    >
+                      <input
+                        ref={(el) => { inputsRef.current[i] = el; }}
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleChange(e, i)}
+                        onKeyDown={(e) => handleKeyDown(e, i)}
+                        onPaste={handlePaste}
+                        className={`
+                          w-11 h-12 sm:w-12 sm:h-14
+                          border rounded-lg
+                          text-center text-2xl sm:text-2xl
+                          bg-white
+                          focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200
+                          transition-all duration-150
+                          font-light
+                          ${digit ? "border-blue-400" : "border-gray-200"}
+                          ${success ? "border-green-400 bg-green-50" : ""}
+                          ${isMerging ? "pointer-events-none" : ""}
+                        `}
+                        autoComplete="one-time-code"
+                        spellCheck="false"
+                        disabled={success}
+                      />
+                      
+                      <AnimatePresence mode="wait">
+                        {digit && (
+                          <motion.span
+                            key={`digit-${i}-${digit}`}
+                            className={`
+                              absolute inset-0 flex items-center justify-center
+                              text-2xl sm:text-2xl pointer-events-none
+                              font-light tracking-tight
+                              ${success ? "text-green-600" : "text-gray-800"}
+                            `}
+                            initial={{ scale: 0.5, opacity: 0 }}
+                            animate={{ 
+                              scale: 1, 
+                              opacity: 1,
+                              transition: {
+                                duration: 0.2,
+                                ease: "easeOut"
+                              }
+                            }}
+                            exit={{ 
+                              scale: 0.5, 
+                              opacity: 0,
+                              transition: {
+                                duration: 0.15,
+                                ease: "easeIn"
+                              }
+                            }}
+                          >
+                            {digit}
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  );
+                })}
+              </div>
+              
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                {showCheckmark && (
+                  <motion.div
+                    className="flex items-center justify-center"
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ 
+                      scale: [0, 1.3, 1],
+                      opacity: [0, 1, 1],
+                      transition: {
+                        duration: 0.6,
+                        ease: "easeOut"
+                      }
+                    }}
+                  >
+                    <svg 
+                      className="w-14 h-14 sm:w-16 sm:h-16"
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                    >
+                      <motion.path
+                        d="M20 6L9 17L4 12"
+                        stroke="black"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        initial={{ pathLength: 0 }}
+                        animate={{ pathLength: 1 }}
+                        transition={{
+                          duration: 0.5,
+                          delay: 0.1,
+                          ease: "easeInOut"
+                        }}
+                      />
+                    </svg>
+                  </motion.div>
+                )}
+              </div>
+              
+              {isMerging && !showCheckmark && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <motion.div
+                    className="flex items-center justify-center"
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ 
+                      scale: [0, 1.5, 2, 0],
+                      opacity: [0, 0.7, 0.5, 0],
+                      transition: {
+                        duration: 1.2,
+                        ease: "easeOut"
+                      }
+                    }}
+                  >
+                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  </motion.div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-col items-center gap-3">
+            <button
+              onClick={resendCode}
+              disabled={cooldown > 0 || success}
+              className={`
+                w-full rounded-xl border border-gray-300 px-4 py-2.5 
+                text-sm font-normal text-gray-700 transition sm:text-base
+                ${cooldown > 0 || success 
+                  ? "cursor-not-allowed opacity-50" 
+                  : "hover:bg-gray-50 hover:border-gray-400"
+                }
+              `}
+              type="button"
+            >
+              {cooldown > 0 ? `Отправить повторно через ${cooldown}s` : "Отправить повторно"}
+            </button>
+            <a 
+              href="/register" 
+              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              Неверный email? Изменить
+            </a>
+          </div>
+
+          {error && <p className="mt-4 text-center text-sm font-medium text-red-500">{error}</p>}
+          {success && !isMerging && (
+            <p className="mt-4 text-center text-sm font-medium text-green-600">
+              Почта успешно подтверждена!
+            </p>
+          )}
+        </div>
+      </div>
+      <style jsx global>{` 
+        header { 
+          display: none !important; 
         }
-        .merge-out { animation: mergeOut 520ms ease-in both; animation-delay: var(--d, 0ms); }
-      `}</style>
-      <style jsx global>{`
-        header {
-          display: none !important;
+        
+        input[type="tel"]::-webkit-inner-spin-button,
+        input[type="tel"]::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        
+        input[type="tel"] {
+          -moz-appearance: textfield;
+          caret-color: transparent !important;
+        }
+        
+        input:focus {
+          outline: 2px solid transparent;
+          outline-offset: 2px;
         }
       `}</style>
     </>

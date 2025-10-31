@@ -4,6 +4,7 @@
 
 html {
   scroll-behavior: auto;
+  -webkit-text-size-adjust: 100%;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -146,6 +147,15 @@ body {
   overscroll-behavior-y: auto;
 }
 
+/* Keep mobile inputs from triggering browser zoom */
+@media (max-width: 768px) {
+  input:not(.otp-input),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 #__next {
   min-height: 100%;
 }
@@ -188,6 +198,27 @@ body {
 .sticky-under-header {
   position: sticky;
   top: calc(var(--header-h, 80px) + var(--safe-top, 0px));
+}
+
+/* --- Safe area helpers (для вырезов / камер / жестовой панели) --- */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-x {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.safe-all {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 .parallax-section {
   position: relative;
@@ -269,4 +300,227 @@ body {
     transform: none !important;
     will-change: auto;
   }
+}
+
+/* === Stage Mode (для страницы Stage Loyalty) === */
+.stage-mode {
+  background: radial-gradient(circle at 30% 40%, #0a0a0a 0%, #000 100%);
+  color: #e5e5e5 !important;
+  transition: background 0.6s ease, color 0.6s ease;
+}
+
+.stage-mode * {
+  color: #e5e5e5 !important;
+}
+
+/* Боковая панель и навигация в Stage Mode */
+.stage-mode .sidebar,
+.stage-mode nav {
+  background: rgba(20, 20, 20, 0.6) !important;
+  backdrop-filter: blur(12px) saturate(140%);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Стеклянные блоки */
+.glass-block {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px) saturate(160%);
+  border-radius: 20px;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.glass-block:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 50px rgba(255, 255, 255, 0.1);
+}
+
+/* Анимация плавного входа Stage Mode */
+@keyframes fadeInStage {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+.stage-mode body {
+  animation: fadeInStage 0.8s ease-out forwards;
+}
+
+/* Эффект карт (Stage Wallet) */
+.wallet-card {
+  position: relative;
+  border-radius: 24px;
+  background: rgba(20, 20, 20, 0.55); /* ближе к фону Stage Mode */
+  backdrop-filter: blur(25px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.wallet-card:hover {
+  transform: translateY(-10px) rotateX(2deg) rotateY(-2deg);
+}
+/* === Stage Mode Sidebar === */
+.stage-mode .sidebar {
+  background: rgba(30, 30, 30, 0.5) !important;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 30px rgba(255, 255, 255, 0.02),
+              0 10px 40px rgba(0, 0, 0, 0.4);
+  transition: all 0.4s ease;
+  color: #e0e0e0 !important;
+}
+
+.stage-mode .sidebar * {
+  color: #e0e0e0 !important;
+}
+
+/* Подсветка активной вкладки */
+.stage-mode .sidebar button[aria-current="true"],
+.stage-mode .sidebar .active {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px;
+  color: #fff !important;
+  transition: background 0.3s ease;
+}
+
+/* Ховер эффект на элементы */
+.stage-mode .sidebar button:hover,
+.stage-mode .sidebar a:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+}
+.stage-mode,
+.stage-mode html,
+.stage-mode body {
+  background-color: #0a0a0a !important;
+  background-image: radial-gradient(circle at 30% 40%, #0b0b0b 0%, #000 100%) !important;
+  color: #e5e5e5 !important;
+}
+
+.stage-mode body {
+  background-attachment: fixed;
+  background-size: cover;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* === Анимированное сияние по всей странице для Stage Mode === */
+.stage-mode::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(
+      circle at 20% 30%,
+      rgba(255, 215, 0, 0.05),
+      rgba(255, 255, 255, 0) 60%
+    ),
+    radial-gradient(
+      circle at 80% 70%,
+      rgba(255, 255, 255, 0.05),
+      rgba(255, 255, 255, 0) 60%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(255, 255, 255, 0.03),
+      rgba(255, 255, 255, 0) 70%
+    );
+  background-size: 200% 200%;
+  animation: stageGlowFull 30s ease-in-out infinite;
+  pointer-events: none;
+  filter: blur(60px);
+}
+
+/* Ключевые кадры сияния */
+@keyframes stageGlowFull {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* === Дополнительные слои глобального сияния для Stage Mode === */
+html.stage-mode,
+body.stage-mode {
+  position: relative;
+  overflow-x: hidden;
+  background: radial-gradient(circle at center, #0a0a0a 0%, #000 100%);
+}
+
+.stage-glow-layer {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.stage-glow-layer > div {
+  position: absolute;
+  width: 150vw;
+  height: 150vh;
+  filter: blur(120px);
+  opacity: 0.2;
+  animation: moveGlow 20s ease-in-out infinite;
+}
+
+.stage-glow-1 {
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.15), transparent 70%);
+}
+
+.stage-glow-2 {
+  background: radial-gradient(circle at 80% 70%, rgba(255, 230, 180, 0.1), transparent 70%);
+  animation-delay: 5s;
+}
+
+.stage-glow-3 {
+  background: radial-gradient(circle at 50% 50%, rgba(180, 220, 255, 0.1), transparent 70%);
+  animation-delay: 10s;
+}
+
+@keyframes moveGlow {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-5%, -3%) scale(1.1);
+  }
+}
+/* Дополнительные стили для улучшения анимаций */
+.premium-image-slider {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.premium-image-slider:active {
+  cursor: grabbing;
+}
+
+/* Анимация появления подсказки */
+@keyframes swipeHint {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}
+
+.swipe-hint {
+  animation: swipeHint 2s ease-in-out infinite;
+}
+
+/* Градиент для кнопок навигации */
+.nav-button-gradient {
+  background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.85));
 }

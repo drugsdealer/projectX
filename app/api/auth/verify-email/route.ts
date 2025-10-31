@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
-import { CODES } from "../_codes";
-import { setVerified, getUserByEmail, publicUser } from "../_users";
-import { createSession, withSessionCookie } from "../_session";
+import { prisma } from "@/lib/prisma";
+import { setSessionOnResponse } from "../../_utils/session";
 
 function ok(data: any, init?: number) {
   return NextResponse.json(data, { status: init ?? 200 });
@@ -25,75 +24,117 @@ export async function POST(req: Request) {
     // Normalize email to match the storage key
     const normalizedEmail = email.trim().toLowerCase();
 
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[VERIFY] store size:", CODES.size);
-      console.log("[VERIFY] store keys:", Array.from(CODES.keys()));
-    }
-
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[VERIFY] attempt", { email, normalizedEmail, code });
-    }
-
-    // Нововведение: если пользователь уже подтверждён — сразу создаём сессию
-    const existingUser = getUserByEmail(normalizedEmail);
-    if (existingUser?.verified) {
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[VERIFY] user already verified, skipping code check");
-      }
-      const { cookie } = createSession(existingUser.id);
-      const res = NextResponse.json({ success: true, user: publicUser(existingUser) });
-      res.cookies.set('vfy', '', { path: '/', expires: new Date(0), httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
-      return withSessionCookie(res, cookie);
-    }
-
-    const record = CODES.get(normalizedEmail);
-    if (!record) {
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[VERIFY] no record for email");
-      }
-      return bad("Код не найден или истёк");
-    }
-
-    record.attempts = (record.attempts ?? 0) + 1;
-    if (record.attempts > 5) {
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[VERIFY] too many attempts", { attempts: record.attempts });
-      }
-      CODES.delete(normalizedEmail);
-      return bad("Слишком много попыток. Запросите новый код", 429);
-    }
-
-    if (Date.now() > record.expires) {
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[VERIFY] code expired", { now: Date.now(), expires: record.expires });
-      }
-      CODES.delete(normalizedEmail);
-      return bad("Срок действия кода истёк");
-    }
-
-    if (record.code !== code) {
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[VERIFY] code mismatch");
-      }
-      CODES.set(normalizedEmail, record);
-      return bad("Неверный код");
-    }
-
-    CODES.delete(normalizedEmail);
-
-    // Mark user as verified and create a secure HttpOnly session
-    const user = setVerified(normalizedEmail, true) || getUserByEmail(normalizedEmail);
-    if (!user) {
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[VERIFY] user not found after code success", { normalizedEmail });
-      }
+    const existingUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+    if (!existingUser) {
       return bad("Пользователь не найден", 404);
     }
 
-    const { cookie } = createSession(user.id);
-    const res = NextResponse.json({ success: true, user: publicUser(user) });
-    res.cookies.set('vfy', '', { path: '/', expires: new Date(0), httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
-    return withSessionCookie(res, cookie);
+    // уже подтвержден — сразу создаём сессию
+    if (existingUser.verified && existingUser.verified.getTime() > 0) {
+      const res = NextResponse.json({
+        success: true,
+        user: {
+          id: existingUser.id,
+          email: existingUser.email,
+          verified: existingUser.verified,
+          fullName: existingUser.fullName ?? "",
+          role: existingUser.role,
+        },
+      });
+      setSessionOnResponse(res, existingUser.id);
+      res.cookies.set("vfy", "", {
+        path: "/",
+        expires: new Date(0),
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+      });
+      // UI/helper cookies (non-httpOnly) for client hydration
+      res.cookies.set("stage_session", JSON.stringify({
+        id: existingUser.id,
+        email: existingUser.email,
+        fullName: existingUser.fullName ?? "",
+        role: existingUser.role,
+      }), {
+        httpOnly: false,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 30,
+      });
+      res.cookies.set("uid", String(existingUser.id), {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 30,
+      });
+      return res;
+    }
+
+    const verification = await prisma.verificationCode.findUnique({
+      where: { userId: existingUser.id },
+    });
+    if (!verification || verification.code !== code) {
+      return bad("Код не найден или неверен");
+    }
+
+    // Срок действия 10 минут
+    const isExpired =
+      verification.createdAt.getTime() < Date.now() - 10 * 60 * 1000;
+    if (isExpired) {
+      await prisma.verificationCode.delete({ where: { userId: existingUser.id } }).catch(() => {});
+      return bad("Срок действия кода истёк");
+    }
+
+    // Отметить пользователя как подтверждённого и создать сессию
+    const updatedUser = await prisma.user.update({
+      where: { email: normalizedEmail },
+      data: { verified: new Date(), updatedAt: new Date() },
+    }).catch(() => null);
+
+    await prisma.verificationCode.delete({ where: { userId: existingUser.id } }).catch(() => {});
+
+    if (!updatedUser) {
+      return bad("Пользователь не найден", 404);
+    }
+
+    const res = NextResponse.json({
+      success: true,
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        verified: updatedUser.verified,
+        fullName: updatedUser.fullName ?? "",
+        role: updatedUser.role,
+      },
+    });
+
+    setSessionOnResponse(res, updatedUser.id);
+    res.cookies.set("vfy", "", { path: "/", expires: new Date(0), httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
+    res.cookies.set("stage_session", JSON.stringify({
+      id: updatedUser.id,
+      email: updatedUser.email,
+      fullName: updatedUser.fullName ?? "",
+      role: updatedUser.role,
+    }), {
+      httpOnly: false,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+    res.cookies.set("uid", String(updatedUser.id), {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+
+    return res;
   } catch (e) {
     console.error("[VERIFY] exception", e);
     return bad("Ошибка проверки. Попробуйте позже.", 500);

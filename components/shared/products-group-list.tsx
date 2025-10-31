@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useIntersection } from 'react-use';
 
 import { Title } from './title';
@@ -12,7 +12,9 @@ interface Product {
   id: number;
   name: string;
   images?: string[];
+  imageUrl?: string | null;
   brandLogo?: string;
+  brand?: string;
   price?: number;
   variants?: any;
   sizes?: any;
@@ -49,30 +51,54 @@ export const ProductsGroupList: React.FC<Props> = ({
     if (intersection?.isIntersecting) {
       setActiveCategoryId(categoryId);
     }
-  }, [categoryId, intersection?.isIntersecting, title]);
+  }, [categoryId, intersection?.isIntersecting, setActiveCategoryId, title]);
 
-  // 🔥 фильтрация списка
-  const filteredItems = items.filter((product) => {
-    if (onlyPremium && !product.isPremium) return false;
-    if (!onlyPremium && product.isPremium) return false;
-    if (genderFilter && product.gender && product.gender !== genderFilter && product.gender !== 'unisex') {
-      return false;
-    }
-    return true;
-  });
+  // 🔥 фильтрация списка (мемоизирована, чтобы не пересчитываться без надобности)
+  const filteredItems = useMemo(
+    () =>
+      items.filter((product) => {
+        // если включён режим "только премиум" — показываем только isPremium
+        if (onlyPremium) {
+          if (!product.isPremium) return false;
+        } else {
+          // в обычных подборках не выводим премиум‑товары
+          if (product.isPremium) return false;
+        }
+
+        // фильтрация по полу: допускаем точное совпадение или 'unisex'
+        if (
+          genderFilter &&
+          product.gender &&
+          product.gender !== 'unisex' &&
+          product.gender !== genderFilter
+        ) {
+          return false;
+        }
+
+        return true;
+      }),
+    [items, onlyPremium, genderFilter]
+  );
 
   return (
     <div className={className} id={title} ref={intersectionRef}>
       <Title text={title} size="lg" className="font-extrabold mb-5" />
 
-      <div className={cn('grid grid-cols-3 gap-[50px]', listClassName)}>
+      <div
+        className={cn(
+          'grid grid-cols-2 sm:grid-cols-3 gap-4 md:gap-[50px]',
+          listClassName
+        )}
+      >
         {filteredItems.map((product) => (
           <ProductCard
             key={product.id}
             id={product.id}
             name={product.name}
             images={product.images}
+            primaryImage={product.imageUrl}
             brandLogo={product.brandLogo}
+            brand={product.brand}
             price={product.price}
             variants={product.variants}
             sizes={product.sizes}

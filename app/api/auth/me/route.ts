@@ -1,20 +1,49 @@
-import { NextResponse } from "next/server";
-export const runtime = "nodejs";
+import { NextResponse } from 'next/server';
+export const runtime = 'nodejs';
 
-import { getUserById, publicUser } from "../_users";
-import { getSessionTokenFromRequest, getUserIdBySession } from "../_session";
+import { prisma } from '@/lib/prisma';
+import { getUserIdFromRequest } from '@/lib/session';
 
-export async function GET(req: Request) {
+// "Кто я" — возвращает текущего пользователя по сессии.
+export async function GET() {
   try {
-    const token = getSessionTokenFromRequest(req);
-    const userId = await getUserIdBySession(token);
+    const userId = await getUserIdFromRequest();
+
+    // Не авторизован — возвращаем user: null (200), чтобы фронт не падал
     if (!userId) {
-      return NextResponse.json({ success: false, user: null }, { status: 200 });
+      return NextResponse.json({ success: true, user: null }, { status: 200 });
     }
-    const user = await getUserById(userId);
-    return NextResponse.json({ success: true, user: user ? publicUser(user) : null });
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        verified: true,
+        provider: true,
+        providerId: true,
+        createdAt: true,
+        updatedAt: true,
+        phone: true,
+        city: true,
+        address: true,
+        gender: true,
+        birthDate: true,
+        avatarEmoji: true,
+        loyaltyPoints: true,
+      },
+    });
+
+    if (!user) {
+      // Сессия указывает на несуществующего/удалённого пользователя — считаем, что он не авторизован
+      return NextResponse.json({ success: true, user: null }, { status: 200 });
+    }
+
+    return NextResponse.json({ success: true, user }, { status: 200 });
   } catch (e) {
-    console.error("[ME] exception", e);
+    console.error('[auth.me] error', e);
     return NextResponse.json({ success: false, user: null }, { status: 500 });
   }
 }

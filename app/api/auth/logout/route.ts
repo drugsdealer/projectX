@@ -1,55 +1,49 @@
 import { NextResponse } from "next/server";
 import { SESSION_COOKIE } from "../_session";
 
-const sessions = new Map<string, any>();
+export const runtime = "nodejs";
 
-export function deleteSession(sessionId: string) {
-  sessions.delete(sessionId);
+
+const AUTH_COOKIE = "auth_session";
+
+
+const UI_COOKIES = [
+  "ui_user_id",
+  "ui_user_email",
+  "ui_user_fullName",
+  "ui_loyalty",
+  "ui_avatar",
+];
+
+function unsetCookie(res: NextResponse, name: string, httpOnly = false) {
+  res.cookies.set({
+    name,
+    value: "",
+    path: "/",
+    httpOnly,
+    secure: true,
+    sameSite: "lax",
+    expires: new Date(0),
+  });
 }
 
-export async function POST(req: Request) {
-  try {
-    // Получаем ID сессии из cookie
-    const cookieHeader = req.headers.get("cookie") || "";
-    const sessionCookie = cookieHeader
-      .split(";")
-      .map((c) => c.trim())
-      .find((c) => c.startsWith(`${SESSION_COOKIE}=`));
+async function doLogout() {
+  const res = NextResponse.json({ success: true, loggedOut: true });
 
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[LOGOUT] cookie header:", cookieHeader);
-      console.log("[LOGOUT] found session cookie:", sessionCookie);
-    }
+  unsetCookie(res, AUTH_COOKIE, true);
+  unsetCookie(res, SESSION_COOKIE, true);
 
-    if (sessionCookie) {
-      const sessionId = sessionCookie.split("=")[1];
-      deleteSession(sessionId);
+  for (const k of UI_COOKIES) unsetCookie(res, k, false);
 
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[LOGOUT] session deleted:", sessionId);
-      }
-    }
+  res.headers.set("Clear-Site-Data", '"cookies"');
 
-    // Устанавливаем cookie с истекшим сроком для удаления в браузере
-    const res = NextResponse.json({
-      success: true,
-      message: "Вы вышли из системы",
-      loggedOut: true, // Флаг для фронтенда, использовать для сброса состояния пользователя
-    });
-    res.cookies.set(SESSION_COOKIE, "", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      expires: new Date(0),
-      sameSite: "lax",
-    });
+  return res;
+}
 
-    return res;
-  } catch (error) {
-    console.error("[LOGOUT] error:", error);
-    return NextResponse.json(
-      { success: false, message: "Ошибка при выходе" },
-      { status: 500 }
-    );
-  }
+export async function POST() {
+  return doLogout();
+}
+
+export async function GET() {
+  return doLogout();
 }

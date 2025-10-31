@@ -1,5 +1,4 @@
 "use client";
-import { SortPopup } from "@/components/shared";
 import { Container } from "@/components/shared/container";
 import { Title } from "@/components/shared/title";
 import { TopBar } from "@/components/shared/top-bar";
@@ -9,8 +8,9 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
-import { products } from '@/data/products';
+import Link from "next/link";
 import { Categories } from '@/components/shared/categories';
+import { Stories } from "@/components/shared/stories";
 
 // Локальные подписи основных категорий
 const LABELS: Record<string, string> = {
@@ -37,6 +37,48 @@ export default function Home() {
     return num.toLocaleString('ru-RU');
   };
 
+  const getMinPrice = (p: any): number => {
+    try {
+      if (!p) return 0;
+      const nums: number[] = [];
+      const push = (v: any) => {
+        const n = Number(v);
+        if (Number.isFinite(n) && n > 0) nums.push(n);
+      };
+
+      // explicit fields
+      push(p.minPrice);
+      push(p.price);
+      push(p.amount);
+
+      // sizes: common patterns
+      if (Array.isArray(p.sizes)) {
+        for (const s of p.sizes) {
+          if (!s) continue;
+          if (s.price !== undefined) push(s.price);
+          if (s.amount !== undefined) push(s.amount);
+          if (s.value && typeof s.value === 'object' && s.value.price !== undefined) {
+            push(s.value.price);
+          }
+        }
+      }
+
+      // variants: fallback
+      if (Array.isArray(p.variants)) {
+        for (const v of p.variants) {
+          if (!v) continue;
+          if (v.price !== undefined) push(v.price);
+          if (v.amount !== undefined) push(v.amount);
+        }
+      }
+
+      if (!nums.length) return 0;
+      return Math.min(...nums);
+    } catch {
+      return 0;
+    }
+  };
+
   const computeBadges = (it: any): string[] => {
     const res: string[] = [];
     // explicit badge from data (e.g., EXCLUSIVE/HIT)
@@ -53,10 +95,558 @@ export default function Home() {
     if (typeof it?.stock === 'number' && it.stock > 0 && it.stock <= 2) res.push('Последние 2 шт.');
     return res;
   };
+
+  // Take the first sentence from a plain‑text description
+  const firstSentence = (txt: any): string => {
+    try {
+      if (!txt) return '';
+      const s = String(txt)
+        .replace(/<[^>]*>/g, ' ')      // strip potential HTML
+        .replace(/\s+/g, ' ')
+        .trim();
+      const m = s.match(/(.+?[.!?])(\s|$)/);
+      const head = m ? m[1] : s;
+      return head.slice(0, 160);
+    } catch { 
+      return ''; 
+    }
+  };
+
+  // Prefer the first non-empty description-like field from the product object
+  const pickDescription = (p: any): string => {
+    try {
+      const cands = [
+        p?.description,
+        p?.desc,
+        p?.shortDescription,
+        p?.summary,
+        p?.about,
+        p?.details,
+        p?.text,
+      ];
+      for (const v of cands) {
+        if (typeof v === 'string' && v.trim()) return v;
+      }
+      return '';
+    } catch {
+      return '';
+    }
+  };
+
+  // Extract brand name from different shapes (string, relation, array)
+  const extractBrand = useCallback((p: any): string => {
+    try {
+      if (!p) return '';
+
+      const fromString = (v: any) => (typeof v === 'string' ? v.trim() : '');
+      const fromObj = (o: any) => {
+        if (!o || typeof o !== 'object') return '';
+        return (
+          fromString(o.name) ||
+          fromString(o.title) ||
+          fromString(o.label) ||
+          fromString(o.slug) ||
+          ''
+        );
+      };
+
+      // 1) Direct fields / relations / arrays
+      const direct =
+        fromString(p.brand) ||
+        fromString(p.brandName) ||
+        fromObj(p.brand) ||
+        fromObj(p.Brand) ||
+        (Array.isArray(p.brands) && p.brands.length ? fromString(p.brands[0]) : '');
+
+      if (direct) return direct;
+
+      // 2) Heuristics: derive brand from name/title/description
+      const hay = `${p?.name || ''} ${p?.title || ''} ${p?.description || ''}`.toLowerCase();
+
+      // Known brands map (add here if появятся новые)
+      const KNOWN: Record<string, string> = {
+        'nike': 'Nike',
+        'adidas': 'Adidas',
+        'reebok': 'Reebok',
+        'new balance': 'New Balance',
+        'converse': 'Converse',
+        'supreme': 'Supreme',
+        'off white': 'Off-White',
+        'off-white': 'Off-White',
+        'yeezy': 'Yeezy',
+        'puma': 'Puma',
+        'chrome hearts': 'Chrome Hearts',
+        'louis vuitton': 'Louis Vuitton',
+        'stone island': 'Stone Island',
+        'asics': 'ASICS',
+        'vans': 'Vans',
+        'balenciaga': 'Balenciaga',
+        'salomon': 'Salomon',
+        'birkenstock': 'Birkenstock',
+        'dr. martens': 'Dr. Martens',
+        'the north face': 'The North Face',
+        'north face': 'The North Face',
+        'new era': 'New Era',
+        'stussy': 'Stüssy',
+      };
+
+      // Collab patterns: "Brand x Brand" or "Brand × Brand"
+      const collabMatch = hay.match(/(.+?)\s*[x×]\s*(.+)/i);
+      if (collabMatch) {
+        const left = collabMatch[1].trim();
+        const right = collabMatch[2].trim();
+        for (const key of Object.keys(KNOWN)) {
+          if (left.includes(key)) return KNOWN[key];
+        }
+        for (const key of Object.keys(KNOWN)) {
+          if (right.includes(key)) return KNOWN[key];
+        }
+      }
+
+      for (const key of Object.keys(KNOWN)) {
+        if (hay.includes(key)) return KNOWN[key];
+      }
+
+      // 3) Fallback: first 1–2 capitalized tokens from product name
+      const name = String(p?.name || '').trim();
+      const m = name.match(/^[A-ZА-ЯЁ][\w.'-]*(?:\s+[A-ZА-ЯЁ][\w.'-]*)?/);
+      if (m) return m[0].trim();
+
+      return '';
+    } catch {
+      return '';
+    }
+  }, []);
+  // Products from API (DB) with manual fetch + normalization
+  const [products, setProducts] = useState<any[]>([]);
+  const [isProductsLoading, setIsProductsLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/products", { cache: "no-store" });
+        if (!res.ok) {
+          throw new Error(`Failed to load products: ${res.status}`);
+        }
+        const json = await res.json();
+        const arr = Array.isArray(json?.products) ? json.products : [];
+
+        const normalized = arr.map((p: any) => ({
+          ...p,
+          images: Array.isArray(p?.images) && p.images.length
+            ? p.images
+            : (p?.imageUrl ? [p.imageUrl] : []),
+          price: p?.price ?? p?.minPrice ?? p?.amount ?? 0,
+          brand: (() => {
+            const str = (v: any) =>
+              typeof v === "string" ? v.trim() : "";
+            const fromObj = (o: any) =>
+              o && typeof o === "object"
+                ? (str(o.name) || str(o.title) || str(o.label) || str(o.slug))
+                : "";
+
+            const val =
+              str(p?.brand) ||
+              str(p?.brandName) ||
+              fromObj(p?.brand) ||
+              fromObj(p?.Brand) ||
+              (Array.isArray(p?.brands) && p.brands.length
+                ? str(p.brands[0])
+                : "");
+
+            return val || extractBrand(p) || "";
+          })(),
+        }));
+
+        if (!cancelled) {
+          setProducts(normalized);
+        }
+      } catch (err) {
+        console.error("[home] failed to load products", err);
+        if (!cancelled) {
+          setProducts([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsProductsLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [extractBrand]);
+  // --- Фильтры: бренды, категории, цены, мобильная панель ---
+  const [brandSearch, setBrandSearch] = useState("");
+  const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
+  const [selectedCats, setSelectedCats] = useState<Set<string>>(new Set());
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  // границы цен и текущий диапазон
+  const priceStats = useMemo(() => {
+    const all = products.map((p:any) => Number(p?.price) || 0).filter((n:number) => Number.isFinite(n));
+    const min = all.length ? Math.min(...all) : 0;
+    const max = all.length ? Math.max(...all) : 0;
+    return { min, max };
+  }, [products]);
+  const [priceMin, setPriceMin] = useState<number>(0);
+  const [priceMax, setPriceMax] = useState<number>(0);
+
+  // URL search params (must be hoisted for sortKey)
+  const searchParams = useSearchParams();
+  // --- НОРМАЛИЗАЦИЯ КАТЕГОРИЙ / ПОРЯДОК (hoisted, used below) ---
+  const ORDER = ["footwear", "clothes", "bags", "accessories", "fragrance", "headwear"] as const;
+
+  // Источник «сырой» категории из товара: сначала slug из БД/АПИ, затем поле-объект и прочие устаревшие поля
+  const getRawCategory = useCallback((p: any) => {
+    return (
+      p?.categorySlug ??
+      p?.category?.slug ??
+      p?.main ??
+      p?.category ??
+      p?.type ??
+      p?.categoryId
+    );
+  }, []);
+
+  const normalizeCategory = useCallback((raw: any): string => {
+    if (raw === undefined || raw === null) return "other";
+    const vOrig = String(raw).trim();
+    if (!vOrig) return "other";
+
+    // приведение: нижний регистр + унификация дефисов
+    const v0 = vOrig.toLowerCase().replace(/[—–−]/g, "-");
+    const v = v0.replace(/\s+/g, " ");
+
+    // numeric ids from backend (Neon/Prisma)
+    const num = Number(v);
+    if (!Number.isNaN(num)) {
+      const byId: Record<number, string> = {
+        1: "footwear",   // обувь
+        2: "clothes",    // одежда
+        3: "headwear",   // головные уборы
+        4: "fragrance",  // парфюмерия
+        5: "bags",       // сумки и рюкзаки
+        6: "accessories" // аксессуары
+      };
+      return byId[num] ?? "other";
+    }
+
+    // canonical dictionary (включая сами слуги)
+    const map: Record<string, string> = {
+      // canonical slugs
+      footwear: "footwear",
+      clothes: "clothes",
+      bags: "bags",
+      accessories: "accessories",
+      fragrance: "fragrance",
+      headwear: "headwear",
+
+      // EN — clothes
+      clothing: "clothes",
+      garments: "clothes",
+      apparel: "clothes",
+      // RU — clothes
+      "одежда": "clothes",
+
+      // EN — footwear
+      shoes: "footwear",
+      shoe: "footwear",
+      sneakers: "footwear",
+      sneaker: "footwear",
+      boots: "footwear",
+      boot: "footwear",
+      sandals: "footwear",
+      sandal: "footwear",
+      // RU — footwear
+      "обувь": "footwear",
+      "кроссовки": "footwear",
+
+      // accessories (no duplicate "accessories" key)
+      accessory: "accessories",
+      "аксессуары": "accessories",
+      "аксессуар": "accessories",
+
+      // bags (no duplicate "bags" key)
+      bag: "bags",
+      backpack: "bags",
+      "рюкзак": "bags",
+      "сумки": "bags",
+      "сумка": "bags",
+      "сумки-и-рюкзаки": "bags",
+
+      // fragrance (no duplicate "fragrance" key)
+      fragrances: "fragrance",
+      perfume: "fragrance",
+      perfumes: "fragrance",
+      "парфюмерия": "fragrance",
+
+      // headwear (no duplicate "headwear" key)
+      hats: "headwear",
+      hat: "headwear",
+      caps: "headwear",
+      cap: "headwear",
+      beanie: "headwear",
+      "шапки": "headwear",
+      "головные уборы": "headwear",
+      "головные-уборы": "headwear"
+    };
+    if (map[v]) return map[v];
+
+    // heuristic fallbacks — ОБУВЬ проверяем раньше одежды, а у одежды убрали общий шаблон "wear"
+    if (/(shoe|sneak|foot|boot|sand)/.test(v)) return "footwear";
+    if (/(bag|pack|рюкзак|сумк)/.test(v)) return "bags";
+    if (/(accessor|аксесс)/.test(v)) return "accessories";
+    if (/(perf|fragr|парф)/.test(v)) return "fragrance";
+    if (/(hat|cap|beanie|head|шапк|кепк)/.test(v)) return "headwear";
+    if (/\b(cloth|apparel|garment)s?\b/.test(v)) return "clothes";
+
+    return "other";
+  }, []);
+
+  // инициализация диапазона цен при загрузке/обновлении продуктов
+  useEffect(() => {
+    setPriceMin(priceStats.min);
+    setPriceMax(priceStats.max);
+  }, [priceStats.min, priceStats.max]);
+  // Каталог: используем все товары без дополнительной фильтрации по premium
+  const catalog = useMemo(() => products, [products]);
+  // Доступные бренды и категории на основе полученных товаров
+  const allBrands = useMemo(() => {
+    const acc = new Set<string>();
+    for (const p of products) {
+      const b = extractBrand(p as any);
+      if (b) acc.add(b);
+    }
+    return Array.from(acc).sort((a, b) => a.localeCompare(b, "ru"));
+  }, [products, extractBrand]);
+
+  const allCats = useMemo(() => {
+    const acc = new Set<string>();
+    for (const p of products) {
+      const main = normalizeCategory(getRawCategory(p as any));
+      if (main && main !== "other") acc.add(main);
+    }
+    // показываем в заданном порядке, остальные в конец
+    const known = ORDER.filter((k) => acc.has(k));
+    const rest = Array.from(acc).filter((k) => !ORDER.includes(k as any)).sort();
+    return [...known, ...rest];
+  }, [products, normalizeCategory, getRawCategory]);
+  // --- Sorting helpers (hoisted) ---
+  const sortKey = (searchParams.get('sort') || 'popular') as 'popular' | 'price-asc' | 'price-desc';
+  const sortItems = (list: any[], key: 'popular' | 'price-asc' | 'price-desc') => {
+    const copy = [...list];
+    if (key === 'price-asc') {
+      copy.sort((a, b) => (Number(a?.price) || 0) - (Number(b?.price) || 0));
+    } else if (key === 'price-desc') {
+      copy.sort((a, b) => (Number(b?.price) || 0) - (Number(a?.price) || 0));
+    } else {
+      // 'popular' — если есть поле popularity, сортируем, иначе оставляем исходный порядок
+      if (copy.length && typeof copy[0]?.popularity === 'number') {
+        copy.sort((a, b) => (Number(b?.popularity) || 0) - (Number(a?.popularity) || 0));
+      }
+    }
+    return copy;
+  };
+  // --- Подкатегории: состояние выбора + нормализация (расположено до filtered) ---
+  // Активный фильтр подкатегорий
+  const [subFilter, setSubFilter] = useState<Record<string, string | null>>({});
+
+  // Синонимы подкатегорий
+  const SUB_ALIASES: Record<string, string> = {
+    tee: 'tshirts', tees: 'tshirts', tshirt: 'tshirts', tshirts: 'tshirts',
+    sneaker: 'sneakers', sneakers: 'sneakers',
+    boot: 'boots', boots: 'boots',
+    sandal: 'sandals', sandals: 'sandals',
+  };
+
+  const normalizeSub = useCallback((raw: any): string | null => {
+    if (raw === undefined || raw === null) return null;
+    const v = String(raw).trim().toLowerCase();
+    if (!v) return null;
+    return SUB_ALIASES[v] ?? v;
+  }, []);
+
+  // Достаём подкатегорию из товара + нормализуем
+  const getProductSubRaw = useCallback((p: any): any => {
+    return (
+      p?.subCategorySlug ??
+      p?.subcategory ??
+      p?.subCategory ??
+      p?.sub ??
+      null
+    );
+  }, []);
+
+  const productSubNormalized = useCallback((p: any): string | null => {
+    // сначала пробуем явные поля
+    let s = normalizeSub(getProductSubRaw(p));
+    if (s) return s;
+
+    // эвристика из имени/описания, если явного поля нет
+    try {
+      const hay = `${p?.name || ''} ${p?.description || ''}`.toLowerCase();
+      if (/(boot|ботинк)/.test(hay)) return 'boots';
+      if (/(sneak|кроссовк|yeezy|dunk)/.test(hay)) return 'sneakers';
+      if (/(tee|t-shirt|футболк)/.test(hay)) return 'tshirts';
+      if (/(hood|худи|толстовк)/.test(hay)) return 'hoodies';
+      if (/(bag|сумк|рюкзак)/.test(hay)) return 'bags';
+    } catch {}
+    return null;
+  }, [normalizeSub, getProductSubRaw]);
+
+  // Применение фильтров
+  const filtered = useMemo(() => {
+    const minV = Number(priceMin) || 0;
+    const maxV = Number(priceMax) || Infinity;
+    const selBrands = selectedBrands;
+    const selCats = selectedCats;
+
+    return (catalog as any[]).filter((p:any) => {
+      const price = Number(p?.price) || 0;
+      if (price < minV || price > maxV) return false;
+
+      // категория
+      const cat = normalizeCategory(getRawCategory(p));
+      if (selCats.size && !selCats.has(cat)) return false;
+
+      // подкатегория (если выбрана для текущей основной категории)
+      const selectedSub = subFilter[cat] ?? null;
+      if (selectedSub) {
+        const pSub = productSubNormalized(p);
+        if (pSub !== selectedSub) return false;
+      }
+
+      // бренд
+      const brand = extractBrand(p as any);
+      if (selBrands.size && (!brand || !selBrands.has(String(brand)))) return false;
+
+      return true;
+    });
+  }, [catalog, priceMin, priceMax, selectedBrands, selectedCats, subFilter, normalizeCategory, normalizeSub, productSubNormalized, getRawCategory, extractBrand]);
+
+  const filteredNoSub = useMemo(() => {
+    const minV = Number(priceMin) || 0;
+    const maxV = Number(priceMax) || Infinity;
+    const selBrands = selectedBrands;
+    const selCats = selectedCats;
+
+    return (catalog as any[]).filter((p:any) => {
+      const price = Number(p?.price) || 0;
+      if (price < minV || price > maxV) return false;
+      const cat = normalizeCategory(getRawCategory(p));
+      if (selCats.size && !selCats.has(cat)) return false;
+      const brand = extractBrand(p as any);
+      if (selBrands.size && (!brand || !selBrands.has(String(brand)))) return false;
+      return true;
+    });
+  }, [catalog, priceMin, priceMax, selectedBrands, selectedCats, normalizeCategory, getRawCategory, extractBrand]);
+
+  // Сортировка поверх фильтра
+  const visibleProducts = useMemo(() => sortItems(filtered, sortKey), [filtered, sortKey]);
+  const visibleNoSub = useMemo(() => sortItems(filteredNoSub, sortKey), [filteredNoSub, sortKey]);
+
+  // Группировка отфильтрованных товаров по основным категориям
+  const groupedVisible = useMemo(() => {
+    const result: Record<string, any[]> = {};
+    for (const p of visibleProducts) {
+      const main = normalizeCategory(getRawCategory(p as any));
+      (result[main] ||= []).push(p);
+    }
+    return result;
+  }, [visibleProducts, normalizeCategory, getRawCategory]);
+
+  const subcatsByCat = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const p of visibleNoSub) {
+      const cat = normalizeCategory(getRawCategory(p as any));
+      const sub = productSubNormalized(p);
+      if (!cat || !sub) continue;
+      (map[cat] ||= []).push(sub);
+    }
+    Object.keys(map).forEach((k) => {
+      const uniq = Array.from(new Set(map[k]));
+      map[k] = uniq.slice(0, 16);
+    });
+    return map;
+  }, [visibleNoSub, normalizeCategory, getRawCategory, productSubNormalized]);
+
+  // Порядок секций на странице (из ORDER, затем остальные по алфавиту)
+  const sectionOrder = useMemo(() => {
+    const present = Object.keys(groupedVisible);
+    const known = ORDER.filter((k) => present.includes(k as string)) as string[];
+    const rest = present.filter((k) => !(ORDER as readonly string[]).includes(k)).sort();
+    return [...known, ...rest];
+  }, [groupedVisible]);
+
+  // --- "Показать больше" per category ---
+  const DEFAULT_COUNT = 20;  // initial items shown per category (was 12)
+  const LOAD_STEP = 30;          // items to add on each "Показать больше"
+  const [visibleByCat, setVisibleByCat] = useState<Record<string, number>>({});
+
+  // Ensure visible counts exist and never exceed actual totals; drop stale categories
+  useEffect(() => {
+    setVisibleByCat((prev) => {
+      const next: Record<string, number> = { ...prev };
+      let changed = false;
+
+      sectionOrder.forEach((cat) => {
+        const total = (groupedVisible[cat] || []).length;
+        const minDefault = Math.min(DEFAULT_COUNT, total);
+        const current = next[cat]; // may be undefined
+        // Clamp down to total when filters narrow results,
+        // and clamp up to at least DEFAULT_COUNT when filters are cleared.
+        const normalized = Math.min(Math.max((current ?? minDefault), minDefault), total);
+        if (next[cat] !== normalized) { next[cat] = normalized; changed = true; }
+      });
+
+      // remove categories no longer present
+      Object.keys(next).forEach((k) => {
+        if (!sectionOrder.includes(k)) { delete next[k]; changed = true; }
+      });
+
+      return changed ? next : prev;
+    });
+  }, [sectionOrder, groupedVisible]);
+
+  // Счетчик активных фильтров
+  const activeFiltersCount = useMemo(() => {
+    let n = 0;
+    if (selectedBrands.size) n += 1;
+    if (selectedCats.size) n += 1;
+    if (priceMin > priceStats.min || priceMax < priceStats.max) n += 1;
+    return n;
+  }, [selectedBrands.size, selectedCats.size, priceMin, priceMax, priceStats.min, priceStats.max]);
+  const toggleBrand = useCallback((b: string) => {
+    setSelectedBrands(prev => {
+      const next = new Set(prev);
+      if (next.has(b)) next.delete(b); else next.add(b);
+      return next;
+    });
+  }, []);
+
+  const toggleCat = useCallback((c: string) => {
+    setSelectedCats(prev => {
+      const next = new Set(prev);
+      if (next.has(c)) next.delete(c); else next.add(c);
+      return next;
+    });
+  }, []);
+
+  const resetFilters = useCallback(() => {
+    setSelectedBrands(new Set());
+    setSelectedCats(new Set());
+    setBrandSearch("");
+    setPriceMin(priceStats.min);
+    setPriceMax(priceStats.max);
+  }, [priceStats.min, priceStats.max]);
+
   const [showAnimation, setShowAnimation] = useState(false);
   const [scrollDirection, setScrollDirection] = useState<"up" | "down" | null>(null);
   const [isAtTop, setIsAtTop] = useState(true);
-  const searchParams = useSearchParams();
   const topBarRef = useRef<HTMLDivElement>(null);
   const swiperRef = useRef<any>(null);
   const [hoveredSide, setHoveredSide] = useState<"left" | "right" | null>(null);
@@ -64,6 +654,7 @@ export default function Home() {
   const [scrolledFar, setScrolledFar] = useState(false);
   const { user } = useUser();
   const [isScrollingProgrammatically, setIsScrollingProgrammatically] = useState(false);
+  const [cardImageIndex, setCardImageIndex] = useState<Record<string, number>>({});
   // Track visibility of the inline categories row (anchor under trust bar)
   const inlineCatsRef = useRef<HTMLDivElement | null>(null);
   const [inlineInView, setInlineInView] = useState(true);
@@ -210,10 +801,28 @@ export default function Home() {
     };
   }, [isScrollingProgrammatically]);
 
-  // Debug: observe scrolling flags
-  useEffect(() => {
-    console.log('Scroll direction:', scrollDirection, 'Scrolled far:', scrolledFar, 'At top:', isAtTop);
-  }, [scrollDirection, scrolledFar, isAtTop]);
+  // Products skeleton for loading state
+  const ProductsSkeleton = () => {
+    const items = Array.from({ length: 8 });
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-5 sm:gap-4 px-3 sm:px-0">
+        {items.map((_, i) => (
+          <div
+            key={i}
+            className="rounded-2xl bg-white/80 border border-black/5 shadow-sm overflow-hidden animate-pulse"
+          >
+            <div className="w-full aspect-[4/3] bg-gray-200/80" />
+            <div className="p-3 space-y-2">
+              <div className="h-3 w-16 bg-gray-200 rounded-full" />
+              <div className="h-4 w-3/4 bg-gray-200 rounded-md" />
+              <div className="h-3 w-1/2 bg-gray-200 rounded-md" />
+              <div className="h-4 w-1/3 bg-gray-200 rounded-md" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   // Observe inline categories row; when it leaves viewport, sticky overlay can take over
   useEffect(() => {
@@ -287,6 +896,16 @@ useEffect(() => {
     document.body.style.overflow = originalStyle;
   };
 }, [isModalOpen]);
+// Лочим скролл, пока открыт мобильный/планшетный Drawer фильтров
+useEffect(() => {
+  const originalStyle = window.getComputedStyle(document.body).overflow;
+  if (isFilterOpen) {
+    document.body.style.overflow = 'hidden';
+  }
+  return () => {
+    document.body.style.overflow = originalStyle;
+  };
+}, [isFilterOpen]);
   // --- HERO SLIDES DATA ---
   const slides = [
     {
@@ -361,60 +980,6 @@ useEffect(() => {
     }
   ];
 
-  // Активный фильтр подкатегорий
-  const [subFilter, setSubFilter] = useState<Record<string, string | null>>({});
-
-  // Каталог: предпочитаем НЕ‑премиум
-  const catalog = useMemo(() => {
-    const nonPremium = products.filter((p: any) => p?.premium !== true);
-    return nonPremium.length ? nonPremium : products;
-  }, []);
-
-  // Унифицируем разные варианты названий категорий
-  const normalizeCategory = useCallback((raw: any): string => {
-    if (raw === undefined || raw === null) return "other";
-    const vOrig = String(raw).trim();
-    if (!vOrig) return "other";
-    const v = vOrig.toLowerCase();
-
-    const num = Number(v);
-    if (!Number.isNaN(num)) {
-      const byId: Record<number, string> = {
-        1: "footwear",
-        2: "clothes",
-        3: "headwear",
-        4: "fragrance",
-        5: "accessories",
-      };
-      return byId[num] ?? "other";
-    }
-
-    const map: Record<string, string> = {
-      "обувь": "footwear", "shoes": "footwear", "sneakers": "footwear", "кроссовки": "footwear",
-      "одежда": "clothes", "clothes": "clothes", "apparel": "clothes",
-      "головные уборы": "headwear", "шапки": "headwear", "headwear": "headwear",
-      "парфюмерия": "fragrance", "fragrance": "fragrance", "perfume": "fragrance",
-      "аксессуары": "accessories", "accessories": "accessories",
-      "bags": "bags", "сумки": "bags",
-    };
-
-    return map[v] ?? v;
-  }, []);
-
-  // Синонимы подкатегорий
-  const SUB_ALIASES: Record<string, string> = {
-    tee: 'tshirts', tees: 'tshirts', tshirt: 'tshirts', tshirts: 'tshirts',
-    sneaker: 'sneakers', sneakers: 'sneakers',
-    boot: 'boots', boots: 'boots',
-    sandal: 'sandals', sandals: 'sandals',
-  };
-
-  const normalizeSub = useCallback((raw: any): string | null => {
-    if (raw === undefined || raw === null) return null;
-    const v = String(raw).trim().toLowerCase();
-    if (!v) return null;
-    return SUB_ALIASES[v] ?? v;
-  }, []);
 
   const parseHash = useCallback((): { main: string | null; sub: string | null } => {
     if (typeof window === 'undefined') return { main: null, sub: null };
@@ -426,22 +991,6 @@ useEffect(() => {
     return { main, sub };
   }, [normalizeCategory, normalizeSub]);
 
-  // --- Sorting helpers ---
-  const sortKey = (searchParams.get('sort') || 'popular') as 'popular' | 'price-asc' | 'price-desc';
-  const sortItems = (list: any[], key: 'popular' | 'price-asc' | 'price-desc') => {
-    const copy = [...list];
-    if (key === 'price-asc') {
-      copy.sort((a, b) => (Number(a?.price) || 0) - (Number(b?.price) || 0));
-    } else if (key === 'price-desc') {
-      copy.sort((a, b) => (Number(b?.price) || 0) - (Number(a?.price) || 0));
-    } else {
-      // 'popular' — если есть поле popularity, сортируем, иначе оставляем исходный порядок
-      if (copy.length && typeof copy[0]?.popularity === 'number') {
-        copy.sort((a, b) => (Number(b?.popularity) || 0) - (Number(a?.popularity) || 0));
-      }
-    }
-    return copy;
-  };
 
   // Плавный скролл к элементу с учётом высоты шапки
   const smoothScrollToElement = useCallback((element: HTMLElement) => {
@@ -520,22 +1069,24 @@ useEffect(() => {
   }, [parseHash]);
 
   // Категории, порядок, соответствия
-  const ORDER = ["footwear", "clothes", "bags", "accessories", "fragrance", "headwear"] as const;
-  const idMap: Record<string, number> = { 
-    footwear: 1, clothes: 2, bags: 6, accessories: 5, fragrance: 4, headwear: 3 
+  const idMap: Record<string, number> = {
+    footwear: 1,     // Обувь
+    clothes: 2,      // Одежда
+    headwear: 3,     // Головные уборы
+    fragrance: 4,    // Парфюмерия
+    bags: 5,         // Сумки и рюкзаки
+    accessories: 6   // Аксессуары
   };
 
   // Группировка товаров по категориям
   const byMain = useMemo(() => {
     const result: Record<string, any[]> = {};
     for (const p of catalog) {
-      const main = normalizeCategory(
-        (p as any).main ?? (p as any).category ?? (p as any).categorySlug ?? (p as any).type
-      );
+      const main = normalizeCategory(getRawCategory(p as any));
       (result[main] ||= []).push(p);
     }
     return result;
-  }, [catalog, normalizeCategory]);
+  }, [catalog, normalizeCategory, getRawCategory]);
 
   return (
     <>
@@ -559,10 +1110,15 @@ useEffect(() => {
       </AnimatePresence>
 
 
-      <div 
-        className="relative z-0 w-screen overflow-hidden h-[600px]" 
+      <div
+        className="relative z-0 w-screen overflow-hidden h-[380px] md:h-[520px] lg:h-[600px] bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#0b1224]"
         onMouseLeave={() => setHoveredSide(null)}
       >
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute -left-10 top-10 w-64 h-64 bg-emerald-400/20 blur-3xl rounded-full" />
+          <div className="absolute right-[-40px] bottom-[-60px] w-72 h-72 bg-indigo-500/25 blur-[70px] rounded-full" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/25 to-black/55" />
+        </div>
         {/*
           HERO SLIDES DATA
         */}
@@ -616,16 +1172,22 @@ useEffect(() => {
                     <p className="text-lg md:text-xl mb-6 max-w-xl mx-auto text-gray-300">
                       {slide.subtitle}
                     </p>
-                    <button
-                      className={`px-6 py-3 rounded-full font-bold transition-colors duration-300 ${
-                        isHovered ? "bg-black text-white" : "bg-white text-black"
-                      }`}
-                      onMouseEnter={() => setIsHovered(true)}
-                      onMouseLeave={() => setIsHovered(false)}
-                      onClick={() => openModal(index)}
-                    >
-                      Смотреть каталог
-                    </button>
+
+                    {/* Кнопка: только обычная без премиум */}
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                      <button
+                        className={`px-7 py-3 rounded-full font-bold transition-all duration-300 shadow-lg ${
+                          isHovered
+                            ? "bg-black text-white shadow-black/30 scale-[1.02]"
+                            : "bg-white/90 text-black shadow-white/20 hover:shadow-white/40"
+                        }`}
+                        onMouseEnter={() => setIsHovered(true)}
+                        onMouseLeave={() => setIsHovered(false)}
+                        onClick={() => openModal(index)}
+                      >
+                        Смотреть каталог
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -669,92 +1231,11 @@ useEffect(() => {
           onMouseLeave={() => setHoveredSide(null)}
         />
 
-        <style jsx global>{`
-          .swiper-pagination {
-            bottom: 20px !important;
-            z-index: 20 !important;
-            position: absolute !important;
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            width: 100% !important;
-            left: 0 !important;
-            transform: none !important;
-          }
-
-          .swiper-pagination-bullet {
-            position: relative;
-            width: 10px;
-            height: 10px;
-            border-radius: 9999px;
-            background-color: #000;
-            opacity: 0.3;
-            overflow: hidden;
-            transition: all 0.3s ease;
-          }
-
-          .swiper-pagination-bullet-active {
-            width: 50px;
-            height: 6px;
-            border-radius: 9999px;
-            opacity: 1;
-            background-color: rgba(0, 0, 0, 0.1);
-          }
-
-          .swiper-pagination-bullet-active::after {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            height: 100%;
-            background-color: black;
-            animation: progressFill 4s linear forwards;
-            width: 0%;
-          }
-
-          @keyframes progressFill {
-            0% {
-              width: 0%;
-            }
-            100% {
-              width: 100%;
-            }
-          }
-
-          .cursor-arrow-left {
-            cursor: url("/img/arrow-left.svg"), auto;
-          }
-          .cursor-arrow-right {
-            cursor: url("/img/arrow-right.svg"), auto;
-          }
-        `}</style>
       </div>
 
-      {/* Trust / benefits bar */}
-      <div className="w-full bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/50 border-y border-black/5">
-        <div className="max-w-[1200px] mx-auto px-6 py-6 grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <div className="flex items-center gap-3">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" className="text-black/80" xmlns="http://www.w3.org/2000/svg"><path d="M3 12h18M6 9l-3 3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M21 7v10a2 2 0 0 1-2 2H9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-            <div>
-              <p className="font-semibold leading-tight">Доставка и возврат</p>
-              <p className="text-sm text-gray-500 leading-tight">по РФ, возврат 14 дней</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" className="text-black/80" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.5"/><path d="M3 10h18" stroke="currentColor" strokeWidth="1.5"/></svg>
-            <div>
-              <p className="font-semibold leading-tight">Оплата картой/QR</p>
-              <p className="text-sm text-gray-500 leading-tight">безопасно и быстро</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" className="text-black/80" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5"/><path d="M12 8v5l3 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            <div>
-              <p className="font-semibold leading-tight">Поддержка 24/7</p>
-              <p className="text-sm text-gray-500 leading-tight">мы всегда на связи</p>
-            </div>
-          </div>
-        </div>
+      {/* Stories bar */}
+      <div className="w-full">
+        <Stories />
       </div>
 
       {/* Sticky categories overlay (no background, only buttons). Appears when inline row is out of view and user scrolls up. */}
@@ -770,125 +1251,871 @@ useEffect(() => {
             transition={{ duration: 0.22, ease: 'easeInOut' }}
           >
             <div className="max-w-[1200px] mx-auto px-6 pointer-events-auto">
-              {/* Only categories, no sort, no background */}
-              <Categories mode="inline" />
+            <div className="flex items-center justify-between gap-1 sm:gap-2">
+                <div id="cats-sticky-host" className="flex-1 min-w-0 pr-2 pl-3 sm:pl-0">
+                  <Categories
+                    mode="sticky"
+                    subcatsByCat={subcatsByCat}
+                    activeSub={subFilter}
+                    onSelectSub={(cat, sub) => setSubFilter((p) => ({ ...p, [cat]: sub }))}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsFilterOpen(true)}
+                  className="lg:hidden shrink-0 w-[92px] mr-3 sm:mr-0 inline-flex items-center justify-center gap-2 rounded-xl border border-black/10 bg-black text-white px-3 py-2 text-xs font-semibold"
+                  aria-label={`Открыть фильтры${activeFiltersCount ? ` (${activeFiltersCount})` : ""}`}
+                >
+                  <span>Фильтры{activeFiltersCount ? ` (${activeFiltersCount})` : ""}</span>
+                </button>
+              </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
       {/* Inline categories + Sort (normal flow). This is the anchor we observe. */}
       <div ref={inlineCatsRef}>
-        <Container className="flex items-center justify-between gap-4 mt-4">
-          <div className="relative z-10">
-            <Categories mode="inline" />
+        <Container className="flex items-start gap-1 sm:gap-2 mt-4">
+          <div id="cats-inline-host" className="relative z-10 flex-1 min-w-0 pr-2 pl-3 sm:pl-0">
+            <Categories
+              mode="inline"
+              subcatsByCat={subcatsByCat}
+              activeSub={subFilter}
+              onSelectSub={(cat, sub) => setSubFilter((p) => ({ ...p, [cat]: sub }))}
+            />
           </div>
-          <div className="hidden sm:block relative z-10">
-            <SortPopup />
+          <div className="hidden sm:flex items-center gap-2 relative z-10 ml-auto mt-[4px]">
+            <Link
+              href="/premium"
+              className="inline-flex items-center gap-2 rounded-2xl bg-black text-white px-5 py-2.5 text-sm font-semibold shadow-sm hover:bg-white hover:text-black hover:shadow-md transition"
+            >
+              <span className="text-xs uppercase tracking-[0.16em] opacity-70">
+                Premium
+              </span>
+              <span>Эксклюзивный раздел</span>
+            </Link>
           </div>
+          {/* Кнопка открытия фильтров на мобилке */}
+          <button
+            type="button"
+            onClick={() => setIsFilterOpen(true)}
+            className="lg:hidden relative z-10 shrink-0 w-[92px] mr-3 sm:mr-0 rounded-xl border border-black/10 bg-black text-white px-3 py-2 text-xs font-semibold"
+            aria-label={`Открыть фильтры${activeFiltersCount ? ` (${activeFiltersCount})` : ""}`}
+          >
+            Фильтры{activeFiltersCount ? ` (${activeFiltersCount})` : ""}
+          </button>
         </Container>
       </div>
+      {/* Premium button for mobile (full-width under categories) */}
+      <div className="sm:hidden px-4 mt-3">
+        <Link
+          href="/premium"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-black text-white px-5 py-2.5 text-sm font-semibold shadow-sm hover:bg-white hover:text-black hover:shadow-md transition"
+        >
+          <span className="text-xs uppercase tracking-[0.16em] opacity-70">
+            Premium
+          </span>
+          <span>Эксклюзивный раздел</span>
+        </Link>
+      </div>
       <Container className="mt-10 pb-14">
-        <div className="flex gap-[80px]">
-          <div className="w-[250px]">
-            <Filters />
-          </div>
-          <div className="flex-1">
-            <section className="flex flex-col gap-16">
-              {ORDER.map((key) => {
-                const items = byMain[key] || [];
-                const activeSub = subFilter[key] ?? null;
-                const visible = activeSub ? items.filter((it: any) => it.subcategory === activeSub) : items;
-                const sorted = sortItems(visible, sortKey);
-                if (!visible.length) return null;
-                const label = LABELS[key] || key;
-                const numericId = idMap[key];
-                
-                return (
-                  <section
-                    key={`home-sec-${key}`}
-                    id={numericId ? `category-${numericId}` : key}
-                    data-anchor={key}
-                    className="max-w-[1200px] mx-auto pb-4"
-                  >
-                    <div className="flex items-center justify-between gap-4 mb-4">
-                      <h2 className="text-3xl md:text-4xl font-extrabold">{label}</h2>
-                    </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6 items-stretch">
-                      {sorted.map((it: any) => (
-                        <div key={`home-grid-${it.id}`} className="w-full h-full flex">
-                          <a
-                            id={`product-${it.id}`}
-                            data-product-id={it.id}
-                            href={`/product/${it.id}`}
-                            className="group relative flex flex-col w-full rounded-2xl overflow-hidden bg-white border border-black/10 shadow-sm hover:shadow-md transition-transform duration-300 hover:scale-[1.02]"
-                            onClick={(e) => {
-                              try {
-                                sessionStorage.setItem('lastListRoute', window.location.pathname + window.location.search);
-                                sessionStorage.setItem('lastScrollY', String(window.scrollY));
-                                sessionStorage.setItem('lastProductId', String(it.id));
-                                // Раздел и пол сохраняются на странице товара
-                              } catch {}
-                            }}
-                          >
-                            {/* Image zone with fixed aspect ratio */}
-                            <div className="relative w-full aspect-[4/3] bg-white p-3 overflow-hidden flex items-center justify-center">
-                              {/* badges (always visible) */}
-                              <div className="pointer-events-none absolute top-2 right-2 z-10 flex flex-col items-end gap-1">
-                                {computeBadges(it).map((b, bi) => (
-                                  <span
-                                    key={bi}
-                                    className="px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide text-white shadow-[0_2px_10px_rgba(0,0,0,0.15)]"
-                                    style={{
-                                      background:
-                                        b === 'NEW' ? '#2563eb'
-                                        : b === 'HIT' || b === 'EXCLUSIVE' ? '#111'
-                                        : b.includes('%') ? '#dc2626'
-                                        : '#1f2937',
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-6">
+          {/* SIDEBAR (desktop) */}
+          <aside className="hidden lg:block sticky top-[calc(var(--header-h,72px)+16px)] self-start rounded-2xl bg-white/80 supports-[backdrop-filter]:bg-white/60 backdrop-blur border border-black/10 p-4 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+            {/* Бренды: поиск + чек-лист */}
+            <div>
+              <p className="text-[11px] uppercase tracking-wider font-semibold text-black/60 mb-2">Бренды</p>
+              <input
+                type="text"
+                value={brandSearch}
+                onChange={(e) => setBrandSearch(e.target.value)}
+                placeholder="Поиск бренда…"
+                className="w-full mb-3 rounded-lg border border-black/15 px-3 py-2 text-sm outline-none focus:border-black/40 placeholder:text-black/30"
+              />
+              <div className="max-h-[220px] overflow-auto rounded-lg border border-black/10 divide-y divide-black/5">
+                {allBrands
+                  .filter((b) => b.toLowerCase().includes(brandSearch.toLowerCase()))
+                  .slice(0, 50)
+                  .map((b) => (
+                    <label key={b} className="flex items-center gap-2 text-sm px-2 py-2 hover:bg-black/[0.02]">
+                      <input
+                        type="checkbox"
+                        checked={selectedBrands.has(b)}
+                        onChange={() => toggleBrand(b)}
+                        className="accent-black"
+                      />
+                      <span className="line-clamp-1 text-black/80">{b}</span>
+                    </label>
+                  ))}
+                {!allBrands.length && (
+                  <div className="px-2 py-3">
+                    <p className="text-xs text-gray-500">Бренды появятся после загрузки товаров</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <hr className="my-4 border-black/10" />
+
+            {/* Категории */}
+            <div>
+              <p className="text-[11px] uppercase tracking-wider font-semibold text-black/60 mb-2">Категории</p>
+              <div className="rounded-lg border border-black/10 divide-y divide-black/5">
+                {allCats.map((c) => (
+                  <label key={c} className="flex items-center gap-2 text-sm px-2 py-2 hover:bg-black/[0.02]">
+                    <input
+                      type="checkbox"
+                      checked={selectedCats.has(c)}
+                      onChange={() => toggleCat(c)}
+                      className="accent-black"
+                    />
+                    <span className="text-black/80">{LABELS[c] ?? c}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <hr className="my-4 border-black/10" />
+
+            {/* Цена */}
+            <div>
+              <p className="text-[11px] uppercase tracking-wider font-semibold text-black/60 mb-2">Цена</p>
+              <div className="flex items-center gap-2 text-sm">
+                <input
+                  type="number"
+                  min={priceStats.min}
+                  max={priceMax}
+                  value={priceMin}
+                  onChange={(e) => setPriceMin(Math.min(Number(e.target.value) || 0, priceMax))}
+                  className="w-24 rounded-md border border-black/15 px-2 py-1 focus:border-black/40 focus:outline-none"
+                />
+                <span className="text-gray-500">—</span>
+                <input
+                  type="number"
+                  min={priceMin}
+                  max={priceStats.max}
+                  value={priceMax}
+                  onChange={(e) => setPriceMax(Math.max(Number(e.target.value) || 0, priceMin))}
+                  className="w-24 rounded-md border border-black/15 px-2 py-1 focus:border-black/40 focus:outline-none"
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-gray-500 text-right whitespace-nowrap">
+                мин: {fmtPrice(priceStats.min)} ₽ • макс: {fmtPrice(priceStats.max)} ₽
+              </p>
+              {/* Двойной ползунок — два range */}
+              <div className="mt-3 space-y-2">
+                <input
+                  type="range"
+                  min={priceStats.min}
+                  max={priceStats.max}
+                  value={priceMin}
+                  onChange={(e) => setPriceMin(Math.min(Number(e.target.value) || 0, priceMax))}
+                  className="w-full ui-range"
+                />
+                <input
+                  type="range"
+                  min={priceStats.min}
+                  max={priceStats.max}
+                  value={priceMax}
+                  onChange={(e) => setPriceMax(Math.max(Number(e.target.value) || 0, priceMin))}
+                  className="w-full ui-range"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={resetFilters}
+                className="w-full rounded-lg border border-black/15 px-3 py-2 text-sm hover:bg-black hover:text-white transition"
+              >
+                Сбросить
+              </button>
+            </div>
+          </aside>
+
+
+          {/* PRODUCTS BY CATEGORY */}
+          <section className="space-y-10">
+            {isProductsLoading ? (
+              <ProductsSkeleton />
+            ) : (
+              <>
+                {!sectionOrder.length && (
+                  <div className="text-center text-sm text-gray-500 py-8">
+                    По выбранным фильтрам ничего не найдено
+                  </div>
+                )}
+
+                {sectionOrder.map((main, idx) => {
+              const items = groupedVisible[main] || [];
+              if (!items.length) return null;
+              const anchorId = idMap[main] ? `category-${idMap[main]}` : undefined;
+              return (
+                <div
+                  key={`sec-${main}`}
+                  data-anchor={main}
+                  id={anchorId}
+                  className="scroll-mt-[calc(var(--header-h,72px)+16px)] px-3 sm:px-0"
+                  style={{ scrollMarginTop: 'calc(var(--header-h,72px) + 16px)' }}
+                >
+                  <div className="mb-3 flex items-baseline justify-between">
+                    <h3 className="text-lg sm:text-xl font-bold">{LABELS[main] ?? main}</h3>
+                    {(visibleByCat[main] ?? DEFAULT_COUNT) > DEFAULT_COUNT && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setVisibleByCat((p) => ({ ...p, [main]: Math.min(DEFAULT_COUNT, items.length) }));
+                          const el = document.querySelector(`[data-anchor="${main}"]`) as HTMLElement | null;
+                          if (el) smoothScrollToElement(el);
+                        }}
+                        className="text-xs sm:text-sm text-gray-500 hover:text-black transition inline-flex items-center gap-1"
+                        aria-label="Скрыть дополнительные товары"
+                        title="Скрыть товары"
+                      >
+                        <span aria-hidden>−</span>
+                        <span>Скрыть товары</span>
+                      </button>
+                    )}
+                  </div>
+                  {(() => {
+                    const limit = visibleByCat[main] ?? DEFAULT_COUNT;
+                    const list = items.slice(0, limit);
+                    return (
+                      <>
+                        <motion.div
+                          layout
+                          className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-5 sm:gap-4"
+                        >
+                          {list.map((product: any) => {
+                            const imgSrc =
+                              (Array.isArray(product?.images) && product.images[0]) ||
+                              product?.imageUrl ||
+                              "/img/placeholder.png";
+                          const imagesArr =
+                            Array.isArray(product?.images) && product.images.length
+                              ? product.images
+                              : [imgSrc];
+                          const key = String(product.id);
+                          const activeIdxRaw = cardImageIndex[key] ?? 0;
+                          const activeIdx =
+                            activeIdxRaw >= 0 && activeIdxRaw < imagesArr.length
+                              ? activeIdxRaw
+                              : 0;
+                          const activeSrc = imagesArr[activeIdx] || imgSrc;
+                            const sub = productSubNormalized(product);
+                            const cat = normalizeCategory(getRawCategory(product as any));
+                            const typeKey = sub ?? cat;
+                            const TYPE_LABELS: Record<string, string> = {
+                              sneakers: "Кроссовки",
+                              boots: "Ботинки",
+                              sandals: "Сандалии",
+                              tshirts: "Футболка",
+                              hoodies: "Худи",
+                              bags: "Сумка",
+                              headwear: "Головной убор",
+                              accessories: "Аксессуар",
+                              fragrance: "Парфюм",
+                              clothes: "Одежда",
+                              footwear: "Обувь",
+                            };
+                            const typeLabel = TYPE_LABELS[typeKey] ?? (LABELS[cat] ?? "");
+                            const brandName = extractBrand(product);
+                            // Try to take the first sentence of any description-like field
+                            let descToShow = firstSentence(pickDescription(product));
+                            // If there is no textual description in the DB, compose a compact technical snippet
+                            if (!descToShow) {
+                              const genderMap: Record<string, string> = {
+                                unisex: 'унисекс',
+                                male: 'мужское',
+                                female: 'женское',
+                                men: 'мужское',
+                                women: 'женское',
+                                woman: 'женское',
+                                man: 'мужское',
+                              };
+
+                              const parts: string[] = [];
+
+                              // --- Категорийные фишки ----------------------------------------
+                              // 1) ДУХИ: ноты (верхние / средние / базовые)
+                              if (cat === 'fragrance' && (product as any)?.fragranceNotes) {
+                                const fn = (product as any).fragranceNotes;
+                                if (fn && typeof fn === 'object') {
+                                  const tops = Array.isArray(fn.top) ? fn.top : [];
+                                  const middles = Array.isArray(fn.middle) ? fn.middle : [];
+                                  const bases = Array.isArray(fn.base) ? fn.base : [];
+
+                                  const candidates = [...tops, ...middles, ...bases].filter(
+                                    (v) => typeof v === 'string' && v.trim()
+                                  );
+
+                                  const uniqueNotes: string[] = [];
+                                  for (const note of candidates) {
+                                    const trimmed = note.trim();
+                                    if (!uniqueNotes.includes(trimmed)) uniqueNotes.push(trimmed);
+                                    if (uniqueNotes.length >= 2) break;
+                                  }
+
+                                  if (uniqueNotes.length === 1) {
+                                    parts.push(uniqueNotes[0]);
+                                  } else if (uniqueNotes.length >= 2) {
+                                    parts.push(`${uniqueNotes[0]}, ${uniqueNotes[1]}`);
+                                  }
+                                }
+                              }
+
+                              // 2) ЮВЕЛИРКА: материалы (металл + камни)
+                              const rawCat = String(
+                                (product as any)?.categorySlug ??
+                                (product as any)?.category ??
+                                (product as any)?.type ??
+                                ''
+                              ).toLowerCase();
+
+                              const isJewelry =
+                                cat === 'accessories' ||
+                                rawCat.includes('jewel') ||
+                                !!(product as any)?.jewelryType;
+
+                              if (isJewelry) {
+                                const materialsSrc =
+                                  (product as any)?.materials ??
+                                  (product as any)?.material ??
+                                  (product as any)?.metal ??
+                                  null;
+
+                                const matList: string[] = [];
+
+                                if (Array.isArray(materialsSrc)) {
+                                  for (const m of materialsSrc) {
+                                    if (typeof m === 'string' && m.trim()) matList.push(m.trim());
+                                  }
+                                } else if (typeof materialsSrc === 'string' && materialsSrc.trim()) {
+                                  matList.push(materialsSrc.trim());
+                                }
+
+                                const stone =
+                                  (product as any)?.stone ??
+                                  (product as any)?.stones ??
+                                  (product as any)?.gemstone;
+
+                                if (typeof stone === 'string' && stone.trim()) {
+                                  matList.push(stone.trim());
+                                }
+
+                                if (matList.length) {
+                                  // Не засоряем строку: максимум два материала/камня
+                                  parts.push(matList.slice(0, 2).join(' • '));
+                                }
+                              }
+
+                              // 3) СУМКИ: внешний материал + подкладка
+                              if (cat === 'bags') {
+                                const outer =
+                                  (product as any)?.outerMaterial ??
+                                  (product as any)?.materialOuter ??
+                                  (product as any)?.material ??
+                                  null;
+                                const lining =
+                                  (product as any)?.liningMaterial ??
+                                  (product as any)?.innerMaterial ??
+                                  (product as any)?.insideMaterial ??
+                                  null;
+
+                                const bagParts: string[] = [];
+                                if (typeof outer === 'string' && outer.trim()) {
+                                  bagParts.push(`снаружи: ${outer.trim()}`);
+                                }
+                                if (typeof lining === 'string' && lining.trim()) {
+                                  bagParts.push(`подкладка: ${lining.trim()}`);
+                                }
+                                if (bagParts.length) {
+                                  parts.push(bagParts.join(', '));
+                                }
+                              }
+
+                              // --- Общая техническая часть (для всех категорий) --------------
+                              if (typeLabel) parts.push(typeLabel); // e.g., Кроссовки, Худи, Парфюм
+
+                              const gKey = String((product as any)?.gender || '').toLowerCase();
+                              if (genderMap[gKey]) parts.push(genderMap[gKey]);
+
+                              const vol = Number((product as any)?.volume);
+                              if (Number.isFinite(vol) && vol > 0) parts.push(`${vol} мл`);
+
+                              const colorName =
+                                ((product as any)?.Color &&
+                                  (((product as any).Color as any).name ||
+                                    ((product as any).Color as any).title)) ||
+                                ((product as any)?.color &&
+                                  (((product as any).color as any).name ||
+                                    ((product as any).color as any).title)) ||
+                                (product as any)?.colorName ||
+                                '';
+
+                              if (colorName) parts.push(String(colorName));
+
+                              const sizeType = String((product as any)?.sizeType || '').trim();
+                              if (sizeType && sizeType.toUpperCase() !== 'NONE') parts.push(sizeType);
+
+                              descToShow = parts.join(' • ');
+                            }
+                            return (
+                              <motion.div
+                                layout
+                                key={product.id}
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                transition={{ duration: 0.2 }}
+                              >
+                                <a
+                                  id={`product-${product.id}`}
+                                  href={`/product/${product.id}`}
+                                  className="group rounded-2xl overflow-hidden bg-white shadow-sm ring-1 ring-black/5 hover:ring-black/10 hover:shadow-md transition-transform hover:-translate-y-0.5 will-change-transform [contain:content]"
+                                  onClick={(e) => {
+                                    if (typeof window === 'undefined') return;
+                                    const isMobile = window.innerWidth <= 768;
+                                    if (!isMobile) return;
+                                    if (!imagesArr.length || imagesArr.length === 1) return;
+                                    e.preventDefault();
+                                    const key = String(product.id);
+                                    setCardImageIndex((prev) => {
+                                      const current = prev[key] ?? 0;
+                                      const next = (current + 1) % imagesArr.length;
+                                      return { ...prev, [key]: next };
+                                    });
+                                  }}
+                                >
+                                  <div
+                                    className="relative w-full aspect-[4/3] bg-white overflow-hidden"
+                                    onMouseMove={(e) => {
+                                      if (!imagesArr.length || imagesArr.length === 1) return;
+                                      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                                      const x = e.clientX - rect.left;
+                                      const ratio = rect.width > 0 ? x / rect.width : 0;
+                                      let idx = Math.floor(ratio * imagesArr.length);
+                                      if (idx < 0) idx = 0;
+                                      if (idx >= imagesArr.length) idx = imagesArr.length - 1;
+                                      const key = String(product.id);
+                                      setCardImageIndex((prev) => {
+                                        if (prev[key] === idx) return prev;
+                                        return { ...prev, [key]: idx };
+                                      });
+                                    }}
+                                    onMouseLeave={() => {
+                                      if (!imagesArr.length || imagesArr.length === 1) return;
+                                      const key = String(product.id);
+                                      setCardImageIndex((prev) => {
+                                        if (prev[key] === 0 || prev[key] === undefined) return prev;
+                                        return { ...prev, [key]: 0 };
+                                      });
                                     }}
                                   >
-                                    {b}
-                                  </span>
-                                ))}
-                              </div>
-                              <img
-                                src={it.images?.[0] || "/img/placeholder.png"}
-                                alt={it.name}
-                                width={600}
-                                height={450}
-                                className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-[1.05]"
-                                loading="lazy"
-                                decoding="async"
-                              />
-                            </div>
+                                    <Image
+                                      src={activeSrc}
+                                      alt={product.name || "Товар"}
+                                      fill
+                                      className="object-contain transition-transform duration-300 group-hover:scale-[1.03]"
+                                      sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+                                      priority={false}
+                                    />
+                                  </div>
+                                  <div className="p-3">
+                                    {brandName && (
+                                      <div className="text-[10px] uppercase tracking-wide text-black/50 leading-none mb-1">
+                                        {brandName}
+                                      </div>
+                                    )}
+                                    <h2 className="font-semibold text-sm leading-snug line-clamp-2">
+                                      {product.name}
+                                    </h2>
+                                    {typeLabel && (
+                                      <div className="mt-1 text-[12px] font-semibold text-black">{typeLabel}</div>
+                                    )}
+                                    {descToShow && (
+                                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">{descToShow}</p>
+                                    )}
+                                    <div className="mt-2 flex items-baseline gap-2">
+                                      {product?.oldPrice &&
+                                        Number(product.oldPrice) > Number(product.price) && (
+                                          <span className="text-[11px] text-gray-400 line-through">
+                                            {fmtPrice(product.oldPrice)} ₽
+                                          </span>
+                                        )}
+                                      {(() => {
+                                        const minPrice = getMinPrice(product) || Number(product.price) || 0;
+                                        return (
+                                          <span className="text-sm font-semibold">
+                                            от {fmtPrice(minPrice)} ₽
+                                          </span>
+                                        );
+                                      })()}
+                                    </div>
+                                  </div>
+                                </a>
+                              </motion.div>
+                            );
+                          })}
+                        </motion.div>
 
-                            {/* Text zone with fixed height */}
-                            <div className="p-3 flex flex-col min-h-[80px]">
-                              <p className="text-sm font-semibold leading-snug line-clamp-2 mb-2 flex-grow">
-                                {it.name}
-                              </p>
-                              <div className="mt-auto flex items-baseline gap-2">
-                                {it?.oldPrice && Number(it.oldPrice) > Number(it.price) && (
-                                  <span className="text-[11px] text-gray-400 line-through">
-                                    {fmtPrice(it.oldPrice)} ₽
-                                  </span>
-                                )}
-                                <span className="text-sm font-semibold">
-                                  от {fmtPrice(it.price)} ₽
-                                </span>
-                              </div>
-                            </div>
-                          </a>
+                        {/* Show more (always visible; disabled if нечего догружать) */}
+                        <div className="mt-4 flex justify-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (items.length <= limit) return;
+                              setVisibleByCat((p) => ({
+                                ...p,
+                                [main]: Math.min((p[main] ?? DEFAULT_COUNT) + LOAD_STEP, items.length),
+                              }));
+                            }}
+                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-black/15 transition text-sm ${
+                              items.length > limit ? "hover:bg-black hover:text-white" : "opacity-50 cursor-not-allowed"
+                            }`}
+                            aria-label="Показать больше товаров"
+                            disabled={items.length <= limit}
+                            title={items.length <= limit ? "Больше товаров нет" : "Показать больше"}
+                          >
+                            <span className="text-lg leading-none" aria-hidden>＋</span>
+                            <span>Показать больше</span>
+                          </button>
                         </div>
-                      ))}
-                    </div>
-                  </section>
-                );
-              })}
-            </section>
-          </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              );
+                })}
+              </>
+            )}
+          </section>
         </div>
       </Container>
+      {/* MOBILE FILTERS DRAWER */}
+      <AnimatePresence>
+        {isFilterOpen && (
+          <motion.div
+            key="filters-drawer"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-[1200] flex items-end sm:items-center justify-center"
+            aria-modal="true"
+            role="dialog"
+          >
+            <div className="absolute inset-0 bg-black/50" onClick={() => setIsFilterOpen(false)} />
+            <motion.div
+              initial={{ y: 24, scale: 1, opacity: 0 }}
+              animate={{ y: 0, scale: 1, opacity: 1 }}
+              exit={{ y: 16, scale: 1, opacity: 0 }}
+              transition={{ type: 'tween', duration: 0.22 }}
+              className="relative z-[1201] w-full sm:max-w-[520px] rounded-t-2xl sm:rounded-2xl bg-white shadow-xl p-4 sm:p-6"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-base font-semibold">Фильтры</p>
+                <button onClick={() => setIsFilterOpen(false)} aria-label="Закрыть" className="text-black/60 hover:text-black">✕</button>
+              </div>
+
+              {/* Бренды */}
+              <div className="mb-4">
+                <p className="text-sm font-semibold mb-2">Бренды</p>
+                <input
+                  type="text"
+                  value={brandSearch}
+                  onChange={(e) => setBrandSearch(e.target.value)}
+                  placeholder="Поиск бренда…"
+                  className="w-full mb-3 rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-black/30"
+                />
+                <div className="max-h-[180px] overflow-auto pr-1 grid grid-cols-2 gap-2">
+                  {allBrands
+                    .filter((b) => b.toLowerCase().includes(brandSearch.toLowerCase()))
+                    .slice(0, 60)
+                    .map((b) => (
+                      <label key={`m-${b}`} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={selectedBrands.has(b)}
+                          onChange={() => toggleBrand(b)}
+                          className="accent-black"
+                        />
+                        <span className="truncate">{b}</span>
+                      </label>
+                    ))}
+                </div>
+              </div>
+
+              {/* Категории */}
+              <div className="mb-4">
+                <p className="text-sm font-semibold mb-2">Категории</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {allCats.map((c) => (
+                    <label key={`m-${c}`} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={selectedCats.has(c)}
+                        onChange={() => toggleCat(c)}
+                        className="accent-black"
+                      />
+                      <span className="truncate">{LABELS[c] ?? c}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Цена */}
+              <div className="mb-4">
+                <p className="text-sm font-semibold mb-2">Цена</p>
+                <div className="flex items-center gap-2 text-sm">
+                  <input
+                    type="number"
+                    min={priceStats.min}
+                    max={priceMax}
+                    value={priceMin}
+                    onChange={(e) => setPriceMin(Math.min(Number(e.target.value) || 0, priceMax))}
+                    className="w-28 rounded-md border border-black/10 px-2 py-2"
+                  />
+                  <span className="text-gray-500">—</span>
+                  <input
+                    type="number"
+                    min={priceMin}
+                    max={priceStats.max}
+                    value={priceMax}
+                    onChange={(e) => setPriceMax(Math.max(Number(e.target.value) || 0, priceMin))}
+                    className="w-28 rounded-md border border-black/10 px-2 py-2"
+                  />
+                </div>
+                <div className="mt-3 space-y-2">
+                  <input
+                    type="range"
+                    min={priceStats.min}
+                    max={priceStats.max}
+                    value={priceMin}
+                    onChange={(e) => setPriceMin(Math.min(Number(e.target.value) || 0, priceMax))}
+                    className="w-full ui-range"
+                  />
+                  <input
+                    type="range"
+                    min={priceStats.min}
+                    max={priceStats.max}
+                    value={priceMax}
+                    onChange={(e) => setPriceMax(Math.max(Number(e.target.value) || 0, priceMin))}
+                    className="w-full ui-range"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  мин: {fmtPrice(priceStats.min)} ₽ • макс: {fmtPrice(priceStats.max)} ₽
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={resetFilters}
+                  className="w-1/2 rounded-lg border border-black/10 px-3 py-2 text-sm hover:bg-black hover:text-white transition"
+                >
+                  Сбросить
+                </button>
+                <button
+                  onClick={() => setIsFilterOpen(false)}
+                  className="w-1/2 rounded-lg bg-black text-white px-3 py-2 text-sm font-semibold"
+                >
+                  Применить{activeFiltersCount ? ` (${activeFiltersCount})` : ""}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Footer */}
+      <style jsx global>{`
+  /* Desktop/Laptop: show categories fully (wrap) and avoid clipping */
+  #cats-inline-host [role="tablist"],
+  #cats-sticky-host [role="tablist"] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    overflow: visible;
+    white-space: normal;
+  }
+  /* Swiper pagination/bullets */
+  .swiper-pagination {
+    bottom: 20px !important;
+    z-index: 20 !important;
+    position: absolute !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
+    left: 0 !important;
+    transform: none !important;
+  }
+  .swiper-pagination-bullet {
+    position: relative;
+    width: 10px;
+    height: 10px;
+    border-radius: 9999px;
+    background-color: #000;
+    opacity: 0.3;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+  .swiper-pagination-bullet-active {
+    width: 50px;
+    height: 6px;
+    border-radius: 9999px;
+    opacity: 1;
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+  .swiper-pagination-bullet-active::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background-color: black;
+    animation: progressFill 4s linear forwards;
+    width: 0%;
+  }
+  @keyframes progressFill {
+    0% { width: 0%; }
+    100% { width: 100%; }
+  }
+  .cursor-arrow-left { cursor: url("/img/arrow-left.svg"), auto; }
+  .cursor-arrow-right { cursor: url("/img/arrow-right.svg"), auto; }
+
+  /* Filters: consistent, thin, monochrome controls */
+  .ui-range {
+    height: 20px;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background: transparent !important; /* kill any framework gradient */
+    box-shadow: none !important;
+    outline: none !important;
+    --range-shdw: rgba(0,0,0,0.12) !important; /* some libs read this */
+  }
+  /* WebKit */
+  .ui-range::-webkit-slider-runnable-track {
+    height: 2px;
+    background: rgba(0,0,0,0.12);
+    border-radius: 9999px;
+  }
+  .ui-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    margin-top: -6px; /* align to 2px track */
+    width: 14px;
+    height: 14px;
+    border-radius: 9999px;
+    background: #000;
+    border: 1px solid rgba(0,0,0,0.5);
+  }
+  /* Firefox */
+  .ui-range::-moz-range-track {
+    height: 2px;
+    background: rgba(0,0,0,0.12);
+    border-radius: 9999px;
+  }
+  .ui-range::-moz-range-progress {
+    height: 2px;
+    background: rgba(0,0,0,0.12); /* same as track – no colored progress */
+    border-radius: 9999px;
+  }
+  .ui-range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: 1px solid rgba(0,0,0,0.5);
+    border-radius: 9999px;
+    background: #000;
+  }
+  /* IE/Edge Legacy */
+  .ui-range::-ms-track {
+    height: 2px;
+    background: transparent;
+    border-color: transparent;
+    color: transparent;
+  }
+  .ui-range::-ms-fill-lower,
+  .ui-range::-ms-fill-upper {
+    background: rgba(0,0,0,0.12);
+    border-radius: 9999px;
+  }
+  .ui-range::-ms-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 9999px;
+    background: #000;
+    border: 1px solid rgba(0,0,0,0.5);
+    margin-top: 0;
+  }
+  .ui-range:focus,
+  .ui-range:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Thin hr replacement (where used) */
+  .filters-hr { height: 1px; background: rgba(0,0,0,0.10); }
+
+  /* Remove number input spinners for cleaner mobile UI */
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type=number] { -moz-appearance: textfield; }
+
+  /* Hide horizontal scrollbar for promo rail (mobile) */
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+  .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+  @media (max-width: 640px) {
+    /* Main categories: single-row, horizontally scrollable */
+    #cats-inline-host [role="tablist"],
+    #cats-sticky-host [role="tablist"] {
+      display: flex;
+      flex-wrap: nowrap !important;
+      gap: 8px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      white-space: nowrap;
+      scroll-snap-type: x proximity;
+      scrollbar-width: none;
+    }
+    #cats-inline-host [role="tablist"]::-webkit-scrollbar,
+    #cats-sticky-host [role="tablist"]::-webkit-scrollbar { display: none; }
+
+    /* Add comfortable side padding so the first/last labels are not flush with screen edges */
+    #cats-inline-host [role="tablist"],
+    #cats-sticky-host [role="tablist"] {
+      padding-left: 16px;
+      padding-right: 14px;
+    }
+
+    #cats-inline-host [role="tablist"] > *,
+    #cats-sticky-host [role="tablist"] > * {
+      flex: 0 0 auto;
+      scroll-snap-align: center;
+    }
+
+    /* Subcategories (chips) may wrap on mobile */
+    #cats-inline-host .subcats,
+    #cats-sticky-host .subcats,
+    #cats-inline-host [data-subcats],
+    #cats-sticky-host [data-subcats] {
+      display: flex;
+      flex-wrap: wrap;
+      row-gap: 8px;
+      overflow: visible;
+      white-space: normal;
+    }
+  }
+
+  /* Ensure hash/programmable scroll aligns sections below sticky header on all browsers */
+  [id^="category-"] { scroll-margin-top: calc(var(--header-h,72px) + 16px); }
+  [data-anchor] { scroll-margin-top: calc(var(--header-h,72px) + 16px); }
+`}</style>
       <footer className="w-full bg-black text-white py-12 mt-16">
         <div className="px-6 max-w-[1200px] mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -966,6 +2193,28 @@ useEffect(() => {
             aria-modal="true"
             role="dialog"
           >
+            {/* compute promo items for the current slide (only Acne × Kappa) */}
+            {(() => {
+              const slide = slides[activeSlide];
+              const isAcnePromo = /acne\s*studios.*kappa/i.test(
+                (slide?.title || '') + ' ' + (slide?.modal?.title || '')
+              );
+
+              let promoItems: any[] = [];
+              if (isAcnePromo) {
+                promoItems = (catalog as any[])
+                  .filter((p: any) => Array.isArray(p?.brands) && p.brands.includes('Acne Studios') && p.brands.includes('Kappa'))
+                  .slice(0, 3);
+                if (!promoItems.length) {
+                  const ids = new Set([2001, 2002, 2003]);
+                  promoItems = (catalog as any[]).filter((p: any) => ids.has(Number(p?.id))).slice(0, 3);
+                }
+              }
+              // expose to outer scope via window property used right below (hacky but safe inside modal lifetime)
+              (window as any).__modalHasPromo = Boolean(promoItems.length);
+              (window as any).__modalPromoItems = promoItems;
+              return null;
+            })()}
             {/* Backdrop: full-page black + strong blur */}
             <div
               className="absolute inset-0 bg-black/55 backdrop-blur-lg supports-[backdrop-filter]:backdrop-blur-xl"
@@ -1018,18 +2267,15 @@ useEffect(() => {
                   </p>
                 </div>
 
-                <div className="absolute inset-0 bg-gradient-to-t from-white via-white/60 to-transparent" />
+                <div
+                  className={`absolute inset-0 bg-gradient-to-t ${
+                    (window as any).__modalHasPromo ? 'from-white via-white/60' : 'from-white/80 via-white/40'
+                  } to-transparent`}
+                />
 
-                {/* Promo strip: 3 товара, полуперекрывают границу хэдера и контента */}
                 {(() => {
-                  const slide = slides[activeSlide];
-                  const ctas = (slide?.modal?.ctas || []);
-                  const anchor = (ctas[0]?.hash || '').replace('#','');
-                  const key = (anchor && (['footwear','clothes','bags','accessories','fragrance','headwear'] as const).includes(anchor as any)) ? anchor : 'clothes';
-                  const pool = (byMain as any)[key] || [];
-                  const promo = pool.slice(0, 3);
+                  const promo: any[] = (window as any).__modalPromoItems || [];
                   if (!promo.length) return null;
-
                   return (
                     <div
                       className="absolute left-1/2 z-20 pointer-events-auto"
@@ -1057,21 +2303,15 @@ useEffect(() => {
                                 sizes="(max-width: 768px) 9rem, 12rem"
                                 priority
                               />
-                              {/* soft top highlight to match the mockup */}
                               <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-white/50 to-transparent" />
                             </a>
-                            {/* caption */}
                             <div className="mt-2 w-full px-1">
                               <p className="text-xs md:text-sm font-medium text-gray-900 line-clamp-1">{it.name}</p>
                               <div className="mt-0.5 flex items-baseline justify-center gap-2">
                                 {it?.oldPrice && Number(it.oldPrice) > Number(it.price) && (
-                                  <span className="text-[10px] md:text-xs text-gray-400 line-through">
-                                    {fmtPrice(it.oldPrice)} ₽
-                                  </span>
+                                  <span className="text-[10px] md:text-xs text-gray-400 line-through">{fmtPrice(it.oldPrice)} ₽</span>
                                 )}
-                                <span className="text-xs md:text-sm font-semibold text-black">
-                                  {fmtPrice(it.price)} ₽
-                                </span>
+                                <span className="text-xs md:text-sm font-semibold text-black">{fmtPrice(it.price)} ₽</span>
                               </div>
                             </div>
                           </div>
@@ -1083,7 +2323,7 @@ useEffect(() => {
               </div>
 
               {/* Body */}
-              <div className="p-6 md:p-8 pt-44 md:pt-52">
+              <div className={`p-6 md:p-8 ${ (window as any).__modalHasPromo ? 'pt-44 md:pt-52' : 'pt-8 md:pt-10' }`}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                   <div className="space-y-3">
                     <h4 className="font-bold">Почему стоит заглянуть:</h4>
