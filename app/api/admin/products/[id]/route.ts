@@ -6,12 +6,14 @@ import { requireAdminApi } from "@/lib/admin";
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const guard = await requireAdminApi({ require2FA: true, req });
   if (!guard.ok) return guard.response;
 
-  const id = Number(params?.id);
+  const resolved = await params;
+  const rawId = resolved?.id;
+  const id = Number(rawId);
   if (!Number.isFinite(id)) {
     return NextResponse.json({ success: false, message: "Некорректный id" }, { status: 400 });
   }

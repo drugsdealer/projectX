@@ -74,10 +74,14 @@ type MapPickerProps = {
   invalidateKey?: number;
 };
 
+const MapContainerAny = MapContainer as unknown as React.ComponentType<any>;
+const TileLayerAny = TileLayer as unknown as React.ComponentType<any>;
+const MarkerAny = Marker as unknown as React.ComponentType<any>;
+
 function MapPicker({ center, marker, onPick, mapRef, invalidateKey }: MapPickerProps) {
   const MapClick = () => {
     useMapEvents({
-      click(e) {
+      click(e: any) {
         const coords: [number, number] = [e.latlng.lat, e.latlng.lng];
         onPick(coords);
       },
@@ -103,20 +107,20 @@ function MapPicker({ center, marker, onPick, mapRef, invalidateKey }: MapPickerP
   };
 
   return (
-    <MapContainer
+    <MapContainerAny
       center={center}
       zoom={10}
       style={{ width: "100%", height: "100%" }}
       scrollWheelZoom={true}
-      whenCreated={(map) => {
+      whenCreated={(map: any) => {
         if (mapRef) mapRef.current = map;
       }}
     >
-      <TileLayer attribution={tileAttribution} url={tileUrl} />
+      <TileLayerAny attribution={tileAttribution} url={tileUrl} />
       <MapSizer />
       <MapClick />
-      {marker ? <Marker position={marker} /> : null}
-    </MapContainer>
+      {marker ? <MarkerAny position={marker} /> : null}
+    </MapContainerAny>
   );
 }
 

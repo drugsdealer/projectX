@@ -392,7 +392,9 @@ export default function UserSettings() {
                     onKeyDown={(e) => handlePwKey(e, i)}
                     onFocus={() => setPwActive(i)}
                     onPaste={handlePwPaste}
-                    ref={(el) => (pwInputsRef.current[i] = el)}
+                    ref={(el) => {
+                      pwInputsRef.current[i] = el;
+                    }}
                     className={`h-12 w-10 rounded-xl border text-center text-lg font-semibold transition-all duration-200 ${
                       digit ? "scale-[1.02] border-black shadow-[0_6px_16px_rgba(0,0,0,0.12)]" : "border-black/10"
                     } ${pwActive === i ? "ring-2 ring-black/20" : ""} ${

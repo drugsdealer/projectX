@@ -126,8 +126,9 @@ function getMinPrice(p: any): number | null {
   return Math.min(...nums);
 }
 
-export default async function CategoryPage({ params }: { params: { slug: string } }) {
-  const slug = params?.slug ?? '';
+export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolved = await params;
+  const slug = resolved?.slug ?? '';
   const label = humanizeSlug(slug);
   const displayLabel = prettyCategoryTitle(label);
 

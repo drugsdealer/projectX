@@ -72,8 +72,6 @@ function sanitizeBirthDate(v: unknown): string | undefined {
 
 // ---------- base64url helpers ----------
 function toBase64Url(buf: ArrayBuffer): string {
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   const b64 = Buffer.from(new Uint8Array(buf)).toString('base64');
   return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 }
@@ -81,8 +79,6 @@ function toBase64Url(buf: ArrayBuffer): string {
 function fromBase64Url(s: string): ArrayBuffer {
   const pad = s.length % 4 === 2 ? '==' : s.length % 4 === 3 ? '=' : '';
   const b64 = s.replace(/-/g, '+').replace(/_/g, '/') + pad;
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
   const buf = Buffer.from(b64, 'base64');
   const out = new Uint8Array(buf.byteLength);
   out.set(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
