@@ -2,15 +2,44 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import products from "@/data/products";
+
+type PreviewProduct = {
+  id: number;
+  imageUrl?: string | null;
+  images?: string[];
+  name: string;
+  premium?: boolean;
+};
 
 const PremiumProductsPreview = () => {
-  const [randomProducts, setRandomProducts] = useState([]);
+  const [randomProducts, setRandomProducts] = useState<PreviewProduct[]>([]);
 
   useEffect(() => {
-    const premiumProducts = products.filter((p) => p.origin === "premium");
-    const shuffled = [...premiumProducts].sort(() => 0.5 - Math.random());
-    setRandomProducts(shuffled.slice(0, 3));
+    let cancelled = false;
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch("/api/products?category=premium&take=12", {
+          signal: controller.signal,
+        });
+        const data = await res.json().catch(() => ({}));
+        const items: PreviewProduct[] = Array.isArray(data?.products)
+          ? data.products
+          : Array.isArray(data)
+          ? data
+          : [];
+        const premiumOnly = items.filter((p) => p?.premium);
+        const list = premiumOnly.length ? premiumOnly : items;
+        const shuffled = [...list].sort(() => 0.5 - Math.random());
+        if (!cancelled) setRandomProducts(shuffled.slice(0, 3));
+      } catch {
+        if (!cancelled) setRandomProducts([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
   }, []);
 
   return (
@@ -18,7 +47,7 @@ const PremiumProductsPreview = () => {
       {randomProducts.map((product) => (
         <img
           key={product.id}
-          src={product.imageUrl}
+          src={product.imageUrl ?? product.images?.[0] ?? "/img/placeholder.png"}
           alt={product.name}
           className="w-40 h-52 object-cover rounded-lg shadow-lg transition-transform hover:scale-105"
         />

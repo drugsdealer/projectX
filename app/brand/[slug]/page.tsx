@@ -26,7 +26,7 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
 
   // 2) Подтягиваем товары бренда (может быть пусто — это ок)
   const productsRaw = await prisma.product.findMany({
-    where: { brandId: brand.id },
+    where: { brandId: brand.id, deletedAt: null },
     include: { Brand: true },
   });
 

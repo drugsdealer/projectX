@@ -35,6 +35,17 @@ type Order = {
   publicNumber?: string | null;
   totalAmount: number;
   status: 'PENDING' | 'SUCCEEDED' | 'CANCELED';
+  shippingStatus?: 'PROCESSING' | 'ABROAD' | 'IN_RUSSIA' | 'ARRIVED' | null;
+  deliveryRequestedAt?: string | null;
+  deliveryScheduledAt?: string | null;
+  deliveryAddress?: string | null;
+  deliveryRecipientName?: string | null;
+  deliveryPhone?: string | null;
+  fullName?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  handedAt?: string | null;
   createdAt: string; // ISO string
   token?: string | null;
   items: OrderItem[];
@@ -48,6 +59,91 @@ const safeDate = (value: string | Date | null | undefined): Date | null => {
   const d = value instanceof Date ? value : new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
 };
+
+function getMoscowNow(): Date {
+  const now = new Date();
+  return new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Moscow' }));
+}
+
+function pad2(n: number) {
+  return n < 10 ? `0${n}` : String(n);
+}
+
+function buildNextDaySlots() {
+  const mskNow = getMoscowNow();
+  const next = new Date(mskNow.getFullYear(), mskNow.getMonth(), mskNow.getDate() + 1, 0, 0, 0, 0);
+  const yyyy = next.getFullYear();
+  const mm = pad2(next.getMonth() + 1);
+  const dd = pad2(next.getDate());
+  const ranges = [
+    { start: 13, end: 16 },
+    { start: 16, end: 19 },
+    { start: 17, end: 20 },
+  ];
+  return ranges.map((r) => {
+    const start = pad2(r.start);
+    const end = pad2(r.end);
+    const value = `${yyyy}-${mm}-${dd}T${start}:00:00+03:00`;
+    return { label: `${start}:00–${end}:00`, value };
+  });
+}
+
+function getMoscowParts(date: Date) {
+  const dtf = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Moscow',
+    hour: '2-digit',
+    minute: '2-digit',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour12: false,
+  });
+  const parts = dtf.formatToParts(date);
+  const map: Record<string, string> = {};
+  for (const p of parts) if (p.type !== 'literal') map[p.type] = p.value;
+  return {
+    hour: Number(map.hour),
+    minute: Number(map.minute),
+    year: Number(map.year),
+    month: Number(map.month),
+    day: Number(map.day),
+  };
+}
+
+function formatDeliverySlot(date: Date) {
+  const { hour } = getMoscowParts(date);
+  if (hour === 13) return '13:00–16:00';
+  if (hour === 16) return '16:00–19:00';
+  if (hour === 17) return '17:00–20:00';
+  return `${pad2(hour)}:00`;
+}
+
+function formatPhoneInput(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  let normalized = digits;
+  if (digits.startsWith('8')) {
+    normalized = `7${digits.slice(1)}`;
+  } else if (!digits.startsWith('7')) {
+    normalized = `7${digits}`;
+  }
+
+  const d = normalized.slice(0, 11);
+  const parts = [
+    d.slice(0, 1),
+    d.slice(1, 4),
+    d.slice(4, 7),
+    d.slice(7, 9),
+    d.slice(9, 11),
+  ];
+
+  let out = `+${parts[0]}`;
+  if (parts[1]) out += ` (${parts[1]}`;
+  if (parts[1]?.length === 3) out += `)`;
+  if (parts[2]) out += ` ${parts[2]}`;
+  if (parts[3]) out += `-${parts[3]}`;
+  if (parts[4]) out += `-${parts[4]}`;
+  return out;
+}
 
 // --- Brand helpers ---
 function guessBrandName(name?: string | null): string | null {
@@ -155,12 +251,10 @@ function StepTracker({ activeIndex }: StepTrackerProps) {
           const done = idx < activeIndex;
           const active = idx === activeIndex;
           const baseDot = 'flex items-center justify-center w-8 h-8 rounded-full shrink-0 text-sm';
-          const dotClass = active
-            ? 'bg-black text-white'
-            : done
+          const dotClass = active || done
             ? 'bg-emerald-500 text-white'
             : 'bg-white text-gray-400 border border-black/15';
-          const lineClass = done ? 'bg-emerald-500' : active ? 'bg-black' : 'bg-black/10';
+          const lineClass = active || done ? 'bg-emerald-500' : 'bg-black/10';
           return (
             <div key={label} className="snap-center shrink-0 min-w-[220px] sm:min-w-0 sm:flex-1 flex items-center gap-2">
               <div className={[baseDot, dotClass].join(' ')} title={label}>
@@ -188,6 +282,19 @@ function StepTracker({ activeIndex }: StepTrackerProps) {
 // - PENDING: шаг 0 "Обработка заказа"
 // - SUCCEEDED: считаем "В пути" внутри РФ => ставим шаг 2 (можно скорректировать логикой доставки в будущем)
 function deriveStage(order: Order) {
+  if (order.handedAt) {
+    return { index: 3, hint: 'Заказ отдан' };
+  }
+  if (order.shippingStatus) {
+    const map: Record<string, number> = {
+      PROCESSING: 0,
+      ABROAD: 1,
+      IN_RUSSIA: 2,
+      ARRIVED: 3,
+    };
+    const idx = map[order.shippingStatus] ?? 0;
+    return { index: idx, hint: STEP_LABELS[idx] };
+  }
   if (order.status === 'CANCELED') {
     return { index: 0, hint: 'Заказ отменён' };
   }
@@ -400,7 +507,7 @@ function OrderDetailsModal({ open, onClose, order }: ModalProps) {
             {/* summary + help */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="text-sm text-gray-600">
-                Текущий этап: <span className="font-semibold">{STEP_LABELS[stage.index]}</span>
+                Текущий этап: <span className="font-semibold">{stage.hint}</span>
               </div>
               <div className="text-xl md:text-2xl font-semibold">Итого к оплате: {fmt(order.totalAmount)} ₽</div>
             </div>
@@ -420,6 +527,67 @@ export default function UserOrders() {
   // modal state
   const [detailsOpen, setDetailsOpen] = React.useState(false);
   const [selectedOrder, setSelectedOrder] = React.useState<Order | null>(null);
+  const [deliveryOpenId, setDeliveryOpenId] = React.useState<number | null>(null);
+  const [deliveryLoading, setDeliveryLoading] = React.useState(false);
+  const [deliveryMsg, setDeliveryMsg] = React.useState<string | null>(null);
+  const [deliveryForm, setDeliveryForm] = React.useState<{
+    fullName: string;
+    address: string;
+    phone: string;
+    slot: string;
+  }>({ fullName: '', address: '', phone: '', slot: '' });
+
+  const slots = React.useMemo(() => buildNextDaySlots(), []);
+
+  const openDelivery = (order: Order) => {
+    setDeliveryMsg(null);
+    setDeliveryOpenId(order.id);
+    setDeliveryForm({
+      fullName: order.deliveryRecipientName || order.fullName || '',
+      address: order.deliveryAddress || order.address || '',
+      phone: formatPhoneInput(order.deliveryPhone || order.phone || ''),
+      slot: slots[0]?.value || '',
+    });
+  };
+
+  const isValidPhone = (value: string) => {
+    const digits = value.replace(/\D/g, '');
+    return /^([78]\d{10})$/.test(digits);
+  };
+
+  const submitDelivery = async (orderId: number) => {
+    setDeliveryMsg(null);
+    if (!isValidPhone(deliveryForm.phone)) {
+      setDeliveryMsg('Введите корректный мобильный телефон (11 цифр, начинается с 7 или 8).');
+      return;
+    }
+    setDeliveryLoading(true);
+    try {
+      const res = await fetch('/api/order/delivery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId,
+          fullName: deliveryForm.fullName,
+          address: deliveryForm.address,
+          phone: deliveryForm.phone,
+          scheduledAt: deliveryForm.slot,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.success) {
+        setDeliveryMsg(data?.message || 'Не удалось оформить доставку');
+        return;
+      }
+      setDeliveryMsg('Доставка оформлена. Мы свяжемся с вами при необходимости.');
+      setDeliveryOpenId(null);
+      await reload();
+    } catch {
+      setDeliveryMsg('Не удалось оформить доставку');
+    } finally {
+      setDeliveryLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -479,12 +647,15 @@ export default function UserOrders() {
   return (
     <>
       <div className="w-full">
-        <div className="max-h-[calc(100vh-120px)] overflow-y-auto pr-1">
+        <div className="md:max-h-[calc(100vh-120px)] md:overflow-y-auto pr-1">
           <div className="space-y-6">
             {orders.map((o) => {
               const created = safeDate(o.createdAt);
               const items = Array.isArray(o.items) ? o.items : [];
               const displayNumber = o.publicNumber ?? o.id;
+              const deliveryScheduled = safeDate(o.deliveryScheduledAt);
+              const handed = safeDate(o.handedAt);
+              const showDelivery = o.shippingStatus === 'ARRIVED' && !handed;
               return (
                 <div key={o.id} className="rounded-2xl bg-white/95 shadow-sm p-5">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
@@ -515,6 +686,93 @@ export default function UserOrders() {
                       </button>
                     </div>
                   </div>
+
+                  {showDelivery && (
+                    <div className="mb-4 rounded-2xl border border-black/10 bg-white p-4">
+                      <div className="text-sm font-semibold">Доставка на дом</div>
+                      {deliveryScheduled ? (
+                        <div className="mt-2 text-sm text-black/70">
+                          Запланировано на{' '}
+                          {deliveryScheduled.toLocaleDateString('ru-RU', { timeZone: 'Europe/Moscow' })}{' '}
+                          {formatDeliverySlot(deliveryScheduled)}{' '}
+                          (МСК)
+                        </div>
+                      ) : (
+                        <div className="mt-3">
+                          {deliveryOpenId !== o.id ? (
+                            <button
+                              onClick={() => openDelivery(o)}
+                              className="px-4 py-2 rounded-lg bg-black text-white hover:bg-black/90 text-sm"
+                            >
+                              Доставить на дом
+                            </button>
+                          ) : (
+                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                              <input
+                                className="rounded-xl border border-black/10 px-3 py-2 text-sm"
+                                placeholder="ФИО получателя"
+                                value={deliveryForm.fullName}
+                                onChange={(e) => setDeliveryForm((p) => ({ ...p, fullName: e.target.value }))}
+                              />
+                              <input
+                                className="rounded-xl border border-black/10 px-3 py-2 text-sm"
+                                placeholder="Телефон"
+                                value={deliveryForm.phone}
+                                onChange={(e) =>
+                                  setDeliveryForm((p) => ({ ...p, phone: formatPhoneInput(e.target.value) }))
+                                }
+                                inputMode="tel"
+                                maxLength={18}
+                              />
+                              <input
+                                className="rounded-xl border border-black/10 px-3 py-2 text-sm sm:col-span-2"
+                                placeholder="Адрес доставки"
+                                value={deliveryForm.address}
+                                onChange={(e) => setDeliveryForm((p) => ({ ...p, address: e.target.value }))}
+                              />
+                              <select
+                                className="rounded-xl border border-black/10 px-3 py-2 text-sm"
+                                value={deliveryForm.slot}
+                                onChange={(e) => setDeliveryForm((p) => ({ ...p, slot: e.target.value }))}
+                              >
+                                {slots.map((s) => (
+                                  <option key={s.value} value={s.value}>
+                                    {s.label} (следующий день)
+                                  </option>
+                                ))}
+                              </select>
+                              <div className="flex items-center gap-3">
+                                <button
+                                  onClick={() => submitDelivery(o.id)}
+                                  disabled={deliveryLoading}
+                                  className="px-4 py-2 rounded-lg bg-black text-white hover:bg-black/90 text-sm disabled:opacity-60"
+                                >
+                                  Подтвердить
+                                </button>
+                                <button
+                                  onClick={() => setDeliveryOpenId(null)}
+                                  className="px-3 py-2 rounded-lg border border-black/10 text-sm"
+                                >
+                                  Отмена
+                                </button>
+                              </div>
+                              {deliveryMsg && <div className="text-xs text-black/70">{deliveryMsg}</div>}
+                              <div className="sm:col-span-2 text-xs text-black/50">
+                                Доставка бесплатная. Доступна только на следующий день с 13:00 до 20:00 (МСК).
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {handed && (
+                    <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800 text-sm">
+                      Заказ был отдан {handed.toLocaleDateString('ru-RU')} в{' '}
+                      {handed.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} (МСК)
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     {items.map((it) => {

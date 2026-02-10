@@ -49,9 +49,24 @@ export function Categories({ mode = "inline", subcatsByCat, activeSub, onSelectS
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const ioRef = useRef<IntersectionObserver | null>(null);
   const moRef = useRef<MutationObserver | null>(null);
+  const isSwipingRef = useRef(false); // Отслеживаем режим свайпа
 
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [active, setActive] = useState<string | null>(null);
+
+  // Слушаем глобальный флаг свайпа
+  useEffect(() => {
+    const handleSwipeStart = () => { isSwipingRef.current = true; };
+    const handleSwipeEnd = () => { isSwipingRef.current = false; };
+    
+    document.addEventListener("swipe:start", handleSwipeStart);
+    document.addEventListener("swipe:end", handleSwipeEnd);
+    
+    return () => {
+      document.removeEventListener("swipe:start", handleSwipeStart);
+      document.removeEventListener("swipe:end", handleSwipeEnd);
+    };
+  }, []);
 
   const rebuildTabs = useCallback(() => {
     const sections = Array.from(document.querySelectorAll<HTMLElement>("[data-anchor]"));
@@ -106,10 +121,20 @@ export function Categories({ mode = "inline", subcatsByCat, activeSub, onSelectS
 
   useEffect(() => {
     if (ioRef.current) { ioRef.current.disconnect(); ioRef.current = null; }
+    
+    // На мобильном (< 768px) отключаем IntersectionObserver
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) return;
+    
     const sections = Array.from(document.querySelectorAll<HTMLElement>("[data-anchor]"));
     if (!sections.length) return;
 
+    let updateTimeout: NodeJS.Timeout;
+
     ioRef.current = new IntersectionObserver((entries) => {
+      // Если сейчас свайп фото - игнорируем обновление
+      if (isSwipingRef.current) return;
+
       const visible = entries.filter(e => e.isIntersecting).sort((a,b) => (b.intersectionRatio||0)-(a.intersectionRatio||0));
       let next: string | null = null;
       if (visible.length) {
@@ -119,11 +144,19 @@ export function Categories({ mode = "inline", subcatsByCat, activeSub, onSelectS
                              .sort((a,b) => Math.abs(a.top) - Math.abs(b.top));
         next = byTop[0]?.key ?? null;
       }
-      if (next && next !== active) { setActive(next); centerActive(next); }
+      // Debounce обновления active категории
+      clearTimeout(updateTimeout);
+      updateTimeout = setTimeout(() => {
+        if (next && next !== active) { setActive(next); centerActive(next); }
+      }, 50);
     }, { root: null, rootMargin: `-${headerOffset}px 0px -65% 0px`, threshold: [0,0.01,0.25,0.5,0.75,1] });
 
     sections.forEach(el => ioRef.current!.observe(el));
-    return () => { ioRef.current?.disconnect(); ioRef.current = null; };
+    return () => { 
+      clearTimeout(updateTimeout);
+      ioRef.current?.disconnect(); 
+      ioRef.current = null; 
+    };
   }, [headerOffset, centerActive, active]);
 
   useEffect(() => {
@@ -171,25 +204,30 @@ export function Categories({ mode = "inline", subcatsByCat, activeSub, onSelectS
           const isActive = key === active;
           return (
             <motion.button
+              whileHover={{ y: -1 }}
               whileTap={{ scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 500, damping: 32 }}
               key={key}
               role="tab"
               aria-selected={isActive}
               data-tab={key}
               onClick={() => onTabClick(key)}
               className={`
-                relative snap-center select-none
+                group relative snap-center select-none overflow-hidden
                 px-2.5 md:px-4 py-2
                 text-[13px] md:text-[15px] leading-none whitespace-nowrap
                 rounded-lg md:rounded-xl border
-                transition-all duration-200
+                transition-colors duration-200
                 ${isActive
                   ? "bg-black text-white border-black shadow-[0_8px_20px_rgba(0,0,0,0.12)]"
                   : "bg-white text-black/70 border-black/10 hover:border-black/30 hover:text-black"}
               `}
               style={{ WebkitTapHighlightColor: "transparent" }}
             >
-              <span className="inline-block font-semibold">{label}</span>
+              {!isActive ? (
+                <span className="pointer-events-none absolute inset-0 rounded-lg md:rounded-xl bg-black/[0.04] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+              ) : null}
+              <span className="relative inline-block font-semibold">{label}</span>
             </motion.button>
           );
         })}

@@ -1,76 +1,24 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { cookies, headers } from 'next/headers';
+import { getUserIdFromRequest, getGuestToken } from '@/lib/session';
 import type { Prisma } from '@prisma/client';
 
 // Disable any caching for this route handler
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-/** Аккуратно достаём userId из кук/заголовков без зависимости от '@/lib/session' */
-async function getUserIdSafe(): Promise<number | null> {
-  try {
-    const jar = await cookies();
-    const hdr = await headers();
-
-    const getCookie = (name: string): string | undefined => jar.get(name)?.value;
-    const getHeader = (name: string): string | null => hdr.get(name);
-
-    // 1) Пробуем из кук — набор распространённых имён
-    for (const key of ['session_user_id','userId','user_id','userid','uid','sessionUserId','auth_user_id','next-auth.userId']) {
-      const n = Number(getCookie(key));
-      if (Number.isFinite(n)) return n;
-    }
-
-    // 2) Пробуем из заголовков (если фронт их выставляет)
-    for (const key of ['x-user-id','x-userid','x-user','x-session-userid']) {
-      const raw = getHeader(key);
-      const n = Number(raw ?? undefined);
-      if (Number.isFinite(n)) return n;
-    }
-
-    // 3) Иногда кладут JSON-куку сессии
-    const sessionLike =
-      getCookie('session') ||
-      getCookie('auth') ||
-      getCookie('stage_session') ||
-      getCookie('stage_auth') ||
-      getCookie('next-auth') ||
-      getCookie('next-auth.session-token');
-    if (sessionLike) {
-      try {
-        const obj = JSON.parse(sessionLike);
-        const n = Number(
-          obj?.id ??
-          obj?.userId ??
-          obj?.sub ??
-          obj?.user?.id
-        );
-        if (Number.isFinite(n)) return n;
-      } catch {}
-    }
-
-    // 4) Иногда id кладут прямо в Authorization: Bearer &lt;id&gt;
-    const auth = getHeader('authorization');
-    if (auth?.toLowerCase().startsWith('bearer ')) {
-      const maybeId = auth.slice(7).trim();
-      const n = Number(maybeId);
-      if (Number.isFinite(n)) return n;
-    }
-  } catch {}
-  return null;
-}
-
 export async function GET(req: Request) {
   try {
     const jar = await cookies();
     const hdr = await headers();
-    const userId = await getUserIdSafe();
+    const userId = await getUserIdFromRequest();
 
     const url = new URL(req.url);
 
     // Гостевой токен заказа (если пользователь не авторизован)
     const token =
+      (await getGuestToken()) ??
       jar.get('order_token')?.value ??
       jar.get('orderToken')?.value ??
       jar.get('guestOrderToken')?.value ??
@@ -81,14 +29,8 @@ export async function GET(req: Request) {
       url.searchParams.get('token') ??
       undefined;
 
-    // Явный идентификатор заказа — берём из query/заголовков/кук
-    const orderIdRaw =
-      url.searchParams.get('orderId') ??
-      hdr.get('x-order-id') ??
-      jar.get('order_id')?.value ??
-      jar.get('last_order_id')?.value ??
-      jar.get('orderId')?.value ??
-      null;
+    // Явный идентификатор заказа — берём ТОЛЬКО из query (иначе можно случайно сузить выдачу)
+    const orderIdRaw = url.searchParams.get('orderId') ?? null;
     const orderIdNum = orderIdRaw != null ? Number(orderIdRaw) : NaN;
     const orderId = Number.isFinite(orderIdNum) ? orderIdNum : undefined;
 
@@ -121,14 +63,16 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: true, orders: [] }, { status: 200 });
     }
 
-    // Строим where: расширяем логику — ищем по userId И/ИЛИ по токену, И/ИЛИ по id
-    const ors: Prisma.OrderWhereInput[] = [];
-    if (userId != null) ors.push({ userId });
-    if (token) ors.push({ token });
-    if (orderId != null) ors.push({ id: orderId });
-
-    const where: Prisma.OrderWhereInput =
-      ors.length === 1 ? ors[0] : { OR: ors };
+    // Строим where строго: либо по userId, либо по гостевому токену.
+    let where: Prisma.OrderWhereInput | null = null;
+    if (userId != null) where = { userId };
+    else if (token) where = { token };
+    if (!where) {
+      return NextResponse.json({ success: true, orders: [] }, { status: 200 });
+    }
+    if (orderId != null) {
+      where = { AND: [where, { id: orderId }] };
+    }
 
     // Не показываем мягко удалённые заказы
     const whereSafe: Prisma.OrderWhereInput = {
@@ -148,12 +92,19 @@ export async function GET(req: Request) {
         token: true,
         totalAmount: true,
         status: true,
+        shippingStatus: true,
         paymentId: true,
         fullName: true,
         email: true,
         phone: true,
         address: true,
         comment: true,
+        deliveryRequestedAt: true,
+        deliveryScheduledAt: true,
+        deliveryAddress: true,
+        deliveryRecipientName: true,
+        deliveryPhone: true,
+        handedAt: true,
         createdAt: true,
         updatedAt: true,
         paidAt: true,

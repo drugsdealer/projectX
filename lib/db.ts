@@ -11,7 +11,7 @@ export const prisma =
   });
 
 export async function getProducts() {
-  return await prisma.product.findMany();
+  return await prisma.product.findMany({ where: { deletedAt: null } });
 }
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;

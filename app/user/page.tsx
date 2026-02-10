@@ -25,9 +25,10 @@ type Tab =
 
 export default function UserProfilePage() {
   const { user } = useUser();
+  const [giftDesign, setGiftDesign] = useState("✨");
 
   // Sidebar display name that instantly reflects edits (from context, event, or LS)
-  const [displayName, setDisplayName] = useState<string>('Не указано');
+  const [displayName, setDisplayName] = useState<string>('Введите ФИО');
 
   function extractFullName(src: any): string | undefined {
     if (!src) return undefined;
@@ -89,7 +90,7 @@ export default function UserProfilePage() {
       }
     } catch {}
 
-    setDisplayName(fromCookie || fromLs || fromCtx || 'Не указано');
+    setDisplayName(fromCookie || fromLs || fromCtx || 'Введите ФИО');
 
     // 3) react to runtime updates from the edit form
     const onProfileUpdated = (e: any) => {
@@ -381,17 +382,6 @@ export default function UserProfilePage() {
                   {/* Оставляем только имя и фамилию, исключая отчество */}
                   {displayName?.split(" ").slice(0, 2).join(" ") || '\u00a0'}
                 </div>
-                <div className="mt-1 text-sm text-zinc-900 dark:text-zinc-100">
-                  <div className="text-zinc-500 dark:text-zinc-400 leading-none">Бонусные баллы</div>
-                  <div
-                    className="mt-1 max-w-[12rem] inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 font-semibold tabular-nums tracking-tight text-sm md:text-base"
-                    title={`${loyaltyPoints.toLocaleString('ru-RU')} ₽`}
-                    style={{ lineHeight: 1.1 }}
-                  >
-                    <span className="truncate">{new Intl.NumberFormat('ru-RU').format(loyaltyPoints)}</span>
-                    <span aria-hidden className="opacity-80">₽</span>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -420,7 +410,7 @@ export default function UserProfilePage() {
               <AnimatedNavItem
                 isActive={tab === "cards"}
                 onClick={() => setTab("cards")}
-                label="Привязанные карты"
+                label="Подарочные карты"
               />
               <AnimatedNavItem
                 isActive={tab === "promos"}
@@ -454,11 +444,19 @@ export default function UserProfilePage() {
                   try {
                     localStorage.clear();
                     sessionStorage.clear();
+                    document.cookie = 'session_user_id=; Path=/; Max-Age=0; SameSite=Lax';
+                    document.cookie = 'session_token=; Path=/; Max-Age=0; SameSite=Lax';
+                    document.cookie = 'auth_session=; Path=/; Max-Age=0; SameSite=Lax';
+                    document.cookie = 'auth_user_id=; Path=/; Max-Age=0; SameSite=Lax';
+                    document.cookie = 'ui_user_data=; Path=/; Max-Age=0; SameSite=Lax';
+                    document.cookie = 'ui_fullname=; Path=/; Max-Age=0; SameSite=Lax';
+                    document.cookie = 'stage_session=; Path=/; Max-Age=0; SameSite=Lax';
+                    document.cookie = 'uid=; Path=/; Max-Age=0; SameSite=Lax';
                     window.dispatchEvent(new Event('auth:logout'));
                   } catch {}
 
                   try {
-                    await fetch('/api/auth/logout', { method: 'POST' });
+                    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
                   } catch (e) {
                     console.error('Logout failed', e);
                   }
@@ -499,7 +497,191 @@ export default function UserProfilePage() {
 
             {tab === "cards" && (
               <Panel title="Привязанные карты">
-                <div className="text-sm text-zinc-600 dark:text-zinc-300">Добавьте или удалите платёжные карты. (Скоро)</div>
+                <div className="relative overflow-hidden rounded-3xl border border-black/10 bg-white p-6 sm:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute -left-24 -top-24 h-64 w-64 rounded-full bg-amber-400/20 blur-3xl" />
+                    <div className="absolute right-[-120px] bottom-[-120px] h-72 w-72 rounded-full bg-blue-400/20 blur-[90px]" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/70 via-white/10 to-white/60" />
+                    <div className="absolute inset-0 animate-gift-sheen bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.35),transparent)]" />
+                  </div>
+
+                  <div className="relative grid gap-6 lg:grid-cols-[1.1fr_0.9fr] items-center">
+                    <div>
+                      <div className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-black/5 px-3 py-1 text-xs text-black/70">
+                        🎁 Подарочные карты
+                      </div>
+                      <h3 className="mt-4 text-2xl sm:text-3xl font-semibold tracking-tight">
+                        Раздел в разработке
+                      </h3>
+                      <p className="mt-3 text-sm sm:text-base text-black/60 leading-relaxed">
+                        Мы готовим красивые подарочные карты Stage Store. 
+                        Следите за обновлениями — скоро здесь появится полноценный каталог и персональные дизайны.
+                      </p>
+                      <a
+                        href="https://t.me/stagestore"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-5 inline-flex items-center gap-2 rounded-full bg-black text-white px-4 py-2 text-sm font-semibold shadow-lg shadow-black/20 hover:-translate-y-0.5 transition"
+                      >
+                        Подписаться на Telegram
+                        <span className="text-white/70">→</span>
+                      </a>
+                    </div>
+
+                    <div className="relative h-[240px] sm:h-[280px]">
+                      <div className="gift-card gift-card-1">
+                        <div className="gift-card-badge">1 000 ₽</div>
+                        <div className="gift-card-title">Gift Card</div>
+                        <div className="gift-card-design" aria-hidden="true">
+                          {giftDesign}
+                        </div>
+                        <div className="gift-card-line" />
+                        <div className="gift-card-foot">Stage Store</div>
+                      </div>
+                      <div className="gift-card gift-card-2">
+                        <div className="gift-card-badge">5 000 ₽</div>
+                        <div className="gift-card-title">Gift Card</div>
+                        <div className="gift-card-design" aria-hidden="true">
+                          {giftDesign}
+                        </div>
+                        <div className="gift-card-line" />
+                        <div className="gift-card-foot">Stage Store</div>
+                      </div>
+                      <div className="gift-card gift-card-3">
+                        <div className="gift-card-badge">10 000 ₽</div>
+                        <div className="gift-card-title">Gift Card</div>
+                        <div className="gift-card-design" aria-hidden="true">
+                          {giftDesign}
+                        </div>
+                        <div className="gift-card-line" />
+                        <div className="gift-card-foot">Stage Store</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-black/10 pt-5">
+                    <div className="text-xs text-black/50">
+                      Тестовая версия дизайнов — позже заменим эмодзи на фирменные паттерны.
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {["✨", "🖤", "🌙", "🔥", "💎"].map((icon) => (
+                        <button
+                          key={icon}
+                          onClick={() => setGiftDesign(icon)}
+                          className={`h-10 w-10 rounded-full border text-lg transition ${
+                            giftDesign === icon
+                              ? "border-black bg-black text-white"
+                              : "border-black/10 bg-white hover:bg-black/5"
+                          }`}
+                          aria-label={`Дизайн ${icon}`}
+                        >
+                          {icon}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <style jsx>{`
+                    @keyframes giftSheen {
+                      0% { transform: translateX(-120%); opacity: 0; }
+                      40% { opacity: 1; }
+                      100% { transform: translateX(120%); opacity: 0; }
+                    }
+                    .animate-gift-sheen {
+                      animation: giftSheen 5.5s ease-in-out infinite;
+                    }
+                    .gift-card {
+                      position: absolute;
+                      right: 0;
+                      left: 0;
+                      margin: 0 auto;
+                      width: min(320px, 100%);
+                      padding: 18px 20px;
+                      border-radius: 26px;
+                      color: #fff;
+                      box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+                      border: 1px solid rgba(255,255,255,0.15);
+                      backdrop-filter: blur(6px);
+                    }
+                    .gift-card-badge {
+                      display: inline-flex;
+                      align-items: center;
+                      border-radius: 999px;
+                      padding: 6px 12px;
+                      font-size: 12px;
+                      background: rgba(255,255,255,0.16);
+                      border: 1px solid rgba(255,255,255,0.2);
+                    }
+                    .gift-card-title {
+                      margin-top: 12px;
+                      font-size: 18px;
+                      font-weight: 600;
+                    }
+                    .gift-card-design {
+                      margin-top: 10px;
+                      font-size: 28px;
+                      opacity: 0.8;
+                    }
+                    .gift-card-line {
+                      margin-top: 14px;
+                      height: 10px;
+                      border-radius: 999px;
+                      background: rgba(255,255,255,0.16);
+                    }
+                    .gift-card-foot {
+                      margin-top: 16px;
+                      font-size: 12px;
+                      letter-spacing: 0.2em;
+                      text-transform: uppercase;
+                      color: rgba(255,255,255,0.7);
+                    }
+                    @keyframes floatCard1 {
+                      0% { transform: translateY(18px) rotate(-4deg) scale(0.96); opacity: 0; }
+                      10% { opacity: 1; }
+                      45% { transform: translateY(-8px) rotate(-1deg) scale(1); opacity: 1; }
+                      70% { opacity: 0; }
+                      100% { transform: translateY(18px) rotate(-4deg) scale(0.96); opacity: 0; }
+                    }
+                    @keyframes floatCard2 {
+                      0% { transform: translateY(22px) rotate(3deg) scale(0.95); opacity: 0; }
+                      10% { opacity: 0; }
+                      35% { transform: translateY(-10px) rotate(1deg) scale(1); opacity: 1; }
+                      60% { opacity: 1; }
+                      85% { opacity: 0; }
+                      100% { transform: translateY(22px) rotate(3deg) scale(0.95); opacity: 0; }
+                    }
+                    @keyframes floatCard3 {
+                      0% { transform: translateY(26px) rotate(-2deg) scale(0.95); opacity: 0; }
+                      20% { opacity: 0; }
+                      50% { transform: translateY(-12px) rotate(0deg) scale(1); opacity: 1; }
+                      75% { opacity: 1; }
+                      100% { transform: translateY(26px) rotate(-2deg) scale(0.95); opacity: 0; }
+                    }
+                    .gift-card-1 {
+                      background: linear-gradient(135deg, #111827, #111827 45%, #6b7280 100%);
+                      animation: floatCard1 9s ease-in-out infinite;
+                    }
+                    .gift-card-2 {
+                      background: linear-gradient(135deg, #111827, #1f2937 40%, #0ea5e9 100%);
+                      animation: floatCard2 9s ease-in-out infinite;
+                      animation-delay: 1.5s;
+                    }
+                    .gift-card-3 {
+                      background: linear-gradient(135deg, #111827, #1f2937 50%, #f59e0b 100%);
+                      animation: floatCard3 9s ease-in-out infinite;
+                      animation-delay: 3s;
+                    }
+                    @media (max-width: 640px) {
+                      .animate-gift-sheen {
+                        animation-duration: 6.5s;
+                      }
+                      .gift-card {
+                        width: min(260px, 100%);
+                        padding: 16px 18px;
+                      }
+                    }
+                  `}</style>
+                </div>
               </Panel>
             )}
 

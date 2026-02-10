@@ -2,8 +2,9 @@ import { NextResponse, NextRequest } from "next/server";
 
 // Быстрый путь: читаем id из httpOnly куки без похода к API
 const SESSION_COOKIE = 'session_user_id';
+const SESSION_TOKEN_COOKIE = 'session_token';
 function readUserFast(request: NextRequest) {
-  const id = request.cookies.get(SESSION_COOKIE)?.value;
+  const id = request.cookies.get(SESSION_COOKIE)?.value || request.cookies.get("uid")?.value;
   return id ? ({ id } as any) : null;
 }
 
@@ -73,16 +74,21 @@ export async function middleware(request: NextRequest) {
     return res;
   };
 
-  const needUserFor = pathname.startsWith('/user');
+  const needUserFor = pathname.startsWith('/user') || pathname === "/verify-email" || pathname.startsWith("/admin");
 
   // В middleware полагаемся только на httpOnly cookie, чтобы не дергать API и не ловить fetch failed
-  const user = needUserFor ? readUserFast(request) : null;
+  const hasSessionToken = Boolean(request.cookies.get(SESSION_TOKEN_COOKIE)?.value);
+  const fastUser = needUserFor ? readUserFast(request) : null;
+  const user = needUserFor
+    ? (fastUser ?? (hasSessionToken ? await fetchUser(request) : null))
+    : null;
+  const vfyCookie = request.cookies.get("vfy")?.value ?? null;
 
   // Блокируем гостей от /user
   if (pathname.startsWith("/user")) {
     if (!user) {
-      const loginUrl = new URL("/login", request.url);
-      return applySecurityHeaders(NextResponse.redirect(loginUrl));
+      const homeUrl = new URL("/", request.url);
+      return applySecurityHeaders(NextResponse.redirect(homeUrl));
     }
     // Если маршрут вида /user/{id}, убеждаемся, что id совпадает с сессией
     const parts = pathname.split("/").filter(Boolean);
@@ -95,6 +101,43 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Блокируем гостей от /admin (роль проверяется в серверных страницах/роутах)
+  if (pathname.startsWith("/admin")) {
+    if (!user) {
+      const loginUrl = new URL("/login", request.url);
+      return applySecurityHeaders(NextResponse.redirect(loginUrl));
+    }
+    if (!pathname.startsWith("/admin/2fa")) {
+      const ok = request.cookies.get("admin_2fa_ok")?.value || null;
+      if (!ok || ok !== String(user.id)) {
+        const twofaUrl = new URL("/admin/2fa", request.url);
+        return applySecurityHeaders(NextResponse.redirect(twofaUrl));
+      }
+    }
+  }
+
+  // Гейтинг регистрационного флоу
+  if (pathname === "/verify-email") {
+    // Уже авторизован — не пускаем обратно на подтверждение
+    if (user?.id) {
+      const profileUrl = new URL("/user", request.url);
+      return applySecurityHeaders(NextResponse.redirect(profileUrl));
+    }
+    // Нет активной сессии верификации — отправляем на регистрацию
+    if (!vfyCookie) {
+      const regUrl = new URL("/register", request.url);
+      return applySecurityHeaders(NextResponse.redirect(regUrl));
+    }
+  }
+
+  if (pathname === "/register" || pathname === "/login") {
+    // Если уже есть активная сессия подтверждения — возвращаем на /verify-email
+    if (vfyCookie) {
+      const vfyUrl = new URL("/verify-email", request.url);
+      vfyUrl.searchParams.set("reason", "active");
+      return applySecurityHeaders(NextResponse.redirect(vfyUrl));
+    }
+  }
 
   // Блок прямого доступа к /verify-phone если нет куки 'vfy_phone'
   if (pathname === "/verify-phone") {
@@ -103,6 +146,16 @@ export async function middleware(request: NextRequest) {
       const homeUrl = new URL("/", request.url);
       return applySecurityHeaders(NextResponse.redirect(homeUrl));
     }
+  }
+
+  const shouldClear2fa =
+    !pathname.startsWith("/admin") &&
+    request.cookies.get("admin_2fa_ok")?.value;
+
+  if (shouldClear2fa) {
+    const res = NextResponse.next();
+    res.cookies.set("admin_2fa_ok", "", { path: "/", maxAge: 0 });
+    return applySecurityHeaders(res);
   }
 
   return applySecurityHeaders(NextResponse.next());

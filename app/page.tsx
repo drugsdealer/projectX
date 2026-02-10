@@ -2,16 +2,19 @@
 import { Container } from "@/components/shared/container";
 import { Title } from "@/components/shared/title";
 import { TopBar } from "@/components/shared/top-bar";
-import { Filters } from "@/components/shared/filters";
 import { ProductsGroupList } from "@/components/shared/products-group-list";
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, memo, type MutableRefObject } from "react";
 import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { Categories } from '@/components/shared/categories';
 import { Stories } from "@/components/shared/stories";
-
+import { Swiper, SwiperSlide } from "swiper/react";
+import "swiper/css";
+import "swiper/css/pagination";
+import { Autoplay, Pagination } from "swiper/modules";
+import { ChevronLeft, ChevronRight } from "react-feather";
+import { useUser } from "@/user/UserContext";
 // Локальные подписи основных категорий
 const LABELS: Record<string, string> = {
   footwear: 'Обувь',
@@ -22,15 +25,274 @@ const LABELS: Record<string, string> = {
   headwear: 'Головные уборы',
 };
 
-import { Swiper, SwiperSlide } from "swiper/react";
-import "swiper/css";
-import "swiper/css/pagination";
-import { Autoplay, Pagination } from "swiper/modules";
-import { ChevronLeft, ChevronRight } from "react-feather";
 
-import { useUser } from "@/user/UserContext";
+// Smooth image swipe/hover preview for product cards (isolated from page re-renders)
+const CARD_SWIPE_VARIANTS = {
+  // Cover-reveal: the new image is already positioned on top (x: 0) and is revealed by clipPath.
+  // This removes the moment where the old image “hangs” visibly.
+  enter: (dir: 'left' | 'right') => ({
+    x: 0,
+    // If we swipe left (next image), reveal from the right edge (start clipped from the left).
+    clipPath: dir === 'left' ? 'inset(0 0 0 100%)' : 'inset(0 100% 0 0)',
+    opacity: 1,
+    scale: 1.01,
+    zIndex: 2,
+  }),
+  center: {
+    x: 0,
+    clipPath: 'inset(0 0 0 0)',
+    opacity: 1,
+    scale: 1,
+    zIndex: 2,
+  },
+  // Old image stays underneath and quickly fades a bit (it is being covered anyway).
+  exit: (_dir: 'left' | 'right') => ({
+    x: 0,
+    opacity: 0,
+    scale: 0.995,
+    zIndex: 1,
+  }),
+};
+
+const ProductCardImage = memo(function ProductCardImage({
+  productId,
+  imagesArr,
+  alt,
+  isTouchDevice,
+  lastSwipeRef,
+}: {
+  productId: string;
+  imagesArr: string[];
+  alt: string;
+  isTouchDevice: boolean;
+  lastSwipeRef: MutableRefObject<{ id: string | null; ts: number }>;
+}) {
+  const [activeIdx, setActiveIdx] = useState(0);
+  const [swipeDir, setSwipeDir] = useState<'left' | 'right'>('left');
+  const [touchActionMode, setTouchActionMode] = useState<'pan-y' | 'none'>('pan-y');
+  const activeIdxRef = useRef(0);
+  useEffect(() => {
+    activeIdxRef.current = activeIdx;
+  }, [activeIdx]);
+  const swipeStateRef = useRef<{
+    startX: number;
+    startY: number;
+    active: boolean;
+    lastStepTs: number;
+    pointerId: number | null;
+    intent: 'h' | 'v' | null;
+  }>({ startX: 0, startY: 0, active: false, lastStepTs: 0, pointerId: null, intent: null });
+
+  // Clamp idx if images array changes, update ref when clamping
+  useEffect(() => {
+    setActiveIdx((prev) => {
+      const max = Math.max(0, (imagesArr?.length || 1) - 1);
+      const next = Math.min(Math.max(prev, 0), max);
+      activeIdxRef.current = next;
+      return next;
+    });
+  }, [imagesArr]);
+
+  const activeSrc = imagesArr?.[activeIdx] || imagesArr?.[0] || "/img/placeholder.png";
+
+  const prefetchAround = useCallback(
+    (idx: number) => {
+      try {
+        if (typeof window === 'undefined') return;
+        if (!Array.isArray(imagesArr) || imagesArr.length <= 1) return;
+        const nextSrc = imagesArr[Math.min(idx + 1, imagesArr.length - 1)];
+        const prevSrc = imagesArr[Math.max(idx - 1, 0)];
+        [nextSrc, prevSrc].forEach((src) => {
+          if (!src) return;
+          const img = new window.Image();
+          img.src = src;
+        });
+      } catch {}
+    },
+    [imagesArr]
+  );
+
+  return (
+    <div
+      className="relative w-full aspect-[1/1] sm:aspect-[4/3] bg-white overflow-hidden"
+      style={{ touchAction: isTouchDevice ? touchActionMode : undefined, WebkitUserSelect: 'none', userSelect: 'none' }}
+      onMouseMove={(e) => {
+        if (isTouchDevice) return;
+        if (!imagesArr?.length || imagesArr.length === 1) return;
+        const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const ratio = rect.width > 0 ? x / rect.width : 0;
+        let idx = Math.floor(ratio * imagesArr.length);
+        if (idx < 0) idx = 0;
+        if (idx >= imagesArr.length) idx = imagesArr.length - 1;
+        if (idx === activeIdx) return;
+        setSwipeDir(idx > activeIdx ? 'left' : 'right');
+        setActiveIdx(idx);
+      }}
+      onMouseLeave={() => {
+        if (isTouchDevice) return;
+        if (!imagesArr?.length || imagesArr.length === 1) return;
+        if (activeIdx === 0) return;
+        setSwipeDir('right');
+        setActiveIdx(0);
+      }}
+      onPointerDown={(e) => {
+        if (!isTouchDevice) return;
+        if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+        if (!imagesArr?.length || imagesArr.length === 1) return;
+        setTouchActionMode('pan-y');
+        try {
+          (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+        } catch {}
+
+        swipeStateRef.current = {
+          startX: e.clientX,
+          startY: e.clientY,
+          active: true,
+          lastStepTs: 0,
+          pointerId: e.pointerId,
+          intent: null,
+        };
+        prefetchAround(activeIdx);
+      }}
+      onPointerMove={(e) => {
+        if (!isTouchDevice) return;
+        const st = swipeStateRef.current;
+        if (!st.active) return;
+        if (st.pointerId !== null && e.pointerId !== st.pointerId) return;
+        if (!imagesArr?.length || imagesArr.length === 1) return;
+
+        const dx = e.clientX - st.startX;
+        const dy = e.clientY - st.startY;
+
+        // Decide intent once (fixes iOS “scroll steals gesture”)
+        if (st.intent === null) {
+          const SLOP = 10;
+          if (Math.abs(dx) < SLOP && Math.abs(dy) < SLOP) return;
+          st.intent = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+          if (st.intent === 'h') setTouchActionMode('none');
+        }
+
+        if (st.intent === 'v') {
+          // User is scrolling vertically; do not interfere.
+          return;
+        }
+
+        // Horizontal swipe: prevent page scroll + keep pointer stream
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Bigger threshold = less sensitivity
+        const THRESHOLD = 72;
+        if (Math.abs(dx) < THRESHOLD) return;
+
+        // Cooldown between steps (prevents blasting through)
+        const now = Date.now();
+        if (st.lastStepTs && now - st.lastStepTs < 160) return;
+
+        const dir: 'left' | 'right' = dx < 0 ? 'left' : 'right';
+        const delta = dir === 'left' ? 1 : -1;
+
+        const maxIdx = imagesArr.length - 1;
+        let nextIdx = activeIdxRef.current + delta;
+        if (nextIdx < 0) nextIdx = 0;
+        if (nextIdx > maxIdx) nextIdx = maxIdx;
+
+        if (nextIdx !== activeIdxRef.current) {
+          activeIdxRef.current = nextIdx;
+          setSwipeDir(dir);
+          setActiveIdx(nextIdx);
+          prefetchAround(nextIdx);
+          lastSwipeRef.current = { id: productId, ts: Date.now() };
+        }
+
+        // Reset baseline so another step needs another intentional move
+        st.startX = e.clientX;
+        st.startY = e.clientY;
+        st.lastStepTs = now;
+      }}
+      onPointerUp={(e) => {
+        try {
+          if (swipeStateRef.current.pointerId !== null) {
+            (e.currentTarget as HTMLDivElement).releasePointerCapture(swipeStateRef.current.pointerId);
+          }
+        } catch {}
+        swipeStateRef.current.active = false;
+        swipeStateRef.current.lastStepTs = 0;
+        swipeStateRef.current.pointerId = null;
+        swipeStateRef.current.intent = null;
+        setTouchActionMode('pan-y');
+      }}
+      onPointerCancel={(e) => {
+        try {
+          if (swipeStateRef.current.pointerId !== null) {
+            (e.currentTarget as HTMLDivElement).releasePointerCapture(swipeStateRef.current.pointerId);
+          }
+        } catch {}
+        swipeStateRef.current.active = false;
+        swipeStateRef.current.lastStepTs = 0;
+        swipeStateRef.current.pointerId = null;
+        swipeStateRef.current.intent = null;
+        setTouchActionMode('pan-y');
+      }}
+      onLostPointerCapture={() => {
+        swipeStateRef.current.active = false;
+        swipeStateRef.current.lastStepTs = 0;
+        swipeStateRef.current.pointerId = null;
+        swipeStateRef.current.intent = null;
+        setTouchActionMode('pan-y');
+      }}
+    >
+      <AnimatePresence initial={false} mode="sync" custom={swipeDir}>
+        <motion.div
+          key={activeSrc}
+          custom={swipeDir}
+          variants={CARD_SWIPE_VARIANTS}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{
+            duration: 0.32,
+            ease: [0.22, 1, 0.36, 1],
+            opacity: { duration: 0.16, ease: 'linear' },
+            scale: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
+          }}
+          className="absolute inset-0 transform-gpu"
+          style={{ willChange: 'transform, clip-path' }}
+        >
+          <Image
+            src={activeSrc}
+            alt={alt}
+            fill
+            className="object-contain"
+            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+            priority={false}
+          />
+        </motion.div>
+      </AnimatePresence>
+
+      {imagesArr.length > 1 && (
+        <div className="absolute bottom-2 left-0 right-0 z-20 flex items-center justify-center gap-1.5 pointer-events-none">
+          {imagesArr.map((_: string, i: number) => (
+            <span
+              key={i}
+              className={`h-1.5 rounded-full transition-all duration-300 ease-out ${
+                i === activeIdx ? 'w-5 bg-black/50' : 'w-1.5 bg-black/20'
+              }`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});
+
 
 export default function Home() {
+  const [isHydrated, setIsHydrated] = useState(false);
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
   // --- helpers: price format + dynamic badges
   const fmtPrice = (n: number | string | undefined) => {
     const num = Number(n ?? 0);
@@ -89,8 +351,11 @@ export default function Home() {
       res.push(`-${pct}%`);
     }
     // new (by flag or recent createdAt)
-    const createdDays = it?.createdAt ? (Date.now() - new Date(it.createdAt).getTime()) / 86400000 : Infinity;
-    if (it?.isNew === true || createdDays <= 30) res.push('NEW');
+    if (it?.isNew === true) res.push('NEW');
+    if (isHydrated && it?.createdAt) {
+      const createdDays = (Date.now() - new Date(it.createdAt).getTime()) / 86400000;
+      if (createdDays <= 30) res.push('NEW');
+    }
     // low stock
     if (typeof it?.stock === 'number' && it.stock > 0 && it.stock <= 2) res.push('Последние 2 шт.');
     return res;
@@ -220,13 +485,24 @@ export default function Home() {
   // Products from API (DB) with manual fetch + normalization
   const [products, setProducts] = useState<any[]>([]);
   const [isProductsLoading, setIsProductsLoading] = useState<boolean>(true);
+  const [productsError, setProductsError] = useState<string | null>(null);
+  const [productsReloadKey, setProductsReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    let attempts = 0;
+    let retryTimer: any = null;
 
-    (async () => {
+    const sleep = (ms: number) =>
+      new Promise((resolve) => setTimeout(resolve, ms));
+
+    const fetchProducts = async () => {
       try {
-        const res = await fetch("/api/products", { cache: "no-store" });
+        attempts += 1;
+        const res = await fetch("/api/products", {
+          cache: "no-store",
+          credentials: "include",
+        });
         if (!res.ok) {
           throw new Error(`Failed to load products: ${res.status}`);
         }
@@ -262,39 +538,32 @@ export default function Home() {
 
         if (!cancelled) {
           setProducts(normalized);
-        }
-      } catch (err) {
-        console.error("[home] failed to load products", err);
-        if (!cancelled) {
-          setProducts([]);
-        }
-      } finally {
-        if (!cancelled) {
+          setProductsError(null);
           setIsProductsLoading(false);
         }
+      } catch (err) {
+        if (cancelled) return;
+        // Retry a few times to avoid "empty first load" in dev
+        if (attempts < 4) {
+          const delay = attempts === 1 ? 350 : attempts === 2 ? 700 : 1200;
+          retryTimer = setTimeout(fetchProducts, delay);
+          return;
+        }
+        console.error("[home] failed to load products", err);
+        setProducts([]);
+        setProductsError("Не удалось загрузить товары. Попробуйте ещё раз.");
+        setIsProductsLoading(false);
       }
-    })();
+    };
+
+    setIsProductsLoading(true);
+    fetchProducts();
 
     return () => {
       cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [extractBrand]);
-  // --- Фильтры: бренды, категории, цены, мобильная панель ---
-  const [brandSearch, setBrandSearch] = useState("");
-  const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
-  const [selectedCats, setSelectedCats] = useState<Set<string>>(new Set());
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-
-  // границы цен и текущий диапазон
-  const priceStats = useMemo(() => {
-    const all = products.map((p:any) => Number(p?.price) || 0).filter((n:number) => Number.isFinite(n));
-    const min = all.length ? Math.min(...all) : 0;
-    const max = all.length ? Math.max(...all) : 0;
-    return { min, max };
-  }, [products]);
-  const [priceMin, setPriceMin] = useState<number>(0);
-  const [priceMax, setPriceMax] = useState<number>(0);
-
+  }, [extractBrand, productsReloadKey]);
   // URL search params (must be hoisted for sortKey)
   const searchParams = useSearchParams();
   // --- НОРМАЛИЗАЦИЯ КАТЕГОРИЙ / ПОРЯДОК (hoisted, used below) ---
@@ -407,34 +676,9 @@ export default function Home() {
     return "other";
   }, []);
 
-  // инициализация диапазона цен при загрузке/обновлении продуктов
-  useEffect(() => {
-    setPriceMin(priceStats.min);
-    setPriceMax(priceStats.max);
-  }, [priceStats.min, priceStats.max]);
   // Каталог: используем все товары без дополнительной фильтрации по premium
   const catalog = useMemo(() => products, [products]);
-  // Доступные бренды и категории на основе полученных товаров
-  const allBrands = useMemo(() => {
-    const acc = new Set<string>();
-    for (const p of products) {
-      const b = extractBrand(p as any);
-      if (b) acc.add(b);
-    }
-    return Array.from(acc).sort((a, b) => a.localeCompare(b, "ru"));
-  }, [products, extractBrand]);
-
-  const allCats = useMemo(() => {
-    const acc = new Set<string>();
-    for (const p of products) {
-      const main = normalizeCategory(getRawCategory(p as any));
-      if (main && main !== "other") acc.add(main);
-    }
-    // показываем в заданном порядке, остальные в конец
-    const known = ORDER.filter((k) => acc.has(k));
-    const rest = Array.from(acc).filter((k) => !ORDER.includes(k as any)).sort();
-    return [...known, ...rest];
-  }, [products, normalizeCategory, getRawCategory]);
+  
   // --- Sorting helpers (hoisted) ---
   const sortKey = (searchParams.get('sort') || 'popular') as 'popular' | 'price-asc' | 'price-desc';
   const sortItems = (list: any[], key: 'popular' | 'price-asc' | 'price-desc') => {
@@ -451,10 +695,6 @@ export default function Home() {
     }
     return copy;
   };
-  // --- Подкатегории: состояние выбора + нормализация (расположено до filtered) ---
-  // Активный фильтр подкатегорий
-  const [subFilter, setSubFilter] = useState<Record<string, string | null>>({});
-
   // Синонимы подкатегорий
   const SUB_ALIASES: Record<string, string> = {
     tee: 'tshirts', tees: 'tshirts', tshirt: 'tshirts', tshirts: 'tshirts',
@@ -498,56 +738,10 @@ export default function Home() {
     return null;
   }, [normalizeSub, getProductSubRaw]);
 
-  // Применение фильтров
-  const filtered = useMemo(() => {
-    const minV = Number(priceMin) || 0;
-    const maxV = Number(priceMax) || Infinity;
-    const selBrands = selectedBrands;
-    const selCats = selectedCats;
-
-    return (catalog as any[]).filter((p:any) => {
-      const price = Number(p?.price) || 0;
-      if (price < minV || price > maxV) return false;
-
-      // категория
-      const cat = normalizeCategory(getRawCategory(p));
-      if (selCats.size && !selCats.has(cat)) return false;
-
-      // подкатегория (если выбрана для текущей основной категории)
-      const selectedSub = subFilter[cat] ?? null;
-      if (selectedSub) {
-        const pSub = productSubNormalized(p);
-        if (pSub !== selectedSub) return false;
-      }
-
-      // бренд
-      const brand = extractBrand(p as any);
-      if (selBrands.size && (!brand || !selBrands.has(String(brand)))) return false;
-
-      return true;
-    });
-  }, [catalog, priceMin, priceMax, selectedBrands, selectedCats, subFilter, normalizeCategory, normalizeSub, productSubNormalized, getRawCategory, extractBrand]);
-
-  const filteredNoSub = useMemo(() => {
-    const minV = Number(priceMin) || 0;
-    const maxV = Number(priceMax) || Infinity;
-    const selBrands = selectedBrands;
-    const selCats = selectedCats;
-
-    return (catalog as any[]).filter((p:any) => {
-      const price = Number(p?.price) || 0;
-      if (price < minV || price > maxV) return false;
-      const cat = normalizeCategory(getRawCategory(p));
-      if (selCats.size && !selCats.has(cat)) return false;
-      const brand = extractBrand(p as any);
-      if (selBrands.size && (!brand || !selBrands.has(String(brand)))) return false;
-      return true;
-    });
-  }, [catalog, priceMin, priceMax, selectedBrands, selectedCats, normalizeCategory, getRawCategory, extractBrand]);
+  const filtered = useMemo(() => catalog, [catalog]);
 
   // Сортировка поверх фильтра
   const visibleProducts = useMemo(() => sortItems(filtered, sortKey), [filtered, sortKey]);
-  const visibleNoSub = useMemo(() => sortItems(filteredNoSub, sortKey), [filteredNoSub, sortKey]);
 
   // Группировка отфильтрованных товаров по основным категориям
   const groupedVisible = useMemo(() => {
@@ -558,21 +752,6 @@ export default function Home() {
     }
     return result;
   }, [visibleProducts, normalizeCategory, getRawCategory]);
-
-  const subcatsByCat = useMemo(() => {
-    const map: Record<string, string[]> = {};
-    for (const p of visibleNoSub) {
-      const cat = normalizeCategory(getRawCategory(p as any));
-      const sub = productSubNormalized(p);
-      if (!cat || !sub) continue;
-      (map[cat] ||= []).push(sub);
-    }
-    Object.keys(map).forEach((k) => {
-      const uniq = Array.from(new Set(map[k]));
-      map[k] = uniq.slice(0, 16);
-    });
-    return map;
-  }, [visibleNoSub, normalizeCategory, getRawCategory, productSubNormalized]);
 
   // Порядок секций на странице (из ORDER, затем остальные по алфавиту)
   const sectionOrder = useMemo(() => {
@@ -613,51 +792,45 @@ export default function Home() {
   }, [sectionOrder, groupedVisible]);
 
   // Счетчик активных фильтров
-  const activeFiltersCount = useMemo(() => {
-    let n = 0;
-    if (selectedBrands.size) n += 1;
-    if (selectedCats.size) n += 1;
-    if (priceMin > priceStats.min || priceMax < priceStats.max) n += 1;
-    return n;
-  }, [selectedBrands.size, selectedCats.size, priceMin, priceMax, priceStats.min, priceStats.max]);
-  const toggleBrand = useCallback((b: string) => {
-    setSelectedBrands(prev => {
-      const next = new Set(prev);
-      if (next.has(b)) next.delete(b); else next.add(b);
-      return next;
-    });
-  }, []);
-
-  const toggleCat = useCallback((c: string) => {
-    setSelectedCats(prev => {
-      const next = new Set(prev);
-      if (next.has(c)) next.delete(c); else next.add(c);
-      return next;
-    });
-  }, []);
-
-  const resetFilters = useCallback(() => {
-    setSelectedBrands(new Set());
-    setSelectedCats(new Set());
-    setBrandSearch("");
-    setPriceMin(priceStats.min);
-    setPriceMax(priceStats.max);
-  }, [priceStats.min, priceStats.max]);
+  
 
   const [showAnimation, setShowAnimation] = useState(false);
-  const [scrollDirection, setScrollDirection] = useState<"up" | "down" | null>(null);
-  const [isAtTop, setIsAtTop] = useState(true);
-  const topBarRef = useRef<HTMLDivElement>(null);
   const swiperRef = useRef<any>(null);
+  const heroTapRef = useRef<{ x: number; y: number; active: boolean }>({ x: 0, y: 0, active: false });
   const [hoveredSide, setHoveredSide] = useState<"left" | "right" | null>(null);
   const [parallaxY, setParallaxY] = useState(0);
-  const [scrolledFar, setScrolledFar] = useState(false);
+  const [heroFade, setHeroFade] = useState(0); // 0..1 based on scrollY
   const { user } = useUser();
   const [isScrollingProgrammatically, setIsScrollingProgrammatically] = useState(false);
-  const [cardImageIndex, setCardImageIndex] = useState<Record<string, number>>({});
-  // Track visibility of the inline categories row (anchor under trust bar)
-  const inlineCatsRef = useRef<HTMLDivElement | null>(null);
-  const [inlineInView, setInlineInView] = useState(true);
+  // Touch-only: swipe preview on product cards (do not block normal click on desktop)
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const lastSwipeRef = useRef<{ id: string | null; ts: number }>({ id: null, ts: 0 });
+
+  // Detect touch / coarse pointer (enable swipe preview only there)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const compute = () => {
+      const coarse =
+        (typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches) ||
+        (typeof window.matchMedia === 'function' && window.matchMedia('(hover: none)').matches) ||
+        (navigator as any)?.maxTouchPoints > 0 ||
+        ('ontouchstart' in window);
+      setIsTouchDevice(!!coarse);
+    };
+    compute();
+    try {
+      const mql = window.matchMedia('(pointer: coarse)');
+      const onChange = () => compute();
+      if (mql?.addEventListener) mql.addEventListener('change', onChange);
+      else if ((mql as any)?.addListener) (mql as any).addListener(onChange);
+      return () => {
+        if (mql?.removeEventListener) mql.removeEventListener('change', onChange);
+        else if ((mql as any)?.removeListener) (mql as any).removeListener(onChange);
+      };
+    } catch {
+      return;
+    }
+  }, []);
 
   // Маркируем текущий раздел как обычный и отключаем премиум-интро при возврате по логотипу
   useEffect(() => {
@@ -670,6 +843,25 @@ export default function Home() {
   // Возврат к карточке на главной: скроллим к последнему товару (или к сохранённой позиции)
   useEffect(() => {
     try {
+      // Восстанавливаем скролл только при возврате назад (back/forward),
+      // чтобы не было "фантомных" прыжков при обычной навигации.
+      const navEntry = typeof performance !== 'undefined'
+        ? (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)
+        : undefined;
+      const navType = navEntry?.type;
+      const shouldRestore = sessionStorage.getItem('restoreScroll') === '1';
+      if (!shouldRestore) return;
+
+      // Сбрасываем флаг всегда, чтобы он не зависал между сессиями
+      sessionStorage.removeItem('restoreScroll');
+      const tsRaw = sessionStorage.getItem('restoreScrollAt');
+      sessionStorage.removeItem('restoreScrollAt');
+
+      // Только при back/forward и "свежем" клике (до 5 минут)
+      const isBackNav = navType === 'back_forward';
+      const ts = tsRaw ? Number(tsRaw) : 0;
+      if (!isBackNav || (ts && Date.now() - ts > 5 * 60 * 1000)) return;
+
       const lastRoute = sessionStorage.getItem('lastListRoute');
       const lastProductId = sessionStorage.getItem('lastProductId');
       const lastScrollYRaw = sessionStorage.getItem('lastScrollY');
@@ -708,99 +900,6 @@ export default function Home() {
     }
   }, [searchParams]);
 
-  // Единый обработчик скролла
-  useEffect(() => {
-    let lastScrollY = window.scrollY;
-    let ticking = false;
-
-    // Touch tracking for reliable direction on mobile
-    let touchStartY = 0;
-
-    const emitDirection = (dir: "up" | "down" | null, y: number) => {
-      // update local state
-      setScrollDirection(dir);
-      // broadcast for listeners (TopBar/Categories)
-      try {
-        window.dispatchEvent(
-          new CustomEvent("ui:scroll-direction", {
-            detail: { direction: dir, y, scrolledFar: y > 120 },
-          })
-        );
-      } catch {}
-    };
-
-    // Don't emit scroll direction while user interacts with sticky categories bar
-    const isStickyHovered = () => {
-      try {
-        const el = document.getElementById('cats-sticky-overlay');
-        // if element exists and is hovered, pause direction broadcasting
-        return !!(el && (el as any).matches && (el as any).matches(':hover'));
-      } catch {
-        return false;
-      }
-    };
-
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-
-      // Верх/далеко
-      setIsAtTop(currentScrollY < 10);
-      setScrolledFar(currentScrollY > 120); // 120px – порог «далеко прокрутили»
-
-      // Направление по scrollY (усилили порог и игнорируем ховер над липкой панелью)
-      const movedEnough = Math.abs(currentScrollY - lastScrollY) > 6; // было 2
-      if (!isScrollingProgrammatically && movedEnough && !isStickyHovered()) {
-        const dir = currentScrollY > lastScrollY ? 'down' : 'up';
-        emitDirection(dir, currentScrollY);
-      }
-
-      lastScrollY = currentScrollY;
-    };
-
-    const throttledScroll = () => {
-      if (!ticking) {
-        requestAnimationFrame(() => {
-          handleScroll();
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-
-    const onTouchStart = (e: TouchEvent) => {
-      if (!e.touches || e.touches.length === 0) return;
-      touchStartY = e.touches[0].clientY;
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      if (!e.touches || e.touches.length === 0) return;
-      const y = e.touches[0].clientY;
-      const dy = y - touchStartY;
-      // positive dy => finger moves down => content scrolls up => direction 'up'
-      if (Math.abs(dy) > 12 && !isScrollingProgrammatically && !isStickyHovered()) {
-        const dir: 'up' | 'down' = dy > 0 ? 'up' : 'down';
-        emitDirection(dir, window.scrollY);
-        // move baseline to keep responsiveness during continuous swipe
-        touchStartY = y;
-      }
-    };
-
-    window.addEventListener("scroll", throttledScroll, { passive: true });
-    window.addEventListener("touchstart", onTouchStart, { passive: true, capture: true });
-    window.addEventListener("touchmove", onTouchMove, { passive: true, capture: true });
-
-    // initial sync
-    emitDirection(null, window.scrollY);
-    setIsAtTop(window.scrollY < 10);
-    setScrolledFar(window.scrollY > 120);
-
-    return () => {
-      window.removeEventListener("scroll", throttledScroll);
-      window.removeEventListener("touchstart", onTouchStart as any);
-      window.removeEventListener("touchmove", onTouchMove as any);
-    };
-  }, [isScrollingProgrammatically]);
-
   // Products skeleton for loading state
   const ProductsSkeleton = () => {
     const items = Array.from({ length: 8 });
@@ -824,41 +923,33 @@ export default function Home() {
     );
   };
 
-  // Observe inline categories row; when it leaves viewport, sticky overlay can take over
-  useEffect(() => {
-    if (!inlineCatsRef.current) return;
-    const headerOffset = (() => {
-      try {
-        const cs = getComputedStyle(document.documentElement);
-        const h = parseFloat(cs.getPropertyValue('--header-h')) || 72;
-        const safe = parseFloat(cs.getPropertyValue('--safe-top')) || 0;
-        return h + safe + 4; // small cushion
-      } catch { return 76; }
-    })();
-
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        setInlineInView(!!entry.isIntersecting);
-      },
-      { root: null, threshold: 0, rootMargin: `-${headerOffset}px 0px 0px 0px` }
-    );
-    io.observe(inlineCatsRef.current);
-    return () => io.disconnect();
-  }, []);
-
-  // Parallax value computed only on client
+  // Parallax value computed only on client, also compute heroFade
   useEffect(() => {
     if (typeof window === 'undefined') return;
     let raf: number | null = null;
+
+    const compute = () => {
+      const y = window.scrollY || 0;
+      setParallaxY(y * 0.1);
+
+      // Stronger hero disappearance: 0..1 within first ~320px of scroll.
+      const raw = Math.min(1, Math.max(0, y / 320));
+      // Smoothstep easing for nicer feel
+      const t = raw * raw * (3 - 2 * raw);
+      setHeroFade(t);
+    };
+
     const onScroll = () => {
       if (raf) return;
       raf = requestAnimationFrame(() => {
-        setParallaxY(window.scrollY * 0.1);
+        compute();
         raf = null;
       });
     };
+
     // initial value
-    setParallaxY(window.scrollY * 0.1);
+    compute();
+
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => {
       if (raf) cancelAnimationFrame(raf);
@@ -869,43 +960,57 @@ export default function Home() {
   // Для кнопки "Смотреть каталог"
   const [isHovered, setIsHovered] = useState(false);
 
+
   // --- Modal state for hero slides ---
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeSlide, setActiveSlide] = useState<number | null>(null);
   const openModal = (i: number) => { setActiveSlide(i); setIsModalOpen(true); };
   const closeModal = () => { setIsModalOpen(false); setActiveSlide(null); document.body.style.overflow = ''; };
 
+  // --- Modal state for product gallery preview ---
+  const [productPreviewOpen, setProductPreviewOpen] = useState(false);
+  const [previewProduct, setPreviewProduct] = useState<any>(null);
+  const [previewImageIdx, setPreviewImageIdx] = useState(0);
+  
+  const openProductPreview = (product: any) => {
+    setPreviewProduct(product);
+    setPreviewImageIdx(0);
+    setProductPreviewOpen(true);
+  };
+  
+  const closeProductPreview = () => {
+    setProductPreviewOpen(false);
+    setPreviewProduct(null);
+    setPreviewImageIdx(0);
+  };
+
   // Close on ESC
   useEffect(() => {
-    if (!isModalOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeModal(); };
+    if (!isModalOpen && !productPreviewOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (productPreviewOpen) closeProductPreview();
+        else if (isModalOpen) closeModal();
+      }
+    };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [isModalOpen]);
+  }, [isModalOpen, productPreviewOpen]);
 
   // Lock body scroll when modal is open
-  // Lock body scroll when modal is open
 useEffect(() => {
   const originalStyle = window.getComputedStyle(document.body).overflow;
   
-  if (isModalOpen) {
+  if (isModalOpen || productPreviewOpen) {
     document.body.style.overflow = 'hidden';
   }
   
   return () => {
     document.body.style.overflow = originalStyle;
   };
-}, [isModalOpen]);
+}, [isModalOpen, productPreviewOpen]);
 // Лочим скролл, пока открыт мобильный/планшетный Drawer фильтров
-useEffect(() => {
-  const originalStyle = window.getComputedStyle(document.body).overflow;
-  if (isFilterOpen) {
-    document.body.style.overflow = 'hidden';
-  }
-  return () => {
-    document.body.style.overflow = originalStyle;
-  };
-}, [isFilterOpen]);
+  
   // --- HERO SLIDES DATA ---
   const slides = [
     {
@@ -981,17 +1086,6 @@ useEffect(() => {
   ];
 
 
-  const parseHash = useCallback((): { main: string | null; sub: string | null } => {
-    if (typeof window === 'undefined') return { main: null, sub: null };
-    const raw = window.location.hash.replace(/^#/, '');
-    if (!raw) return { main: null, sub: null };
-    const [mainRaw, subRaw] = raw.split('/');
-    const main = normalizeCategory(mainRaw);
-    const sub = normalizeSub(subRaw ?? null);
-    return { main, sub };
-  }, [normalizeCategory, normalizeSub]);
-
-
   // Плавный скролл к элементу с учётом высоты шапки
   const smoothScrollToElement = useCallback((element: HTMLElement) => {
     setIsScrollingProgrammatically(true);
@@ -1028,45 +1122,22 @@ useEffect(() => {
     requestAnimationFrame(scrollNow);
   }, []);
 
-  // Обработчики событий выбора категорий
-  useEffect(() => {
-    const handleSubcategorySelect = (e: CustomEvent) => {
-      const { anchor, sub } = e.detail || {};
-      if (!anchor) return;
-      setSubFilter(prev => ({ ...prev, [anchor]: sub && sub !== 'all' ? sub : null }));
-      // скролл выполняется внутри компонента Categories; здесь не дублируем
-    };
-
-    const handleCategorySelect = (e: CustomEvent) => {
-      const { anchor } = e.detail || {};
-      if (!anchor) return;
-      setSubFilter(prev => ({ ...prev, [anchor]: prev[anchor] ?? null }));
-      // скролл выполняется внутри компонента Categories; здесь не дублируем
-    };
-
-    window.addEventListener('subcategory:select', handleSubcategorySelect as EventListener);
-    window.addEventListener('category:select', handleCategorySelect as EventListener);
-
-    return () => {
-      window.removeEventListener('subcategory:select', handleSubcategorySelect as EventListener);
-      window.removeEventListener('category:select', handleCategorySelect as EventListener);
-    };
-  }, []);
-
-  // Синхронизация с hash
-  useEffect(() => {
-    const applyFromHash = () => {
-      const { main, sub } = parseHash();
-      if (!main) return;
-      setSubFilter(prev => ({ ...prev, [main]: sub }));
-      // скролл по hash выполняется в Categories, чтобы не было двойных прыжков
-    };
-
-    applyFromHash();
-    window.addEventListener('hashchange', applyFromHash);
-    
-    return () => window.removeEventListener('hashchange', applyFromHash);
-  }, [parseHash]);
+  const handleHeroCta = useCallback(
+    (hash?: string) => {
+      if (!hash) return;
+      const key = hash.replace("#", "");
+      const el = document.querySelector(`[data-anchor="${key}"]`) as HTMLElement | null;
+      if (el) {
+        smoothScrollToElement(el);
+        return;
+      }
+      // fallback to hash navigation
+      try {
+        window.location.hash = hash;
+      } catch {}
+    },
+    [smoothScrollToElement]
+  );
 
   // Категории, порядок, соответствия
   const idMap: Record<string, number> = {
@@ -1110,14 +1181,71 @@ useEffect(() => {
       </AnimatePresence>
 
 
-      <div
-        className="relative z-0 w-screen overflow-hidden h-[380px] md:h-[520px] lg:h-[600px] bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#0b1224]"
+
+
+      <motion.div
+        id="home-hero"
+        className="hero-bleed-top relative z-0 w-screen overflow-hidden h-[380px] md:h-[520px] lg:h-[600px] bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#0b1224] transform-gpu will-change-transform"
+        style={{
+          opacity: 1 - heroFade * 0.92,
+          filter: `blur(${heroFade * 10}px)`,
+          transform: `translateY(${-heroFade * 36}px) scale(${1 - heroFade * 0.06})`,
+        }}
+        aria-hidden={heroFade > 0.98}
         onMouseLeave={() => setHoveredSide(null)}
+        onTouchStart={(e) => {
+          if (!isTouchDevice) return;
+          const t = e.target as HTMLElement | null;
+          if (t && t.closest('button, a, input, textarea, select, label, [role="button"], .hero-pagination, .swiper-pagination-bullet, [data-no-hero-tap]')) return;
+          const touch = e.touches?.[0];
+          if (!touch) return;
+          heroTapRef.current = { x: touch.clientX, y: touch.clientY, active: true };
+        }}
+        onTouchEnd={(e) => {
+          if (!isTouchDevice) return;
+          const t = e.target as HTMLElement | null;
+          if (t && t.closest('button, a, input, textarea, select, label, [role="button"], .hero-pagination, .swiper-pagination-bullet, [data-no-hero-tap]')) {
+            heroTapRef.current.active = false;
+            return;
+          }
+          const start = heroTapRef.current;
+          if (!start.active) return;
+          heroTapRef.current.active = false;
+          const touch = e.changedTouches?.[0];
+          if (!touch) return;
+          const dx = touch.clientX - start.x;
+          const dy = touch.clientY - start.y;
+          // If the finger moved, treat it as swipe/scroll, not a tap
+          if (Math.abs(dx) > 14 || Math.abs(dy) > 14) return;
+          const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+          const x = touch.clientX - rect.left;
+          const isRightHalf = x >= rect.width / 2;
+          if (isRightHalf) swiperRef.current?.slideNext();
+          else swiperRef.current?.slidePrev();
+        }}
+        onTouchCancel={() => {
+          heroTapRef.current.active = false;
+        }}
       >
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute -left-10 top-10 w-64 h-64 bg-emerald-400/20 blur-3xl rounded-full" />
-          <div className="absolute right-[-40px] bottom-[-60px] w-72 h-72 bg-indigo-500/25 blur-[70px] rounded-full" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/25 to-black/55" />
+          <div className="absolute -left-12 top-6 w-72 h-72 bg-emerald-400/20 blur-[90px] rounded-full" />
+          <div className="absolute right-[-60px] bottom-[-80px] w-80 h-80 bg-sky-500/20 blur-[100px] rounded-full" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/15 to-black/55" />
+          <div
+            className="absolute inset-0 opacity-[0.18] mix-blend-soft-light"
+            style={{
+              backgroundImage:
+                "radial-gradient(1200px 500px at 10% 10%, rgba(255,255,255,0.18), transparent 60%), radial-gradient(900px 400px at 90% 80%, rgba(255,255,255,0.12), transparent 60%)",
+            }}
+          />
+          <div
+            className="absolute inset-0 opacity-[0.12]"
+            style={{
+              backgroundImage:
+                "linear-gradient(0deg, rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px)",
+              backgroundSize: "120px 120px",
+            }}
+          />
         </div>
         {/*
           HERO SLIDES DATA
@@ -1131,7 +1259,7 @@ useEffect(() => {
           }}
           pagination={{
             clickable: true,
-            el: ".swiper-pagination",
+            el: ".hero-pagination",
             type: "bullets",
             renderBullet: function (index, className) {
               return `<span class="${className}"></span>`;
@@ -1141,7 +1269,15 @@ useEffect(() => {
           className="w-full h-full transition-transform duration-1000 ease-in-out"
           onSwiper={(swiper) => (swiperRef.current = swiper)}
         >
-          {slides.map((slide, index) => (
+          {slides.map((slide, index) => {
+            const primaryCta = slide.modal?.ctas?.[0];
+            const secondaryCta = slide.modal?.ctas?.[1];
+            const badgeText =
+              primaryCta?.label ||
+              secondaryCta?.label ||
+              "Stage Store";
+
+            return (
             <SwiperSlide key={index}>
               <div
                 className="relative w-full h-full will-change-transform"
@@ -1166,37 +1302,146 @@ useEffect(() => {
                     Ваш браузер не поддерживает видео.
                   </video>
                 )}
-                <div className="absolute inset-0 flex items-center justify-center text-white text-center px-6 z-10">
-                  <div>
-                    <h1 className="text-4xl md:text-6xl font-extrabold mb-4">{slide.title}</h1>
-                    <p className="text-lg md:text-xl mb-6 max-w-xl mx-auto text-gray-300">
-                      {slide.subtitle}
-                    </p>
+                <div className="absolute inset-0 z-10 pointer-events-none">
+                  <div className="mx-auto h-full max-w-6xl px-5 sm:px-8 flex items-end md:items-center">
+                    <motion.div
+                      key={`hero-content-${index}`}
+                      initial={{ opacity: 0, y: 18 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}
+                      className="w-full md:w-[64%] lg:w-[54%] pb-10 md:pb-0 pointer-events-auto"
+                    >
+                      <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.32em] text-white/80 backdrop-blur">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                        {badgeText}
+                      </div>
+                      <h1 className="mt-4 text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-white drop-shadow-[0_10px_30px_rgba(0,0,0,0.45)]">
+                        {slide.title}
+                      </h1>
+                      <p className="mt-4 text-sm sm:text-base md:text-lg text-white/80 max-w-xl">
+                        {slide.subtitle}
+                      </p>
 
-                    {/* Кнопка: только обычная без премиум */}
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                      <button
-                        className={`px-7 py-3 rounded-full font-bold transition-all duration-300 shadow-lg ${
-                          isHovered
-                            ? "bg-black text-white shadow-black/30 scale-[1.02]"
-                            : "bg-white/90 text-black shadow-white/20 hover:shadow-white/40"
-                        }`}
-                        onMouseEnter={() => setIsHovered(true)}
-                        onMouseLeave={() => setIsHovered(false)}
-                        onClick={() => openModal(index)}
-                      >
-                        Смотреть каталог
-                      </button>
+                      <div className="mt-6 flex flex-wrap gap-3">
+                        <button
+                          className="px-6 py-3 rounded-full bg-white text-black font-semibold shadow-xl shadow-black/30 transition-transform hover:-translate-y-0.5"
+                          onClick={() => handleHeroCta(primaryCta?.hash)}
+                          data-no-hero-tap
+                        >
+                          {primaryCta?.label ?? "Смотреть каталог"}
+                        </button>
+                        <button
+                          className="px-6 py-3 rounded-full border border-white/40 bg-white/10 text-white font-semibold backdrop-blur transition hover:bg-white/20"
+                          onClick={() => openModal(index)}
+                          data-no-hero-tap
+                        >
+                          Подробнее
+                        </button>
+                      </div>
+
+                      <div className="mt-6 flex flex-wrap items-center gap-4 text-[11px] text-white/70">
+                        <span className="inline-flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-emerald-300" />
+                          Подлинность проверена
+                        </span>
+                        <span className="inline-flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-white/40" />
+                          Доставка по РФ
+                        </span>
+                        <span className="inline-flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-white/40" />
+                          Эксклюзивные дропы
+                        </span>
+                      </div>
+                    </motion.div>
+
+                    <div className="hidden lg:block ml-auto pointer-events-none">
+                      <div className="w-[280px] rounded-3xl border border-white/15 bg-white/10 p-4 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+                        <div className="text-[10px] uppercase tracking-[0.32em] text-white/70">Кураторская подборка</div>
+                        <div className="mt-2 text-lg font-semibold text-white leading-snug">
+                          Лимитированные релизы и редкие размеры
+                        </div>
+                        <div className="mt-4 h-28 rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 via-white/5 to-transparent relative overflow-hidden">
+                          <div className="absolute -left-10 -top-10 h-32 w-32 rounded-full bg-white/15 blur-2xl" />
+                          <div className="absolute bottom-3 left-3 text-xs text-white/70">
+                            Ранний доступ • Stage Premium
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </SwiperSlide>
-          ))}
+          )})}
         </Swiper>
-        <div className="swiper-pagination"></div>
+        <div
+          className="hero-pagination"
+          style={{
+            opacity: Math.max(0, Math.min(1, 1 - heroFade * 1.2)),
+            pointerEvents: heroFade > 0.9 ? "none" : "auto",
+            transition: "opacity 260ms ease",
+          }}
+        ></div>
+        {/* HERO pagination bullets styling + animation */}
+        <style jsx global>{`
+          /* Hero slider pagination bullets */
+          .hero-pagination {
+            position: absolute !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 18px !important;
+            width: 100% !important;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            z-index: 60;
+            pointer-events: auto;
+          }
 
-        {hoveredSide === "left" && (
+          .swiper-pagination-bullet {
+            width: 18px;
+            height: 2px;
+            border-radius: 9999px;
+            background: #ffffff;
+            opacity: 1;
+            position: relative;
+            overflow: hidden;
+            transform: translateZ(0);
+            transition:
+              width 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+              opacity 220ms ease,
+              transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+              background-color 320ms ease,
+              box-shadow 320ms ease;
+            /* Только черный/белый: белая полоска + черная обводка */
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.65), 0 2px 8px rgba(0, 0, 0, 0.22);
+          }
+
+          .swiper-pagination-bullet:hover {
+            transform: scale(1.15);
+            opacity: 0.9;
+          }
+
+          /* Active bullet becomes wider to indicate current slide */
+          .swiper-pagination-bullet-active {
+            width: 36px;
+            transform: scale(1.05);
+            background: #ffffff;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.85), 0 10px 24px rgba(0, 0, 0, 0.28);
+          }
+
+          /* Respect reduced motion */
+          @media (prefers-reduced-motion: reduce) {
+            .swiper-pagination-bullet,
+            .swiper-pagination-bullet-active {
+              transition: none !important;
+            }
+          }
+        `}</style>
+
+        {!isTouchDevice && hoveredSide === "left" && (
           <div
             className="absolute left-4 top-1/2 transform -translate-y-1/2 z-30 cursor-pointer"
             onClick={() => swiperRef.current?.slidePrev()}
@@ -1208,7 +1453,7 @@ useEffect(() => {
           </div>
         )}
 
-        {hoveredSide === "right" && (
+        {!isTouchDevice && hoveredSide === "right" && (
           <div
             className="absolute right-4 top-1/2 transform -translate-y-1/2 z-30 cursor-pointer"
             onClick={() => swiperRef.current?.slideNext()}
@@ -1220,273 +1465,135 @@ useEffect(() => {
           </div>
         )}
 
-        <div 
-          className={`absolute left-0 top-0 h-full w-1/3 z-20 ${hoveredSide === "left" ? "cursor-arrow-left" : ""}`} 
-          onMouseEnter={() => setHoveredSide("left")}
-          onMouseLeave={() => setHoveredSide(null)}
-        />
-        <div 
-          className={`absolute right-0 top-0 h-full w-1/3 z-20 ${hoveredSide === "right" ? "cursor-arrow-right" : ""}`} 
-          onMouseEnter={() => setHoveredSide("right")}
-          onMouseLeave={() => setHoveredSide(null)}
-        />
+        {!isTouchDevice && (
+          <>
+            <div 
+              className={`absolute left-0 top-0 h-full w-1/3 z-20 ${hoveredSide === "left" ? "cursor-arrow-left" : ""}`} 
+              onMouseEnter={() => setHoveredSide("left")}
+              onMouseLeave={() => setHoveredSide(null)}
+            />
+            <div 
+              className={`absolute right-0 top-0 h-full w-1/3 z-20 ${hoveredSide === "right" ? "cursor-arrow-right" : ""}`} 
+              onMouseEnter={() => setHoveredSide("right")}
+              onMouseLeave={() => setHoveredSide(null)}
+            />
+          </>
+        )}
 
-      </div>
+      </motion.div>
 
       {/* Stories bar */}
       <div className="w-full">
         <Stories />
       </div>
 
-      {/* Sticky categories overlay (no background, only buttons). Appears when inline row is out of view and user scrolls up. */}
-      <AnimatePresence>
-        {(!inlineInView && (scrollDirection === 'up' || isAtTop)) && (
-          <motion.div
-            id="cats-sticky-overlay"
-            className="fixed left-0 right-0 z-[90] pointer-events-none"
-            style={{ top: 'calc(var(--header-h,72px) + 8px)' }}
-            initial={{ y: -80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -80, opacity: 0 }}
-            transition={{ duration: 0.22, ease: 'easeInOut' }}
+      {/* Premium button under Stories (desktop + mobile) */}
+      <div className="px-4 sm:px-6 mt-3">
+        <div className="hidden sm:flex justify-center">
+          <Link
+            href="/premium"
+            className="inline-flex items-center justify-center gap-3 rounded-2xl bg-black text-white px-6 py-3 text-sm font-semibold shadow-sm hover:bg-white hover:text-black hover:shadow-md transition"
+            onClick={() => {
+              try { sessionStorage.setItem("premiumEntry", "stories"); } catch {}
+            }}
           >
-            <div className="max-w-[1200px] mx-auto px-6 pointer-events-auto">
-            <div className="flex items-center justify-between gap-1 sm:gap-2">
-                <div id="cats-sticky-host" className="flex-1 min-w-0 pr-2 pl-3 sm:pl-0">
-                  <Categories
-                    mode="sticky"
-                    subcatsByCat={subcatsByCat}
-                    activeSub={subFilter}
-                    onSelectSub={(cat, sub) => setSubFilter((p) => ({ ...p, [cat]: sub }))}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsFilterOpen(true)}
-                  className="lg:hidden shrink-0 w-[92px] mr-3 sm:mr-0 inline-flex items-center justify-center gap-2 rounded-xl border border-black/10 bg-black text-white px-3 py-2 text-xs font-semibold"
-                  aria-label={`Открыть фильтры${activeFiltersCount ? ` (${activeFiltersCount})` : ""}`}
-                >
-                  <span>Фильтры{activeFiltersCount ? ` (${activeFiltersCount})` : ""}</span>
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {/* Inline categories + Sort (normal flow). This is the anchor we observe. */}
-      <div ref={inlineCatsRef}>
-        <Container className="flex items-start gap-1 sm:gap-2 mt-4">
-          <div id="cats-inline-host" className="relative z-10 flex-1 min-w-0 pr-2 pl-3 sm:pl-0">
-            <Categories
-              mode="inline"
-              subcatsByCat={subcatsByCat}
-              activeSub={subFilter}
-              onSelectSub={(cat, sub) => setSubFilter((p) => ({ ...p, [cat]: sub }))}
-            />
-          </div>
-          <div className="hidden sm:flex items-center gap-2 relative z-10 ml-auto mt-[4px]">
-            <Link
-              href="/premium"
-              className="inline-flex items-center gap-2 rounded-2xl bg-black text-white px-5 py-2.5 text-sm font-semibold shadow-sm hover:bg-white hover:text-black hover:shadow-md transition"
-            >
-              <span className="text-xs uppercase tracking-[0.16em] opacity-70">
-                Premium
-              </span>
-              <span>Эксклюзивный раздел</span>
-            </Link>
-          </div>
-          {/* Кнопка открытия фильтров на мобилке */}
-          <button
-            type="button"
-            onClick={() => setIsFilterOpen(true)}
-            className="lg:hidden relative z-10 shrink-0 w-[92px] mr-3 sm:mr-0 rounded-xl border border-black/10 bg-black text-white px-3 py-2 text-xs font-semibold"
-            aria-label={`Открыть фильтры${activeFiltersCount ? ` (${activeFiltersCount})` : ""}`}
+            <span className="text-xs uppercase tracking-[0.18em] opacity-70">
+              Premium
+            </span>
+            <span>Эксклюзивный раздел</span>
+          </Link>
+        </div>
+        <div className="sm:hidden">
+          <Link
+            href="/premium"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-black text-white px-5 py-2.5 text-sm font-semibold shadow-sm hover:bg-white hover:text-black hover:shadow-md transition"
+            onClick={() => {
+              try { sessionStorage.setItem("premiumEntry", "stories"); } catch {}
+            }}
           >
-            Фильтры{activeFiltersCount ? ` (${activeFiltersCount})` : ""}
-          </button>
-        </Container>
+            <span className="text-xs uppercase tracking-[0.16em] opacity-70">
+              Premium
+            </span>
+            <span>Эксклюзивный раздел</span>
+          </Link>
+        </div>
       </div>
-      {/* Premium button for mobile (full-width under categories) */}
-      <div className="sm:hidden px-4 mt-3">
-        <Link
-          href="/premium"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-black text-white px-5 py-2.5 text-sm font-semibold shadow-sm hover:bg-white hover:text-black hover:shadow-md transition"
-        >
-          <span className="text-xs uppercase tracking-[0.16em] opacity-70">
-            Premium
-          </span>
-          <span>Эксклюзивный раздел</span>
-        </Link>
-      </div>
+
+      <div className="h-4 sm:h-6" />
       <Container className="mt-10 pb-14">
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-6">
-          {/* SIDEBAR (desktop) */}
-          <aside className="hidden lg:block sticky top-[calc(var(--header-h,72px)+16px)] self-start rounded-2xl bg-white/80 supports-[backdrop-filter]:bg-white/60 backdrop-blur border border-black/10 p-4 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
-            {/* Бренды: поиск + чек-лист */}
-            <div>
-              <p className="text-[11px] uppercase tracking-wider font-semibold text-black/60 mb-2">Бренды</p>
-              <input
-                type="text"
-                value={brandSearch}
-                onChange={(e) => setBrandSearch(e.target.value)}
-                placeholder="Поиск бренда…"
-                className="w-full mb-3 rounded-lg border border-black/15 px-3 py-2 text-sm outline-none focus:border-black/40 placeholder:text-black/30"
-              />
-              <div className="max-h-[220px] overflow-auto rounded-lg border border-black/10 divide-y divide-black/5">
-                {allBrands
-                  .filter((b) => b.toLowerCase().includes(brandSearch.toLowerCase()))
-                  .slice(0, 50)
-                  .map((b) => (
-                    <label key={b} className="flex items-center gap-2 text-sm px-2 py-2 hover:bg-black/[0.02]">
-                      <input
-                        type="checkbox"
-                        checked={selectedBrands.has(b)}
-                        onChange={() => toggleBrand(b)}
-                        className="accent-black"
-                      />
-                      <span className="line-clamp-1 text-black/80">{b}</span>
-                    </label>
-                  ))}
-                {!allBrands.length && (
-                  <div className="px-2 py-3">
-                    <p className="text-xs text-gray-500">Бренды появятся после загрузки товаров</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <hr className="my-4 border-black/10" />
-
-            {/* Категории */}
-            <div>
-              <p className="text-[11px] uppercase tracking-wider font-semibold text-black/60 mb-2">Категории</p>
-              <div className="rounded-lg border border-black/10 divide-y divide-black/5">
-                {allCats.map((c) => (
-                  <label key={c} className="flex items-center gap-2 text-sm px-2 py-2 hover:bg-black/[0.02]">
-                    <input
-                      type="checkbox"
-                      checked={selectedCats.has(c)}
-                      onChange={() => toggleCat(c)}
-                      className="accent-black"
-                    />
-                    <span className="text-black/80">{LABELS[c] ?? c}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <hr className="my-4 border-black/10" />
-
-            {/* Цена */}
-            <div>
-              <p className="text-[11px] uppercase tracking-wider font-semibold text-black/60 mb-2">Цена</p>
-              <div className="flex items-center gap-2 text-sm">
-                <input
-                  type="number"
-                  min={priceStats.min}
-                  max={priceMax}
-                  value={priceMin}
-                  onChange={(e) => setPriceMin(Math.min(Number(e.target.value) || 0, priceMax))}
-                  className="w-24 rounded-md border border-black/15 px-2 py-1 focus:border-black/40 focus:outline-none"
-                />
-                <span className="text-gray-500">—</span>
-                <input
-                  type="number"
-                  min={priceMin}
-                  max={priceStats.max}
-                  value={priceMax}
-                  onChange={(e) => setPriceMax(Math.max(Number(e.target.value) || 0, priceMin))}
-                  className="w-24 rounded-md border border-black/15 px-2 py-1 focus:border-black/40 focus:outline-none"
-                />
-              </div>
-              <p className="mt-1 text-[11px] text-gray-500 text-right whitespace-nowrap">
-                мин: {fmtPrice(priceStats.min)} ₽ • макс: {fmtPrice(priceStats.max)} ₽
-              </p>
-              {/* Двойной ползунок — два range */}
-              <div className="mt-3 space-y-2">
-                <input
-                  type="range"
-                  min={priceStats.min}
-                  max={priceStats.max}
-                  value={priceMin}
-                  onChange={(e) => setPriceMin(Math.min(Number(e.target.value) || 0, priceMax))}
-                  className="w-full ui-range"
-                />
-                <input
-                  type="range"
-                  min={priceStats.min}
-                  max={priceStats.max}
-                  value={priceMax}
-                  onChange={(e) => setPriceMax(Math.max(Number(e.target.value) || 0, priceMin))}
-                  className="w-full ui-range"
-                />
-              </div>
-            </div>
-
-            <div className="mt-4 flex gap-2">
-              <button
-                onClick={resetFilters}
-                className="w-full rounded-lg border border-black/15 px-3 py-2 text-sm hover:bg-black hover:text-white transition"
-              >
-                Сбросить
-              </button>
-            </div>
-          </aside>
-
-
+        <div className="grid grid-cols-1 gap-6">
           {/* PRODUCTS BY CATEGORY */}
           <section className="space-y-10">
             {isProductsLoading ? (
               <ProductsSkeleton />
             ) : (
               <>
-                {!sectionOrder.length && (
+                {productsError && (
+                  <div className="text-center text-sm text-gray-500 py-8 space-y-3">
+                    <div>{productsError}</div>
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-center rounded-full border border-gray-300 px-4 py-2 text-xs font-semibold text-gray-700 hover:border-black hover:text-black transition"
+                      onClick={() => {
+                        setProductsError(null);
+                        setIsProductsLoading(true);
+                        setProductsReloadKey((k) => k + 1);
+                      }}
+                    >
+                      Повторить
+                    </button>
+                  </div>
+                )}
+
+                {!productsError && !sectionOrder.length && (
                   <div className="text-center text-sm text-gray-500 py-8">
                     По выбранным фильтрам ничего не найдено
                   </div>
                 )}
 
-                {sectionOrder.map((main, idx) => {
-              const items = groupedVisible[main] || [];
-              if (!items.length) return null;
-              const anchorId = idMap[main] ? `category-${idMap[main]}` : undefined;
-              return (
-                <div
-                  key={`sec-${main}`}
-                  data-anchor={main}
-                  id={anchorId}
-                  className="scroll-mt-[calc(var(--header-h,72px)+16px)] px-3 sm:px-0"
-                  style={{ scrollMarginTop: 'calc(var(--header-h,72px) + 16px)' }}
-                >
-                  <div className="mb-3 flex items-baseline justify-between">
-                    <h3 className="text-lg sm:text-xl font-bold">{LABELS[main] ?? main}</h3>
-                    {(visibleByCat[main] ?? DEFAULT_COUNT) > DEFAULT_COUNT && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setVisibleByCat((p) => ({ ...p, [main]: Math.min(DEFAULT_COUNT, items.length) }));
-                          const el = document.querySelector(`[data-anchor="${main}"]`) as HTMLElement | null;
-                          if (el) smoothScrollToElement(el);
-                        }}
-                        className="text-xs sm:text-sm text-gray-500 hover:text-black transition inline-flex items-center gap-1"
-                        aria-label="Скрыть дополнительные товары"
-                        title="Скрыть товары"
+                {sectionOrder.map((main) => {
+                  const items = groupedVisible[main] || [];
+                  if (!items.length) return null;
+
+                  const anchorId = idMap[main] ? `category-${idMap[main]}` : undefined;
+                  const displayLimit = visibleByCat[main] ?? DEFAULT_COUNT;
+                  const displayList = items.slice(0, displayLimit);
+                  const canShowLess = displayLimit > DEFAULT_COUNT;
+                  const hasMore = items.length > displayList.length;
+
+                  return (
+                    <div
+                      key={`sec-${main}`}
+                      data-anchor={main}
+                      id={anchorId}
+                      className="scroll-mt-[calc(var(--header-h,72px)+16px)] px-3 sm:px-0"
+                      style={{ scrollMarginTop: 'calc(var(--header-h,72px) + 16px)' }}
+                    >
+                      <div className="mb-3 flex items-baseline justify-between">
+                        <h3 className="text-lg sm:text-xl font-bold">{LABELS[main] ?? main}</h3>
+                        {canShowLess && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setVisibleByCat((p) => ({ ...p, [main]: Math.min(DEFAULT_COUNT, items.length) }));
+                              const el = document.querySelector(`[data-anchor="${main}"]`) as HTMLElement | null;
+                              if (el) smoothScrollToElement(el);
+                            }}
+                            className="text-xs sm:text-sm text-gray-500 hover:text-black transition inline-flex items-center gap-1"
+                            aria-label="Скрыть дополнительные товары"
+                            title="Скрыть товары"
+                          >
+                            <span aria-hidden>−</span>
+                            <span>Скрыть товары</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <motion.div
+                        layout
+                        className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-5 sm:gap-4"
                       >
-                        <span aria-hidden>−</span>
-                        <span>Скрыть товары</span>
-                      </button>
-                    )}
-                  </div>
-                  {(() => {
-                    const limit = visibleByCat[main] ?? DEFAULT_COUNT;
-                    const list = items.slice(0, limit);
-                    return (
-                      <>
-                        <motion.div
-                          layout
-                          className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-5 sm:gap-4"
-                        >
-                          {list.map((product: any) => {
+                        {displayList.map((product: any) => {
                             const imgSrc =
                               (Array.isArray(product?.images) && product.images[0]) ||
                               product?.imageUrl ||
@@ -1495,13 +1602,6 @@ useEffect(() => {
                             Array.isArray(product?.images) && product.images.length
                               ? product.images
                               : [imgSrc];
-                          const key = String(product.id);
-                          const activeIdxRaw = cardImageIndex[key] ?? 0;
-                          const activeIdx =
-                            activeIdxRaw >= 0 && activeIdxRaw < imagesArr.length
-                              ? activeIdxRaw
-                              : 0;
-                          const activeSrc = imagesArr[activeIdx] || imgSrc;
                             const sub = productSubNormalized(product);
                             const cat = normalizeCategory(getRawCategory(product as any));
                             const typeKey = sub ?? cat;
@@ -1662,65 +1762,44 @@ useEffect(() => {
                             }
                             return (
                               <motion.div
-                                layout
+                                layoutId={`product-card-${product.id}`}
                                 key={product.id}
                                 initial={{ opacity: 0, y: 8 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -8 }}
-                                transition={{ duration: 0.2 }}
+                                transition={{ duration: 0.2, type: 'spring', stiffness: 500, damping: 50 }}
                               >
                                 <a
                                   id={`product-${product.id}`}
                                   href={`/product/${product.id}`}
                                   className="group rounded-2xl overflow-hidden bg-white shadow-sm ring-1 ring-black/5 hover:ring-black/10 hover:shadow-md transition-transform hover:-translate-y-0.5 will-change-transform [contain:content]"
+                                  onClickCapture={(e) => {
+                                    // If the user just swiped images on touch devices, do NOT navigate.
+                                    if (!isTouchDevice) return;
+                                    const s = lastSwipeRef.current;
+                                    if (s?.id === String(product.id) && Date.now() - s.ts < 600) {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                    }
+                                  }}
                                   onClick={(e) => {
-                                    if (typeof window === 'undefined') return;
-                                    const isMobile = window.innerWidth <= 768;
-                                    if (!isMobile) return;
-                                    if (!imagesArr.length || imagesArr.length === 1) return;
-                                    e.preventDefault();
-                                    const key = String(product.id);
-                                    setCardImageIndex((prev) => {
-                                      const current = prev[key] ?? 0;
-                                      const next = (current + 1) % imagesArr.length;
-                                      return { ...prev, [key]: next };
-                                    });
+                                    if (e.defaultPrevented) return;
+                                    try {
+                                      sessionStorage.setItem('restoreScroll', '1');
+                                      sessionStorage.setItem('restoreScrollAt', String(Date.now()));
+                                      sessionStorage.setItem('lastListRoute', window.location.pathname + window.location.search);
+                                      sessionStorage.setItem('lastScrollY', String(window.scrollY));
+                                      sessionStorage.setItem('lastProductId', String(product.id));
+                                    } catch {}
                                   }}
                                 >
-                                  <div
-                                    className="relative w-full aspect-[4/3] bg-white overflow-hidden"
-                                    onMouseMove={(e) => {
-                                      if (!imagesArr.length || imagesArr.length === 1) return;
-                                      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-                                      const x = e.clientX - rect.left;
-                                      const ratio = rect.width > 0 ? x / rect.width : 0;
-                                      let idx = Math.floor(ratio * imagesArr.length);
-                                      if (idx < 0) idx = 0;
-                                      if (idx >= imagesArr.length) idx = imagesArr.length - 1;
-                                      const key = String(product.id);
-                                      setCardImageIndex((prev) => {
-                                        if (prev[key] === idx) return prev;
-                                        return { ...prev, [key]: idx };
-                                      });
-                                    }}
-                                    onMouseLeave={() => {
-                                      if (!imagesArr.length || imagesArr.length === 1) return;
-                                      const key = String(product.id);
-                                      setCardImageIndex((prev) => {
-                                        if (prev[key] === 0 || prev[key] === undefined) return prev;
-                                        return { ...prev, [key]: 0 };
-                                      });
-                                    }}
-                                  >
-                                    <Image
-                                      src={activeSrc}
-                                      alt={product.name || "Товар"}
-                                      fill
-                                      className="object-contain transition-transform duration-300 group-hover:scale-[1.03]"
-                                      sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
-                                      priority={false}
-                                    />
-                                  </div>
+                                  <ProductCardImage
+                                    productId={String(product.id)}
+                                    imagesArr={imagesArr}
+                                    alt={product.name || "Товар"}
+                                    isTouchDevice={isTouchDevice}
+                                    lastSwipeRef={lastSwipeRef}
+                                  />
                                   <div className="p-3">
                                     {brandName && (
                                       <div className="text-[10px] uppercase tracking-wide text-black/50 leading-none mb-1">
@@ -1757,627 +1836,38 @@ useEffect(() => {
                               </motion.div>
                             );
                           })}
-                        </motion.div>
+                      </motion.div>
 
-                        {/* Show more (always visible; disabled if нечего догружать) */}
-                        <div className="mt-4 flex justify-center">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (items.length <= limit) return;
-                              setVisibleByCat((p) => ({
-                                ...p,
-                                [main]: Math.min((p[main] ?? DEFAULT_COUNT) + LOAD_STEP, items.length),
-                              }));
-                            }}
-                            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-black/15 transition text-sm ${
-                              items.length > limit ? "hover:bg-black hover:text-white" : "opacity-50 cursor-not-allowed"
-                            }`}
-                            aria-label="Показать больше товаров"
-                            disabled={items.length <= limit}
-                            title={items.length <= limit ? "Больше товаров нет" : "Показать больше"}
-                          >
-                            <span className="text-lg leading-none" aria-hidden>＋</span>
-                            <span>Показать больше</span>
-                          </button>
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-              );
+                      {/* Show more (always visible; disabled если нечего догружать) */}
+                      <div className="mt-4 flex justify-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!hasMore) return;
+                            setVisibleByCat((p) => ({
+                              ...p,
+                              [main]: Math.min((p[main] ?? DEFAULT_COUNT) + LOAD_STEP, items.length),
+                            }));
+                          }}
+                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-black/15 transition text-sm ${
+                            hasMore ? "hover:bg-black hover:text-white" : "opacity-50 cursor-not-allowed"
+                          }`}
+                          aria-label="Показать больше товаров"
+                          disabled={!hasMore}
+                          title={hasMore ? "Показать больше" : "Больше товаров нет"}
+                        >
+                          <span className="text-lg leading-none" aria-hidden>＋</span>
+                          <span>Показать больше</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
                 })}
               </>
             )}
           </section>
         </div>
       </Container>
-      {/* MOBILE FILTERS DRAWER */}
-      <AnimatePresence>
-        {isFilterOpen && (
-          <motion.div
-            key="filters-drawer"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            className="fixed inset-0 z-[1200] flex items-end sm:items-center justify-center"
-            aria-modal="true"
-            role="dialog"
-          >
-            <div className="absolute inset-0 bg-black/50" onClick={() => setIsFilterOpen(false)} />
-            <motion.div
-              initial={{ y: 24, scale: 1, opacity: 0 }}
-              animate={{ y: 0, scale: 1, opacity: 1 }}
-              exit={{ y: 16, scale: 1, opacity: 0 }}
-              transition={{ type: 'tween', duration: 0.22 }}
-              className="relative z-[1201] w-full sm:max-w-[520px] rounded-t-2xl sm:rounded-2xl bg-white shadow-xl p-4 sm:p-6"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-base font-semibold">Фильтры</p>
-                <button onClick={() => setIsFilterOpen(false)} aria-label="Закрыть" className="text-black/60 hover:text-black">✕</button>
-              </div>
-
-              {/* Бренды */}
-              <div className="mb-4">
-                <p className="text-sm font-semibold mb-2">Бренды</p>
-                <input
-                  type="text"
-                  value={brandSearch}
-                  onChange={(e) => setBrandSearch(e.target.value)}
-                  placeholder="Поиск бренда…"
-                  className="w-full mb-3 rounded-lg border border-black/10 px-3 py-2 text-sm outline-none focus:border-black/30"
-                />
-                <div className="max-h-[180px] overflow-auto pr-1 grid grid-cols-2 gap-2">
-                  {allBrands
-                    .filter((b) => b.toLowerCase().includes(brandSearch.toLowerCase()))
-                    .slice(0, 60)
-                    .map((b) => (
-                      <label key={`m-${b}`} className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={selectedBrands.has(b)}
-                          onChange={() => toggleBrand(b)}
-                          className="accent-black"
-                        />
-                        <span className="truncate">{b}</span>
-                      </label>
-                    ))}
-                </div>
-              </div>
-
-              {/* Категории */}
-              <div className="mb-4">
-                <p className="text-sm font-semibold mb-2">Категории</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {allCats.map((c) => (
-                    <label key={`m-${c}`} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={selectedCats.has(c)}
-                        onChange={() => toggleCat(c)}
-                        className="accent-black"
-                      />
-                      <span className="truncate">{LABELS[c] ?? c}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Цена */}
-              <div className="mb-4">
-                <p className="text-sm font-semibold mb-2">Цена</p>
-                <div className="flex items-center gap-2 text-sm">
-                  <input
-                    type="number"
-                    min={priceStats.min}
-                    max={priceMax}
-                    value={priceMin}
-                    onChange={(e) => setPriceMin(Math.min(Number(e.target.value) || 0, priceMax))}
-                    className="w-28 rounded-md border border-black/10 px-2 py-2"
-                  />
-                  <span className="text-gray-500">—</span>
-                  <input
-                    type="number"
-                    min={priceMin}
-                    max={priceStats.max}
-                    value={priceMax}
-                    onChange={(e) => setPriceMax(Math.max(Number(e.target.value) || 0, priceMin))}
-                    className="w-28 rounded-md border border-black/10 px-2 py-2"
-                  />
-                </div>
-                <div className="mt-3 space-y-2">
-                  <input
-                    type="range"
-                    min={priceStats.min}
-                    max={priceStats.max}
-                    value={priceMin}
-                    onChange={(e) => setPriceMin(Math.min(Number(e.target.value) || 0, priceMax))}
-                    className="w-full ui-range"
-                  />
-                  <input
-                    type="range"
-                    min={priceStats.min}
-                    max={priceStats.max}
-                    value={priceMax}
-                    onChange={(e) => setPriceMax(Math.max(Number(e.target.value) || 0, priceMin))}
-                    className="w-full ui-range"
-                  />
-                </div>
-                <p className="mt-1 text-xs text-gray-500">
-                  мин: {fmtPrice(priceStats.min)} ₽ • макс: {fmtPrice(priceStats.max)} ₽
-                </p>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={resetFilters}
-                  className="w-1/2 rounded-lg border border-black/10 px-3 py-2 text-sm hover:bg-black hover:text-white transition"
-                >
-                  Сбросить
-                </button>
-                <button
-                  onClick={() => setIsFilterOpen(false)}
-                  className="w-1/2 rounded-lg bg-black text-white px-3 py-2 text-sm font-semibold"
-                >
-                  Применить{activeFiltersCount ? ` (${activeFiltersCount})` : ""}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {/* Footer */}
-      <style jsx global>{`
-  /* Desktop/Laptop: show categories fully (wrap) and avoid clipping */
-  #cats-inline-host [role="tablist"],
-  #cats-sticky-host [role="tablist"] {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    overflow: visible;
-    white-space: normal;
-  }
-  /* Swiper pagination/bullets */
-  .swiper-pagination {
-    bottom: 20px !important;
-    z-index: 20 !important;
-    position: absolute !important;
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-    width: 100% !important;
-    left: 0 !important;
-    transform: none !important;
-  }
-  .swiper-pagination-bullet {
-    position: relative;
-    width: 10px;
-    height: 10px;
-    border-radius: 9999px;
-    background-color: #000;
-    opacity: 0.3;
-    overflow: hidden;
-    transition: all 0.3s ease;
-  }
-  .swiper-pagination-bullet-active {
-    width: 50px;
-    height: 6px;
-    border-radius: 9999px;
-    opacity: 1;
-    background-color: rgba(0, 0, 0, 0.1);
-  }
-  .swiper-pagination-bullet-active::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    background-color: black;
-    animation: progressFill 4s linear forwards;
-    width: 0%;
-  }
-  @keyframes progressFill {
-    0% { width: 0%; }
-    100% { width: 100%; }
-  }
-  .cursor-arrow-left { cursor: url("/img/arrow-left.svg"), auto; }
-  .cursor-arrow-right { cursor: url("/img/arrow-right.svg"), auto; }
-
-  /* Filters: consistent, thin, monochrome controls */
-  .ui-range {
-    height: 20px;
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    background: transparent !important; /* kill any framework gradient */
-    box-shadow: none !important;
-    outline: none !important;
-    --range-shdw: rgba(0,0,0,0.12) !important; /* some libs read this */
-  }
-  /* WebKit */
-  .ui-range::-webkit-slider-runnable-track {
-    height: 2px;
-    background: rgba(0,0,0,0.12);
-    border-radius: 9999px;
-  }
-  .ui-range::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    margin-top: -6px; /* align to 2px track */
-    width: 14px;
-    height: 14px;
-    border-radius: 9999px;
-    background: #000;
-    border: 1px solid rgba(0,0,0,0.5);
-  }
-  /* Firefox */
-  .ui-range::-moz-range-track {
-    height: 2px;
-    background: rgba(0,0,0,0.12);
-    border-radius: 9999px;
-  }
-  .ui-range::-moz-range-progress {
-    height: 2px;
-    background: rgba(0,0,0,0.12); /* same as track – no colored progress */
-    border-radius: 9999px;
-  }
-  .ui-range::-moz-range-thumb {
-    width: 14px;
-    height: 14px;
-    border: 1px solid rgba(0,0,0,0.5);
-    border-radius: 9999px;
-    background: #000;
-  }
-  /* IE/Edge Legacy */
-  .ui-range::-ms-track {
-    height: 2px;
-    background: transparent;
-    border-color: transparent;
-    color: transparent;
-  }
-  .ui-range::-ms-fill-lower,
-  .ui-range::-ms-fill-upper {
-    background: rgba(0,0,0,0.12);
-    border-radius: 9999px;
-  }
-  .ui-range::-ms-thumb {
-    width: 14px;
-    height: 14px;
-    border-radius: 9999px;
-    background: #000;
-    border: 1px solid rgba(0,0,0,0.5);
-    margin-top: 0;
-  }
-  .ui-range:focus,
-  .ui-range:focus-visible {
-    outline: none !important;
-    box-shadow: none !important;
-  }
-
-  /* Thin hr replacement (where used) */
-  .filters-hr { height: 1px; background: rgba(0,0,0,0.10); }
-
-  /* Remove number input spinners for cleaner mobile UI */
-  input[type=number]::-webkit-outer-spin-button,
-  input[type=number]::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-  input[type=number] { -moz-appearance: textfield; }
-
-  /* Hide horizontal scrollbar for promo rail (mobile) */
-  .scrollbar-none::-webkit-scrollbar { display: none; }
-  .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
-
-  @media (max-width: 640px) {
-    /* Main categories: single-row, horizontally scrollable */
-    #cats-inline-host [role="tablist"],
-    #cats-sticky-host [role="tablist"] {
-      display: flex;
-      flex-wrap: nowrap !important;
-      gap: 8px;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      white-space: nowrap;
-      scroll-snap-type: x proximity;
-      scrollbar-width: none;
-    }
-    #cats-inline-host [role="tablist"]::-webkit-scrollbar,
-    #cats-sticky-host [role="tablist"]::-webkit-scrollbar { display: none; }
-
-    /* Add comfortable side padding so the first/last labels are not flush with screen edges */
-    #cats-inline-host [role="tablist"],
-    #cats-sticky-host [role="tablist"] {
-      padding-left: 16px;
-      padding-right: 14px;
-    }
-
-    #cats-inline-host [role="tablist"] > *,
-    #cats-sticky-host [role="tablist"] > * {
-      flex: 0 0 auto;
-      scroll-snap-align: center;
-    }
-
-    /* Subcategories (chips) may wrap on mobile */
-    #cats-inline-host .subcats,
-    #cats-sticky-host .subcats,
-    #cats-inline-host [data-subcats],
-    #cats-sticky-host [data-subcats] {
-      display: flex;
-      flex-wrap: wrap;
-      row-gap: 8px;
-      overflow: visible;
-      white-space: normal;
-    }
-  }
-
-  /* Ensure hash/programmable scroll aligns sections below sticky header on all browsers */
-  [id^="category-"] { scroll-margin-top: calc(var(--header-h,72px) + 16px); }
-  [data-anchor] { scroll-margin-top: calc(var(--header-h,72px) + 16px); }
-`}</style>
-      <footer className="w-full bg-black text-white py-12 mt-16">
-        <div className="px-6 max-w-[1200px] mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 relative">
-                  <Image 
-                    src="/img/IMG_0363.PNG"
-                    alt="StageStore Logo"
-                    fill
-                    className="object-contain"
-                    priority
-                  />
-                </div>
-                <h3 className="text-lg font-bold">StageStore</h3>
-              </div>
-              <p className="text-gray-400 text-sm">
-                Оригинальные кроссовки и одежда от ведущих мировых брендов.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-bold mb-4">Меню</h3>
-              <ul className="space-y-2 text-sm">
-                <li><a href="/" className="text-gray-400 hover:text-white transition">Главная</a></li>
-                <li><a href="/products" className="text-gray-400 hover:text-white transition">Каталог</a></li>
-                <li><a href="/premium" className="text-gray-400 hover:text-white transition">Premium</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-bold mb-4">Помощь</h3>
-              <ul className="space-y-2 text-sm">
-                <li><a href="#shipping" className="text-gray-400 hover:text-white transition">Доставка</a></li>
-                <li><a href="#returns" className="text-gray-400 hover:text-white transition">Возврат</a></li>
-                <li><a href="#size-guide" className="text-gray-400 hover:text-white transition">Таблица размеров</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-bold mb-4">Контакты</h3>
-              <address className="not-italic text-gray-400 text-sm">
-                <p className="mb-2">Москва, ул. Тверская, 12</p>
-                <p className="mb-2">
-                  <a href="mailto:info@stagestore.ru" className="hover:text-white transition">
-                    info@stagestore.ru
-                  </a>
-                </p>
-                <p>
-                  <a href="tel:+74951234567" className="hover:text-white transition">
-                    +7 (495) 123-45-67
-                  </a>
-                </p>
-              </address>
-            </div>
-          </div>
-
-          <div className="border-t border-white/10 mt-12 pt-6 flex flex-col md:flex-row justify-between items-center text-xs text-gray-500">
-            <p>© {new Date().getFullYear()} StageStore. Все права защищены.</p>
-            <p className="mt-2 md:mt-0 opacity-80">created by: <span className="font-semibold">crym0nt</span> × <span className="font-semibold">proxyess</span></p>
-            <p className="mt-2 md:mt-0">Политика конфиденциальности</p>
-          </div>
-        </div>
-      </footer>
-      {/* Global HERO Modal (outside hero to avoid clipping and to blur the whole page) */}
-      <AnimatePresence>
-        {isModalOpen && activeSlide !== null && (
-          <motion.div
-            key="hero-modal-global"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[2000] flex items-start justify-center pt-10 md:pt-16 lg:pt-20 overflow-y-auto"
-            aria-modal="true"
-            role="dialog"
-          >
-            {/* compute promo items for the current slide (only Acne × Kappa) */}
-            {(() => {
-              const slide = slides[activeSlide];
-              const isAcnePromo = /acne\s*studios.*kappa/i.test(
-                (slide?.title || '') + ' ' + (slide?.modal?.title || '')
-              );
-
-              let promoItems: any[] = [];
-              if (isAcnePromo) {
-                promoItems = (catalog as any[])
-                  .filter((p: any) => Array.isArray(p?.brands) && p.brands.includes('Acne Studios') && p.brands.includes('Kappa'))
-                  .slice(0, 3);
-                if (!promoItems.length) {
-                  const ids = new Set([2001, 2002, 2003]);
-                  promoItems = (catalog as any[]).filter((p: any) => ids.has(Number(p?.id))).slice(0, 3);
-                }
-              }
-              // expose to outer scope via window property used right below (hacky but safe inside modal lifetime)
-              (window as any).__modalHasPromo = Boolean(promoItems.length);
-              (window as any).__modalPromoItems = promoItems;
-              return null;
-            })()}
-            {/* Backdrop: full-page black + strong blur */}
-            <div
-              className="absolute inset-0 bg-black/55 backdrop-blur-lg supports-[backdrop-filter]:backdrop-blur-xl"
-              onClick={closeModal}
-            />
-
-            {/* Panel */}
-            <motion.div
-              initial={{ y: 20, scale: 0.98, opacity: 0 }}
-              animate={{ y: 0, scale: 1, opacity: 1 }}
-              exit={{ y: 10, scale: 0.98, opacity: 0 }}
-              transition={{ type: 'tween', duration: 0.25 }}
-              className="relative z-[2001] w-[92vw] max-w-[860px] rounded-2xl bg-white shadow-2xl p-0 overflow-hidden my-6 md:my-10"
-            >
-              <button
-                aria-label="Закрыть"
-                onClick={closeModal}
-                className="absolute top-3 right-3 z-20 text-black/70 hover:text-black"
-              >
-                ✕
-              </button>
-
-              {/* Header with image */}
-              <div className="relative w-full h-[200px] md:h-[260px] overflow-visible">
-                {slides[activeSlide].type === 'image' ? (
-                  <Image
-                    src={slides[activeSlide].src}
-                    alt={slides[activeSlide].title}
-                    fill
-                    className="object-cover"
-                    priority
-                  />
-                ) : (
-                  <div className="w-full h-full bg-black/5 flex items-center justify-center text-black/50">
-                    <span className="text-sm">Видео баннер</span>
-                  </div>
-                )}
-
-                {/* Centered badge with collection title */}
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30">
-                  <span className="inline-flex items-center gap-2 rounded-full bg-white/90 shadow-md backdrop-blur px-3 py-1 text-xs md:text-sm font-semibold text-black">
-                    {slides[activeSlide].modal?.title || slides[activeSlide].title}
-                  </span>
-                </div>
-
-                {/* Short description under the title, above the product cards */}
-                <div className="absolute top-12 md:top-14 left-1/2 -translate-x-1/2 z-30 w-[92%] max-w-[760px] text-center px-3">
-                  <p className="text-base md:text-2xl font-semibold text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]">
-                    {slides[activeSlide].subtitle}
-                  </p>
-                </div>
-
-                <div
-                  className={`absolute inset-0 bg-gradient-to-t ${
-                    (window as any).__modalHasPromo ? 'from-white via-white/60' : 'from-white/80 via-white/40'
-                  } to-transparent`}
-                />
-
-                {(() => {
-                  const promo: any[] = (window as any).__modalPromoItems || [];
-                  if (!promo.length) return null;
-                  return (
-                    <div
-                      className="absolute left-1/2 z-20 pointer-events-auto"
-                      style={{ bottom: '-140px', transform: 'translateX(-50%)', width: 'min(860px, 92%)' }}
-                    >
-                      <div className="grid grid-cols-3 gap-6 md:gap-8 place-items-center">
-                        {promo.map((it: any) => (
-                          <div key={`promo-${it.id}`} className="w-36 md:w-48 flex flex-col items-center text-center">
-                            <a
-                              href={`/product/${it.id}`}
-                              className="relative w-36 h-40 md:w-48 md:h-56 rounded-2xl overflow-hidden bg-white shadow-[0_14px_36px_rgba(0,0,0,0.20)] ring-1 ring-black/10 will-change-transform transform transition duration-300 hover:-translate-y-1 hover:scale-[1.03]"
-                              onClick={(e) => {
-                                try {
-                                  sessionStorage.setItem('lastListRoute', window.location.pathname + window.location.search);
-                                  sessionStorage.setItem('lastScrollY', String(window.scrollY));
-                                  sessionStorage.setItem('lastProductId', String(it.id));
-                                } catch {}
-                              }}
-                            >
-                              <Image
-                                src={it.images?.[0] || '/img/placeholder.png'}
-                                alt={it.name}
-                                fill
-                                className="object-cover"
-                                sizes="(max-width: 768px) 9rem, 12rem"
-                                priority
-                              />
-                              <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-white/50 to-transparent" />
-                            </a>
-                            <div className="mt-2 w-full px-1">
-                              <p className="text-xs md:text-sm font-medium text-gray-900 line-clamp-1">{it.name}</p>
-                              <div className="mt-0.5 flex items-baseline justify-center gap-2">
-                                {it?.oldPrice && Number(it.oldPrice) > Number(it.price) && (
-                                  <span className="text-[10px] md:text-xs text-gray-400 line-through">{fmtPrice(it.oldPrice)} ₽</span>
-                                )}
-                                <span className="text-xs md:text-sm font-semibold text-black">{fmtPrice(it.price)} ₽</span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Body */}
-              <div className={`p-6 md:p-8 ${ (window as any).__modalHasPromo ? 'pt-44 md:pt-52' : 'pt-8 md:pt-10' }`}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-                  <div className="space-y-3">
-                    <h4 className="font-bold">Почему стоит заглянуть:</h4>
-                    <ul className="space-y-2 text-sm text-gray-700 list-disc pl-5">
-                      <li>Лимитированные релизы и эксклюзивы</li>
-                      <li>Цены считаются от минимального размера</li>
-                      <li>Доставка по РФ, возврат 14 дней</li>
-                      <li>Поддержка 24/7</li>
-                    </ul>
-                  </div>
-                  <div className="space-y-3">
-                    <h4 className="font-bold">Быстрые действия:</h4>
-                    <div className="flex flex-wrap gap-3">
-                      {(slides[activeSlide].modal?.ctas || []).map((c, i) => (
-                        <a
-                          key={i}
-                          href={c.hash}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            const anchor = (c.hash || '').replace('#','');
-                            const numericId = (anchor && (anchor in idMap)) ? (idMap as any)[anchor] : null;
-                            const el = numericId ? document.getElementById(`category-${numericId}`) : document.querySelector(`[data-anchor="${anchor}"]`);
-                            if (el) {
-                              closeModal();
-                              setTimeout(() => smoothScrollToElement(el as HTMLElement), 50);
-                            } else {
-                              closeModal();
-                              window.location.hash = c.hash;
-                            }
-                          }}
-                          className="px-4 py-2 rounded-full border border-black text-black hover:bg-black hover:text-white transition"
-                        >
-                          {c.label}
-                        </a>
-                      ))}
-                    </div>
-
-                    <div className="pt-4 flex items-center gap-4 text-sm text-gray-600">
-                      <div className="flex items-center gap-2">
-                        <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
-                        Гарантия подлинности
-                      </div>
-                      <div className="hidden md:flex items-center gap-2">
-                        <span className="inline-block w-2 h-2 rounded-full bg-blue-500" />
-                        Безопасная оплата
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </>
   );
 }

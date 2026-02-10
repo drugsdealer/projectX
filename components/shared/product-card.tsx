@@ -136,6 +136,13 @@ export const ProductCard: React.FC<Props> = ({
   const lastSwipeAtRef = useRef<number>(0);
   const didSwipeRef = useRef(false);
 
+  // Axis lock for touch: prevents micro-jitter when the user scrolls vertically
+  const axisLockRef = useRef<null | "x" | "y">(null);
+  const capturedPointerIdRef = useRef<number | null>(null);
+
+  const AXIS_LOCK_THRESHOLD_PX = 8; // how much finger must move before we decide x vs y
+  const AXIS_LOCK_RATIO = 1.25; // how much stronger one axis must be
+
   const SWIPE_THRESHOLD_PX = 32;
   const SWIPE_COOLDOWN_MS = 140;
 
@@ -271,19 +278,19 @@ export const ProductCard: React.FC<Props> = ({
             userSelect: "none",
           }}
           onPointerDown={(e) => {
-            // на десктопе оставляем старое поведение (hover/mousemove), свайп нужен только для touch
+            // swipe only for touch
             if (e.pointerType !== "touch") return;
             if (imageList.length <= 1) return;
 
             pointerDownRef.current = true;
+            axisLockRef.current = null;
             startXRef.current = e.clientX;
             startYRef.current = e.clientY;
-            // чтобы жест не превратился в клик по ссылке
             didSwipeRef.current = false;
 
-            try {
-              (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-            } catch {}
+            // IMPORTANT: do NOT capture immediately.
+            // Capturing too early on mobile can fight vertical scrolling and cause tiny "snap" jitter.
+            capturedPointerIdRef.current = null;
           }}
           onPointerMove={(e) => {
             if (e.pointerType !== "touch") return;
@@ -293,35 +300,79 @@ export const ProductCard: React.FC<Props> = ({
 
             const dx = e.clientX - startXRef.current;
             const dy = e.clientY - startYRef.current;
+            const adx = Math.abs(dx);
+            const ady = Math.abs(dy);
 
-            // если пользователь больше скроллит вверх/вниз — не вмешиваемся
-            if (Math.abs(dy) > Math.abs(dx)) return;
+            // Decide axis only after a small movement; until then do nothing.
+            if (axisLockRef.current === null) {
+              if (adx < AXIS_LOCK_THRESHOLD_PX && ady < AXIS_LOCK_THRESHOLD_PX) return;
+
+              // Prefer vertical scroll unless horizontal is clearly dominant.
+              if (ady >= adx * AXIS_LOCK_RATIO) {
+                axisLockRef.current = "y";
+                // Stop handling: let the page scroll naturally.
+                pointerDownRef.current = false;
+                startXRef.current = null;
+                startYRef.current = null;
+                return;
+              }
+
+              if (adx >= ady * AXIS_LOCK_RATIO) {
+                axisLockRef.current = "x";
+                // Capture ONLY after we are sure it is a horizontal swipe.
+                try {
+                  (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                  capturedPointerIdRef.current = e.pointerId;
+                } catch {}
+              } else {
+                // ambiguous movement: treat as vertical to avoid jitter
+                axisLockRef.current = "y";
+                pointerDownRef.current = false;
+                startXRef.current = null;
+                startYRef.current = null;
+                return;
+              }
+            }
+
+            // If we locked to vertical, do nothing.
+            if (axisLockRef.current === "y") return;
+
+            // Horizontal swipe: prevent vertical scroll while swiping.
+            // Call preventDefault only when x is locked.
+            e.preventDefault();
 
             const now = performance.now();
             if (now - lastSwipeAtRef.current < SWIPE_COOLDOWN_MS) return;
 
-            if (Math.abs(dx) >= SWIPE_THRESHOLD_PX) {
+            if (adx >= SWIPE_THRESHOLD_PX) {
               lastSwipeAtRef.current = now;
               didSwipeRef.current = true;
 
               if (dx < 0) bumpIndex(1);
               else bumpIndex(-1);
 
-              // ресетим старт, чтобы можно было листать дальше одним жестом
+              // Reset start to allow continuous swiping in one gesture
               startXRef.current = e.clientX;
               startYRef.current = e.clientY;
             }
           }}
           onPointerUp={(e) => {
             if (e.pointerType !== "touch") return;
+
             pointerDownRef.current = false;
             startXRef.current = null;
             startYRef.current = null;
-            try {
-              (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-            } catch {}
+            axisLockRef.current = null;
 
-            // небольшой таймаут, чтобы тап сразу после свайпа не открыл товар
+            const pid = capturedPointerIdRef.current;
+            capturedPointerIdRef.current = null;
+            if (pid != null) {
+              try {
+                (e.currentTarget as HTMLElement).releasePointerCapture(pid);
+              } catch {}
+            }
+
+            // small timeout to avoid opening the product on the same gesture
             if (didSwipeRef.current) {
               window.setTimeout(() => {
                 didSwipeRef.current = false;
@@ -330,12 +381,19 @@ export const ProductCard: React.FC<Props> = ({
           }}
           onPointerCancel={(e) => {
             if (e.pointerType !== "touch") return;
+
             pointerDownRef.current = false;
             startXRef.current = null;
             startYRef.current = null;
-            try {
-              (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-            } catch {}
+            axisLockRef.current = null;
+
+            const pid = capturedPointerIdRef.current;
+            capturedPointerIdRef.current = null;
+            if (pid != null) {
+              try {
+                (e.currentTarget as HTMLElement).releasePointerCapture(pid);
+              } catch {}
+            }
           }}
         >
           <Image

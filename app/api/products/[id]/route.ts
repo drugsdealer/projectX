@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
+const PUBLIC_CACHE_HEADERS = {
+  "Cache-Control": "public, max-age=30, s-maxage=120, stale-while-revalidate=300",
+};
+
 // --- Category helpers (RU <-> EN) and inference for [id] route ---
 const RU_TO_EN: Record<string, string> = {
   "обувь": "footwear",
@@ -89,8 +93,8 @@ export async function GET(
     }
 
     // Базовый товар (минимальный набор полей — без жёстких связей, чтобы не падать, если какие-то relation'ы отсутствуют)
-    const product = await (prisma as any).product.findUnique({
-      where: { id: productId },
+    const product = await (prisma as any).product.findFirst({
+      where: { id: productId, deletedAt: null },
       include: {
         Brand: true,
         Category: true,
@@ -160,6 +164,7 @@ export async function GET(
           where: {
             modelKey: pAny.modelKey,
             id: { not: product.id },
+            deletedAt: null,
           },
           select: {
             id: true,
@@ -385,7 +390,7 @@ export async function GET(
         productItems: normalizedItems,
         colorVariants,
       },
-      { status: 200 }
+      { status: 200, headers: PUBLIC_CACHE_HEADERS }
     );
   } catch (e) {
     console.error("[api.products.[id]] error:", e);

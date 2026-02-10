@@ -32,11 +32,16 @@ export default function LoginPage() {
     setErr(null);
     setIsLoading(true);
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
+        signal: controller.signal,
+        credentials: "include",
       });
+      clearTimeout(timeoutId);
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok || !data?.success) {
@@ -52,11 +57,18 @@ export default function LoginPage() {
       }
 
       try { window.dispatchEvent(new Event("auth:changed")); } catch {}
-      await refresh();
-
+      refresh().catch(() => {});
       router.push("/user");
+      // Hard fallback in case client-side routing is blocked
+      setTimeout(() => {
+        try {
+          if (window.location.pathname === "/login") {
+            window.location.replace("/user");
+          }
+        } catch {}
+      }, 800);
     } catch {
-      setErr("Не удалось выполнить вход. Попробуйте позже.");
+      setErr("Не удалось выполнить вход (таймаут или ошибка сети). Попробуйте позже.");
     } finally {
       setIsLoading(false);
     }
@@ -79,6 +91,13 @@ export default function LoginPage() {
               На главную
             </button>
           </div>
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="sm:hidden mb-4 inline-flex items-center text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-700 hover:text-gray-900 hover:border-gray-900 transition"
+          >
+            На главную
+          </button>
 
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">

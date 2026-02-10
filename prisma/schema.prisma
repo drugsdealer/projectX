@@ -69,6 +69,7 @@ model CartItem {
   image          String?
   sizeLabel      String?
   quantity       Int
+  postponed      Boolean      @default(false)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
@@ -92,6 +93,21 @@ model Category {
   deletedAt DateTime? @db.Timestamp(6)
   slug      String    @unique
   Product   Product[]
+  Subcategory Subcategory[]
+}
+
+model Subcategory {
+  id         Int       @id @default(autoincrement())
+  name       String
+  slug       String    @unique
+  categoryId Int
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime? @db.Timestamp(6)
+
+  Category   Category @relation(fields: [categoryId], references: [id])
+
+  @@index([categoryId])
 }
 
 model Color {
@@ -130,6 +146,7 @@ model Order {
   token       String?     @unique
   totalAmount Int         @default(0)
   status      OrderStatus @default(PENDING)
+  shippingStatus OrderShippingStatus @default(PROCESSING)
   publicNumber String?    @unique
   paymentId   String?
   fullName    String
@@ -137,6 +154,16 @@ model Order {
   phone       String
   address     String
   comment     String?
+  deliveryRequestedAt DateTime?
+  deliveryScheduledAt DateTime?
+  deliveryAddress String?
+  deliveryRecipientName String?
+  deliveryPhone String?
+  deliveryNotifiedAt DateTime?
+  handedAt DateTime?
+  promoCode   String?
+  promoDiscountType DiscountType?
+  promoDiscountValue Int?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   paidAt      DateTime?
@@ -277,6 +304,8 @@ model PromoCode {
   discountType    DiscountType      @default(PERCENT)
   percentOff      Int?
   amountOff       Int?
+  appliesTo       PromoAppliesTo    @default(ALL)
+  excludedBrands  String[]          @default([])
   minSubtotal     Int?
   maxRedemptions  Int?
   startsAt        DateTime?
@@ -335,6 +364,8 @@ model User {
   verified         DateTime
   provider         String?
   providerId       String?
+  adminTotpSecretEnc String?
+  adminTotpEnabled Boolean          @default(false)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   address          String?
@@ -352,6 +383,9 @@ model User {
   PromoCode        PromoCode[]
   PromoRedemption  PromoRedemption[]
   VerificationCode VerificationCode?
+  LoginHistory     UserLoginHistory[]
+  Sessions         UserSession[]
+  PasswordResetCode PasswordResetCode?
 }
 
 model FavoriteProduct {
@@ -378,15 +412,77 @@ model VerificationCode {
   @@unique([userId, code])
 }
 
+model PasswordResetCode {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  code      String
+  createdAt DateTime @default(now())
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+}
+
+model UserLoginHistory {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  ip         String?  @db.VarChar(64)
+  city       String?
+  country    String?
+  device     String?
+  os         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  User       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model UserSession {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  token      String    @unique
+  isPrimary  Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  lastSeen   DateTime  @default(now())
+  ip         String?   @db.VarChar(64)
+  city       String?
+  country    String?
+  device     String?
+  os         String?
+  userAgent  String?
+  revokedAt  DateTime?
+
+  User       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([lastSeen])
+}
+
 enum DiscountType {
   PERCENT
   AMOUNT
+}
+
+enum PromoAppliesTo {
+  ALL
+  PREMIUM_ONLY
+  NON_PREMIUM_ONLY
 }
 
 enum OrderStatus {
   PENDING
   SUCCEEDED
   CANCELED
+}
+
+enum OrderShippingStatus {
+  PROCESSING
+  ABROAD
+  IN_RUSSIA
+  ARRIVED
 }
 
 enum SizeType {

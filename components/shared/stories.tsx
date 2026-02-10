@@ -43,12 +43,34 @@ const testStories: Story[] = [
   }
 ];
 
+function loadSeen(): number[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const saved = localStorage.getItem("seenStories.v2");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        return parsed.map((v) => Number(v)).filter((v) => Number.isFinite(v));
+      }
+    }
+    const legacy = localStorage.getItem("seenStories");
+    if (legacy) {
+      const parsed = JSON.parse(legacy);
+      if (Array.isArray(parsed)) {
+        return parsed.map((v) => Number(v)).filter((v) => Number.isFinite(v));
+      }
+    }
+  } catch {}
+  return [];
+}
+
 export function Stories() {
   const [active, setActive] = useState<Story | null>(null);
   const [seen, setSeen] = useState<number[]>([]);
   const [activeSlide, setActiveSlide] = useState(0);
   const [cursorSide, setCursorSide] = useState<"left" | "right" | null>(null);
   const [isPaused, setIsPaused] = useState(false);
+  const [canHover, setCanHover] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const goNext = () => {
@@ -58,9 +80,7 @@ export function Stories() {
     if (next) {
       setActive(next);
       setActiveSlide(0);
-      if (!seen.includes(next.id)) {
-        setSeen([...seen, next.id]);
-      }
+      setSeen((prev) => (prev.includes(next.id) ? prev : [...prev, next.id]));
     } else {
       setActive(null);
       setActiveSlide(0);
@@ -75,17 +95,10 @@ export function Stories() {
       setActive(prev);
       setActiveSlide(0);
     }
-    if (prev && !seen.includes(prev.id)) {
-      setSeen([...seen, prev.id]);
+    if (prev) {
+      setSeen((p) => (p.includes(prev.id) ? p : [...p, prev.id]));
     }
   };
-
-  useEffect(() => {
-    const saved = localStorage.getItem("seenStories");
-    if (saved) {
-      setSeen(JSON.parse(saved));
-    }
-  }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -98,8 +111,28 @@ export function Stories() {
   }, [active]);
 
   useEffect(() => {
-    localStorage.setItem("seenStories", JSON.stringify(seen));
+    setSeen(loadSeen());
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("seenStories.v2", JSON.stringify(seen));
+      localStorage.removeItem("seenStories");
+    } catch {}
   }, [seen]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia ? window.matchMedia("(hover: hover)") : null;
+    const update = () => setCanHover(!!mq?.matches);
+    update();
+    if (mq?.addEventListener) mq.addEventListener("change", update);
+    else if (mq?.addListener) mq.addListener(update);
+    return () => {
+      if (mq?.removeEventListener) mq.removeEventListener("change", update);
+      else if (mq?.removeListener) mq.removeListener(update);
+    };
+  }, []);
 
   useEffect(() => {
     if (!active) return;
@@ -127,9 +160,7 @@ export function Stories() {
             onClick={() => {
               setActive(story);
               setActiveSlide(0);
-              if (!seen.includes(story.id)) {
-                setSeen([...seen, story.id]);
-              }
+              setSeen((prev) => (prev.includes(story.id) ? prev : [...prev, story.id]));
             }}
             className={`w-20 h-20 rounded-full overflow-hidden cursor-pointer flex items-center justify-center bg-gray-200 ${
               seen.includes(story.id)
@@ -173,14 +204,13 @@ export function Stories() {
               }
             }}
             style={{
-              cursor:
-                typeof window !== "undefined" && window.innerWidth > 768
-                  ? cursorSide === "right"
-                    ? "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\" fill=\"white\"><text x=\"0\" y=\"24\" font-size=\"28\">→</text></svg>') 16 16, auto"
-                    : cursorSide === "left"
-                    ? "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\" fill=\"white\"><text x=\"0\" y=\"24\" font-size=\"28\">←</text></svg>') 16 16, auto"
-                    : "default"
+              cursor: canHover
+                ? cursorSide === "right"
+                  ? "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\" fill=\"white\"><text x=\"0\" y=\"24\" font-size=\"28\">→</text></svg>') 16 16, auto"
+                  : cursorSide === "left"
+                  ? "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\" fill=\"white\"><text x=\"0\" y=\"24\" font-size=\"28\">←</text></svg>') 16 16, auto"
                   : "default"
+                : "default",
             }}
           >
             <div

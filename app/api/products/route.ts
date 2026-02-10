@@ -111,7 +111,11 @@ function inferSubcategorySlug(p: any): string | null {
   return null;
 }
 
-export const dynamic = "force-dynamic"; // отключаем кеш на всякий случай
+export const dynamic = "force-dynamic"; // оставляем динамику, но отвечаем кэширующими заголовками
+
+const PUBLIC_CACHE_HEADERS = {
+  "Cache-Control": "public, max-age=30, s-maxage=120, stale-while-revalidate=300",
+};
 
 export async function GET(req: Request) {
   try {
@@ -141,8 +145,8 @@ export async function GET(req: Request) {
         );
       }
 
-      const item = await prisma.product.findUnique({
-        where: { id: idNum },
+      const item = await prisma.product.findFirst({
+        where: { id: idNum, deletedAt: null },
         include: {
           [rel.categoryKey]: { select: { id: true, name: true, slug: true } },
           [rel.brandKey]:    { select: { id: true, name: true, slug: true } },
@@ -249,7 +253,7 @@ export async function GET(req: Request) {
         sizes: buildSizesFromProductItem((item as any).ProductItem),
       };
 
-      return NextResponse.json({ success: true, product }, { status: 200 });
+      return NextResponse.json({ success: true, product }, { status: 200, headers: PUBLIC_CACHE_HEADERS });
     }
 
     // ----------------------------------------------------
@@ -262,7 +266,7 @@ export async function GET(req: Request) {
       take = Number.isFinite(t) && t > 0 ? Math.min(t, 200) : 120;
     }
 
-    const where: any = {};
+    const where: any = { deletedAt: null };
 
     // По умолчанию из общего списка убираем премиальные товары,
     // чтобы они не попадали на главную страницу.
@@ -397,10 +401,10 @@ export async function GET(req: Request) {
         success: true,
         products: filteredBySub,
         filters: {
-          brands: brandOptions.map(b => ({ id: b.id, name: b.name, slug: b.slug })),
+          brands: brandOptions.map((b) => ({ id: b.id, name: b.name, slug: b.slug })),
         },
       },
-      { status: 200 }
+      { status: 200, headers: PUBLIC_CACHE_HEADERS }
     );
   } catch (e) {
     console.error("[api.products] GET error", e);

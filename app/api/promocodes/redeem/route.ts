@@ -1,17 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import { redeemPromo, validatePromo } from "@/lib/promos";
+import { redeemPromoForOrder, validatePromo } from "@/lib/promos";
 import { getUserIdFromRequest } from "@/lib/session";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const rawCode = (body?.code ?? "").toString().trim();
+  const orderIdRaw = body?.orderId ?? null;
   if (!rawCode) {
     return NextResponse.json({ ok: false, error: "invalid_code" }, { status: 400 });
   }
   const code = rawCode.toUpperCase();
+  const orderId = Number(orderIdRaw);
 
   const userId = await getUserIdFromRequest();
   if (!userId) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  if (!Number.isFinite(orderId) || orderId <= 0) {
+    return NextResponse.json({ ok: false, error: "order_required" }, { status: 400 });
+  }
+
+  const order = await prisma.order.findFirst({
+    where: { id: orderId, userId },
+    select: { id: true, status: true },
+  });
+  if (!order || String(order.status) !== "SUCCEEDED") {
+    return NextResponse.json({ ok: false, error: "order_not_paid" }, { status: 400 });
+  }
 
   // Проверяем, существует ли промокод и активен ли он
   const validation = await validatePromo({ code, userId });
@@ -29,8 +43,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Вызываем redeemPromo и деактивируем промокод
-    await redeemPromo(code, userId);
+    await redeemPromoForOrder({ code, userId, orderId });
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     // If userId doesn't exist in the DB we can hit a FK error (P2003)
@@ -39,8 +52,7 @@ export async function POST(req: NextRequest) {
         {
           ok: false,
           error: 'unknown_user',
-          message:
-            'Пользователь не найден. Передайте корректный userId (cookie `userId` или заголовок `x-user-id`).',
+          message: 'Пользователь не найден. Войдите в аккаунт и попробуйте снова.',
         },
         { status: 401 }
       );

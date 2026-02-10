@@ -11,10 +11,23 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
     if (activePromo) {
+      const used = await prisma.promoRedemption.findFirst({
+        where: { promoCodeId: activePromo.id, userId },
+        select: { id: true },
+      });
+      if (used) {
+        return Response.json({ promo: null });
+      }
       return Response.json({
         promo: {
           code: activePromo.code,
-          discount: activePromo.percentOff ?? 0,
+          type: activePromo.discountType,
+          value:
+            activePromo.discountType === "PERCENT"
+              ? activePromo.percentOff ?? 0
+              : activePromo.amountOff ?? 0,
+          appliesTo: activePromo.appliesTo,
+          excludedBrands: activePromo.excludedBrands ?? [],
         },
       });
     }
@@ -23,13 +36,16 @@ export async function GET() {
   const ck = await cookies();
   const guestCode = ck.get("promoCode")?.value || ck.get("promo_code")?.value || null;
   const guestDiscountStr = ck.get("promoDiscount")?.value || ck.get("promo_discount")?.value || null;
+  const guestDiscountType =
+    ck.get("promoType")?.value || ck.get("promo_type")?.value || "PERCENT";
   const guestDiscount = guestDiscountStr ? Number(guestDiscountStr) : null;
 
   if (guestCode && guestDiscount != null && !Number.isNaN(guestDiscount)) {
     return Response.json({
       promo: {
         code: guestCode,
-        discount: guestDiscount,
+        type: guestDiscountType === "AMOUNT" ? "AMOUNT" : "PERCENT",
+        value: guestDiscount,
       },
     });
   }

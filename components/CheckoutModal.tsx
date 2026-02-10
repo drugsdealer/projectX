@@ -9,7 +9,9 @@ import React, {
   useCallback,
 } from "react";
 import { createPortal } from "react-dom";
-import { YMaps, Map as YMap, Placemark } from "@pbe/react-yandex-maps";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle,
@@ -17,13 +19,108 @@ import {
   User,
   ClipboardCheck,
   CreditCard,
-  Smile,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useUser } from "@/user/UserContext";
 import { useDiscount } from "@/context/DiscountContext";
 
-const steps = ["ФИО", "Подтверждение", "Оплата", "Ответ"];
+const MAPTILER_KEY =
+  process.env.NEXT_PUBLIC_MAPTILER_KEY ||
+  process.env.NEXT_PUBLIC_MAPTILER_TOKEN ||
+  "";
+
+// Fix Leaflet marker icons in Next.js bundling
+if (typeof window !== "undefined") {
+  const DefaultIcon = L.icon({
+    iconUrl:
+      "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+    iconRetinaUrl:
+      "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+    shadowUrl:
+      "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
+  });
+  (L as any).Marker.prototype.options.icon = DefaultIcon;
+}
+
+const tileUrl = MAPTILER_KEY
+  ? `https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`
+  : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+
+const tileAttribution = MAPTILER_KEY
+  ? '&copy; <a href="https://www.maptiler.com/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+  : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+
+const readCookie = (name: string): string | null => {
+  if (typeof document === "undefined") return null;
+  const cookies = document.cookie.split("; ");
+  for (const part of cookies) {
+    const idx = part.indexOf("=");
+    if (idx === -1) continue;
+    const key = decodeURIComponent(part.slice(0, idx));
+    if (key === name) return decodeURIComponent(part.slice(idx + 1));
+  }
+  return null;
+};
+
+type MapPickerProps = {
+  center: [number, number];
+  marker?: [number, number] | null;
+  onPick: (coords: [number, number]) => void;
+  mapRef?: React.MutableRefObject<any>;
+  invalidateKey?: number;
+};
+
+function MapPicker({ center, marker, onPick, mapRef, invalidateKey }: MapPickerProps) {
+  const MapClick = () => {
+    useMapEvents({
+      click(e) {
+        const coords: [number, number] = [e.latlng.lat, e.latlng.lng];
+        onPick(coords);
+      },
+    });
+    return null;
+  };
+
+  const MapSizer = () => {
+    const map = useMap();
+    useEffect(() => {
+      const t1 = setTimeout(() => map.invalidateSize(), 0);
+      const t2 = setTimeout(() => map.invalidateSize(), 120);
+      const t3 = setTimeout(() => map.invalidateSize(), 300);
+      const t4 = setTimeout(() => map.invalidateSize(), 600);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+        clearTimeout(t4);
+      };
+    }, [map, invalidateKey]);
+    return null;
+  };
+
+  return (
+    <MapContainer
+      center={center}
+      zoom={10}
+      style={{ width: "100%", height: "100%" }}
+      scrollWheelZoom={true}
+      whenCreated={(map) => {
+        if (mapRef) mapRef.current = map;
+      }}
+    >
+      <TileLayer attribution={tileAttribution} url={tileUrl} />
+      <MapSizer />
+      <MapClick />
+      {marker ? <Marker position={marker} /> : null}
+    </MapContainer>
+  );
+}
+
+const steps = ["ФИО", "Подтверждение", "Оплата"];
 
 type CheckoutItem = {
   productItemId?: number | null;
@@ -130,7 +227,6 @@ export default function CheckoutModal({
 }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
-  const [open, setOpen] = useState(visible);
   const [error, setError] = useState(false);
   const [paying, setPaying] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -138,18 +234,46 @@ export default function CheckoutModal({
   const cartCtx: any = useCart();
   const { discount } = useDiscount();
   const cartItems = cartCtx?.cartItems ?? [];
+  const postponedItems = cartCtx?.postponedItems ?? [];
+  const getPostponedKey = cartCtx?.getPostponedKey ?? ((it: any) => `id:${it?.id ?? 0}`);
   const { user, login } = useUser();
+  const hasDiscount =
+    discount.type === "AMOUNT" ? discount.value > 0 : discount.value > 0;
+  const getDiscountAmount = (subtotal: number) =>
+    discount.type === "AMOUNT"
+      ? discount.value
+      : subtotal * discount.value;
+  const getCartItemId = (raw: any) => {
+    const direct = Number(raw?.cartItemId);
+    if (Number.isFinite(direct)) return direct;
+    const id = Number(raw?.id);
+    const productId = Number(raw?.productId ?? raw?.product?.id);
+    if (Number.isFinite(id) && Number.isFinite(productId) && id !== productId) return id;
+    return Number.isFinite(id) && !Number.isFinite(productId) ? id : null;
+  };
 
   // --- ОТКРЫТИЕ/ЗАКРЫТИЕ МОДАЛКИ ---
 
   const handleUserClose = useCallback(() => {
-    setOpen(false);
     onClose?.();
   }, [onClose]);
 
   useEffect(() => {
-    // Извне разрешаем ТОЛЬКО открывать модалку
-    if (visible) setOpen(true);
+    if (!visible) return;
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.overflow;
+    const prevBody = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    html.classList.add("modal-open");
+    body.classList.add("modal-open");
+    return () => {
+      html.classList.remove("modal-open");
+      body.classList.remove("modal-open");
+      html.style.overflow = prevHtml;
+      body.style.overflow = prevBody;
+    };
   }, [visible]);
 
   useEffect(() => {
@@ -208,8 +332,11 @@ export default function CheckoutModal({
     );
 
   const activeCartItems = useMemo(
-    () => (cartItems as any[]).filter((i) => !isSaved(i)),
-    [cartItems]
+    () =>
+      (cartItems as any[]).filter(
+        (i) => !isSaved(i) && !postponedItems.includes(getPostponedKey(i))
+      ),
+    [cartItems, postponedItems, getPostponedKey]
   );
 
   const activeCount = useMemo(
@@ -229,9 +356,9 @@ export default function CheckoutModal({
 
   const discountedTotal = useMemo(() => {
     const subtotal = activeTotal;
-    const discounted = discount > 0 ? subtotal * (1 - discount) : subtotal;
+    const discounted = subtotal - Math.max(0, getDiscountAmount(subtotal));
     return Math.max(0, +discounted.toFixed(2));
-  }, [activeTotal, discount]);
+  }, [activeTotal, discount, getDiscountAmount]);
 
   /**
    * Строим позиции из корзины (без сетевых запросов).
@@ -329,7 +456,6 @@ export default function CheckoutModal({
     for (const [productId, list] of Array.from(groups.entries())) {
       try {
         const res = await fetch(`/api/products/${productId}`, {
-          cache: "no-store",
           credentials: "include",
         });
         if (!res.ok) throw new Error(`GET /api/products/${productId} -> ${res.status}`);
@@ -449,25 +575,16 @@ export default function CheckoutModal({
   const [showMoscowInfo, setShowMoscowInfo] = useState(false);
   const [showRussiaInfo, setShowRussiaInfo] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState<"success" | "fail" | null>(
-    null
-  );
 
-  const restoreOrderIdFromQuery = (): string => {
-    if (typeof window === "undefined") return "";
-    try {
-      const params = new URLSearchParams(window.location.search);
-      return (params.get("orderId") || params.get("order") || "").trim();
-    } catch {
-      return "";
-    }
-  };
-
-  const [orderId, setOrderId] = useState<string>("");
   const [fio, setFio] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [agree, setAgree] = useState(false);
+
+  const isPlaceholderName = (v?: string | null) => {
+    const t = (v ?? "").toString().trim().toLowerCase();
+    return !t || t === "не указано" || t === "введите фио";
+  };
 
   const saveCheckoutStatePartial = useCallback(
     (
@@ -501,7 +618,9 @@ export default function CheckoutModal({
       if (saved) {
         const parsed = JSON.parse(saved);
         if (typeof parsed.step === "number") setStep(parsed.step);
-        if (typeof parsed.fio === "string") setFio(parsed.fio);
+        if (typeof parsed.fio === "string") {
+          setFio(isPlaceholderName(parsed.fio) ? "" : parsed.fio);
+        }
         if (typeof parsed.email === "string") setEmail(parsed.email);
         if (typeof parsed.phone === "string") setPhone(parsed.phone);
         if (typeof parsed.agree === "boolean") setAgree(parsed.agree);
@@ -529,7 +648,7 @@ export default function CheckoutModal({
       // Один раз подставляем данные из профиля пользователя,
       // но не перетираем то, что пользователь уже начал вводить.
       if (user && !user.isGuest) {
-        const nextFio = user.name ?? "";
+        const nextFio = isPlaceholderName(user.name) ? "" : (user.name ?? "");
         const nextEmail = user.email ?? "";
         const nextPhone = user.phone ? formatPhone(user.phone) : "";
         const nextAddress = user.address ?? "";
@@ -593,57 +712,7 @@ export default function CheckoutModal({
     return () => clearInterval(interval);
   }, []);
 
-  // --- РАЗБОР РЕЗУЛЬТАТА ОПЛАТЫ И ЧТЕНИЕ ORDERID ---
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const queryStatus = params.get("status");
-    let currentOrderId = restoreOrderIdFromQuery();
-
-    if (!currentOrderId) {
-      try {
-        const stored = (localStorage.getItem("orderId") || "").trim();
-        if (stored) currentOrderId = stored;
-      } catch {
-        // ignore
-      }
-    }
-
-    if (currentOrderId) {
-      setOrderId(currentOrderId);
-      try {
-        localStorage.setItem("orderId", currentOrderId);
-        document.cookie = `last_order_id=${encodeURIComponent(
-          currentOrderId
-        )}; Max-Age=900; Path=/`;
-      } catch {
-        // ignore
-      }
-    }
-
-    if (queryStatus === "success") {
-      setOpen(true);
-      setPaymentStatus("success");
-      setStep(3);
-      try {
-        if (cartCtx?.clearActive) cartCtx.clearActive();
-        else if (cartCtx?.removePurchased) cartCtx.removePurchased();
-        else if (cartCtx?.setCartItems) {
-          const onlySaved = (cartItems as any[]).filter((i: any) => isSaved(i));
-          cartCtx.setCartItems(onlySaved);
-        }
-        localStorage.removeItem("pendingPurchasedScope");
-      } catch {
-        // ignore
-      }
-    } else if (queryStatus === "failed") {
-      setOpen(true);
-      setError(true);
-      setPaymentStatus("fail");
-      setStep(3);
-    }
-  }, [cartCtx, cartItems]);
+  // Результат оплаты теперь показывается на отдельной странице
 
   // --- ГЕОКОДИНГ / КАРТА ---
 
@@ -682,38 +751,55 @@ export default function CheckoutModal({
     []
   );
 
-  const handleMapClick = async (e: any) => {
-    const coords = e.get("coords");
+  const [mapPickedAddress, setMapPickedAddress] = useState("");
+  const [mapLoading, setMapLoading] = useState(false);
+  const mapRef = useRef<any>(null);
+  const [mapInvalidateKey, setMapInvalidateKey] = useState(0);
+
+  const handleMapClick = async (coords: [number, number]) => {
+    if (!coords || coords.length < 2) return;
     setCoordinates(coords);
     try {
+      setMapLoading(true);
+      let picked = "";
       const response = await fetch(
-        `https://geocode-maps.yandex.ru/1.x/?apikey=6ff09043-a633-4dfc-aee3-96794db4de23&format=json&geocode=${coords[1]},${coords[0]}`
+        `/api/geo/reverse?lat=${coords[0]}&lng=${coords[1]}`,
+        { cache: "no-store" }
       );
-      const data = await response.json();
-      const found =
-        data?.response?.GeoObjectCollection?.featureMember?.[0];
-      if (found) {
-        const meta = found.GeoObject?.metaDataProperty?.GeocoderMetaData;
-        const text = meta?.text || found.GeoObject?.name || "";
-        const comps = meta?.Address?.Components || [];
-        const line = comps
-          .map((c: any) => c?.name)
-          .filter(Boolean)
-          .join(", ");
-        const picked = text || line;
-        if (picked) {
-          setAddress(picked);
-          saveCheckoutStatePartial({ address: picked });
-        }
-        const cityComp = comps.find(
-          (c: any) => c.kind === "locality" || c.kind === "province"
-        );
-        if (cityComp?.name) setDetectedCity(cityComp.name);
+      const data = await response.json().catch(() => null);
+      if (response.ok) {
+        picked = data?.address || "";
+      }
+
+      if (picked) {
+        setMapPickedAddress(picked);
+      } else {
+        const fallback = `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`;
+        setMapPickedAddress(fallback);
       }
     } catch (error) {
       console.error("Ошибка геокодирования:", error);
+      const fallback = `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`;
+      setMapPickedAddress(fallback);
+    } finally {
+      setMapLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!showMap) return;
+    setMapPickedAddress("");
+    setMapLoading(false);
+    setMapInvalidateKey((v) => v + 1);
+    const t1 = setTimeout(() => mapRef.current?.invalidateSize?.(), 50);
+    const t2 = setTimeout(() => mapRef.current?.invalidateSize?.(), 200);
+    const t3 = setTimeout(() => mapRef.current?.invalidateSize?.(), 500);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [showMap]);
 
   // --- ОФОРМЛЕНИЕ / ПЕРЕХОД МЕЖДУ ШАГАМИ ---
 
@@ -762,18 +848,11 @@ export default function CheckoutModal({
       }
     }
 
-    if (step < 3) setStep((s) => s + 1);
+    if (step < 2) setStep((s) => s + 1);
   };
 
   const goBack = () => {
     if (step > 0) setStep((s) => s - 1);
-  };
-
-  const formatOrderNumber = (val: string | number | null | undefined) => {
-    if (val == null) return "STG-000000";
-    const n = String(val).replace(/\D/g, "");
-    const padded = n.padStart(6, "0").slice(-6);
-    return `STG-${padded}`;
   };
 
   // --- ОПЛАТА ---
@@ -801,13 +880,20 @@ export default function CheckoutModal({
         return;
       }
 
+      const promoCode =
+        typeof window !== "undefined" ? localStorage.getItem("promoCode") : null;
+      const cartTokenRaw =
+        readCookie("cart_token") || readCookie("cartToken") || null;
       const payload = {
+        cartToken: cartTokenRaw || null,
         items: ready.map((it: any) => {
           const { productItemId, productId, quantity, _raw } = it || {};
           const raw: any = _raw || {};
           const base: any = { quantity };
 
           base.price = getUnitPrice(raw);
+          const cartItemId = getCartItemId(raw);
+          if (cartItemId != null) base.cartItemId = cartItemId;
 
           if (
             typeof productItemId === "number" &&
@@ -840,6 +926,7 @@ export default function CheckoutModal({
           user && !(user as any).isGuest && (user as any).id
             ? (user as any).id
             : undefined,
+        promo: promoCode ? { code: promoCode } : undefined,
       };
 
       const res = await fetch("/api/checkout", {
@@ -867,9 +954,15 @@ export default function CheckoutModal({
         // ignore
       }
 
+      const activeIds = Array.isArray(cartCtx?.getActiveItems?.())
+        ? cartCtx.getActiveItems().map((it: any) => it.id).filter((v: any) => Number.isFinite(Number(v)))
+        : [];
+      try {
+        localStorage.setItem("pendingPurchasedIds", JSON.stringify(activeIds));
+      } catch {}
+
       if (orderIdFromServer) {
         const normalizedOrderId = String(orderIdFromServer);
-        setOrderId(normalizedOrderId);
         try {
           localStorage.setItem("orderId", normalizedOrderId);
           document.cookie = `last_order_id=${normalizedOrderId}; Max-Age=900; Path=/`;
@@ -979,13 +1072,19 @@ export default function CheckoutModal({
                   className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none"
                 />
               </motion.div>
-              <span
-                onClick={() => setShowMap(true)}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowMap(true);
+                }}
                 className="absolute right-3 top-2 cursor-pointer text-xl"
                 title="Открыть карту"
+                aria-label="Открыть карту"
               >
                 🗺️
-              </span>
+              </button>
             </div>
             {addressError && (
               <p className="text-sm text-red-500 mt-1">
@@ -1213,9 +1312,12 @@ export default function CheckoutModal({
                             const q = Number(item?.quantity ?? 1);
                             const unit = getUnitPrice(item);
                             const baseTotal = unit * q;
-                            const total =
-                              baseTotal *
-                              (discount > 0 ? 1 - discount : 1);
+                            const totalDiscount = getDiscountAmount(activeTotal);
+                            const share =
+                              hasDiscount && activeTotal > 0
+                                ? (baseTotal / activeTotal) * totalDiscount
+                                : 0;
+                            const total = Math.max(0, baseTotal - share);
 
                             const origLocal = num(
                               (item as any)?.origPrice ??
@@ -1240,10 +1342,10 @@ export default function CheckoutModal({
 
                             return (
                               <span>
-                                {hadDisc || discount > 0 ? (
+                                {hadDisc || hasDiscount ? (
                                   <span className="line-through text-gray-400 mr-2">
                                     {(
-                                      discount > 0
+                                      hasDiscount
                                         ? baseTotal
                                         : origTotal
                                     ).toLocaleString("ru-RU")}{" "}
@@ -1345,119 +1447,10 @@ export default function CheckoutModal({
           </motion.div>
         );
 
-      case 3:
-        const isSuccess = paymentStatus === "success";
-        const isFail = paymentStatus === "fail";
-        return (
-          <motion.div
-            key="step3"
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className="relative text-center space-y-4 py-6"
-          >
-            {isSuccess && (
-              <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                {Array.from({ length: 80 }).map((_, i) => {
-                  const left = Math.random() * 100;
-                  const delay = Math.random() * 2;
-                  const duration = 2.5 + Math.random() * 2;
-                  const size = 6 + Math.random() * 6;
-                  const colors = [
-                    "#10b981",
-                    "#f59e0b",
-                    "#3b82f6",
-                    "#ef4444",
-                    "#a855f7",
-                  ];
-                  const color = colors[i % colors.length];
-                  return (
-                    <span
-                      key={i}
-                      className="absolute rounded-sm"
-                      style={{
-                        left: `${left}%`,
-                        width: size,
-                        height: size * 2,
-                        background: color,
-                        opacity: 0.9,
-                        animation: `confetti-fall ${duration}s linear ${delay}s forwards`,
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            )}
-            <div className="text-5xl relative z-10">
-              {isSuccess ? "✨" : isFail ? "❌" : "😊"}
-            </div>
-            <h3 className="text-2xl font-bold">
-              {isSuccess
-                ? "Ваш заказ успешно оплачен"
-                : isFail
-                ? "Заказ не был оплачен"
-                : "Спасибо за заказ!"}
-            </h3>
-            {isSuccess ? (
-              <>
-                <p className="text-gray-600">
-                  Номер заказа: {formatOrderNumber(orderId)}
-                </p>
-                <div className="flex flex-col sm:flex-row justify-center gap-3 pt-2">
-                  <button
-                    onClick={() => {
-                      router.push("/user?tab=orders");
-                      handleUserClose();
-                    }}
-                    className="px-4 py-2 bg-black text-white rounded-xl shadow-lg shadow-black/20 hover:-translate-y-0.5 transition"
-                  >
-                    Перейти к заказам
-                  </button>
-                  <button
-                    onClick={handleUserClose}
-                    className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold hover:border-black/40 transition"
-                  >
-                    Закрыть
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-gray-600">
-                  Заказ не был оплачен. Пожалуйста, повторите оплату. Если
-                  возникли проблемы, напишите нам.
-                </p>
-                <div className="flex flex-col sm:flex-row justify-center gap-3 pt-2">
-                  <a
-                    href="https://t.me/"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold hover:border-black/40 transition"
-                  >
-                    Telegram
-                  </a>
-                  <a
-                    href="mailto:support@stagestore.ru"
-                    className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold hover:border-black/40 transition"
-                  >
-                    support@stagestore.ru
-                  </a>
-                  <button
-                    onClick={handleUserClose}
-                    className="px-4 py-2 bg-black text-white rounded-xl shadow-lg shadow-black/20 hover:-translate-y-0.5 transition"
-                  >
-                    Закрыть
-                  </button>
-                </div>
-              </div>
-            )}
-          </motion.div>
-        );
     }
   };
 
-  const stepIcons = [User, ClipboardCheck, CreditCard, Smile];
+  const stepIcons = [User, ClipboardCheck, CreditCard];
 
   const Stepper = () => {
     if (isMobile) {
@@ -1543,7 +1536,7 @@ export default function CheckoutModal({
 
   // (auth gating removed)
 
-  return open ? (
+  return visible ? (
     <AnimatePresence>
       <React.Fragment key="checkout-root">
         <motion.div
@@ -1614,7 +1607,7 @@ export default function CheckoutModal({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+              className="fixed inset-0 z-[1200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
             >
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
@@ -1629,35 +1622,45 @@ export default function CheckoutModal({
                 >
                   ×
                 </button>
-                <div className="h-full w-full">
-                  <YMaps query={{ apikey: "6ff09043-a633-4dfc-aee3-96794db4de23" }}>
-                    <YMap
-                      defaultState={{
-                        center: [55.751574, 37.573856],
-                        zoom: 9,
-                      }}
-                      width="100%"
-                      height="100%"
-                      onClick={handleMapClick}
-                    >
-                      {coordinates && <Placemark geometry={coordinates} />}
-                    </YMap>
-                  </YMaps>
+                <div className="px-4 pt-4">
+                  <div className="text-[10px] uppercase tracking-[0.25em] text-gray-500 mb-1">
+                    Адрес по точке
+                  </div>
+                  <div className="text-sm sm:text-base font-semibold text-gray-900">
+                    {mapLoading
+                      ? "Определяем адрес..."
+                      : mapPickedAddress
+                      ? mapPickedAddress
+                      : "Нажмите на карту, чтобы выбрать место"}
+                  </div>
+                </div>
+                <div className="px-4 pt-3">
+                  <div className="h-[300px] sm:h-[360px] w-full overflow-hidden rounded-2xl bg-white">
+                    <MapPicker
+                      center={coordinates ?? [55.751574, 37.573856]}
+                      marker={coordinates}
+                      onPick={(coords) => handleMapClick(coords)}
+                      mapRef={mapRef}
+                      invalidateKey={mapInvalidateKey}
+                    />
+                  </div>
                 </div>
                 <div className="absolute inset-x-0 bottom-0 bg-white/90 backdrop-blur-sm p-4 border-t border-gray-100">
                   <button
-                    className="w-full py-3 rounded-xl bg-black text-white font-semibold"
+                    className="w-full py-3 rounded-xl bg-black text-white font-semibold disabled:opacity-60"
+                    disabled={!mapPickedAddress || mapLoading}
                     onClick={() => {
-                      if (!address || address.trim().length < 5) {
+                      if (!mapPickedAddress || mapPickedAddress.trim().length < 5) {
                         setAddressError(true);
                         return;
                       }
                       setAddressError(false);
-                      saveCheckoutStatePartial({ address });
+                      setAddress(mapPickedAddress);
+                      saveCheckoutStatePartial({ address: mapPickedAddress });
                       setShowMap(false);
                     }}
                   >
-                    Выбрать этот адрес
+                    Подтвердить адрес
                   </button>
                 </div>
               </motion.div>
@@ -1674,18 +1677,6 @@ export default function CheckoutModal({
           }}
         />
 
-        <style jsx global>{`
-          @keyframes confetti-fall {
-            0% {
-              transform: translateY(-20vh) rotate(0deg);
-              opacity: 1;
-            }
-            100% {
-              transform: translateY(110vh) rotate(360deg);
-              opacity: 0.6;
-            }
-          }
-        `}</style>
       </React.Fragment>
     </AnimatePresence>
   ) : null;

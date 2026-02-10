@@ -7,10 +7,22 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { useDiscount } from "@/context/DiscountContext";
+import { DiscountState, useDiscount } from "@/context/DiscountContext";
 
-const normalizeCartItem = (it: any): CartItem => ({
-  id: Number(it?.id),
+const normalizeCartItem = (it: any): CartItem => {
+  const rawId = Number(it?.id);
+  const fallbackId = Number(
+    it?.productItemId ??
+      it?.ProductItem?.id ??
+      it?.productId ??
+      it?.ProductItem?.productId ??
+      it?.product?.id ??
+      it?.Product?.id ??
+      0
+  );
+  const id = Number.isFinite(rawId) && rawId > 0 ? rawId : fallbackId;
+  return {
+  id,
   productId: Number(it?.productId ?? it?.ProductItem?.productId ?? it?.product?.id ?? it?.Product?.id ?? it?.id ?? 0),
   name: String(it?.name ?? ""),
   price: Number(it?.price ?? 0),
@@ -19,7 +31,8 @@ const normalizeCartItem = (it: any): CartItem => ({
   postponed: Boolean(it?.postponed) || false,
   quantity: Number(it?.quantity ?? 1),
   productItemId: it?.productItemId ?? it?.ProductItem?.id ?? null,
-});
+  };
+};
 
 interface CartItem {
   id: number;
@@ -43,22 +56,25 @@ interface CartItem {
   discountPercent?: number;
   discount?: number;
   images?: string[];
+  badge?: string | null;
+  premium?: boolean;
 }
 
 interface CartContextType {
   cartItems: CartItem[];
   addToCart: (item: CartItem) => Promise<void>;
   removeFromCart: (id: number) => Promise<void>;
-  discount: number;
-  applyDiscount: (percent: number) => void;
+  discount: DiscountState;
+  applyDiscount: (value: number | DiscountState, type?: "PERCENT" | "AMOUNT") => void;
   resetDiscount: () => void;
-  togglePostponed: (id: number) => void;
+  togglePostponed: (item: CartItem | number) => void;
+  getPostponedKey: (item: CartItem | { id?: number | null; productId?: number | null; productItemId?: number | null } | number) => string;
   getActiveTotalAmount: () => number;
   getActiveItems: () => CartItem[];
   setCartItems: React.Dispatch<React.SetStateAction<CartItem[]>>;
   getActiveCount: () => number;
-  postponedItems: number[];
-  setPostponedItems: React.Dispatch<React.SetStateAction<number[]>>;
+  postponedItems: string[];
+  setPostponedItems: React.Dispatch<React.SetStateAction<string[]>>;
   updateQuantity: (id: number, size?: string | number, qty?: number) => Promise<void>;
   clearCart: () => Promise<void>;
   discountedTotal: number;
@@ -87,41 +103,68 @@ const persistCart = (items: CartItem[]) => {
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [postponedItems, setPostponedItems] = useState<number[]>([]);
+  const [postponedItems, setPostponedItems] = useState<string[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   const discountCtx = useDiscount();
-  const externalDiscount = discountCtx?.discount ?? 0;
+  const externalDiscount = discountCtx?.discount ?? { type: "PERCENT", value: 0 };
   const externalApply = discountCtx?.applyDiscount;
   const externalReset = discountCtx?.resetDiscount;
 
-  useEffect(() => {
+  const getPostponedKey = React.useCallback(
+    (
+      item:
+        | CartItem
+        | { id?: number | null; productId?: number | null; productItemId?: number | null }
+        | number
+    ) => {
+      if (typeof item === "number") return `id:${item}`;
+      const productItemId = Number((item as any)?.productItemId ?? NaN);
+      if (Number.isFinite(productItemId)) return `pi:${productItemId}`;
+      const productId = Number((item as any)?.productId ?? NaN);
+      if (Number.isFinite(productId)) return `p:${productId}`;
+      const id = Number((item as any)?.id ?? NaN);
+      return Number.isFinite(id) ? `id:${id}` : "id:0";
+    },
+    []
+  );
+
+  const refreshCart = React.useCallback(async () => {
     if (typeof window === "undefined") return;
-    (async () => {
+    try {
+      const res = await fetch("/api/cart", { cache: "no-store", credentials: "include" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && Array.isArray(data?.items)) {
+        setCartItems(data.items.map(normalizeCartItem));
+        setLoaded(true);
+        return;
+      }
+    } catch {}
+    // fallback to local storage if API unavailable
+    let raw = null;
+    try { raw = localStorage.getItem(CART_KEY); } catch {}
+    if (!raw) raw = readCookie(CART_COOKIE);
+    if (raw) {
       try {
-        const res = await fetch("/api/cart", { cache: "no-store", credentials: "include" });
-        const data = await res.json().catch(() => ({}));
-        if (res.ok && Array.isArray(data?.items)) {
-          setCartItems(data.items.map(normalizeCartItem));
-          setLoaded(true);
-          return;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setCartItems(parsed.map(normalizeCartItem));
         }
       } catch {}
-      // fallback to local storage if API unavailable
-      let raw = null;
-      try { raw = localStorage.getItem(CART_KEY); } catch {}
-      if (!raw) raw = readCookie(CART_COOKIE);
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) {
-            setCartItems(parsed.map(normalizeCartItem));
-          }
-        } catch {}
-      }
-      setLoaded(true);
-    })();
+    }
+    setLoaded(true);
   }, []);
+
+  useEffect(() => {
+    refreshCart();
+  }, [refreshCart]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = () => refreshCart();
+    window.addEventListener("cart:refresh", handler as EventListener);
+    return () => window.removeEventListener("cart:refresh", handler as EventListener);
+  }, [refreshCart]);
 
   useEffect(() => {
     localStorage.setItem("postponedItems", JSON.stringify(postponedItems));
@@ -131,10 +174,26 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("postponedItems");
       if (stored) {
-        setPostponedItems(JSON.parse(stored));
+        try {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            const next = parsed.map((v) =>
+              typeof v === "number" ? `id:${v}` : String(v)
+            );
+            setPostponedItems(next);
+          }
+        } catch {}
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    const next = cartItems
+      .filter((item) => item.postponed)
+      .map((item) => getPostponedKey(item));
+    setPostponedItems(next);
+  }, [cartItems, loaded, getPostponedKey]);
 
   useEffect(() => {
     persistCart(cartItems);
@@ -217,25 +276,19 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     );
   };
 
-  const applyDiscount = (percent: number) => {
+  const applyDiscount = (value: number | DiscountState, type: "PERCENT" | "AMOUNT" = "PERCENT") => {
     // delegate to global discount context if present
     try {
-      externalApply?.(percent);
+      externalApply?.(value as any, type);
     } catch (e) {
       // ignore if external apply not available
     }
-    // keep localStorage in sync for other parts of the app
-    if (typeof window !== 'undefined') localStorage.setItem('discount', percent.toString());
   };
 
   const resetDiscount = () => {
     try {
       externalReset?.();
     } catch (e) {}
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('discount');
-      localStorage.removeItem('promoCode');
-    }
   };
 
   const clearCart = async () => {
@@ -258,14 +311,35 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     } catch {}
   };
 
-  const togglePostponed = (id: number) => {
+  const togglePostponed = (item: CartItem | number) => {
+    const key = getPostponedKey(item as any);
+    const id =
+      typeof item === "number"
+        ? item
+        : Number((item as any)?.id ?? NaN);
     setPostponedItems((prev) =>
-      prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
     );
+    setCartItems((prev) =>
+      prev.map((it) =>
+        getPostponedKey(it) === key ? { ...it, postponed: !it.postponed } : it
+      )
+    );
+    if (Number.isFinite(id)) {
+      fetch("/api/cart", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          id,
+          postponed: !postponedItems.includes(key),
+        }),
+      }).catch(() => {});
+    }
   };
 
   const getActiveItems = () => {
-    return cartItems.filter((item) => !postponedItems.includes(item.id));
+    return cartItems.filter((item) => !postponedItems.includes(getPostponedKey(item)));
   };
 
   const getUnitPrice = (it: any) => {
@@ -291,21 +365,24 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const getActiveTotalAmount = () => {
     const subtotal = cartItems
-      .filter((item) => !postponedItems.includes(item.id))
+      .filter((item) => !postponedItems.includes(getPostponedKey(item)))
       .reduce((sum, item) => {
         const unit = getUnitPrice(item);
         const qty = Number(item.quantity ?? 1);
         return sum + unit * qty;
       }, 0);
 
-    const discountValue = externalDiscount ?? 0;
-    const discounted = discountValue > 0 ? subtotal * (1 - discountValue / 100) : subtotal;
+    const discountValue =
+      externalDiscount.type === "AMOUNT"
+        ? externalDiscount.value
+        : subtotal * externalDiscount.value;
+    const discounted = subtotal - Math.max(0, discountValue);
     return Math.max(0, +discounted.toFixed(2));
   };
 
   const getActiveCount = () => {
     return cartItems
-      .filter((item) => !postponedItems.includes(item.id))
+      .filter((item) => !postponedItems.includes(getPostponedKey(item)))
       .reduce((n, item) => n + (item.quantity ?? 1), 0);
   };
 
@@ -321,6 +398,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         applyDiscount,
         resetDiscount,
         togglePostponed,
+        getPostponedKey,
         getActiveTotalAmount,
         setCartItems,
         getActiveItems,

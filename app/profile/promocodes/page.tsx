@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { headers, cookies } from "next/headers";
 
+type PromoRedemptionView = { code: string; usedAt: Date };
+
 // Fallback helpers for runtime when Prisma is not generated for new models
 async function fetchActivePromos(now: Date) {
   const client: any = prisma as any;
@@ -26,7 +28,7 @@ async function fetchActivePromos(now: Date) {
   return rows;
 }
 
-async function fetchUserRedemptions(userId: number) {
+async function fetchUserRedemptions(userId: number): Promise<PromoRedemptionView[]> {
   const client: any = prisma as any;
   if (client?.promoRedemption?.findMany) {
     const redemptions = await client.promoRedemption.findMany({
@@ -34,7 +36,12 @@ async function fetchUserRedemptions(userId: number) {
       include: { promoCode: true },
       orderBy: { usedAt: "desc" },
     });
-    return redemptions.map((r: any) => ({ code: r.promoCode.code, usedAt: r.usedAt as Date }));
+    return redemptions.map(
+      (r: any): PromoRedemptionView => ({
+        code: String(r.promoCode?.code ?? ""),
+        usedAt: r.usedAt as Date,
+      })
+    );
   }
   // Fallback raw SQL join
   const rows = await prisma.$queryRaw<any[]>`
@@ -45,7 +52,12 @@ async function fetchUserRedemptions(userId: number) {
     ORDER BY r."usedAt" DESC
   `;
   // Ensure usedAt is a Date
-  return rows.map((r) => ({ code: r.code as string, usedAt: new Date(r.usedAt) }));
+  return rows.map(
+    (r: any): PromoRedemptionView => ({
+      code: String(r.code),
+      usedAt: new Date(r.usedAt),
+    })
+  );
 }
 
 async function getUserFromHeaders() {

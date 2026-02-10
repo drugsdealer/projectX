@@ -3,6 +3,8 @@ import { authOptions } from "@/lib/auth";
 import { cookies, headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 
+const SESSION_TOKEN_COOKIE = "session_token";
+
 /**
  * Проверяет, существует ли пользователь и не soft-deleted ли он.
  */
@@ -28,6 +30,8 @@ async function validateUserExists(userId: number | null) {
     return user.id;
   } catch (e) {
     console.error("Ошибка проверки пользователя:", e);
+    // Если БД недоступна, не блокируем навигацию в dev
+    if (process.env.NODE_ENV !== "production") return userId;
     return null;
   }
 }
@@ -103,6 +107,37 @@ export async function getGuestToken(): Promise<string | undefined> {
 export async function getUserIdFromRequest(): Promise<number | null> {
   const isProd = process.env.NODE_ENV === "production";
   let foundUserId: number | null = null;
+
+  // 0) session token (DB-backed)
+  try {
+    const maybe = cookies() as any;
+    const jar = typeof maybe?.then === "function" ? await maybe : maybe;
+    const sessionToken = jar?.get?.(SESSION_TOKEN_COOKIE)?.value;
+    if (sessionToken) {
+      try {
+        const session = await prisma.userSession.findUnique({
+          where: { token: sessionToken },
+          select: { userId: true, revokedAt: true, lastSeen: true },
+        });
+        if (!session || session.revokedAt) {
+          // do not clear session_user_id here; fall back to legacy cookie
+          jar.delete?.(SESSION_TOKEN_COOKIE);
+          // fall through to other mechanisms
+        } else {
+          const now = Date.now();
+          if (!session.lastSeen || now - session.lastSeen.getTime() > 5 * 60 * 1000) {
+            prisma.userSession.update({
+              where: { token: sessionToken },
+              data: { lastSeen: new Date() },
+            }).catch(() => {});
+          }
+          foundUserId = session.userId;
+        }
+      } catch {
+        // БД недоступна — игнорируем session_token и продолжаем
+      }
+    }
+  } catch {}
 
   // 1) next-auth
   try {

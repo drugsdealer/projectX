@@ -60,6 +60,21 @@ export default function CheckoutSuccessPage() {
           return;
         }
 
+        try {
+          const raw = localStorage.getItem("pendingPurchasedIds");
+          const ids = raw ? JSON.parse(raw) : [];
+          if (Array.isArray(ids) && ids.length > 0) {
+            await fetch("/api/cart", {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ ids }),
+            });
+            window.dispatchEvent(new Event("cart:refresh"));
+          }
+          localStorage.removeItem("pendingPurchasedIds");
+        } catch {}
+
         setState("done");
         setTimeout(() => router.replace("/user?tab=orders"), 700);
       } catch (err) {

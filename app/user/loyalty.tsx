@@ -1,45 +1,26 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
-import StageWallet from "@/components/ui/StageWallet";
+// (promo-only view)
 
 const LoyaltyPage = () => {
-  const [currentLevel, setCurrentLevel] = useState<"Bronze" | "Silver" | "Gold" | "Platinum">("Bronze");
-
-  // тестовые данные пользователя
-  const userName = "Евгений Марамонт";
-  const userPoints = 2480;
+  // promo-only
 
   useEffect(() => {
-    // Добавляем класс stage-mode на html и body, чтобы сияние распространялось на всю страницу
-    document.documentElement.classList.add("stage-mode");
-    document.body.classList.add("stage-mode");
-
-    return () => {
-      document.documentElement.classList.remove("stage-mode");
-      document.body.classList.remove("stage-mode");
-    };
+    // Не включаем stage-mode, чтобы не перезаписывать цвета в globals.css
+    return () => {};
   }, []);
 
   // Глобальный фон — лёгкий и без «швов»
-  // Цвет задаём через CSS‑переменную, чтобы не пересоздавать узлы при смене уровня
-  const stageGlow =
-    currentLevel === "Bronze"
-      ? "rgba(255,191,0,0.10)"
-      : currentLevel === "Silver"
-      ? "rgba(200,200,200,0.08)"
-      : currentLevel === "Gold"
-      ? "rgba(255,215,0,0.10)"
-      : "rgba(200,200,255,0.10)";
+  const stageGlow = "rgba(0,0,0,0.06)";
 
   useEffect(() => {
-    // прокидываем цвет в CSS‑переменную
-    document.documentElement.style.setProperty("--stage-glow", stageGlow);
+    // отключено для промо-only
   }, [stageGlow]);
 
   const BackdropFX = () => (
-    <div id="stage-fx" className="pointer-events-none fixed inset-0 -z-20 overflow-hidden">
+    <div id="stage-fx" className="pointer-events-none fixed inset-0 -z-20 overflow-hidden loyalty-fx">
       {/* базовый мягкий слой */}
       <span
         className="absolute inset-0"
@@ -48,7 +29,7 @@ const LoyaltyPage = () => {
             "radial-gradient(ellipse at 40% 30%, rgba(255,255,255,0.06), transparent 60%)",
         }}
       />
-      {/* динамический слой по уровню (GPU-friendly) */}
+      {/* динамический слой */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
         <span
           className="block w-[140vw] h-[70vh] sm:w-[120vw] sm:h-[80vh] opacity-70 will-change-transform motion-safe:animate-[glowDrift_22s_ease-in-out_infinite]"
@@ -81,187 +62,55 @@ const LoyaltyPage = () => {
     </div>
   );
 
-  const levelBenefits = {
-    Bronze: [
-      "Возврат 1% от суммы каждой покупки бонусами",
-      "Доступ к стандартным акциям и предложениям",
-      "Персональные рекомендации по товарам",
-    ],
-    Silver: [
-      "Возврат 3% от суммы каждой покупки бонусами",
-      "Доступ к ранним акциям и спецпредложениям",
-      "Приоритетное уведомление о скидках",
-      "Персональная статистика заказов",
-    ],
-    Gold: [
-      "Возврат 4% от покупок",
-      "Бесплатная доставка от 10 000 ₽",
-      "Участие в закрытых распродажах",
-      "Приоритетная обработка заказов",
-      "Подарок на день рождения",
-    ],
-    Platinum: [
-      "Возврат 5% бонусами",
-      "Доступ к лимитированным коллекциям",
-      "Персональный менеджер Stage Concierge",
-      "Эксклюзивные скидки и приглашения на ивенты",
-      "Ранний доступ к премиум-дропам",
-    ],
-  };
-
   return (
-    <div className="loyalty-root relative min-h-screen flex flex-col items-center justify-start px-4 sm:px-6 md:px-8 py-8 md:py-12">
+    <div className="loyalty-root relative min-h-screen flex flex-col items-center justify-start px-4 sm:px-6 md:px-8 py-8 md:py-12 text-black">
       {typeof window !== "undefined" ? createPortal(<BackdropFX />, document.body) : null}
 
-      {/* Верхний заголовок по центру */}
-      <div className="relative z-10 w-full max-w-6xl mx-auto">
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight text-center drop-shadow-[0_2px_8px_rgba(255,255,255,0.1)]">
-          Stage Loyalty Wallet
-        </h1>
-        <div className="mt-4 sm:mt-6 flex flex-wrap items-center gap-3 sm:gap-6 justify-center lg:justify-start text-gray-100">
-          {/* Имя */}
-          <p className="text-base font-medium opacity-80">{userName}</p>
-
-          {/* Разделитель */}
-          <div className="hidden sm:block w-16 h-px bg-gray-600/40"></div>
-
-          {/* Баллы */}
-          <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-semibold text-white">{userPoints}</span>
-            <span className="text-sm text-gray-400">баллов</span>
-          </div>
-
-          {/* Разделитель */}
-          <div className="hidden sm:block w-16 h-px bg-gray-600/40"></div>
-
-          {/* Бейдж уровня */}
-          <span
-            className={`px-3 sm:px-4 py-1 text-[11px] sm:text-xs md:text-sm rounded-full border shadow-inner transition-all duration-500 ${
-              currentLevel === "Bronze"
-                ? "bg-gradient-to-r from-amber-800 to-amber-700 text-amber-200 border-amber-600"
-                : currentLevel === "Silver"
-                ? "bg-gradient-to-r from-gray-600 to-gray-800 text-gray-200 border-gray-500"
-                : currentLevel === "Gold"
-                ? "bg-gradient-to-r from-yellow-500/20 to-yellow-600/10 text-yellow-100 border-yellow-600/40"
-                : "bg-gradient-to-r from-gray-200/10 to-blue-200/10 text-gray-100 border-gray-400/40"
-            }`}
-          >
-            {currentLevel} Member
-          </span>
-        </div>
-      </div>
-
-      {/* Контент */}
-      <div className="relative z-10 flex flex-col lg:flex-row items-start justify-center w-full max-w-6xl gap-8 sm:gap-10 lg:gap-12 mt-8 lg:mt-12 stage-glass">
-        {/* Stage Wallet */}
-        <div className="flex-1 w-full flex flex-col items-center lg:items-end text-center relative">
-          <StageWallet onLevelChange={setCurrentLevel} />
-
-          {/* Прогресс по уровням */}
-          <div className="mt-16 w-full relative flex flex-col items-center">
-            <p className="text-gray-200 font-semibold text-sm sm:text-base whitespace-nowrap text-center md:absolute md:left-[105%] md:-translate-x-1/2 md:bottom-full md:mb-3 mb-3">
-              До следующего уровня осталось <span className="text-white font-bold">27 500 ₽</span>
-            </p>
-
-            {/* Контейнер для прогресс-бара и сумм */}
-            <div className="w-full max-w-4xl relative">
-              {/* Линия прогресса */}
-              <div className="relative w-full md:w-[160%] lg:w-[217%] h-[10px] sm:h-3 bg-gray-700/40 rounded-full overflow-visible mx-auto md:translate-x-4">
-                {/* Заполненная часть */}
-                <div
-                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-white/80 to-white/30 rounded-full transition-all duration-700"
-                  style={{
-                    width:
-                      currentLevel === "Bronze"
-                        ? "15%"
-                        : currentLevel === "Silver"
-                        ? "40%"
-                        : currentLevel === "Gold"
-                        ? "70%"
-                        : "100%",
-                  }}
-                />
-
-                {/* Точки уровней */}
-                <div className="absolute top-1/2 -translate-y-1/2 left-[10%] -translate-x-1/2">
-                  <div className="w-3 h-3 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.9)]"></div>
-                </div>
-
-                <div className="absolute top-1/2 -translate-y-1/2 left-[50%] -translate-x-1/2">
-                  <div className="w-3 h-3 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.9)]"></div>
-                </div>
-
-                <div className="absolute top-1/2 -translate-y-1/2 left-[90%] -translate-x-1/2">
-                  <div className="w-3 h-3 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.9)]"></div>
-                </div>
+      {/* Минималистичное промо лояльности */}
+      <div className="relative z-10 w-full max-w-6xl mx-auto mt-6 sm:mt-8">
+        <div className="loyalty-promo border border-black/10 bg-white/80 backdrop-blur-xl rounded-3xl px-6 sm:px-8 py-6 sm:py-7 overflow-hidden text-black">
+          <div className="absolute -inset-1 pointer-events-none loyalty-ring" />
+          <div className="absolute inset-0 pointer-events-none promo-sheen" />
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.32em] text-black/50">Stage Loyalty</div>
+              <div className="mt-2 text-2xl sm:text-3xl font-semibold text-black">
+                Запуск программы — совсем скоро
               </div>
-
-              {/* Подписи сумм ПОД прогресс-баром - выровнены под точками */}
-              <div className="relative w-full md:w-[160%] lg:w-[217%] mt-3 md:mt-2 mx-auto md:translate-x-4">
-                <div className="dot-label absolute left-[10%] -translate-x-1/2 flex flex-col items-center">
-                  <p className="text-xs sm:text-sm font-semibold text-gray-200 whitespace-nowrap">10 000 ₽</p>
-                  <p className="text-[11px] sm:text-xs text-gray-400 mt-1">Silver</p>
-                </div>
-
-                <div className="dot-label absolute left-[50%] -translate-x-1/2 flex flex-col items-center">
-                  <p className="text-xs sm:text-sm font-semibold text-gray-200 whitespace-nowrap">35 000 ₽</p>
-                  <p className="text-[11px] sm:text-xs text-gray-400 mt-1">Gold</p>
-                </div>
-
-                <div className="dot-label absolute left-[90%] -translate-x-1/2 flex flex-col items-center">
-                  <p className="text-xs sm:text-sm font-semibold text-gray-200 whitespace-nowrap">150 000 ₽</p>
-                  <p className="text-[11px] sm:text-xs text-gray-400 mt-1">Platinum</p>
-                </div>
+              <p className="mt-2 text-sm sm:text-base text-black/60 leading-relaxed max-w-2xl">
+                Минималистичный люкс‑подход: уровни, персональные привилегии и ранние дропы.
+                Следи за обновлениями в Telegram канале StageStore.
+              </p>
+              <div className="mt-5 flex flex-wrap items-center gap-3">
+                <a
+                  href="https://t.me/stagestore"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full bg-black text-white px-4 py-2 text-sm font-semibold shadow-lg shadow-black/20 hover:-translate-y-0.5 transition"
+                >
+                  Перейти в Telegram
+                  <span className="text-white/70">→</span>
+                </a>
+                <span className="text-xs text-black/50">Обновления и ранние анонсы</span>
               </div>
             </div>
+            <div className="promo-journey">
+              {["Bronze", "Silver", "Gold", "Black"].map((label, index) => (
+                <div key={label} className="journey-step">
+                  <span className="journey-dot" />
+                  <span className="journey-label">{label}</span>
+                  {index < 3 ? <span className="journey-line" /> : null}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mt-5 flex flex-wrap items-center gap-3 text-xs text-black/60">
+            <span className="promo-pill">Кэшбэк по уровням</span>
+            <span className="promo-pill">Ранний доступ</span>
+            <span className="promo-pill">Закрытые офферы</span>
           </div>
         </div>
-
-        {/* Преимущества */}
-        <aside className="w-full lg:w-[360px] glass-block p-5 sm:p-8 text-gray-100 h-fit flex flex-col justify-start self-start mt-8 lg:mt-0">
-          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 justify-center lg:justify-start">
-            Преимущества уровня{" "}
-            <span className="text-white">
-              {currentLevel === "Bronze"
-                ? "🔰 Stage Bronze"
-                : currentLevel === "Silver"
-                ? "🎁 Stage Silver"
-                : currentLevel === "Gold"
-                ? "✨ Stage Gold"
-                : "👑 Stage Platinum"}
-            </span>
-          </h2>
-
-          <ul className="space-y-2 text-sm leading-relaxed">
-            {levelBenefits[currentLevel].map((benefit, i) => (
-              <li key={i}>• {benefit}</li>
-            ))}
-          </ul>
-        </aside>
       </div>
-
-      {/* Баланс и операции */}
-      <section className="relative z-10 w-full max-w-5xl mt-20 text-gray-200">
-        <h2 className="text-2xl font-semibold mb-6 text-center">Баланс и операции</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="glass-block p-6 rounded-xl">
-            <h3 className="text-lg font-semibold mb-3 text-white">Начисления</h3>
-            <ul className="text-sm text-gray-300 space-y-2">
-              <li>+250 ₽ — покупка Nike Dunk Low</li>
-              <li>+130 ₽ — бонус за Black Friday</li>
-              <li>+70 ₽ — участие в ивенте</li>
-            </ul>
-          </div>
-
-          <div className="glass-block p-6 rounded-xl">
-            <h3 className="text-lg font-semibold mb-3 text-white">Списания</h3>
-            <ul className="text-sm text-gray-300 space-y-2">
-              <li>-400 ₽ — оплата заказа  #1245</li>
-              <li>-120 ₽ — использование промокода</li>
-            </ul>
-          </div>
-        </div>
-      </section>
 
       {/* Убираем дополнительный слой, который мог создавать границу */}
       <style jsx global>{`
@@ -327,6 +176,9 @@ const LoyaltyPage = () => {
           backdrop-filter: none !important;
         }
         #stage-fx { z-index: -20; pointer-events: none; }
+        .loyalty-fx {
+          opacity: 0.5;
+        }
 
         /* изоляция основного контейнера, чтобы не мигал при апдейтах */
         .loyalty-root { isolation: isolate; contain: paint; }
@@ -355,6 +207,144 @@ const LoyaltyPage = () => {
         /* Чуть более плавная смена оттенка фона */
         :root {
           transition: --stage-glow 300ms ease-in-out;
+        }
+
+        .loyalty-promo {
+          position: relative;
+          border-color: rgba(0, 0, 0, 0.12);
+        }
+        .promo-sheen {
+          background: linear-gradient(110deg, transparent, rgba(0,0,0,0.08), transparent);
+          animation: promoSheen 6.5s ease-in-out infinite;
+        }
+        .promo-journey {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          min-width: 240px;
+        }
+        .journey-step {
+          position: relative;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 8px 12px;
+          border-radius: 999px;
+          background: rgba(0, 0, 0, 0.05);
+          border: 1px solid rgba(0,0,0,0.12);
+          color: rgba(0,0,0,0.75);
+          font-size: 12px;
+          overflow: hidden;
+          animation: floatChip 4.8s ease-in-out infinite;
+        }
+        .journey-step:nth-child(2) { animation-delay: 0.8s; }
+        .journey-step:nth-child(3) { animation-delay: 1.6s; }
+        .journey-step:nth-child(4) { animation-delay: 2.4s; }
+        .journey-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 999px;
+          background: #111;
+          box-shadow: 0 0 10px rgba(0,0,0,0.35);
+        }
+        .journey-line {
+          position: absolute;
+          left: 20px;
+          top: 100%;
+          width: 2px;
+          height: 14px;
+          background: linear-gradient(to bottom, rgba(0,0,0,0.3), transparent);
+        }
+        .promo-pill {
+          padding: 6px 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(0,0,0,0.12);
+          background: rgba(0,0,0,0.04);
+        }
+        .loyalty-ring {
+          border-radius: 28px;
+          border: 1px solid rgba(0,0,0,0.08);
+          box-shadow:
+            0 0 0 1px rgba(0,0,0,0.06),
+            0 0 40px rgba(0,0,0,0.08),
+            0 0 120px rgba(0,0,0,0.06);
+          animation: ringPulse 5.8s ease-in-out infinite;
+        }
+        .loyalty-promo::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          background:
+            radial-gradient(120% 120% at 15% 20%, rgba(0,0,0,0.06), transparent 55%),
+            radial-gradient(120% 120% at 85% 80%, rgba(0,0,0,0.05), transparent 60%);
+          animation: auraDrift 9s ease-in-out infinite;
+        }
+        .loyalty-promo::before {
+          content: "";
+          position: absolute;
+          inset: -60%;
+          background: conic-gradient(from 0deg, transparent, rgba(0,0,0,0.08), transparent);
+          opacity: 0.45;
+          animation: slowRotate 18s linear infinite;
+          pointer-events: none;
+        }
+        @keyframes ringPulse {
+          0% {
+            opacity: 0.55;
+            transform: scale(0.985);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1.01);
+          }
+          100% {
+            opacity: 0.55;
+            transform: scale(0.985);
+          }
+        }
+        @keyframes auraDrift {
+          0% { transform: translate3d(0,0,0); opacity: 0.45; }
+          50% { transform: translate3d(2%, -3%, 0); opacity: 0.7; }
+          100% { transform: translate3d(0,0,0); opacity: 0.45; }
+        }
+        @keyframes slowRotate {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .journey-step {
+          position: relative;
+          overflow: hidden;
+        }
+        .journey-step::after {
+          content: "";
+          position: absolute;
+          inset: -40%;
+          background: linear-gradient(120deg, transparent, rgba(0,0,0,0.08), transparent);
+          animation: chipSheen 5.5s ease-in-out infinite;
+        }
+        @keyframes chipSheen {
+          0% { transform: translateX(-60%); opacity: 0; }
+          40% { opacity: 1; }
+          100% { transform: translateX(60%); opacity: 0; }
+        }
+        @keyframes promoSheen {
+          0% { transform: translateX(-120%); opacity: 0; }
+          40% { opacity: 1; }
+          100% { transform: translateX(120%); opacity: 0; }
+        }
+        @keyframes floatChip {
+          0% { transform: translateY(0); }
+          50% { transform: translateY(-6px); }
+          100% { transform: translateY(0); }
+        }
+        @media (max-width: 640px) {
+          .promo-journey {
+            width: 100%;
+          }
+          .journey-line {
+            left: 18px;
+          }
         }
       `}</style>
     </div>

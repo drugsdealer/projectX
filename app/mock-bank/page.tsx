@@ -162,11 +162,26 @@ export default function MockBankPage() {
         data,
       });
 
-      // По ТЗ ведём пользователя в профиль в любом случае
-      router.replace("/user?tab=orders&src=bank");
+      const confirmedOrderId =
+        (data && (data.orderId || data.id)) ||
+        finalOrderId;
+      const publicNumber = data?.publicNumber || null;
+
+      if (res.ok && data && data.success) {
+        const qs = new URLSearchParams();
+        qs.set("status", "success");
+        if (confirmedOrderId) qs.set("orderId", String(confirmedOrderId));
+        if (publicNumber) qs.set("publicNumber", String(publicNumber));
+        router.replace(`/payment/result?${qs.toString()}`);
+      } else {
+        const qs = new URLSearchParams();
+        qs.set("status", "failed");
+        if (confirmedOrderId) qs.set("orderId", String(confirmedOrderId));
+        router.replace(`/payment/result?${qs.toString()}`);
+      }
     } catch (e) {
-      console.warn("[mock-bank] network error (forcing success)", e);
-      router.replace("/user?tab=orders&src=bank");
+      console.warn("[mock-bank] network error", e);
+      router.replace("/payment/result?status=failed");
     } finally {
       setLoading(false);
     }

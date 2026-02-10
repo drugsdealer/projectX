@@ -690,7 +690,7 @@ async function up() {
     data: {
       name: "Converse Chuck 70 Hi",
       description: "Ремастеред‑версия классических Chuck Taylor с усиленной стелькой OrthoLite и плотным канвасом. Икона уличного стиля.",
-      imageUrl: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1761180202/chuck70_hi_main.jpg",
+      imageUrl: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1769097482/y3ab0vpq04g0ne21sj73r523755rlw29_cun5lm.png",
       available: true,
       gender: "unisex",
       categoryId: cat.footwear,
@@ -708,8 +708,8 @@ async function up() {
     },
   });
   await addImages(product16, [
-    "https://res.cloudinary.com/dhufbfxcy/image/upload/v1761180202/chuck70_hi_main.jpg",
-    "https://res.cloudinary.com/dhufbfxcy/image/upload/v1761180202/chuck70_hi_side.jpg",
+    "https://res.cloudinary.com/dhufbfxcy/image/upload/v1769097536/sce70zulol358qql95cju8ok0rd3kryk_i01j3m.png",
+    "https://res.cloudinary.com/dhufbfxcy/image/upload/v1769097567/52e3man5hhs3132cscymimpq927n3vkp_vzsuns.png",
   ]);
 
   // Одежда — Stone Island Shadow Project Jacket
@@ -955,7 +955,7 @@ async function up() {
       name: "Adidas Campus 00s Green",
       description:
         "Adidas Campus 00s в зелёной замше — ретро‑силуэт с современным комфортом. Мягкий верх из натуральной замши, контрастные три полоски и прочная резиновая подошва для ежедневной носки.",
-      imageUrl: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1761180101/reebok_club_c_main.jpg",
+      imageUrl: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1769096865/SK8aaz_1_kliam3.png",
       available: true,
       gender: "unisex",
       categoryId: cat.footwear,
@@ -973,7 +973,8 @@ async function up() {
     },
   });
   await addImages(product26, [
-    "https://res.cloudinary.com/dhufbfxcy/image/upload/v1761180101/reebok_club_c_main.jpg",
+    "https://res.cloudinary.com/dhufbfxcy/image/upload/v1769096936/a4qA7k_1_qexeie.png",
+    "https://res.cloudinary.com/dhufbfxcy/image/upload/v1769096936/a4qA7k_1_qexeie.png"
   ]);
 
   // Одежда — Stone Island Knit Sweater

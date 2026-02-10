@@ -21,6 +21,7 @@ async function getCookieJar(): Promise<any> {
 
 // ===== Cookie names =====
 export const SESSION_COOKIE = 'session_user_id'; // primary
+export const SESSION_TOKEN_COOKIE = 'session_token'; // persistent session token
 export const LEGACY_AUTH_COOKIE = 'auth_session'; // legacy fallback
 export const UI_USER_COOKIE = 'ui_user_data';
 export const UI_FULLNAME_COOKIE = 'ui_fullname';
@@ -112,11 +113,35 @@ export function setSessionOnResponse(res: NextResponse, userId: string | number)
   return res;
 }
 
+/** Attach session token cookie (used to validate active sessions) */
+export function setSessionTokenOnResponse(res: NextResponse, token: string) {
+  res.cookies.set(
+    SESSION_TOKEN_COOKIE,
+    token,
+    {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: isProd,
+      path: '/',
+      maxAge: MAX_AGE,
+    },
+  );
+  return res;
+}
+
+export function clearSessionTokenOnResponse(res: NextResponse) {
+  try {
+    res.cookies.set(SESSION_TOKEN_COOKIE, '', { path: '/', maxAge: 0 });
+  } catch {}
+  return res;
+}
+
 /** Clear session cookies on the provided response */
 export function clearSessionOnResponse(res: NextResponse) {
   try {
     res.cookies.set(SESSION_COOKIE, '', { path: '/', maxAge: 0 });
     res.cookies.set(LEGACY_AUTH_COOKIE, '', { path: '/', maxAge: 0 });
+    res.cookies.set(SESSION_TOKEN_COOKIE, '', { path: '/', maxAge: 0 });
   } catch {}
   return res;
 }
@@ -127,6 +152,7 @@ export async function clearSession() {
     const jar: any = await getCookieJar();
     jar.set({ name: SESSION_COOKIE, value: '', path: '/', maxAge: 0 });
     jar.set({ name: LEGACY_AUTH_COOKIE, value: '', path: '/', maxAge: 0 });
+    jar.set({ name: SESSION_TOKEN_COOKIE, value: '', path: '/', maxAge: 0 });
   } catch {
     // noop
   }
@@ -211,6 +237,31 @@ export async function clearGuestToken() {
 /** Read userId from cookies: primary first, then legacy fallback */
 export async function getSessionUserId(): Promise<string | null> {
   const jar: any = await getCookieJar();
+
+  const sessionToken = jar.get(SESSION_TOKEN_COOKIE)?.value;
+  if (sessionToken) {
+    try {
+      const session = await prisma.userSession.findUnique({
+        where: { token: sessionToken },
+        select: { userId: true, revokedAt: true, lastSeen: true },
+      });
+      if (!session || session.revokedAt) {
+        // keep session_user_id as fallback
+        jar.set({ name: SESSION_TOKEN_COOKIE, value: '', path: '/', maxAge: 0 });
+        return null;
+      }
+      const now = Date.now();
+      if (!session.lastSeen || now - session.lastSeen.getTime() > 5 * 60 * 1000) {
+        prisma.userSession.update({
+          where: { token: sessionToken },
+          data: { lastSeen: new Date() },
+        }).catch(() => {});
+      }
+      return String(session.userId);
+    } catch {
+      // БД недоступна — игнорируем session_token и продолжаем
+    }
+  }
 
   const id = jar.get(SESSION_COOKIE)?.value;
   if (id && id.trim() !== '') return id;
@@ -349,6 +400,8 @@ export async function getUserFromSession() {
 export function getUserIdFromRequest(req: Request): number | null {
   try {
     const cookie = req.headers.get('cookie') ?? '';
+    const sm = cookie.match(new RegExp(`${SESSION_TOKEN_COOKIE}=([^;]+)`));
+    if (sm?.[1]) return null; // session_token requires async validation; use getSessionUserId instead
     const m = cookie.match(new RegExp(`${SESSION_COOKIE}=([^;]+)`));
     if (!m) return null;
     const n = Number(decodeURIComponent(m[1]));

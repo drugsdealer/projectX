@@ -80,6 +80,64 @@ export const ProductsGroupList: React.FC<Props> = ({
     [items, onlyPremium, genderFilter]
   );
 
+  // ⚙️ Стабилизация ссылок на объекты/массивы, чтобы моб. превью не "сбрасывалось" на 1-ю фотку
+  // (у некоторых превью-реализаций есть effect на `images`, который реагирует на смену reference)
+  const productCacheRef = React.useRef<Record<number, Product>>({});
+
+  const stableItems = useMemo(() => {
+    const cache = productCacheRef.current;
+    const alive: Record<number, true> = {};
+
+    const out = filteredItems.map((p) => {
+      alive[p.id] = true;
+      const prev = cache[p.id];
+
+      // нормализуем массив, чтобы reference не менялся из-за `undefined/null`
+      const nextImgs = Array.isArray(p.images) ? p.images.filter(Boolean) : p.images;
+
+      if (!prev) {
+        const first: Product = {
+          ...p,
+          images: Array.isArray(nextImgs) ? nextImgs : undefined,
+        };
+        cache[p.id] = first;
+        return first;
+      }
+
+      // обновляем поля, сохраняя объект
+      prev.name = p.name;
+      prev.imageUrl = p.imageUrl ?? null;
+      prev.brandLogo = p.brandLogo;
+      prev.brand = p.brand;
+      prev.price = p.price;
+      prev.variants = p.variants;
+      prev.sizes = p.sizes;
+      prev.isPremium = p.isPremium;
+      prev.gender = p.gender;
+
+      // обновляем `images` только если реально изменилось содержимое
+      if (Array.isArray(nextImgs)) {
+        const prevImgs = Array.isArray(prev.images) ? prev.images : [];
+        const sameLen = prevImgs.length === nextImgs.length;
+        const same = sameLen && prevImgs.every((v, i) => v === nextImgs[i]);
+        if (!same) prev.images = nextImgs;
+      } else {
+        // если картинок нет — сбрасываем
+        prev.images = undefined;
+      }
+
+      return prev;
+    });
+
+    // вычищаем кеш от товаров, которых больше нет в списке
+    Object.keys(cache).forEach((k) => {
+      const id = Number(k);
+      if (!alive[id]) delete cache[id];
+    });
+
+    return out;
+  }, [filteredItems]);
+
   return (
     <div className={className} id={title} ref={intersectionRef}>
       <Title text={title} size="lg" className="font-extrabold mb-5" />
@@ -90,7 +148,7 @@ export const ProductsGroupList: React.FC<Props> = ({
           listClassName
         )}
       >
-        {filteredItems.map((product) => (
+        {stableItems.map((product) => (
           <ProductCard
             key={product.id}
             id={product.id}

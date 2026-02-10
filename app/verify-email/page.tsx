@@ -2,25 +2,36 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useUser } from "@/user/UserContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function VerifyClient() {
   const router = useRouter();
-  const { user } = useUser();
+  const searchParams = useSearchParams();
+  const { user, refresh } = useUser();
   const [code, setCode] = useState(Array(6).fill(""));
   const [activeIndex, setActiveIndex] = useState(0);
   const [cooldown, setCooldown] = useState(0);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [errorPulse, setErrorPulse] = useState(0);
   const [isMerging, setIsMerging] = useState(false);
   const [showCheckmark, setShowCheckmark] = useState(false);
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
   const [email, setEmail] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [hasVfy, setHasVfy] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const readCookie = (name: string) => {
+    if (typeof document === "undefined") return null;
+    const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()\[\]\\/+^])/g, '\\$1') + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : null;
+  };
+
   useEffect(() => {
+    setHasVfy(!!readCookie("vfy"));
     const storedEmail = typeof window !== "undefined"
       ? sessionStorage.getItem("email") || localStorage.getItem("email")
       : null;
@@ -34,16 +45,36 @@ export default function VerifyClient() {
   }, [user]);
 
   useEffect(() => {
+    const reason = searchParams?.get("reason");
+    let flag: string | null = null;
+    try { flag = sessionStorage.getItem("reg_active"); } catch {}
+    if (reason === "active" || flag === "1") {
+      setNotice("У вас уже есть активная сессия регистрации. Код уже отправлен — при необходимости используйте кнопку «Отправить повторно».");
+      try { sessionStorage.removeItem("reg_active"); } catch {}
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (user?.verified) {
+      router.replace("/user");
+    }
+  }, [user?.verified, router]);
+
+  useEffect(() => {
     if (!initialized) return;
     if (!email) {
-      // Если по какой‑то причине нет email, безопасно отправляем пользователя на регистрацию
-      try {
-        router.replace("/register");
-      } catch {
-        window.location.href = "/register";
+      if (!hasVfy) {
+        // Если по какой‑то причине нет email и нет активной сессии — отправляем на регистрацию
+        try {
+          router.replace("/register");
+        } catch {
+          window.location.href = "/register";
+        }
+      } else {
+        setNotice("Не удалось найти email для подтверждения. Нажмите «Начать заново», чтобы повторить регистрацию.");
       }
     }
-  }, [initialized, email, router]);
+  }, [initialized, email, hasVfy, router]);
 
   useEffect(() => {
     if (
@@ -71,6 +102,7 @@ export default function VerifyClient() {
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>, index: number) {
     const val = e.target.value;
+    if (error) setError("");
     if (!val) {
       updateCodeAtIndex(index, "");
       setActiveIndex(index);
@@ -85,6 +117,7 @@ export default function VerifyClient() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>, index: number) {
+    if (error && e.key !== "Tab") setError("");
     if (e.key === "Backspace") {
       if (code[index] === "") {
         if (index > 0) {
@@ -148,22 +181,30 @@ export default function VerifyClient() {
 
         setTimeout(() => {
           setIsMerging(true);
-        }, 800);
+        }, 500);
 
         setTimeout(() => {
           setShowCheckmark(true);
-        }, 1600);
+        }, 900);
 
+        try {
+          sessionStorage.removeItem("email");
+          localStorage.removeItem("email");
+        } catch {}
+        try { window.dispatchEvent(new Event("auth:changed")); } catch {}
+        try { await refresh(); } catch {}
         setTimeout(() => {
-          window.location.href = "/user";
-        }, 2800);
+          router.replace("/user");
+        }, 1200);
       } else {
         setError(data.message || "Неверный код. Попробуйте ещё раз.");
+        setErrorPulse((p) => p + 1);
         setCode(Array(6).fill(""));
         setActiveIndex(0);
       }
     } catch {
       setError("Ошибка сети");
+      setErrorPulse((p) => p + 1);
     } finally {
       setIsVerifying(false);
     }
@@ -197,8 +238,19 @@ export default function VerifyClient() {
     }
   }
 
+  function startOver() {
+    try {
+      document.cookie = "vfy=; Path=/; Max-Age=0; SameSite=Lax";
+      sessionStorage.removeItem("email");
+      localStorage.removeItem("email");
+      sessionStorage.removeItem("reg_active");
+    } catch {}
+    router.replace("/register");
+  }
+
   function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
     e.preventDefault();
+    if (error) setError("");
     const paste = e.clipboardData.getData("text").trim();
     if (/^\d{1,6}$/.test(paste)) {
       const pasteArray = paste.split("");
@@ -239,7 +291,7 @@ export default function VerifyClient() {
                   return (
                     <motion.div
                       key={i}
-                      className="relative"
+                      className="relative rounded-lg overflow-hidden"
                       animate={isMerging ? {
                         x: mergeX,
                         scale: [1, 0.9, 0.6, 0.3, 0],
@@ -254,8 +306,6 @@ export default function VerifyClient() {
                       } : success ? {
                         y: [0, -16, 8, 0],
                         scale: [1, 1.08, 0.98, 1],
-                        backgroundColor: ["#ffffff", "#f0fdf4", "#dcfce7", "#bbf7d0"],
-                        borderColor: ["#e5e7eb", "#22c55e", "#22c55e", "#22c55e"],
                         transition: {
                           y: {
                             delay: i * 0.08,
@@ -267,15 +317,13 @@ export default function VerifyClient() {
                             delay: i * 0.08,
                             duration: 0.5,
                             ease: "easeOut"
-                          },
-                          backgroundColor: {
-                            delay: i * 0.08,
-                            duration: 0.3
-                          },
-                          borderColor: {
-                            delay: i * 0.08,
-                            duration: 0.3
                           }
+                        }
+                      } : errorPulse > 0 ? {
+                        x: [0, -6, 6, -4, 4, 0],
+                        transition: {
+                          duration: 0.35,
+                          ease: "easeInOut"
                         }
                       } : {}}
                     >
@@ -295,8 +343,8 @@ export default function VerifyClient() {
                           bg-white
                           focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200
                           transition-all duration-150
-                          font-light
-                          ${digit ? "border-blue-400" : "border-gray-200"}
+                          font-light text-transparent caret-black
+                          ${error ? "border-red-400 bg-red-50" : digit ? "border-blue-400" : "border-gray-200"}
                           ${success ? "border-green-400 bg-green-50" : ""}
                           ${isMerging ? "pointer-events-none" : ""}
                         `}
@@ -401,6 +449,12 @@ export default function VerifyClient() {
             </div>
           </div>
 
+          {notice && (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs sm:text-sm text-amber-800">
+              {notice}
+            </div>
+          )}
+
           <div className="mt-6 flex flex-col items-center gap-3">
             <button
               onClick={resendCode}
@@ -417,12 +471,19 @@ export default function VerifyClient() {
             >
               {cooldown > 0 ? `Отправить повторно через ${cooldown}s` : "Отправить повторно"}
             </button>
-            <a 
-              href="/register" 
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              Неверный email? Изменить
-            </a>
+            {!email && hasVfy ? (
+              <button
+                type="button"
+                onClick={startOver}
+                className="text-xs sm:text-sm text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                Начать заново
+              </button>
+            ) : (
+              <p className="text-xs sm:text-sm text-gray-500">
+                Изменить email можно после завершения текущей сессии подтверждения.
+              </p>
+            )}
           </div>
 
           {error && <p className="mt-4 text-center text-sm font-medium text-red-500">{error}</p>}

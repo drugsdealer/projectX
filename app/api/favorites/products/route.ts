@@ -1,66 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getUserIdFromRequest } from '@/lib/session';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// --- helpers (reuse patterns from favorites/brands) ---
-function readCookie(cookieHeader: string | null, name: string): string | null {
-  if (!cookieHeader) return null;
-  const escaped = name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
-  const m = cookieHeader.match(new RegExp('(?:^|;\\s*)' + escaped + '=([^;]+)'));
-  return m ? decodeURIComponent(m[1]) : null;
-}
-
-function readReqCookie(req: NextRequest, name: string): string | null {
-  try {
-    const v = (req as any).cookies?.get?.(name)?.value;
-    return v ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function readAuthUserId(h: Headers): number | null {
-  const auth = h.get('authorization');
-  if (!auth) return null;
-  const m = auth.match(/^(?:Bearer|User)\s+(\d+)$/i);
-  return m ? parseInt(m[1], 10) : null;
-}
-
-function getUserId(req: NextRequest, body?: any): number | null {
-  if (body?.userId && /^\d+$/.test(String(body.userId))) {
-    return parseInt(String(body.userId), 10);
-  }
-
-  const h = req.headers;
-  const authId = readAuthUserId(h);
-  if (authId) return authId;
-
-  const headerId = h.get('x-user-id') || h.get('x-userid') || h.get('x-uid');
-  if (headerId && /^\d+$/.test(headerId)) return parseInt(headerId, 10);
-
-  const directCookieId =
-    readReqCookie(req, 'userId') || readReqCookie(req, 'uid') || readReqCookie(req, 'userid');
-  if (directCookieId && /^\d+$/.test(directCookieId)) return parseInt(directCookieId, 10);
-
-  const cookieHeader = h.get('cookie') || '';
-  const cookieId =
-    readCookie(cookieHeader, 'userId') ||
-    readCookie(cookieHeader, 'uid') ||
-    readCookie(cookieHeader, 'userid');
-  if (cookieId && /^\d+$/.test(cookieId)) return parseInt(cookieId, 10);
-
-  return null;
-}
-
 // --- GET: list favorite products for user ---
 export async function GET(req: NextRequest) {
-  const url = new URL(req.url);
-  const qsUser = url.searchParams.get('userId');
-  const uid =
-    (qsUser && /^\d+$/.test(qsUser) ? parseInt(qsUser, 10) : null) ??
-    getUserId(req);
+  const uid = await getUserIdFromRequest();
 
   if (!uid) {
     return NextResponse.json({ items: [] }, {
@@ -123,7 +70,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const uid = getUserId(req, body);
+  const uid = await getUserIdFromRequest();
   if (!uid) {
     return NextResponse.json({ ok: false, error: 'unauthorized' }, {
       status: 401,
@@ -131,7 +78,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const product = await prisma.product.findUnique({ where: { id: productId } });
+  const product = await prisma.product.findFirst({ where: { id: productId, deletedAt: null } });
   if (!product) {
     return NextResponse.json({ ok: false, error: 'product_not_found' }, {
       status: 404,
@@ -163,7 +110,7 @@ export async function OPTIONS() {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id, X-Userid, X-Uid',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Max-Age': '86400',
     },
   });

@@ -6,6 +6,8 @@ import React, {
   useEffect,
   useState,
   ReactNode,
+  Dispatch,
+  SetStateAction,
 } from "react";
 
 
@@ -24,15 +26,20 @@ function readCookieJSON<T = any>(name: string): T | null {
   }
 }
 
+const PLACEHOLDER_NAME = "Введите ФИО";
+const LEGACY_PLACEHOLDER_NAME = "Не указано";
+const isPlaceholderName = (v?: string | null) =>
+  !v || v === PLACEHOLDER_NAME || v === LEGACY_PLACEHOLDER_NAME;
+
 // Helper: pick display name from various sources
 function pickDisplayName(src: any): string {
-  if (!src) return "Не указано";
+  if (!src) return PLACEHOLDER_NAME;
   const raw = (src.name ?? src.fullName ?? "").toString().trim();
-  if (raw) return raw;
+  if (raw && !isPlaceholderName(raw)) return raw;
   const ln = (src.lastName ?? src.surname ?? "").toString().trim();
   const fn = (src.firstName ?? src.givenName ?? "").toString().trim();
   const combo = [ln, fn].filter(Boolean).join(" ");
-  return combo || "Не указано";
+  return combo || PLACEHOLDER_NAME;
 }
 
 function buildUserFromLoose(src: any): User | null {
@@ -91,6 +98,7 @@ export interface User {
 
 interface UserContextType {
   user: User | null;
+  setUser: Dispatch<SetStateAction<User | null>>;
   login: (userData: any) => void;
   logout: () => Promise<void>;
   updateUser: (updatedData: Partial<User>) => void;
@@ -229,7 +237,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    if (user && (!user.name || user.name === "Не указано")) {
+    if (user && isPlaceholderName(user.name)) {
       try {
         const cached = JSON.parse(localStorage.getItem("ui_profile_fullName") || "null");
         if (cached?.name)
@@ -274,7 +282,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
     } catch {}
 
     try {
@@ -295,7 +303,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       if (!prev) return null;
       const merged: any = { ...prev, ...updatedData };
       const maybeName = pickDisplayName(merged) || pickDisplayName(updatedData);
-      if (maybeName && maybeName !== 'Не указано') merged.name = maybeName;
+      if (maybeName && !isPlaceholderName(maybeName)) merged.name = maybeName;
       try {
         localStorage.setItem('ui_user_data', JSON.stringify(merged));
         document.cookie = `ui_user_data=${encodeURIComponent(JSON.stringify(merged))}; Path=/; SameSite=Lax`;
@@ -308,7 +316,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <UserContext.Provider value={{ user, login, logout, updateUser, refresh }}>
+    <UserContext.Provider value={{ user, setUser, login, logout, updateUser, refresh }}>
       {children}
     </UserContext.Provider>
   );

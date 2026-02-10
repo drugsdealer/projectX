@@ -11,7 +11,10 @@ function digitsOnly(v: string) {
 }
 function normalizeName(n: string) {
   const t = (n || '').trim();
-  return t.toLowerCase() === 'не указано' ? '' : t;
+  const low = t.toLowerCase();
+  if (!t) return '';
+  if (low === 'не указано' || low === 'введите фио') return '';
+  return t;
 }
 function formatPhone(v: string) {
   // форматируем к виду +7 (XXX) XXX-XX-XX во время ввода
@@ -79,7 +82,7 @@ export default function UserInfo() {
   // --- editable profile state ---
   const [isEditing, setIsEditing] = useState(true);
   const [draft, setDraft] = useState({
-    name: user?.fullName || user?.name || '',
+    name: normalizeName(user?.fullName || user?.name || ''),
     phone: user?.phone || '',
     address: user?.address || '',
     city: user?.city || '',
@@ -92,7 +95,7 @@ export default function UserInfo() {
   // --- local view model for optimistic UI updates ---
   type ViewUser = { name: string; phone?: string; address?: string; email?: string; verified?: boolean; gender?: string; birthDate?: string; city?: string; avatarEmoji?: string };
   const [viewUser, setViewUser] = useState<ViewUser>({
-    name: user?.fullName || user?.name || "",
+    name: normalizeName(user?.fullName || user?.name || ""),
     phone: user?.phone,
     address: (user as any)?.address,
     email: user?.email,
@@ -104,16 +107,34 @@ export default function UserInfo() {
   });
   const [cachedReady, setCachedReady] = useState(false);
   const hydratedRef = useRef(false);
+  const DRAFT_KEY = "profile_draft_v1";
+  const draftTimer = useRef<any>(null);
 
   useEffect(() => {
     // Первичная гидрация из localStorage/cookie, чтобы не терять данные между перезагрузками
     try {
+      const draftRaw = localStorage.getItem(DRAFT_KEY);
+      if (draftRaw) {
+        const d = JSON.parse(draftRaw);
+        setDraft((prev) => ({
+          ...prev,
+          name: normalizeName(d.name ?? prev.name),
+          phone: d.phone ?? prev.phone,
+          address: d.address ?? prev.address,
+          gender: d.gender ?? prev.gender,
+          birthDate: d.birthDate ?? prev.birthDate,
+          city: d.city ?? prev.city,
+        }));
+        setCachedReady(true);
+        hydratedRef.current = true;
+        return;
+      }
       const ls = localStorage.getItem('ui_user_data');
       if (ls) {
         const u = JSON.parse(ls);
         setViewUser((prev) => ({
           ...prev,
-          name: u.fullName ?? u.name ?? prev.name,
+          name: normalizeName(u.fullName ?? u.name ?? prev.name),
           phone: u.phone ?? prev.phone,
           address: u.address ?? prev.address,
           email: u.email ?? prev.email,
@@ -124,7 +145,7 @@ export default function UserInfo() {
         }));
         setDraft((d) => ({
           ...d,
-          name: u.fullName ?? u.name ?? d.name,
+          name: normalizeName(u.fullName ?? u.name ?? d.name),
           phone: u.phone ? formatPhone(u.phone) : d.phone,
           address: u.address ?? d.address,
           gender: u.gender ?? d.gender,
@@ -140,7 +161,7 @@ export default function UserInfo() {
     if (ck) {
       setViewUser((prev) => ({
         ...prev,
-        name: ck.fullName ?? ck.name ?? prev.name,
+        name: normalizeName(ck.fullName ?? ck.name ?? prev.name),
         phone: ck.phone ?? prev.phone,
         address: ck.address ?? prev.address,
         email: ck.email ?? prev.email,
@@ -151,7 +172,7 @@ export default function UserInfo() {
       }));
       setDraft((d) => ({
         ...d,
-        name: ck.fullName ?? ck.name ?? d.name,
+        name: normalizeName(ck.fullName ?? ck.name ?? d.name),
         phone: ck.phone ? formatPhone(ck.phone) : d.phone,
         address: ck.address ?? d.address,
         gender: ck.gender ?? d.gender,
@@ -225,6 +246,20 @@ export default function UserInfo() {
     }));
     setDraft(srv);
   }, [user]);
+
+  // Автосохранение черновика профиля
+  useEffect(() => {
+    if (draftTimer.current) clearTimeout(draftTimer.current);
+    draftTimer.current = setTimeout(() => {
+      try {
+        const payload = { ...draft, name: normalizeName(draft.name), ts: Date.now() };
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+      } catch {}
+    }, 400);
+    return () => {
+      if (draftTimer.current) clearTimeout(draftTimer.current);
+    };
+  }, [draft]);
 
   const dirtyKeys = useMemo(() => {
     const keys: string[] = [];
@@ -453,6 +488,7 @@ export default function UserInfo() {
         localStorage.setItem('ui_user_data', JSON.stringify(uiPayload));
         document.cookie = `ui_user_data=${encodeURIComponent(JSON.stringify(uiPayload))}; Path=/; SameSite=Lax`;
         document.cookie = `ui_fullname=${encodeURIComponent(firstLast(after.name))}; Path=/; SameSite=Lax`;
+        localStorage.removeItem(DRAFT_KEY);
         window.dispatchEvent(new CustomEvent('user:context:updated', { detail: { name: after.name } }));
         window.dispatchEvent(new Event('profile:saved'));
       } catch {}
@@ -505,7 +541,7 @@ export default function UserInfo() {
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
       try { sessionStorage.removeItem("email"); } catch {}
       try {
         localStorage.removeItem('ui_user_data');
@@ -556,7 +592,7 @@ export default function UserInfo() {
             <label className="block">
               <span className="block text-sm text-black/60 mb-1">ФИО <span className="text-red-500">*</span></span>
               <input
-                value={normalizeName(draft.name)}
+                value={draft.name}
                 onChange={onField("name")}
                 placeholder="Введите ФИО"
                 className={`w-full border-b border-black/10 focus:border-black transition px-1 py-3 outline-none placeholder:text-black/40 ${formErrors.name ? 'border-red-400 focus:border-red-500' : ''}`}

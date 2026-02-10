@@ -1,6 +1,7 @@
 // app/api/auth/send-email-code/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getClientIp, rateLimit } from '@/lib/rate-limit';
 import { Prisma } from '@prisma/client';
 
 export const runtime = 'nodejs';
@@ -17,20 +18,38 @@ export async function POST(req: Request) {
     }
 
     const normalizedEmail = String(email).trim().toLowerCase();
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
+    if (!isEmail) {
+      return NextResponse.json({ success: false, message: 'Некорректный email' }, { status: 400 });
+    }
+
+    const ip = getClientIp(req);
+    const ipLimit = await rateLimit(`send-email:ip:${ip}`, 12, 60_000);
+    if (!ipLimit.ok) {
+      return NextResponse.json(
+        { success: false, message: 'Слишком много запросов. Попробуйте позже.' },
+        { status: 429, headers: { 'Retry-After': String(ipLimit.retryAfter) } }
+      );
+    }
+    const emailLimit = await rateLimit(`send-email:email:${normalizedEmail}`, 3, 10 * 60_000);
+    if (!emailLimit.ok) {
+      return NextResponse.json(
+        { success: false, message: 'Код уже отправлен. Попробуйте чуть позже.' },
+        { status: 429, headers: { 'Retry-After': String(emailLimit.retryAfter) } }
+      );
+    }
 
     const now = new Date();
-    const user = await prisma.user.upsert({
+    const user = await prisma.user.findUnique({
       where: { email: normalizedEmail },
-      update: { updatedAt: now },
-      create: {
-        email: normalizedEmail,
-        fullName: '',
-        password: '',
-        role: 'USER' as any,
-        verified: new Date(0),
-        updatedAt: now,
-      },
+      select: { id: true },
     });
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: 'Пользователь не найден' },
+        { status: 404 }
+      );
+    }
 
     // гарантируем, что у пользователя есть корзина
     await prisma.cart.upsert({
@@ -65,7 +84,9 @@ export async function POST(req: Request) {
     }
 
     // Здесь можно интегрировать реальную отправку письма.
-    console.log('[send-email-code] code for', normalizedEmail, ':', code);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[send-email-code] code for', normalizedEmail, ':', code);
+    }
 
     const res = NextResponse.json({ success: true });
     res.cookies.set('vfy', '1', {

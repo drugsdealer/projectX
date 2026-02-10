@@ -73,7 +73,7 @@ export default function FavoritesPage() {
       await Promise.all(
         base.map(async (it) => {
           try {
-            const res = await fetch(`/api/products/${it.id}`, { cache: "no-store" });
+            const res = await fetch(`/api/products/${it.id}`);
             if (!res.ok) {
               enriched.push(it);
               return;
@@ -83,7 +83,7 @@ export default function FavoritesPage() {
             const currentPrice = pickPrice(p, it.size);
             const savedPrice = Number(it.price ?? null);
             let priceDelta: number | null = null;
-            if (Number.isFinite(currentPrice) && Number.isFinite(savedPrice)) {
+            if (currentPrice != null && Number.isFinite(currentPrice) && Number.isFinite(savedPrice)) {
               priceDelta = currentPrice - savedPrice;
             }
             const nextItem: FavItem = {
@@ -487,7 +487,7 @@ export default function FavoritesPage() {
                           const delta = typeof item.priceDelta === "number" ? item.priceDelta : 0;
                           const hasDelta = Number.isFinite(delta) && delta !== 0;
                           const isUp = delta > 0;
-                          if (!Number.isFinite(basePrice)) return null;
+                          if (!Number.isFinite(basePrice) || basePrice === 0) return null;
                           const badgeColor = hasDelta
                             ? isUp
                               ? "bg-red-50 border-red-200 text-red-700"

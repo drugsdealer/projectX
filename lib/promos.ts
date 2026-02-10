@@ -14,10 +14,13 @@ export type PromoValidationResult = {
     description?: string | null;
     type: "percent" | "amount";
     value: number; // % или рубли
+    appliesTo?: "ALL" | "PREMIUM_ONLY" | "NON_PREMIUM_ONLY";
+    excludedBrands?: string[];
   };
   alreadyUsed?: boolean;
   remainingGlobal?: number | null; // сколько ещё использований глобально допустимо
   newTotal?: number; // если subtotal передали — вернём пересчитанную сумму
+  minSubtotal?: number | null;
   notFound?: boolean;
   expired?: boolean;
 };
@@ -29,6 +32,14 @@ export async function validatePromo(input: PromoValidationInput): Promise<PromoV
   const now = new Date();
   const promo = await (prisma as any).promoCode.findUnique({ where: { code: raw } });
   if (!promo || !promo.isActive) return { ok: false, error: "Код не найден или неактивен", notFound: true };
+  if (promo.userId) {
+    if (!input.userId) {
+      return { ok: false, error: "Войдите в аккаунт, чтобы использовать этот код" };
+    }
+    if (promo.userId !== input.userId) {
+      return { ok: false, error: "Код недоступен для этого аккаунта" };
+    }
+  }
   if (promo.startsAt && now < promo.startsAt) return { ok: false, error: "Код ещё не активен" };
   if (promo.endsAt && now > promo.endsAt) return { ok: false, error: "Срок действия кода истёк", expired: true };
 
@@ -52,7 +63,7 @@ export async function validatePromo(input: PromoValidationInput): Promise<PromoV
   // Сумма корзины
   const subtotal = Math.max(0, Number(input.subtotal ?? 0));
   if (promo.minSubtotal && subtotal && subtotal < promo.minSubtotal) {
-    return { ok: false, error: `Минимальная сумма для применения: ${promo.minSubtotal}₽` };
+    return { ok: false, error: `Минимальная сумма для применения: ${promo.minSubtotal}₽`, minSubtotal: promo.minSubtotal };
   }
 
   // Рассчёт скидки
@@ -83,8 +94,16 @@ export async function validatePromo(input: PromoValidationInput): Promise<PromoV
     ok: true,
     alreadyUsed,
     remainingGlobal,
-    code: { code: promo.code, description: promo.description, type, value },
+    code: {
+      code: promo.code,
+      description: promo.description,
+      type,
+      value,
+      appliesTo: promo.appliesTo ?? "ALL",
+      excludedBrands: Array.isArray(promo.excludedBrands) ? promo.excludedBrands : [],
+    },
     newTotal,
+    minSubtotal: promo.minSubtotal ?? null,
   };
 }
 
@@ -98,6 +117,34 @@ export async function redeemPromo(code: string, userId: number) {
 
   const redemption = await (prisma as any).promoRedemption.create({
     data: { promoCodeId: promo.id, userId },
+  });
+
+  if (promo.maxRedemptions === 1 || promo.userId) {
+    await (prisma as any).promoCode.update({
+      where: { id: promo.id },
+      data: { isActive: false },
+    });
+  }
+
+  return redemption;
+}
+
+export async function redeemPromoForOrder(params: {
+  code: string;
+  userId: number;
+  orderId: number;
+}) {
+  const code = params.code.trim().toUpperCase();
+  const promo = await (prisma as any).promoCode.findUnique({ where: { code } });
+  if (!promo || !promo.isActive) return null;
+
+  const dupe = await (prisma as any).promoRedemption.findFirst({
+    where: { promoCodeId: promo.id, userId: params.userId },
+  });
+  if (dupe) return dupe;
+
+  const redemption = await (prisma as any).promoRedemption.create({
+    data: { promoCodeId: promo.id, userId: params.userId, orderId: params.orderId },
   });
 
   if (promo.maxRedemptions === 1 || promo.userId) {

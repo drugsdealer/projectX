@@ -2,10 +2,10 @@
 "use client";
 
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
-import { motion, AnimatePresence, useReducedMotion, Variants } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion, Variants, useMotionValue, animate } from "framer-motion";
 import { useTitle } from "@/context/TitleContext"; // Импортируем контекст
 import Link from "next/link";
-import { Categories } from "@/components/shared/categories";
+import { PremiumConcierge } from "@/components/PremiumConcierge";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { ChevronDown, Search, Filter, X, Menu, Crown } from "lucide-react";
 
@@ -17,7 +17,32 @@ const wrapIndex = (min: number, max: number, v: number) => {
 const swipeConfidenceThreshold = 1200; // было 9000 — на мобилках часто не срабатывало
 const swipePower = (offset: number, velocity: number) => Math.abs(offset) * velocity;
 
+// Same image swipe reveal as on the main page
+const CARD_SWIPE_VARIANTS = {
+  enter: (dir: 'left' | 'right') => ({
+    x: 0,
+    clipPath: dir === 'left' ? 'inset(0 0 0 100%)' : 'inset(0 100% 0 0)',
+    opacity: 1,
+    scale: 1.01,
+    zIndex: 2,
+  }),
+  center: {
+    x: 0,
+    clipPath: 'inset(0 0 0 0)',
+    opacity: 1,
+    scale: 1,
+    zIndex: 2,
+  },
+  exit: (_dir: 'left' | 'right') => ({
+    x: 0,
+    opacity: 0,
+    scale: 0.995,
+    zIndex: 1,
+  }),
+};
+
 const getPreviewImages = (item: any): string[] => {
+  if (!item) return [];
   const imgs = Array.isArray(item?.images) ? item.images.filter(Boolean) : [];
   if (imgs.length) return imgs;
   if (item?.imageUrl) return [item.imageUrl];
@@ -25,19 +50,53 @@ const getPreviewImages = (item: any): string[] => {
   return [];
 };
 
-function SwipeablePreview({
-  images,
-  alt,
-  className = "",
-}: {
+// Персистим последний кадр превью по ключу набора изображений,
+// чтобы не сбрасывать все карточки при ререндере списка и при размонтаже
+const previewIndexStore = new Map<string, number>();
+
+const loadSavedIndex = (key: string): number => {
+  if (!key) return 0;
+  const mem = previewIndexStore.get(key);
+  if (typeof mem === "number") return mem;
+  try {
+    const raw = sessionStorage.getItem(`premium_preview_${key}`);
+    const n = raw ? Number(raw) : 0;
+    return Number.isFinite(n) ? n : 0;
+  } catch {
+    return 0;
+  }
+};
+
+const saveIndex = (key: string, value: number) => {
+  previewIndexStore.set(key, value);
+  try {
+    sessionStorage.setItem(`premium_preview_${key}`, String(value));
+  } catch {
+    // ignore
+  }
+};
+
+type SwipeablePreviewProps = {
   images: string[];
   alt: string;
   className?: string;
-}) {
+  cacheKey?: string;
+};
+
+const SwipeablePreview = React.memo(function SwipeablePreviewComponent({
+  images,
+  alt,
+  className = "",
+  cacheKey,
+}: SwipeablePreviewProps) {
   const reduceMotion = useReducedMotion();
   const [isTouch, setIsTouch] = React.useState(false);
-  const draggingRef = React.useRef(false);
-  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // Делаем ключ более стабильным: берём переданный cacheKey или комбинацию alt+картинок
+  const imagesKey = React.useMemo(
+    () => cacheKey ?? `${alt || "item"}::${(images || []).join("|")}`,
+    [cacheKey, alt, images]
+  );
 
   React.useEffect(() => {
     const detect = () => {
@@ -63,66 +122,156 @@ function SwipeablePreview({
     };
   }, []);
 
-  const [[page, direction], setPage] = React.useState<[number, number]>([0, 0]);
-  const [isDragging, setIsDragging] = React.useState(false);
-  const [dragOffset, setDragOffset] = React.useState(0);
-  const imagesKey = images?.join("|") || "";
-
+  const [page, setPage] = React.useState(() => loadSavedIndex(imagesKey));
   const count = images?.length ?? 0;
   const index = count > 0 ? wrapIndex(0, count, page) : 0;
+  const [swipeDir, setSwipeDir] = React.useState<'left' | 'right'>('left');
+
+  // Сохраняем текущий кадр для набора картинок
+  React.useEffect(() => {
+    saveIndex(imagesKey, index);
+  }, [imagesKey, index]);
+
+  // --- Simplified swipe logic with RAF throttling ---
+  const x = useMotionValue(0);
+  const resetAnimRef = React.useRef<ReturnType<typeof animate> | null>(null);
+  const touchStartRef = React.useRef<{ x: number; y: number } | null>(null);
+  const dirRef = React.useRef(0);
+  const blockClickRef = React.useRef(false);
+  const hasMovedRef = React.useRef(false);
+  const isHorizontalRef = React.useRef(false);
+  const lastTouchRef = React.useRef<{ x: number; y: number } | null>(null);
+  const rafRef = React.useRef<number | null>(null);
 
   const paginate = (newDirection: number) => {
     if (count <= 1) return;
-    setPage(([p]) => [p + newDirection, newDirection]);
-  };
-
-  // Smooth spring animation variants
-  const slideVariants = {
-    enter: (direction: number) => ({
-      x: reduceMotion ? 0 : direction > 0 ? 100 : -100,
-      opacity: 0,
-      scale: 0.95,
-    }),
-    center: {
-      x: 0,
-      opacity: 1,
-      scale: 1,
-    },
-    exit: (direction: number) => ({
-      x: reduceMotion ? 0 : direction > 0 ? -100 : 100,
-      opacity: 0,
-      scale: 0.95,
-    }),
-  };
-
-  // Handle drag for swipe
-  const handleDragStart = () => {
-    draggingRef.current = true;
-    setIsDragging(true);
-  };
-
-  const handleDrag = (_event: any, info: any) => {
-    if (count <= 1) return;
-    setDragOffset(info.offset.x);
-  };
-
-  const handleDragEnd = (_event: any, info: any) => {
-    setIsDragging(false);
-    setDragOffset(0);
-
-    const swipe = swipePower(info.offset.x, info.velocity.x);
-    if (swipe < -swipeConfidenceThreshold) paginate(1);
-    else if (swipe > swipeConfidenceThreshold) paginate(-1);
-  };
-
-  // Если список картинок сменился — возвращаемся к первой с плавной анимацией
-  React.useEffect(() => {
-    setDragOffset(0);
-    setPage((prev) => {
-      if (prev[0] === 0) return prev;
-      return [0, prev[0] > 0 ? -1 : 1];
+    dirRef.current = newDirection;
+    setSwipeDir(newDirection > 0 ? 'left' : 'right');
+    setPage((p) => {
+      const next = wrapIndex(0, count, p + newDirection);
+      saveIndex(imagesKey, next);
+      return next;
     });
-  }, [imagesKey]);
+  };
+
+  const stopResetAnim = React.useCallback(() => {
+    if (resetAnimRef.current) {
+      try {
+        resetAnimRef.current.stop();
+      } catch {}
+      resetAnimRef.current = null;
+    }
+  }, []);
+
+  const resetDrag = () => {
+    stopResetAnim();
+    if (reduceMotion) {
+      x.set(0);
+      return;
+    }
+    resetAnimRef.current = animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
+  };
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches?.[0];
+    if (!t || count <= 1) return;
+    
+    stopResetAnim();
+    x.set(0);
+    
+    // Очищаем предыдущий RAF
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    
+    touchStartRef.current = { x: t.clientX, y: t.clientY };
+    lastTouchRef.current = { x: t.clientX, y: t.clientY };
+    hasMovedRef.current = false;
+    isHorizontalRef.current = false;
+    blockClickRef.current = false;
+    
+    // Сигнализируем что начался свайп
+    document.dispatchEvent(new CustomEvent("swipe:start"));
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    const t = e.touches?.[0];
+    const start = touchStartRef.current;
+    if (!t || !start || count <= 1) return;
+
+    // Сохраняем текущую позицию для обработки в RAF
+    lastTouchRef.current = { x: t.clientX, y: t.clientY };
+
+    // Отменяем предыдущий RAF
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+
+    // Обрабатываем в следующем кадре
+    rafRef.current = requestAnimationFrame(() => {
+      if (!lastTouchRef.current || !start) return;
+
+      const dx = lastTouchRef.current.x - start.x;
+      const dy = Math.abs(lastTouchRef.current.y - start.y);
+
+      // Если это явно вертикальный скролл — выходим
+      if (dy > Math.abs(dx) + 10 && dy > 15) {
+        isHorizontalRef.current = false;
+        return;
+      }
+
+      // Если движение есть и оно горизонтальное
+      if (Math.abs(dx) > 5) {
+        hasMovedRef.current = true;
+        isHorizontalRef.current = true;
+        blockClickRef.current = true;
+        e.preventDefault?.();
+        x.set(Math.max(-120, Math.min(120, dx)));
+      }
+    });
+  };
+
+  const onTouchEnd = () => {
+    const start = touchStartRef.current;
+    
+    // Если это был вертикальный скролл или вообще не было движения - просто сбрасываем
+    if (!start || count <= 1 || !isHorizontalRef.current) {
+      resetDrag();
+      touchStartRef.current = null;
+      // Сигнализируем конец свайпа
+      document.dispatchEvent(new CustomEvent("swipe:end"));
+      return;
+    }
+
+    const current = x.get();
+    const threshold = 30;
+
+    // Проверяем был ли это реальный горизонтальный свайп
+    if (Math.abs(current) > 5) {
+      if (current <= -threshold) {
+        dirRef.current = 1;
+        paginate(1);
+      } else if (current >= threshold) {
+        dirRef.current = -1;
+        paginate(-1);
+      } else {
+        resetDrag();
+      }
+    } else {
+      // Если движение было мало - просто возвращаемся
+      resetDrag();
+    }
+    
+    touchStartRef.current = null;
+    // Сигнализируем конец свайпа
+    document.dispatchEvent(new CustomEvent("swipe:end"));
+  };
+
+  // Cleanup RAF при unmount
+  React.useEffect(() => {
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, []);
 
   if (!images?.length) {
     return (
@@ -132,106 +281,124 @@ function SwipeablePreview({
     );
   }
 
-  // Desktop: прежняя логика — на ховер плавно появляется следующее фото (без свайпа)
+  // Desktop: hover swipe preview like on the main page
   if (!isTouch) {
-    const primary = images[0];
-    const secondary = images[1];
     return (
       <div
-        className={`relative overflow-hidden rounded-xl bg-white group ${className}`}
+        className={`relative overflow-hidden rounded-xl bg-white ${className}`}
         style={{ touchAction: "pan-y pinch-zoom" }}
+        onMouseMove={(e) => {
+          if (!images?.length || images.length <= 1) return;
+          const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+          const xPos = e.clientX - rect.left;
+          const ratio = rect.width > 0 ? xPos / rect.width : 0;
+          let idx = Math.floor(ratio * images.length);
+          if (idx < 0) idx = 0;
+          if (idx >= images.length) idx = images.length - 1;
+          if (idx === index) return;
+          setSwipeDir(idx > index ? 'left' : 'right');
+          setPage(idx);
+        }}
+        onMouseLeave={() => {
+          if (!images?.length || images.length <= 1) return;
+          if (index === 0) return;
+          setSwipeDir('right');
+          setPage(0);
+        }}
       >
-        <img
-          src={primary}
-          alt={alt}
-          className="absolute inset-0 w-full h-full object-contain transition-opacity duration-300 group-hover:opacity-0"
-        />
-        {secondary && (
-          <img
-            src={secondary}
-            alt={`${alt} preview`}
-            className="absolute inset-0 w-full h-full object-contain opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        <AnimatePresence initial={false} mode="sync" custom={swipeDir}>
+          <motion.img
+            key={`${images[index]}-${index}`}
+            custom={swipeDir}
+            variants={CARD_SWIPE_VARIANTS}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{
+              duration: 0.32,
+              ease: [0.22, 1, 0.36, 1],
+              opacity: { duration: 0.16, ease: "linear" },
+              scale: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
+            }}
+            src={images[index]}
+            alt={alt}
+            className="absolute inset-0 w-full h-full object-contain"
           />
+        </AnimatePresence>
+
+        {count > 1 && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex gap-1.5">
+            {images.map((_, i) => (
+              <motion.span
+                key={i}
+                className={`h-1.5 rounded-full ${
+                  i === index ? "bg-black/80" : "bg-black/25"
+                }`}
+                animate={{ width: i === index ? 12 : 6 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              />
+            ))}
+          </div>
         )}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-white to-transparent opacity-70" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white to-transparent opacity-80" />
       </div>
     );
   }
 
   return (
     <div
-      ref={containerRef}
-      className={`relative overflow-hidden rounded-xl ${className}`}
+      className={`relative overflow-hidden rounded-xl bg-white ${className}`}
       style={{
         touchAction: "pan-y pinch-zoom",
-        cursor: isDragging ? "grabbing" : "grab",
       }}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchEnd}
       onClickCapture={(e) => {
-        if (draggingRef.current) {
+        if (blockClickRef.current) {
           e.preventDefault();
           e.stopPropagation();
-          draggingRef.current = false;
+          blockClickRef.current = false;
         }
       }}
     >
-      {/* Main image with drag animation */}
-      <motion.div
-        className="relative w-full h-full"
-        drag={isTouch && count > 1 ? "x" : false}
-        dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={0.2}
-        dragTransition={{ bounceStiffness: 300, bounceDamping: 30 }}
-        onDragStart={handleDragStart}
-        onDrag={handleDrag}
-        onDragEnd={handleDragEnd}
-        style={{
-          x: dragOffset,
-        }}
-      >
-        <AnimatePresence initial custom={direction} mode="popLayout">
-          <motion.img
-            key={`${index}-${images[index]}`}
-            src={images[index]}
-            alt={alt}
-            className="absolute inset-0 w-full h-full object-contain"
-            custom={direction}
-            variants={slideVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{
-              type: "spring",
-              stiffness: 300,
-              damping: 30,
-              mass: 0.5,
-            }}
-          />
-        </AnimatePresence>
-      </motion.div>
+      {/* Single image with smooth motion */}
+      <motion.img
+        key={`img-${index}`}
+        src={images[index]}
+        alt={alt}
+        className="w-full h-full object-contain"
+        style={{ x }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 400, damping: 35 }}
+        initial={{ opacity: 0 }}
+        exit={{ opacity: 0 }}
+      />
 
       {/* Progress dots */}
       {count > 1 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex gap-1">
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex gap-1.5">
           {images.map((_, i) => (
             <motion.span
               key={i}
-              className={`h-1 rounded-full transition-all ${
+              className={`h-1.5 rounded-full ${
                 i === index ? "bg-black/80" : "bg-black/25"
               }`}
-              initial={{ width: i === index ? 12 : 5 }}
-              animate={{ width: i === index ? 12 : 5 }}
-              transition={{ type: "spring", stiffness: 380, damping: 26 }}
+              animate={{
+                width: i === index ? 12 : 6,
+              }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
             />
           ))}
         </div>
       )}
-
-      {/* Current image counter */}
-      {/* intentionally removed badge/hint to keep mobile чище */}
     </div>
   );
-}
+}, (prev, next) => {
+  const keyPrev = prev.images?.join("|") || "";
+  const keyNext = next.images?.join("|") || "";
+  return keyPrev === keyNext && prev.alt === next.alt && prev.className === next.className;
+});
 
 
 // Локальные подписи основных и некоторых подкатегорий, чтобы не зависеть от внешнего taxonomy
@@ -351,171 +518,135 @@ const getProductCategoryKey = (p: any): string => {
   return "other";
 };
 
-// Минимальный локальный компонент чипсов подкатегорий
-const SubcategoryChips: React.FC<{ subcategories: string[]; active: string | null; onChange: (sub: string | null) => void; }> = ({ subcategories, active, onChange }) => (
+// Минимальный локальный компонент чипсов подкатегорий (мемоизирован)
+const SubcategoryChips: React.FC<{ subcategories: string[]; active: string | null; onChange: (sub: string | null) => void; }> = React.memo(({ subcategories, active, onChange }) => (
   <div className="flex flex-wrap gap-2">
     {subcategories.map((sub) => (
       <button
         key={sub}
         type="button"
         onClick={() => onChange(sub)}
-        className={`px-4 py-2 rounded-full border text-sm font-semibold ${active === sub ? 'bg-black text-white' : 'bg-white text-black hover:bg-black hover:text-white transition'}`}
+        className={`px-4 py-2 rounded-full border text-sm font-semibold transition-colors ${active === sub ? 'bg-black text-white border-black' : 'bg-white text-black border-black/20 hover:bg-black hover:text-white hover:border-black'}`}
       >
         {LABELS[sub] || sub}
       </button>
     ))}
   </div>
-);
+), (prev, next) => {
+  return prev.active === next.active && 
+         prev.subcategories.length === next.subcategories.length &&
+         prev.subcategories.every((s, i) => s === next.subcategories[i]);
+});
 
-const BrandCloud: React.FC = () => {
-  const brandLogos = [
-    "/img/dior logo.svg.png",
-    "/img/gucci.png",
-    "/img/prada-logo.png",
-    "/img/баленса лого.png",
-    "/img/Rick-Owens-Logo.png",
-    "/img/ysl logo 2.png",
-    "/img/Logo_Goyard.png",
-    "/img/chanel logo.png",
-    "/img/марджелка.png",
-    "/img/vetmo.png"
+const PremiumAura: React.FC = () => {
+  const sparkles = [
+    { left: "12%", top: "22%", size: 6, delay: 0 },
+    { left: "28%", top: "62%", size: 5, delay: 1.2 },
+    { left: "46%", top: "18%", size: 4, delay: 2.1 },
+    { left: "62%", top: "52%", size: 5, delay: 0.6 },
+    { left: "78%", top: "26%", size: 6, delay: 1.8 },
+    { left: "84%", top: "68%", size: 4, delay: 2.6 },
   ];
-  const allBrands = Array.from(new Set(brandLogos));
-
-  // Helper: map logo src to brand slug
-  const srcToSlug = (src: string): string | null => {
-    const file = (src.split('/').pop() || '').toLowerCase();
-    const map: Record<string, string> = {
-      'dior logo.svg.png': 'dior',
-      'gucci.png': 'gucci',
-      'prada-logo.png': 'prada',
-      'баленса лого.png': 'balenciaga',
-      'rick-owens-logo.png': 'rick-owens',
-      'ysl logo 2.png': 'saint-laurent',
-      'logo_goyard.png': 'goyard',
-      'chanel logo.png': 'chanel',
-      'марджелка.png': 'maison-margiela',
-      'vetmo.png': 'vetements',
-    };
-    if (map[file]) return map[file];
-    // fallback: slugify filename (latin only)
-    const base = file.replace(/\.[a-z0-9]+$/i, '')
-                     .replace(/[_\s]+/g, '-')
-                     .replace(/[^a-z0-9\-]/g, '')
-                     .replace(/-+/g, '-');
-    return base || null;
-  };
-
-  const shuffle = (arr: string[]) => {
-    const a = [...arr];
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-  };
-
-  const poolRef = useRef<string[]>(shuffle(allBrands));
-  const idxRef = useRef<number>(0);
-  const nextBrand = (exclude?: Set<string>) => {
-    const pool = poolRef.current;
-    if (!pool.length) return "";
-    let tries = 0;
-    let pick = pool[idxRef.current % pool.length];
-    while (exclude && exclude.has(pick) && tries < pool.length) {
-      idxRef.current = (idxRef.current + 1) % pool.length;
-      pick = pool[idxRef.current % pool.length];
-      tries++;
-    }
-    idxRef.current = (idxRef.current + 1) % pool.length;
-    if (idxRef.current === 0) poolRef.current = shuffle(poolRef.current);
-    return pick;
-  };
-
-  type Slot = { src: string; key: string };
-  const floating = [
-    { left: '4%',  top: '6%',  dx: 90, dy: 40, size: 140 },
-    { left: '26%', top: '22%', dx: 70, dy: 55, size: 140 },
-    { left: '50%', top: '8%',  dx: 60, dy: 35, size: 140 },
-    { left: '10%', top: '64%', dx: 80, dy: 60, size: 140 },
-    { left: '40%', top: '60%', dx: 65, dy: 45, size: 140 },
-    { left: '72%', top: '36%', dx: 75, dy: 50, size: 140 },
-  ];
-
-  const [slots, setSlots] = useState<Slot[]>([]);
-
-  // initial fill (appear only)
-  useEffect(() => {
-    if (!allBrands.length) return;
-    const seed = setInterval(() => {
-      setSlots((prev) => {
-        if (prev.length >= 6) { clearInterval(seed); return prev; }
-        const exclude = new Set(prev.map(p => p.src));
-        const src = nextBrand(exclude);
-        return [...prev, { src, key: `${Date.now()}-${prev.length}-${Math.random().toString(36).slice(2,6)}` }];
-      });
-    }, 400);
-    return () => clearInterval(seed);
-  }, [allBrands.length]);
-
-  // rotate one logo every ~3s INSIDE this component only
-  useEffect(() => {
-    if (!allBrands.length) return;
-    const id = setInterval(() => {
-      setSlots((prev) => {
-        if (prev.length === 0) return prev;
-        const victim = Math.floor(Math.random() * prev.length);
-        const next = [...prev];
-        const currentVictimSrc = prev[victim]?.src;
-        const exclude = new Set(prev.map(s => s.src));
-        if (currentVictimSrc) exclude.add(currentVictimSrc);
-        const picked = nextBrand(exclude);
-        next[victim] = { src: picked, key: `${Date.now()}-${victim}-${Math.random().toString(36).slice(2,6)}` };
-        return next;
-      });
-    }, 2800);
-    return () => clearInterval(id);
-  }, [allBrands.length]);
-
   return (
-    <div className="brand-cloud relative overflow-hidden rounded-2xl w-full h-[220px] sm:h-[280px] lg:h-[420px]">
-      <AnimatePresence initial={false}>
-        {slots.map((slot, i) => {
-          const slug = srcToSlug(slot.src);
-          const styles = { left: floating[i].left, top: floating[i].top, width: floating[i].size, height: 'auto' } as const;
-          const imgEl = (
-            <img
-              src={slot.src}
-              alt={slot.src.split('/').pop()?.replace(/\.[a-z]+$/i, '') || 'brand'}
-              className="brand-logo w-full h-auto"
-              loading="lazy"
-            />
-          );
-          return (
+    <div
+      className="relative overflow-hidden rounded-2xl w-full h-[220px] sm:h-[280px] lg:h-[420px] shadow-[0_30px_80px_rgba(0,0,0,0.18)]"
+      style={{ clipPath: "inset(0 round 18px)", contain: "layout style paint" }}
+    >
+      <div
+        className="absolute inset-0 rounded-2xl p-[1px]"
+        style={{
+          background:
+            "conic-gradient(from 120deg at 50% 50%, rgba(212,175,55,0.6), rgba(0,0,0,0), rgba(212,175,55,0.2), rgba(0,0,0,0), rgba(212,175,55,0.5))",
+        }}
+      >
+        <div
+          className="relative h-full w-full rounded-[16px] overflow-hidden"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(250,247,240,0.98) 40%, rgba(245,242,236,0.98) 100%)",
+          }}
+        >
+          <div className="absolute inset-0 pointer-events-none">
             <motion.div
-              key={slot.key}
-              className="absolute"
-              style={styles}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.6 }}
-            >
-              {slug ? (
-                <Link
-                  href={`/brand/${slug}?origin=premium`}
-                  aria-label={`Больше от бренда ${slug.replace(/-/g, ' ')}`}
-                  className="block"
-                >
-                  {imgEl}
-                </Link>
-              ) : (
-                imgEl
-              )}
-            </motion.div>
-          );
-        })}
-      </AnimatePresence>
+              className="absolute -left-24 -top-20 h-64 w-64 rounded-full blur-3xl"
+              style={{ background: "radial-gradient(circle at 30% 30%, rgba(212,175,55,0.18), transparent 70%)" }}
+              animate={{ x: [0, 36, 0], y: [0, 26, 0], scale: [1, 1.08, 1] }}
+              transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute right-[-10%] top-[6%] h-72 w-72 rounded-full blur-3xl"
+              style={{ background: "radial-gradient(circle at 60% 40%, rgba(18,18,18,0.10), transparent 70%)" }}
+              animate={{ x: [0, -28, 0], y: [0, 20, 0], scale: [1, 1.06, 1] }}
+              transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute left-[34%] bottom-[-24%] h-72 w-72 rounded-full blur-3xl"
+              style={{ background: "radial-gradient(circle at 40% 60%, rgba(16,185,129,0.10), transparent 70%)" }}
+              animate={{ x: [0, 20, 0], y: [0, -24, 0], scale: [1, 1.05, 1] }}
+              transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute -left-1/2 top-[42%] h-24 w-[200%]"
+              style={{
+                background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent)",
+                filter: "blur(10px)",
+                opacity: 0.7,
+              }}
+              animate={{ x: ["-12%", "12%", "-12%"] }}
+              transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage:
+                  "radial-gradient(rgba(0,0,0,0.05) 1px, transparent 1px)",
+                backgroundSize: "18px 18px",
+                opacity: 0.12,
+              }}
+            />
+            {sparkles.map((s, idx) => (
+              <motion.span
+                key={`${s.left}-${s.top}-${idx}`}
+                className="absolute rounded-full"
+                style={{
+                  left: s.left,
+                  top: s.top,
+                  width: s.size,
+                  height: s.size,
+                  background: "radial-gradient(circle, rgba(212,175,55,0.85), rgba(212,175,55,0))",
+                }}
+                animate={{ opacity: [0.2, 0.85, 0.2], scale: [0.8, 1.2, 0.8] }}
+                transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut", delay: s.delay }}
+              />
+            ))}
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(0,0,0,0.08), transparent 35%, transparent 65%, rgba(0,0,0,0.08))",
+              }}
+            />
+          </div>
+          <div className="relative h-full w-full p-6 flex flex-col items-start justify-end gap-3">
+            <div className="inline-flex items-center gap-2 rounded-full bg-black/90 text-white px-3 py-1 text-[10px] font-semibold tracking-[0.3em]">
+              <span>STAGE</span>
+              <span className="text-[9px] opacity-70">PREMIUM</span>
+            </div>
+            <p className="font-extrabold tracking-tight leading-tight text-3xl md:text-5xl text-black max-w-[760px]">
+              Добро пожаловать в Stage{" "}
+              <span className="relative inline-block">
+                Premium
+                <img
+                  src="/img/звездочка.png"
+                  alt="Premium"
+                  className="absolute -top-1 right-[-6px] md:-top-2 md:-right-3 w-5 h-5 md:w-6 md:h-6 drop-shadow-[0_0_6px_rgba(0,0,0,0.15)]"
+                />
+              </span>{" "}
+              — здесь находятся эксклюзивы и уникальные предложения
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -586,6 +717,8 @@ const DiagonalBelts: React.FC<{ images1: string[]; images2: string[] }> = ({ ima
     </div>
   );
 };
+
+const MemoDiagonalBelts = React.memo(DiagonalBelts);
 
 // --- Stats row for slide 2 ---
 // --- Stats row for slide 2 ---
@@ -1236,6 +1369,33 @@ const CollageMosaic: React.FC<{ images?: string[]; mode?: 'images' | 'brandTiles
   );
 };
 
+const MemoCollageMosaic = React.memo(CollageMosaic);
+
+// Hook: mount children only when section enters viewport (reduces initial render cost)
+function SectionMount({ children, rootMargin = '400px' }: { children: React.ReactNode; rootMargin?: string }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    if (mounted) return;
+    const el = ref.current;
+    if (!el) return;
+    let obs: IntersectionObserver | null = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setMounted(true);
+          if (obs) obs.disconnect();
+        }
+      },
+      { rootMargin }
+    );
+    obs.observe(el);
+    return () => obs && obs.disconnect();
+  }, [mounted, rootMargin]);
+
+  return <div ref={ref}>{mounted ? children : <div style={{ minHeight: 220 }} />}</div>;
+}
+
 // --- Intro slides overlay (multi-slide, full black screen) ---
 type IntroSlide = {
   title: React.ReactNode;
@@ -1338,12 +1498,12 @@ function IntroSlides({
   const touchStartY = React.useRef<number | null>(null);
 
   const goNext = React.useCallback(() => {
-    setI((prev) => {
-      if (prev < total - 1) return prev + 1;
-      onClose();
-      return prev;
-    });
-  }, [total, onClose]);
+    if (i < total - 1) {
+      setI(i + 1);
+    } else {
+      setTimeout(() => onClose(), 0);
+    }
+  }, [i, total, onClose]);
 
   const goPrev = React.useCallback(() => {
     setI((prev) => (prev > 0 ? prev - 1 : prev));
@@ -1663,6 +1823,119 @@ function IntroSlides({
   );
 }
 
+// Анимированная обёртка для товаров с фадом и слайдом на скролле
+const AnimatedGridItem = React.memo(({ children, index }: { children: React.ReactNode; index: number }) => {
+  const ref = useRef(null);
+  const [isInView, setIsInView] = useState(false);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true);
+          // Отсоединяем после первого срабатывания
+          observer.unobserve(entry.target);
+        }
+      },
+      { threshold: 0.1, rootMargin: "50px" }
+    );
+
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 20 }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+      transition={{
+        duration: 0.5,
+        delay: index * 0.05,
+        ease: [0.25, 0.46, 0.45, 0.94],
+      }}
+      className="w-full"
+    >
+      {children}
+    </motion.div>
+  );
+});
+
+// GridCard мемоизирован чтобы не пересоздаваться при каждом render
+const GridCard = React.memo(({ item, rememberPremiumScroll, buildProductHref, getPreviewImages }: any) => {
+  const imgs = Array.isArray(item.images) ? item.images.filter(Boolean) : [];
+  const primary = (item as any).imageUrl || imgs[0] || "/img/placeholder.png";
+  const secondary = imgs.find((u: any) => u && u !== primary);
+  const gallery = getPreviewImages(item);
+
+  return (
+    <motion.div
+      whileHover={{ scale: 1.04, y: -8 }}
+      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+    >
+      <Link
+        href={buildProductHref(item.id)}
+        onClick={rememberPremiumScroll}
+        className="relative group block rounded-2xl overflow-hidden bg-white border border-black/10 shadow-sm hover:shadow-xl transition-all duration-300 w-full h-full"
+      >
+        {(item as any).premium && (
+          <div className="absolute top-2 right-2 z-20 flex items-center gap-1">
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              className="w-4 h-4 drop-shadow-[0_1px_4px_rgba(0,0,0,0.25)] transition-colors duration-200 fill-transparent stroke-black stroke-[2] group-hover:fill-black"
+            >
+              <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+            </svg>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide text-white shadow-[0_2px_10px_rgba(0,0,0,0.15)] bg-gradient-to-br from-black to-neutral-900 select-none">
+              premium
+            </span>
+          </div>
+        )}
+        {(item as any).badge && (
+          <span
+            className="absolute top-2 left-2 z-20 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide text-white shadow-[0_2px_10px_rgba(0,0,0,0.15)]"
+            style={{
+              background:
+                (item as any).badge === "NEW"
+                  ? "linear-gradient(135deg,#60a5fa,#2563eb)"
+                  : (item as any).badge === "HIT"
+                  ? "linear-gradient(135deg,#34d399,#059669)"
+                  : "linear-gradient(135deg,#000000,#111111)",
+            }}
+          >
+            {(item as any).badge}
+          </span>
+        )}
+
+        <SwipeablePreview
+          cacheKey={`grid-${item.id}`}
+          images={gallery.length ? gallery : [primary, secondary].filter(Boolean) as string[]}
+          alt={item.name}
+          className="w-full h-[190px] sm:h-[210px] md:h-[220px] bg-white flex items-center justify-center"
+        />
+
+        <div className="p-3">
+          <p className="text-sm font-semibold line-clamp-2">{item.name}</p>
+          <p className="text-xs text-gray-500 mt-1">от {item.price}₽</p>
+        </div>
+      </Link>
+    </motion.div>
+  );
+}, (prev, next) => {
+  // Кастомное сравнение props для memo
+  // Функции не меняются (useCallback), поэтому сравниваем только item данные
+  return prev.item.id === next.item.id && 
+         prev.item.name === next.item.name &&
+         prev.item.price === next.item.price &&
+         prev.item.premium === next.item.premium &&
+         prev.item.badge === next.item.badge &&
+         prev.item.images?.length === next.item.images?.length &&
+         prev.item.imageUrl === next.item.imageUrl;
+});
+
 export default function PremiumPage() {
   const [whyOpen, setWhyOpen] = useState(false);
   const searchParams = useSearchParams();
@@ -1740,7 +2013,7 @@ export default function PremiumPage() {
         ];
 
         for (const url of tryUrls) {
-          const res = await fetch(url, { cache: "no-store", signal: controller.signal });
+          const res = await fetch(url, { signal: controller.signal });
           if (!res.ok) continue;
 
           const data = await res.json();
@@ -1762,7 +2035,7 @@ export default function PremiumPage() {
         if (controller.signal.aborted) return;
         console.warn('Premium API fallback to /api/products?premium=1', e);
         try {
-          const res2 = await fetch('/api/products?premium=1&limit=500', { cache: 'no-store', signal: controller.signal });
+          const res2 = await fetch('/api/products?premium=1&limit=500', { signal: controller.signal });
           if (res2.ok) {
             const data2 = await res2.json();
             const items2 = Array.isArray(data2?.products)
@@ -1799,16 +2072,6 @@ export default function PremiumPage() {
   const { setTitle } = useTitle(); // Деструктурируем метод смены заголовка
   const prefersReduced = useReducedMotion();
 
-  // Sticky categories overlay logic (like Home): track direction & inline anchor visibility
-  const [scrollDirection, setScrollDirection] = useState<'up' | 'down'>('down');
-  const [isAtTop, setIsAtTop] = useState(true);
-  const lastYRef = useRef(0);
-
-  const inlineCatsRef = useRef<HTMLDivElement | null>(null);
-  const [inlineInView, setInlineInView] = useState(true);
-
-
-
   // A/B выключатель тяжёлых FX: если низкий FPS или пользователь просит меньше анимаций
   const [lowFps, setLowFps] = useState(false);
   const allowFX = !prefersReduced && !lowFps;
@@ -1834,63 +2097,6 @@ export default function PremiumPage() {
     const interval = setInterval(() => { /* просто продлеваем сэмплинг */ }, 3000);
     return () => { cancelled = true; cancelAnimationFrame(raf); clearInterval(interval); };
   }, []);
-
-  // Track scroll direction and whether we're at the very top
-  useEffect(() => {
-    let ticking = false;
-    const onScroll = () => {
-      if (ticking) return; ticking = true;
-      requestAnimationFrame(() => {
-        const y = window.scrollY || 0;
-        setScrollDirection(y < lastYRef.current ? 'up' : 'down');
-        setIsAtTop(y <= 2);
-        lastYRef.current = y;
-        ticking = false;
-      });
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    // init
-    onScroll();
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  // Directly measure inline categories row position on scroll/resize to determine sticky overlay
-  useEffect(() => {
-    const getHeaderOffset = () => {
-      try {
-        const cs = getComputedStyle(document.documentElement);
-        const h = parseFloat(cs.getPropertyValue('--header-h')) || 72;
-        const safe = parseFloat(cs.getPropertyValue('--safe-top')) || 0;
-        return h + safe + 4;
-      } catch { return 76; }
-    };
-    let ticking = false;
-    const checkInlineInView = () => {
-      if (!inlineCatsRef.current) return;
-      const rect = inlineCatsRef.current.getBoundingClientRect();
-      const headerOffset = getHeaderOffset();
-      // If the top of the inline categories is at or below the header offset, it's in view
-      setInlineInView(rect.top >= headerOffset);
-    };
-    const handleScrollResize = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        checkInlineInView();
-        ticking = false;
-      });
-    };
-    // Initial check
-    checkInlineInView();
-    window.addEventListener('scroll', handleScrollResize, { passive: true });
-    window.addEventListener('resize', handleScrollResize);
-    return () => {
-      window.removeEventListener('scroll', handleScrollResize);
-      window.removeEventListener('resize', handleScrollResize);
-    };
-  }, []);
-
-
 
   // Состояние 3D tilt для заголовка
   const [tilt, setTilt] = useState({ rx: 0, ry: 0, s: 1 });
@@ -2029,6 +2235,14 @@ export default function PremiumPage() {
   // --- Gender picker (inline, no navigation) ---
   type Gender = 'men' | 'women' | 'unisex' | null;
   const [gender, setGender] = useState<Gender>(null);
+  const normalizeProductGender = useCallback((value: unknown): Exclude<Gender, null> => {
+    const raw = String(value ?? "").toLowerCase().trim();
+    if (!raw) return "unisex";
+    if (["men", "man", "male", "m", "м", "муж", "мужское", "мужской"].includes(raw)) return "men";
+    if (["women", "woman", "female", "w", "ж", "жен", "женское", "женский"].includes(raw)) return "women";
+    if (["unisex", "унисекс", "уни", "u"].includes(raw)) return "unisex";
+    return "unisex";
+  }, []);
   // Инициализация пола из URL (?gender=men|women|unisex) или из sessionStorage
   useEffect(() => {
     const fromUrl = searchParams.get('gender');
@@ -2056,18 +2270,6 @@ export default function PremiumPage() {
     url.searchParams.set('gender', gender);
     url.searchParams.delete('intro');
     window.history.replaceState({}, '', url.toString());
-  }, [gender]);
-
-  // --- remember & restore scroll for Premium page when navigating to product and back ---
-  const rememberPremiumScroll = React.useCallback(() => {
-    try {
-      sessionStorage.setItem('premium_scroll', String(window.scrollY || 0));
-      sessionStorage.setItem('premium_restore', '1');
-      if (gender) sessionStorage.setItem('premium_gender', gender);
-          try {
-      sessionStorage.setItem('premium_filters_snapshot', JSON.stringify({ subByMain, maxPrice, pickedBrands }));
-    } catch {}
-    } catch {}
   }, [gender]);
 
   // Restore once after returning from product page — with smooth animation
@@ -2144,39 +2346,132 @@ export default function PremiumPage() {
 
   // Только премиум-товары из общего каталога
   const premiumOnly = useMemo(
-    () => products.filter((p: any) => !!p.premium),
+    () => products.filter((p: any) => p?.premium === true),
     [products]
   );
 
+  const genderStats = useMemo(() => {
+    let men = 0;
+    let women = 0;
+    let unisex = 0;
+    for (const p of premiumOnly) {
+      const g = normalizeProductGender((p as any)?.gender);
+      if (g === "men") men += 1;
+      else if (g === "women") women += 1;
+      else unisex += 1;
+    }
+    return { men, women, unisex };
+  }, [premiumOnly, normalizeProductGender]);
+
+  const genderViewCounts = useMemo(
+    () => ({
+      men: genderStats.men + genderStats.unisex,
+      women: genderStats.women + genderStats.unisex,
+      unisex: genderStats.unisex,
+    }),
+    [genderStats]
+  );
+
+  useEffect(() => {
+    if (gender !== null) return;
+    if (!premiumOnly.length) return;
+    const options: Array<Exclude<Gender, null>> = [];
+    if (genderStats.men > 0) options.push("men");
+    if (genderStats.women > 0) options.push("women");
+    if (genderStats.unisex > 0) options.push("unisex");
+    if (options.length === 1) setGender(options[0]);
+  }, [gender, premiumOnly.length, genderStats.men, genderStats.women, genderStats.unisex]);
+
   // Итоговый список для грида по выбранному полу
   const currentPremium = useMemo(() => {
-    if (gender === 'men')   return premiumOnly.filter((p: any) => p.gender === 'men'   || p.gender === 'unisex');
-    if (gender === 'women') return premiumOnly.filter((p: any) => p.gender === 'women' || p.gender === 'unisex');
-    if (gender === 'unisex') return premiumOnly; // показать все
-    return premiumOnly; // по умолчанию — всё
-  }, [gender, premiumOnly]);
+    if (!premiumOnly.length) return [];
+    if (gender === 'men') {
+      return premiumOnly.filter((p: any) => {
+        const g = normalizeProductGender((p as any)?.gender);
+        return g === "men" || g === "unisex";
+      });
+    }
+    if (gender === 'women') {
+      return premiumOnly.filter((p: any) => {
+        const g = normalizeProductGender((p as any)?.gender);
+        return g === "women" || g === "unisex";
+      });
+    }
+    if (gender === 'unisex') {
+      return premiumOnly.filter((p: any) => normalizeProductGender((p as any)?.gender) === "unisex");
+    }
+    return premiumOnly;
+  }, [gender, premiumOnly, normalizeProductGender]);
 
   // --- Interactive curator (brand + price) ---
-  // --- Brand helpers (parse brands from products.ts / API) ---
-  const normalizeBrands = (p: any): string[] => {
+  // --- Компонент для анимированного счётчика (оптимизированный) ---
+  const AnimatedCounter = React.memo(function AnimatedCounterComponent({ value }: { value: number }) {
+    const [displayValue, setDisplayValue] = useState(value);
+    const rafRef = useRef<number | null>(null);
+    
+    useEffect(() => {
+      if (displayValue === value) return;
+      
+      const startValue = displayValue;
+      const difference = value - startValue;
+      const duration = 300; // ms (немного быстрее)
+      const startTime = performance.now();
+      
+      const animate = (now: number) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Easing: easeOutCubic
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(startValue + difference * eased);
+        setDisplayValue(current);
+        
+        if (progress < 1) {
+          rafRef.current = requestAnimationFrame(animate);
+        }
+      };
+      
+      rafRef.current = requestAnimationFrame(animate);
+      
+      return () => {
+        if (rafRef.current !== null) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
+      };
+    }, [value, displayValue]);
+
+    return <span className="tabular-nums">{displayValue}</span>;
+  });
+
+  // --- Brand helpers (parse brands from products.ts / API) - ОПТИМИЗИРОВАННЫЙ ---
+  const normalizeBrands = React.useCallback((p: any): string[] => {
+    if (!p) return [];
+    
     const rawNames = new Set<string>();
 
     const pushName = (raw: unknown) => {
       if (typeof raw !== "string") return;
       const trimmed = raw.trim();
       if (!trimmed) return;
-      // схлопываем лишние пробелы, но не трогаем тире и регистр
       const normalized = trimmed.replace(/\s+/g, " ");
       rawNames.add(normalized);
+    };
+
+    const pushSlug = (raw: unknown) => {
+      if (typeof raw !== "string") return;
+      const slugged = raw
+        .replace(/[_-]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (slugged) pushName(slugged);
     };
 
     const pushFrom = (val: unknown) => {
       if (!val) return;
       if (typeof val === "string") {
         pushName(val);
-      } else if (Array.isArray(val)) {
-        val.forEach(pushFrom);
-      } else if (typeof val === "object") {
+      } else if (typeof val === "object" && val !== null) {
         const obj = val as any;
         if (typeof obj.name === "string") pushName(obj.name);
         if (typeof obj.title === "string") pushName(obj.title);
@@ -2184,55 +2479,25 @@ export default function PremiumPage() {
       }
     };
 
-    // 1) Явные ожидаемые поля с "читаемыми" именами брендов
+    // 1) Явные ожидаемые поля
     pushFrom((p as any).Brand);
+    pushSlug((p as any).Brand?.slug);
     pushFrom((p as any).brand);
+    pushSlug((p as any).brandSlug ?? (p as any).brand_slug);
     pushFrom((p as any).brandName);
     pushFrom((p as any).brands);
-    pushFrom((p as any).brandObj);
+    pushSlug((p as any).slug);
 
-    // 2) Дополнительно пробегаемся по всем ключам с подстрокой "brand",
-    // но игнорируем слаги, логотипы, картинки, id и прочие тех. поля
-    try {
-      Object.entries(p || {}).forEach(([key, value]) => {
-        if (!/brand/i.test(key)) return;
-        const lowerKey = key.toLowerCase();
-        if (
-          lowerKey.includes("slug") ||
-          lowerKey.includes("logo") ||
-          lowerKey.includes("image") ||
-          lowerKey.includes("icon") ||
-          lowerKey.endsWith("id") ||
-          lowerKey.endsWith("_id") ||
-          lowerKey.endsWith("code")
-        ) {
-          return;
-        }
-        pushFrom(value);
-      });
-    } catch {
-      // на всякий случай не падаем, если объект странный
-    }
-
-    // 3) Убираем дубликаты вроде "Nike" и "nike" — оставляем первое встретившееся
-    const result: string[] = [];
-    const seen = new Set<string>();
-
-    Array.from(rawNames).forEach((name) => {
-      const key = name.toLowerCase();
-      if (seen.has(key)) return;
-      seen.add(key);
-      result.push(name);
-    });
-
-    return result;
-  };
+    return Array.from(rawNames);
+  }, []);
 
   const [curatorOpen, setCuratorOpen] = useState(false);
   const [pickedBrands, setPickedBrands] = useState<string[]>([]);
   const [brandQuery, setBrandQuery] = useState("");
+  const [topViewedItem, setTopViewedItem] = useState<string | null>(null);
 
-  const [brandSearchOpen, setBrandSearchOpen] = useState(false);
+  // Оставляем поиск бренда всегда открытым (на десктопе), чтобы не было ощущения что он "не работает"
+  const [brandSearchOpen, setBrandSearchOpen] = useState(true);
   const brandSearchInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (brandSearchOpen && brandSearchInputRef.current) {
@@ -2242,35 +2507,47 @@ export default function PremiumPage() {
 
   const [showAllBrands, setShowAllBrands] = useState(false);
 
-  const allBrandsInPremium = useMemo(
-    () =>
-      Array.from(
-        new Set(currentPremium.flatMap((p: any) => normalizeBrands(p)))
-      ).sort(),
-    [currentPremium]
-  );
+  const allBrandsInPremium = useMemo(() => {
+    if (!currentPremium?.length) return [];
+    const brands = new Map<string, string>(); // key: lowercase, value: original case
+    for (const p of currentPremium) {
+      const pBrands = normalizeBrands(p);
+      for (const b of pBrands) {
+        const lowerKey = b.toLowerCase();
+        if (!brands.has(lowerKey)) {
+          brands.set(lowerKey, b);
+        }
+      }
+    }
+    return Array.from(brands.values()).sort();
+  }, [currentPremium, normalizeBrands]);
 
-  const filteredBrands = useMemo(
-    () =>
-      allBrandsInPremium.filter((b) =>
-        brandQuery.trim()
-          ? b.toLowerCase().includes(brandQuery.trim().toLowerCase())
-          : true
-      ),
-    [allBrandsInPremium, brandQuery]
-  );
+  const normalizedBrandQuery = useMemo(() => brandQuery.trim().toLowerCase(), [brandQuery]);
 
-  const visibleBrands = useMemo(
-    () => (showAllBrands ? filteredBrands : filteredBrands.slice(0, 6)),
-    [filteredBrands, showAllBrands]
-  );
-  const hiddenCount = useMemo(() => Math.max(0, filteredBrands.length - 6), [filteredBrands]);
+  const filteredBrands = useMemo(() => {
+    if (!allBrandsInPremium?.length) return [];
+    if (!normalizedBrandQuery) return allBrandsInPremium;
+    return allBrandsInPremium.filter(b => b.toLowerCase().includes(normalizedBrandQuery));
+  }, [allBrandsInPremium, normalizedBrandQuery]);
+
+  const visibleBrands = useMemo(() => {
+    if (!filteredBrands?.length) return [];
+    if (normalizedBrandQuery) return filteredBrands;
+    if (showAllBrands) return filteredBrands;
+    return filteredBrands.slice(0, 6);
+  }, [filteredBrands, showAllBrands, normalizedBrandQuery]);
+  
+  const hiddenCount = useMemo(() => Math.max(0, (filteredBrands?.length ?? 0) - 6), [filteredBrands]);
 
   const priceBounds = useMemo(() => {
-    const prices = currentPremium.map((p: any) => Number(p.price) || 0);
-    const min = prices.length ? Math.min(...prices) : 0;
-    const max = prices.length ? Math.max(...prices) : 0;
-    return { min, max };
+    if (!currentPremium?.length) return { min: 0, max: 0 };
+    let min = Infinity, max = -Infinity;
+    for (const p of currentPremium) {
+      const price = Number(p.price) || 0;
+      if (price < min) min = price;
+      if (price > max) max = price;
+    }
+    return { min: min === Infinity ? 0 : min, max: max === -Infinity ? 0 : max };
   }, [currentPremium]);
 
   const [maxPrice, setMaxPrice] = useState<number>(0);
@@ -2301,40 +2578,52 @@ export default function PremiumPage() {
     } catch {}
   }, [subByMain, maxPrice, pickedBrands]);
 
-  const filteredPremium = useMemo(
-    () =>
-      currentPremium.filter((p: any) => {
+  const filteredPremium = useMemo(() => {
+    if (!currentPremium?.length) return [];
+    
+    // Оптимизация: кэшируем нормализованные бренды каждого товара
+    const hasPickedBrands = pickedBrands.length > 0;
+    const pickedSet = new Set(pickedBrands);
+    const hasMaxPrice = maxPrice < priceBounds.max && maxPrice > 0;
+    
+    return currentPremium.filter((p: any) => {
+      if (hasMaxPrice && (Number(p.price) || 0) > maxPrice) return false;
+      
+      if (hasPickedBrands) {
         const itemBrands = normalizeBrands(p);
-        const brandOk = pickedBrands.length
-          ? itemBrands.some((b) => pickedBrands.includes(b))
-          : true;
-        const priceOk = (Number(p.price) || 0) <= (maxPrice || priceBounds.max);
-        return brandOk && priceOk;
-      }),
-    [currentPremium, pickedBrands, maxPrice, priceBounds.max]
-  );
+        if (!itemBrands.some(b => pickedSet.has(b))) return false;
+      }
+      
+      if (normalizedBrandQuery) {
+        const itemBrands = normalizeBrands(p);
+        if (!itemBrands.some(b => b.toLowerCase().includes(normalizedBrandQuery))) return false;
+      }
+      
+      return true;
+    });
+  }, [currentPremium, pickedBrands, maxPrice, priceBounds.max, normalizedBrandQuery, normalizeBrands]);
 
   // Динамически соберём список категорий премиум-товаров (footwear, bags, accessories, ...)
   const premiumCategories = useMemo(() => {
-    const canon = filteredPremium
-      .map((p: any) =>
-        normalizeCategory(
-          (p as any).categorySlug ??
-          (p as any).categoryDbSlug ??
-          (p as any).category ??
-          (p as any).categoryId ??
-          (p as any).main ??
-          (p as any).type
-        )
-      )
-      .filter((v): v is string => !!v);
-    const uniq = Array.from(new Set(canon));
-    // упорядочим как в CANONICAL_ORDER
-    return CANONICAL_ORDER.filter((k) => uniq.includes(k));
+    if (!filteredPremium?.length) return [];
+    const cats = new Set<string>();
+    for (const p of filteredPremium) {
+      const cat = normalizeCategory(
+        (p as any).categorySlug ??
+        (p as any).categoryDbSlug ??
+        (p as any).category ??
+        (p as any).categoryId ??
+        (p as any).main ??
+        (p as any).type
+      );
+      if (cat) cats.add(cat);
+    }
+    return CANONICAL_ORDER.filter(k => cats.has(k));
   }, [filteredPremium]);
 
   // Разложим товары по категориям (после всех фильтров бренда/цены)
   const productsByCategory = useMemo(() => {
+    if (!filteredPremium?.length) return {};
     const map: Record<string, any[]> = {};
     for (const p of filteredPremium) {
       const key = normalizeCategory(
@@ -2345,13 +2634,17 @@ export default function PremiumPage() {
         (p as any).main ??
         (p as any).type
       );
-      if (!key) continue;
-      (map[key] ||= []).push(p);
+      if (key) {
+        if (!map[key]) map[key] = [];
+        map[key].push(p);
+      }
     }
     return map;
   }, [filteredPremium]);
 
   const availableSubsByCat = useMemo(() => {
+    if (!premiumCategories?.length) return {};
+    
     const extractSub = (p: any) =>
       (p as any).subcategory ??
       (p as any).subCategory ??
@@ -2362,17 +2655,16 @@ export default function PremiumPage() {
     const map: Record<string, string[]> = {};
     for (const cat of premiumCategories) {
       const list = productsByCategory[cat] || [];
-      const subs = Array.from(
-        new Set(
-          list
-            .map((p: any) => extractSub(p))
-            .filter((v): v is string => !!v)
-        )
-      );
-      const orderedPreferred = getOrderedSubcategories(cat as any).filter((s) =>
-        subs.includes(s)
-      );
-      const tail = subs.filter((s) => !orderedPreferred.includes(s));
+      if (!list.length) continue;
+      
+      const subs = new Set<string>();
+      for (const p of list) {
+        const sub = extractSub(p);
+        if (sub) subs.add(sub);
+      }
+      
+      const orderedPreferred = getOrderedSubcategories(cat as any).filter(s => subs.has(s));
+      const tail = Array.from(subs).filter(s => !orderedPreferred.includes(s)).sort();
       map[cat] = [...orderedPreferred, ...tail];
     }
     return map;
@@ -2382,62 +2674,6 @@ export default function PremiumPage() {
     const arr = availableSubsByCat[cat];
     if (arr && arr.length) return arr;
     return getOrderedSubcategories(cat as any);
-  };
-
-  const GridCard = ({ item }: { item: any }) => {
-    const imgs = Array.isArray(item.images) ? item.images.filter(Boolean) : [];
-    const primary = (item as any).imageUrl || imgs[0] || "/img/placeholder.png";
-    const secondary = imgs.find((u) => u && u !== primary);
-    const gallery = getPreviewImages(item);
-
-    return (
-      <Link
-        href={buildProductHref(item.id)}
-        onClick={rememberPremiumScroll}
-        className="relative group block rounded-2xl overflow-hidden bg-white border border-black/10 shadow-sm hover:shadow-lg hover:-translate-y-[3px] transition-all duration-300 w-full"
-      >
-        {(item as any).premium && (
-          <div className="absolute top-2 right-2 z-20 flex items-center gap-1">
-            <svg
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-              className="w-4 h-4 drop-shadow-[0_1px_4px_rgba(0,0,0,0.25)] transition-colors duration-200 fill-transparent stroke-black stroke-[2] group-hover:fill-black"
-            >
-              <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-            </svg>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide text-white shadow-[0_2px_10px_rgba(0,0,0,0.15)] bg-gradient-to-br from-black to-neutral-900 select-none">
-              premium
-            </span>
-          </div>
-        )}
-        {(item as any).badge && (
-          <span
-            className="absolute top-2 left-2 z-20 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide text-white shadow-[0_2px_10px_rgba(0,0,0,0.15)]"
-            style={{
-              background:
-                (item as any).badge === "NEW"
-                  ? "linear-gradient(135deg,#60a5fa,#2563eb)"
-                  : (item as any).badge === "HIT"
-                  ? "linear-gradient(135deg,#34d399,#059669)"
-                  : "linear-gradient(135deg,#000000,#111111)",
-            }}
-          >
-            {(item as any).badge}
-          </span>
-        )}
-
-        <SwipeablePreview
-          images={gallery.length ? gallery : [primary, secondary].filter(Boolean) as string[]}
-          alt={item.name}
-          className="w-full h-[190px] sm:h-[210px] md:h-[220px] bg-white flex items-center justify-center"
-        />
-
-        <div className="p-3">
-          <p className="text-sm font-semibold line-clamp-2">{item.name}</p>
-          <p className="text-xs text-gray-500 mt-1">от {item.price}₽</p>
-        </div>
-      </Link>
-    );
   };
   const mainDimmed = mobileMenuOpen || mobileFiltersOpen;
 
@@ -2460,6 +2696,16 @@ export default function PremiumPage() {
     window.scrollTo({ top, behavior: "smooth" });
   }, [headerOffsetPx]);
 
+  // --- remember & restore scroll for Premium page when navigating to product and back ---
+  const rememberPremiumScroll = useCallback(() => {
+    try {
+      sessionStorage.setItem('premium_scroll', String(window.scrollY || 0));
+      sessionStorage.setItem('premium_restore', '1');
+      if (gender) sessionStorage.setItem('premium_gender', gender);
+      sessionStorage.setItem('premium_filters_snapshot', JSON.stringify({ subByMain, maxPrice, pickedBrands }));
+    } catch {}
+  }, [gender, subByMain, maxPrice, pickedBrands]);
+
       // Сколько карточек показывать на секцию (пакетами по 12)
       const [visibleByMain, setVisibleByMain] = useState<Record<string, number>>({});
       useEffect(() => {
@@ -2473,298 +2719,40 @@ export default function PremiumPage() {
         });
       }, [premiumCategories]);
 
-      const showMore = (k: string) => setVisibleByMain(prev => ({ ...prev, [k]: (prev[k] || 12) + 12 }));
+      const showMore = useCallback((k: string) => setVisibleByMain(prev => ({ ...prev, [k]: (prev[k] || 12) + 12 })), []);
 
 
   const showMenTab = gender === null || gender === 'men' || (isDesktop && hoverTabs);
   const showWomenTab = gender === null || gender === 'women' || (isDesktop && hoverTabs);
+  const menDisabled = genderViewCounts.men === 0 && gender !== "men";
+  const womenDisabled = genderViewCounts.women === 0 && gender !== "women";
+  const unisexDisabled = genderViewCounts.unisex === 0 && gender !== "unisex";
 
-  // Помечаем переход с премиум-страницы + текущий пол в ссылке на товар
-  const buildProductHref = (id: string | number) => {
+  const buildProductHref = useCallback((id: string | number) => {
     const params = new URLSearchParams();
     params.set('origin', 'premium');
     const g = gender || searchParams.get('gender');
     if (g === 'men' || g === 'women') params.set('gender', g);
     return `/premium/product/${id}?${params.toString()}`;
-  };
+  }, [gender, searchParams]);
 
 
 
   
     
-  type ConciergeProps = { open: boolean; setOpen: (v: boolean) => void };
-  const Concierge: React.FC<ConciergeProps> = ({ open, setOpen }) => {
-  const [loading, setLoading] = useState(false);
-  const [ok, setOk] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-
-  // Лочим скролл страницы, пока открыт модал
-  useEffect(() => {
-    if (!open) return;
-
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const preventScroll = (e: Event) => {
-      e.preventDefault();
-    };
-
-    const onEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setOpen(false);
-      }
-    };
-
-    window.addEventListener("wheel", preventScroll, { passive: false });
-    window.addEventListener("touchmove", preventScroll, { passive: false });
-    window.addEventListener("keydown", onEsc);
-
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener("wheel", preventScroll as any);
-      window.removeEventListener("touchmove", preventScroll as any);
-      window.removeEventListener("keydown", onEsc);
-    };
-  }, [open, setOpen]);
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLoading(true);
-    setOk(null);
-    setErr(null);
-
-    // ВАЖНО: запоминаем форму ДО всех await
-    const form = e.currentTarget as HTMLFormElement;
-    const fd = new FormData(form);
-
-    // Собираем полезные поля
-    const raw = Object.fromEntries(fd.entries());
-
-    const rawCategory = String(raw.category || "").trim();
-    const normalizedCategory = rawCategory.toLowerCase();
-    const categoryLabel = LABELS[normalizedCategory] || rawCategory;
-
-    const payload = {
-      name: String(raw.name || "").trim(),
-      contact: String(raw.contact || "").trim(),
-      category: categoryLabel,
-      size: String(raw.size || "").trim(),
-      notes: String(raw.notes || "").trim(),
-      source: "premium-modal",
-    };
-
-    // Файлы -> base64
-    const files = (fd.getAll("photos") as File[]).filter(
-      (f) => f && f.size > 0
-    );
-    let attachments: { name: string; type: string; data: string }[] = [];
-
-    if (files.length) {
-      attachments = await Promise.all(
-        files.map(
-          (f) =>
-            new Promise<{ name: string; type: string; data: string }>(
-              (resolve) => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                  const result = reader.result as string;
-                  const base64 = result.split(",")[1] || "";
-                  resolve({ name: f.name, type: f.type, data: base64 });
-                };
-                reader.readAsDataURL(f);
-              }
-            )
-        )
-      );
-    }
-
-    try {
-      const resp = await fetch("/api/concierge", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, attachments }),
-      });
-
-      if (!resp.ok) {
-        throw new Error("Failed");
-      }
-
-      setOk(
-        "Ваша заявка успешно отправлена. В ближайшее время с вами свяжется менеджер."
-      );
-
-      // теперь ресетим САМОЙ формы, а не e.currentTarget (который уже null)
-      form.reset();
-    } catch (error) {
-      console.error("[concierge] submit failed", error);
-      setErr("Не удалось отправить заявку. Попробуйте ещё раз чуть позже.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          {/* фон, по клику закрывает */}
-          <div
-            className="absolute inset-0"
-            onClick={() => setOpen(false)}
-          />
-
-          <motion.div
-            className="relative z-[10000] w-[90%] max-w-[320px] md:max-w-lg max-h-[70vh] md:max-h-[82vh] overflow-y-auto rounded-xl md:rounded-2xl bg-neutral-950 border border-white/12 p-3 md:p-6 text-white shadow-[0_14px_48px_rgba(0,0,0,0.6)]"
-            initial={{ scale: 0.96, opacity: 0, y: 10 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.96, opacity: 0, y: 10 }}
-            transition={{ duration: 0.25 }}
-          >
-            {/* крестик */}
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="absolute right-4 top-4 text-white/60 hover:text-white text-sm"
-              aria-label="Закрыть"
-            >
-              ✕
-            </button>
-
-            <h3 className="text-sm md:text-lg font-semibold mb-1">
-              Консьерж-сервис Stage
-            </h3>
-            <p className="hidden md:block text-xs text-white/60 mb-3 leading-snug">
-              Прикрепите фото товара или примеров стиля — мы найдём нужную модель,
-              проверим подлинность и подберём лучший вариант по бюджету.
-            </p>
-
-            <form onSubmit={onSubmit} className="space-y-2 md:space-y-3 text-[13px]">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-                <div>
-                  <label className="text-xs text-white/70 block mb-1">
-                    Имя
-                  </label>
-                  <input
-                    name="name"
-                    required
-                    placeholder="Как к вам обращаться"
-                    className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-sm placeholder:text-white/40 outline-none focus:border-white/40"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-white/70 block mb-1">
-                    Контакт
-                  </label>
-                  <input
-                    name="contact"
-                    required
-                    placeholder="Телефон или @Telegram / WhatsApp"
-                    className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-sm placeholder:text-white/40 outline-none focus:border-white/40"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-                <div>
-                  <label className="text-xs text-white/70 block mb-1">
-                    Категория
-                  </label>
-                  <select
-                    name="category"
-                    defaultValue="footwear"
-                    className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-sm outline-none focus:border-white/40"
-                  >
-                    <option value="footwear">Обувь</option>
-                    <option value="clothes">Одежда</option>
-                    <option value="bags">Сумки</option>
-                    <option value="accessories">Аксессуары</option>
-                    <option value="fragrance">Парфюмерия</option>
-                    <option value="headwear">Головные уборы</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-white/70 block mb-1">
-                    Размеры
-                  </label>
-                  <input
-                    name="size"
-                    placeholder="Напр. 42 EU, рост 182"
-                    className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-sm placeholder:text-white/40 outline-none focus:border-white/40"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs text-white/70 block mb-1">
-                  Комментарий
-                </label>
-                <textarea
-                  name="notes"
-                  rows={3}
-                  placeholder="Что ищете: бренд, модель, цвет, бюджет, ссылки…"
-                  className="w-full rounded-xl border border-white/15 bg-black/30 px-3 py-2 text-sm placeholder:text-white/40 outline-none focus:border-white/40 resize-none"
-                />
-              </div>
-
-                <div className="md:col-span-2">
-                  <label className="text-xs text-white/70 block mb-1">
-                    Фото (опционально)
-                  </label>
-                  <input
-                    type="file"
-                  name="photos"
-                  multiple
-                  accept="image/*"
-                  className="block w-full text-xs text-white/80 file:mr-2 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-xs file:text-white hover:file:bg-white/20 cursor-pointer"
-                />
-                <p className="mt-1 text-[11px] text-white/50">
-                  Прикрепите фото желаемого товара или примеров стиля — так мы быстрее найдём то, что нужно.
-                </p>
-              </div>
-
-              {/* сообщения об успехе / ошибке */}
-              {ok && (
-                <div className="mt-1 text-sm text-emerald-400">
-                  {ok}
-                </div>
-              )}
-              {err && (
-                <div className="mt-1 text-sm text-red-400">
-                  {err}
-                </div>
-              )}
-
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pt-1">
-                <p className="text-[10px] md:text-[11px] text-white/40 leading-snug">
-                  Отправляя заявку, вы соглашаетесь с обработкой персональных данных.
-                </p>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full md:w-auto rounded-full bg-white text-black text-sm font-semibold px-5 py-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {loading ? "Отправка…" : "Отправить заявку"}
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-};
-
   const [conciergeOpen, setConciergeOpen] = useState(false);
   useEffect(() => {
     const onOpen = () => setConciergeOpen(true);
     window.addEventListener("open-concierge", onOpen as any);
     return () => window.removeEventListener("open-concierge", onOpen as any);
   }, []);
+
+  // Broadcast curator open state so shared header can react (blur/go to background)
+  useEffect(() => {
+    try {
+      window.dispatchEvent(new CustomEvent('ui:curator', { detail: { open: Boolean(curatorOpen) } }));
+    } catch {}
+  }, [curatorOpen]);
   // Quick View
   const [quickItem, setQuickItem] = useState<any | null>(null);
 
@@ -2777,7 +2765,7 @@ export default function PremiumPage() {
       />
 
       {/* Мобильная верхняя панель */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-black/10">
+      <div className={`md:hidden fixed top-0 left-0 right-0 z-20 bg-white/90 backdrop-blur-md border-b border-black/10 pointer-events-auto transition-all duration-150 ${(mainDimmed || curatorOpen) ? 'opacity-40 blur-sm' : ''}`}>
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
             <button
@@ -2793,11 +2781,11 @@ export default function PremiumPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setMobileFiltersOpen(true)}
+              onClick={() => setCuratorOpen((v) => !v)}
               className="p-2"
-              aria-label="Фильтры"
+              aria-label="Премиум подборщик"
             >
-              <Filter size={18} />
+              <span className="text-xl">🧭</span>
             </button>
           </div>
         </div>
@@ -2875,19 +2863,43 @@ export default function PremiumPage() {
                     const label = LABELS[cat] || cat;
                     return (
                       <div key={cat} className="rounded-xl bg-white/90 shadow-[0_6px_18px_rgba(0,0,0,0.04)]">
-                        <div className="flex items-center justify-between px-3 py-3">
-                          <Link
-                            href={`#${cat}`}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              setMobileMenuOpen(false);
-                              setMobileCategoryOpen(cat);
-                              setTimeout(() => scrollToAnchor(cat), 220);
-                            }}
-                            className="font-medium text-left flex-1 pr-2"
-                          >
-                            {label}
-                          </Link>
+                        <div className="flex items-start justify-between px-3 py-3">
+                          <div className="flex-1 pr-2">
+                            <Link
+                              href={`#${cat}`}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setMobileMenuOpen(false);
+                                setMobileCategoryOpen(cat);
+                                setTimeout(() => scrollToAnchor(cat), 220);
+                              }}
+                              className="font-medium text-left block"
+                            >
+                              {label}
+                            </Link>
+
+                            {/* Quick visible subcategories on mobile next to category */}
+                            {orderedSubs && orderedSubs.length > 0 && (
+                              <div className="mt-2 flex flex-wrap gap-2 md:hidden">
+                                {orderedSubs.slice(0, 5).map((sub) => (
+                                  <button
+                                    key={`${cat}-quick-${sub}`}
+                                    onClick={() => {
+                                      setSubByMain((prev) => ({ ...prev, [cat]: sub }));
+                                      setMobileMenuOpen(false);
+                                      setMobileCategoryOpen(cat);
+                                      setTimeout(() => scrollToAnchor(cat), 220);
+                                    }}
+                                    className={`px-3 py-1 rounded-full text-sm transition border ${
+                                      (subByMain[cat] ?? null) === sub ? 'bg-black text-white border-black' : 'bg-white text-black/80 border-black/10 hover:bg-black/5'
+                                    }`}
+                                  >
+                                    {LABELS[sub] || sub}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                           <button
                             className="p-2 rounded-full hover:bg-black/5 transition"
                             onClick={() => setMobileMenuSubOpen(isOpen ? null : cat)}
@@ -3109,7 +3121,7 @@ export default function PremiumPage() {
         )}
       </AnimatePresence>
       <div
-        className={`relative transition-all duration-150 ${
+        className={`relative z-0 transition-all duration-150 ${
           mainDimmed ? 'pointer-events-none select-none opacity-40 blur-sm' : 'opacity-100'
         }`}
         aria-hidden={mainDimmed}
@@ -3117,41 +3129,20 @@ export default function PremiumPage() {
       {/* Premium-aware sticky header */}
       { !showAnimation ? (
         <>
-        <div className="hidden md:block relative w-full z-10">
-          <div className="w-full px-6 md:px-10 py-6">
-            <div className="flex items-start justify-between gap-6">
-              {/* Left: title text with inline star above the last letter of 'Premium' */}
-              <div
-                ref={tiltRef}
-                onMouseMove={onTiltMove}
-                onMouseLeave={onTiltLeave}
-                style={{
-                  transformStyle: 'preserve-3d',
-                  transform: allowFX ? `rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg) scale(${tilt.s})` : undefined,
-                  transition: 'transform .25s ease',
-                }}
-                className="pr-6 max-w-[740px] md:max-w-[820px] lg:max-w-[900px] shrink-0"
-              >
-                <p className="font-extrabold tracking-tight leading-tight text-4xl md:text-6xl text-black text-left">
-                  Добро пожаловать в Stage
-                  {" "}
-                  <span className="relative inline-block">
-                    Premium
-                    {/* star positioned above the last letter 'm' */}
-                    <img
-                      src="/img/звездочка.png"
-                      alt="Premium"
-                      className="absolute -top-1 right-[-6px] md:-top-2 md:-right-3 w-5 h-5 md:w-6 md:h-6 drop-shadow-[0_0_6px_rgba(0,0,0,0.15)]"
-                    />
-                  </span>
-                  {" "}— здесь находятся эксклюзивы и уникальные предложения
-                </p>
-              </div>
-
-              {/* Right: brand cloud (chaotic fly-in logos) */}
-              <div className="hidden md:block flex-1 pl-4">
-                <BrandCloud />
-              </div>
+        <div className={`hidden md:block relative w-full z-20 overflow-hidden pointer-events-auto transition-all duration-150 ${(mainDimmed || curatorOpen) ? 'opacity-40 blur-sm' : ''}`}>
+          <div className="w-full px-6 md:px-10 py-6 overflow-hidden">
+            <div
+              ref={tiltRef}
+              onMouseMove={onTiltMove}
+              onMouseLeave={onTiltLeave}
+              style={{
+                transformStyle: 'preserve-3d',
+                transform: allowFX ? `rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg) scale(${tilt.s})` : undefined,
+                transition: 'transform .25s ease',
+              }}
+              className="w-full"
+            >
+              <PremiumAura />
             </div>
           </div>
         </div>
@@ -3193,32 +3184,6 @@ export default function PremiumPage() {
           </div>
         </div>
         {/* Быстрые бренды с количеством позиций (по текущему полу и цене) */}
-        {/* Sticky categories overlay (Premium): appears on scroll up, no background, no sort */}
-        <AnimatePresence>
-          {(!inlineInView && scrollDirection === 'up') && (
-            <motion.div
-              id="premium-cats-sticky"
-              className="fixed left-0 right-0 z-[90] pointer-events-none"
-              style={{ top: 'calc(var(--header-h,72px) + 8px)' }}
-              initial={{ y: -80, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -80, opacity: 0 }}
-              transition={{ duration: 0.22, ease: 'easeInOut' }}
-            >
-              <div className="max-w-[1200px] mx-auto px-6 pointer-events-auto">
-                <Categories />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Категории для Premium (такой же слайдер, как на главной) */}
-        <div id="premium-cats" ref={inlineCatsRef} className="max-w-[1200px] mx-auto mt-10">
-          <h2 className="text-2xl md:text-4xl font-extrabold text-black mb-6 text-center">Выберите категорию</h2>
-          <div className="flex justify-center">
-            <Categories />
-          </div>
-        </div>
 
 
         </>
@@ -3228,13 +3193,118 @@ export default function PremiumPage() {
 
       {/* Контент Premium страницы */}
       <section className="px-6 md:px-10 pb-16">
+        {/* Кнопка перехода на обычный магазин */}
+        <div className="max-w-[1200px] mx-auto mb-8 flex justify-center md:justify-start">
+          <Link
+            href="/"
+            className="group inline-flex items-center gap-2 px-4 py-2.5 rounded-full border border-black/20 bg-white hover:bg-black hover:text-white text-black font-semibold text-sm transition-all duration-300 shadow-sm hover:shadow-lg"
+          >
+            <svg
+              className="w-4 h-4 transition-transform group-hover:-translate-x-1"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span>В Stage Store!</span>
+          </Link>
+        </div>
+
         {/* Выбор категории: Мужчины / Женщины */}
         <div className="max-w-[1200px] mx-auto mt-6">
           <h2 className="text-2xl md:text-4xl font-extrabold text-black mb-6 md:mb-8 text-center">
             Выберите пол для отображения коллекций
           </h2>
 
-          <div className="relative w-full flex items-center justify-center"
+          {/* Мобильный компактный блок с анимацией */}
+          <div className="md:hidden flex flex-col items-center gap-3">
+            <div className="w-full flex items-center justify-center">
+              <div className="flex gap-2 rounded-full border border-black/10 bg-white/70 backdrop-blur px-2 py-2 shadow-sm">
+                {(["men", "women", "unisex"] as const).map((g) => {
+                  const active = gender === g;
+                  const label = g === "men" ? "Мужское" : g === "women" ? "Женское" : "Унисекс";
+                  const count = g === "men" ? genderViewCounts.men : g === "women" ? genderViewCounts.women : genderViewCounts.unisex;
+                  const disabled = count === 0;
+                  return (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => {
+                        if (!disabled) setGender(g);
+                      }}
+                      disabled={disabled}
+                      className={`relative px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-300 overflow-hidden ${
+                        active 
+                          ? "bg-black text-white shadow-lg" 
+                          : "text-black/60 hover:text-black"
+                      }`}
+                      style={{
+                        perspective: "1000px",
+                      }}
+                    >
+                      {/* Фоновый слой для активной кнопки */}
+                      {active && (
+                        <motion.div
+                          className="absolute inset-0 bg-gradient-to-r from-black via-black/90 to-black"
+                          layoutId="active-bg"
+                          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                          style={{ borderRadius: "9999px" }}
+                        />
+                      )}
+                      
+                      {/* Текст с анимацией */}
+                      <motion.span
+                        className="relative block"
+                        initial={false}
+                        animate={{
+                          scale: active ? 1 : 0.95,
+                          opacity: active ? 1 : disabled ? 0.35 : 0.7,
+                        }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {label}
+                        <span className="ml-1 text-[10px] opacity-70">({count})</span>
+                      </motion.span>
+
+                      {/* Ripple эффект при клике */}
+                      {active && (
+                        <motion.div
+                          className="absolute inset-0 rounded-full bg-white/20"
+                          initial={{ scale: 0, opacity: 1 }}
+                          animate={{ scale: 2, opacity: 0 }}
+                          transition={{ duration: 0.6 }}
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Индикатор выбора */}
+            {gender && (
+              <motion.div
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                className="text-xs text-black/50 font-medium"
+              >
+                Выбрано: {gender === "men" ? "Мужское" : gender === "women" ? "Женское" : "Унисекс"}
+                <span className="ml-1">•</span>
+                <span className="ml-1">
+                  {gender === "men"
+                    ? genderViewCounts.men
+                    : gender === "women"
+                      ? genderViewCounts.women
+                      : genderViewCounts.unisex} товаров
+                </span>
+              </motion.div>
+            )}
+          </div>
+
+          {/* Десктопная версия переключателя */}
+          <div className="hidden md:flex relative w-full items-center justify-center"
             onMouseEnter={() => isDesktop && setHoverTabs(true)}
             onMouseLeave={() => setHoverTabs(false)}
           >
@@ -3245,19 +3315,23 @@ export default function PremiumPage() {
                     layout
                     key="men-tab"
                     role="button"
-                    tabIndex={0}
+                    tabIndex={menDisabled ? -1 : 0}
                     onMouseEnter={() => setShowSwapHint(true)}
                     onMouseLeave={() => setShowSwapHint(false)}
-                    onClick={() => { setGender('men'); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setGender('men'); } }}
-                    className={`px-5 py-2.5 rounded-full text-sm md:text-base font-semibold transition-colors cursor-pointer ${gender==='men' ? 'bg-black text-white' : 'text-black hover:bg-black/5'}`}
+                    onClick={() => { if (!menDisabled) setGender('men'); }}
+                    onKeyDown={(e) => {
+                      if (menDisabled) return;
+                      if (e.key === 'Enter' || e.key === ' ') { setGender('men'); }
+                    }}
+                    aria-disabled={menDisabled}
+                    className={`px-5 py-2.5 rounded-full text-sm md:text-base font-semibold transition-colors ${menDisabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'} ${gender==='men' ? 'bg-black text-white' : 'text-black hover:bg-black/5'}`}
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={gender === 'men' ? { opacity: 0, x: 140, scale: 0.9, filter: 'blur(2px)' } : { opacity: 0, x: -40, scale: 0.95 }}
                     transition={{ duration: 0.25, ease: 'easeOut' }}
                     aria-label="Мужская коллекция"
                   >
-                    Мужская коллекция
+                    Мужская коллекция <span className="ml-2 text-xs opacity-70">({genderViewCounts.men})</span>
                   </motion.div>
                 )}
                 {showWomenTab && (
@@ -3265,19 +3339,23 @@ export default function PremiumPage() {
                     layout
                     key="women-tab"
                     role="button"
-                    tabIndex={0}
+                    tabIndex={womenDisabled ? -1 : 0}
                     onMouseEnter={() => setShowSwapHint(true)}
                     onMouseLeave={() => setShowSwapHint(false)}
-                    onClick={() => { setGender('women'); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setGender('women'); } }}
-                    className={`px-5 py-2.5 rounded-full text-sm md:text-base font-semibold transition-colors cursor-pointer ${gender==='women' ? 'bg-black text-white' : 'text-black hover:bg-black/5'}`}
+                    onClick={() => { if (!womenDisabled) setGender('women'); }}
+                    onKeyDown={(e) => {
+                      if (womenDisabled) return;
+                      if (e.key === 'Enter' || e.key === ' ') { setGender('women'); }
+                    }}
+                    aria-disabled={womenDisabled}
+                    className={`px-5 py-2.5 rounded-full text-sm md:text-base font-semibold transition-colors ${womenDisabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'} ${gender==='women' ? 'bg-black text-white' : 'text-black hover:bg-black/5'}`}
                     initial={{ opacity: 0, x: 8 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={gender === 'women' ? { opacity: 0, x: 140, scale: 0.9, filter: 'blur(2px)' } : { opacity: 0, x: 40, scale: 0.95 }}
                     transition={{ duration: 0.25, ease: 'easeOut' }}
                     aria-label="Женская коллекция"
                   >
-                    Женская коллекция
+                    Женская коллекция <span className="ml-2 text-xs opacity-70">({genderViewCounts.women})</span>
                   </motion.div>
                 )}
                 {/* Унисекс кнопка */}
@@ -3285,17 +3363,21 @@ export default function PremiumPage() {
                   layout
                   key="unisex-tab"
                   role="button"
-                  tabIndex={0}
-                  onClick={() => { setGender('unisex'); }}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setGender('unisex'); } }}
-                  className={`px-5 py-2.5 rounded-full text-sm md:text-base font-semibold transition-colors cursor-pointer ${gender==='unisex' ? 'bg-black text-white' : 'text-black hover:bg-black/5'}`}
+                  tabIndex={unisexDisabled ? -1 : 0}
+                  onClick={() => { if (!unisexDisabled) setGender('unisex'); }}
+                  onKeyDown={(e) => {
+                    if (unisexDisabled) return;
+                    if (e.key === 'Enter' || e.key === ' ') { setGender('unisex'); }
+                  }}
+                  aria-disabled={unisexDisabled}
+                  className={`px-5 py-2.5 rounded-full text-sm md:text-base font-semibold transition-colors ${unisexDisabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'} ${gender==='unisex' ? 'bg-black text-white' : 'text-black hover:bg-black/5'}`}
                   initial={{ opacity: 0, x: 0 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={gender === 'unisex' ? { opacity: 0, x: 140, scale: 0.9, filter: 'blur(2px)' } : { opacity: 0, x: 40, scale: 0.95 }}
                   transition={{ duration: 0.25, ease: 'easeOut' }}
                   aria-label="Унисекс"
                 >
-                  Унисекс
+                  Унисекс <span className="ml-2 text-xs opacity-70">({genderViewCounts.unisex})</span>
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -3315,6 +3397,7 @@ export default function PremiumPage() {
                 </button>
               </div>
             )}
+          
           </div>
         </div>
 
@@ -3335,190 +3418,421 @@ export default function PremiumPage() {
         </motion.button>
 
         {/* Interactive curator panel */}
-        <div className="max-w-[1200px] mx-auto mt-8">
-          <button
+          <div className="max-w-[1200px] mx-auto mt-8">
+            <button
+              type="button"
+              onClick={() => setCuratorOpen((v) => !v)}
+              className="mx-auto flex items-center gap-2 px-5 py-3 rounded-full bg-black text-white font-semibold shadow hover:shadow-md active:scale-[.98] transition md:hidden"
+            >
+              <span>🧭 Премиум-подборщик</span>
+              <span className="text-xs opacity-80">({filteredPremium.length || 0} товаров)</span>
+            </button>
+
+          {/* Мобильный Bottom Sheet для подборщика */}
+          <AnimatePresence>
+            {curatorOpen && (
+              <motion.div
+                className="md:hidden fixed inset-0 z-[90]"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <div
+                  className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                  onClick={() => setCuratorOpen(false)}
+                />
+                <motion.div
+                  className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-h-[90vh] overflow-y-auto"
+                  initial={{ y: 100 }}
+                  animate={{ y: 0 }}
+                  exit={{ y: 100 }}
+                  transition={{ type: "spring", damping: 25 }}
+                >
+                  {/* Sticky header с z-index чтобы бренды не лезли */}
+                  <div className="sticky top-0 z-40 bg-gradient-to-b from-white to-white/95 border-b border-black/10 p-4 shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">🧭</span>
+                        <h2 className="text-xl font-bold">Премиум-подборщик</h2>
+                      </div>
+                      <button 
+                        onClick={() => setCuratorOpen(false)} 
+                        className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/5 transition flex-shrink-0"
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
+                    <p className="text-xs text-black/60">Фильтруй по брендам и цене, чтобы найти идеальный товар</p>
+                  </div>
+
+                  {/* Content */}
+<div className="p-4 space-y-5">
+  {/* Бренды секция */}
+  <div>
+    <div className="flex items-center justify-between mb-3">
+      <h3 className="font-bold text-sm flex items-center gap-2">
+        <span>🏷️</span>
+        <span>Бренды</span>
+      </h3>
+      {pickedBrands.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setPickedBrands([])}
+          className="text-xs bg-black/5 hover:bg-black/10 px-2.5 py-1 rounded-full transition"
+        >
+          Снять ({pickedBrands.length})
+        </button>
+      )}
+    </div>
+
+            {/* Поиск бренда */}
+            <div className="relative mb-3">
+              <div className="relative w-full">
+                <input
+                  value={brandQuery}
+                  onChange={(e) => setBrandQuery(e.target.value)}
+                  placeholder="Найти бренд..."
+                  className="w-full h-10 rounded-xl border border-black/10 bg-white pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-black/10"
+                  autoComplete="off"
+                  inputMode="search"
+                />
+                <svg
+                  width={16}
+                  height={16}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-black/40 pointer-events-none"
+                >
+                  <circle cx={11} cy={11} r={7} />
+                  <line x1={16.5} y1={16.5} x2={21} y2={21} />
+                </svg>
+              </div>
+            </div>
+
+            {/* Brand cloud - исправленный список */}
+            <div 
+              className="space-y-2 max-h-64 overflow-y-auto overflow-x-hidden overscroll-contain pr-3"
+              style={{ 
+                WebkitOverflowScrolling: "touch", 
+                touchAction: "pan-y",
+                scrollbarWidth: "thin",
+                scrollbarColor: "rgba(0,0,0,0.3) transparent"
+              }}
+            >
+              {filteredBrands.length === 0 ? (
+                <p className="text-sm text-black/40 text-center py-4">Бренд не найден</p>
+              ) : (
+                (showAllBrands ? filteredBrands : filteredBrands.slice(0, 6)).map((b) => {
+                  const active = pickedBrands.includes(b);
+                  return (
+                    <motion.button
+                      key={b}
+                      type="button"
+                      onClick={() =>
+                        setPickedBrands((prev) =>
+                          prev.includes(b) ? prev.filter((x) => x !== b) : [...prev, b]
+                        )
+                      }
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border transition ${
+                        active 
+                          ? "bg-black text-white border-black shadow-md" 
+                          : "bg-white border-black/10 text-black hover:bg-black/5"
+                      }`}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
+                        active ? "border-white" : "border-black/20"
+                      }`}>
+                        {active && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
+                      </div>
+                      <span className="text-sm font-medium text-left flex-1 truncate">{b}</span>
+                      {active && <span className="flex-shrink-0">✓</span>}
+                    </motion.button>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Кнопка показать все/скрыть - ТОЛЬКО ОДНА */}
+            {filteredBrands.length > 6 && (
+              <button
+                type="button"
+                className="w-full mt-3 px-3 py-2.5 rounded-full text-sm border border-black/10 bg-white text-black hover:bg-black/5 font-semibold transition"
+                onClick={() => setShowAllBrands((v) => !v)}
+              >
+                {showAllBrands ? "← Скрыть" : `Показать все (+${filteredBrands.length - 6})`}
+              </button>
+            )}
+          </div>
+
+          {/* Цена секция */}
+          <div className="border-t border-black/10 pt-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-sm flex items-center gap-2">
+                <span>💰</span>
+                <span>Максимальная цена</span>
+              </h3>
+              {maxPrice < priceBounds.max && (
+                <button
+                  type="button"
+                  onClick={() => setMaxPrice(priceBounds.max)}
+                  className="text-xs bg-black/5 hover:bg-black/10 px-2.5 py-1 rounded-full transition"
+                >
+                  Сбросить
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              {/* Price value display */}
+              <motion.div
+                className="text-center"
+                key={maxPrice}
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="text-2xl font-bold text-black">{maxPrice}₽</div>
+                <div className="text-xs text-black/50 mt-1">
+                  Из {priceBounds.min}₽ до {priceBounds.max}₽
+                </div>
+              </motion.div>
+
+              {/* Slider */}
+              <input
+                type="range"
+                min={Math.floor(priceBounds.min)}
+                max={Math.ceil(priceBounds.max)}
+                step={1}
+                value={Math.min(maxPrice, Math.ceil(priceBounds.max))}
+                onChange={(e) =>
+                  setMaxPrice(Math.min(Number(e.target.value), Math.ceil(priceBounds.max)))
+                }
+                className="w-full h-2.5 bg-black/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-black [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:cursor-grab [&::-webkit-slider-thumb]:active:cursor-grabbing"
+              />
+            </div>
+          </div>
+
+          {/* Результаты */}
+          <div className="border-t border-black/10 pt-4">
+            <motion.div
+              className="bg-gradient-to-r from-black/5 to-black/5 rounded-xl p-3.5 mb-4"
+              animate={{ scale: [1, 1.02, 1] }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="text-xs text-black/60 mb-1">Подходит товаров</div>
+              <div className="text-2xl font-bold">
+                {/* Убедитесь, что AnimatedCounter компонент существует */}
+                {filteredPremium.length}
+              </div>
+            </motion.div>
+
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setCuratorOpen(false);
+                }}
+                className="w-full px-4 py-3 rounded-full bg-black text-white font-semibold shadow-md active:scale-[.97] transition"
+              >
+                Применить фильтры
+              </button>
+              <button
+                type="button"
+                onClick={() => { 
+                  setPickedBrands([]); 
+                  setMaxPrice(priceBounds.max); 
+                  setBrandQuery("");
+                  setShowAllBrands(false);
+                }}
+                className="w-full px-4 py-2.5 rounded-full border border-black/10 bg-white text-black font-semibold hover:bg-black/5 transition"
+              >
+                Сбросить всё
+              </button>
+            </div>
+          </div>
+        </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Десктопная версия */}
+            <button
             type="button"
             onClick={() => setCuratorOpen((v) => !v)}
-            className="mx-auto flex items-center gap-2 px-5 py-3 rounded-full bg-black text-white font-semibold shadow hover:shadow-md active:scale-[.98] transition"
+            className="hidden md:flex mx-auto items-center gap-2 px-5 py-3 rounded-full bg-black text-white font-semibold shadow hover:shadow-md active:scale-[.98] transition mb-4"
           >
             <span>🧭 Премиум-подборщик</span>
-            <span className="text-xs opacity-80">({(curatorOpen ? filteredPremium.length : currentPremium.length) || 0} товаров)</span>
+            <span className="text-xs opacity-80">({filteredPremium.length || 0} товаров)</span>
           </button>
 
           <AnimatePresence initial={false}>
             {curatorOpen && (
               <motion.div
                 key="curator"
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2, ease: 'easeOut' }}
-                className="mt-5 rounded-2xl border border-black/10 bg-white/70 backdrop-blur p-4 md:p-6 shadow-sm"
+                initial={{ opacity: 0, y: -8, scale: 0.995 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.995 }}
+                transition={{ duration: 0.24, ease: 'easeOut' }}
+                className="hidden md:flex justify-center"
               >
-                <div className="mb-4">
-                  <p className="text-sm font-semibold mb-2">Бренды</p>
+                <div className="w-full max-w-[1120px] px-4">
+                  <motion.div
+                    initial={{ y: -8, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -8, opacity: 0 }}
+                    transition={{ duration: 0.22 }}
+                    className="mt-5 rounded-2xl border border-black/10 bg-white/90 backdrop-blur p-4 md:p-6 shadow-sm w-full z-[90]"
+                  >
+                    <div className="mb-4">
+                      <p className="text-sm font-semibold mb-2">Бренды</p>
 
-                  {/* --- Search + Clear + Brand cloud with show more --- */}
-                  <>
-                    <div className="flex items-center gap-2 mb-2">
-                      {/* Animated search button/input */}
-                      <motion.div
-                        className="relative"
-                        initial={false}
-                        animate={brandSearchOpen ? "open" : "closed"}
-                        variants={{ open: { width: 180 }, closed: { width: 40 } }}
-                        transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                        style={{ overflow: "hidden", display: "flex" }}
-                      >
-                        <motion.button
-                          type="button"
-                          aria-label={brandSearchOpen ? "Скрыть поиск" : "Поиск бренда"}
-                          className={`w-10 h-10 rounded-full flex items-center justify-center border border-black/10 bg-white transition-colors ${brandSearchOpen ? "mr-2" : ""}`}
-                          style={{ minWidth: 40, minHeight: 40 }}
-                          onClick={() => setBrandSearchOpen((v) => !v)}
-                          tabIndex={0}
-                        >
-                          <svg width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <circle cx={11} cy={11} r={7} />
-                            <line x1={16.5} y1={16.5} x2={21} y2={21} />
-                          </svg>
-                        </motion.button>
-                        <AnimatePresence initial={false}>
-                          {brandSearchOpen && (
-                            <motion.input
+                      {/* --- Search + Clear + Brand cloud with show more --- */}
+                      <>
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="relative flex-1 max-w-xs">
+                            <input
                               ref={brandSearchInputRef}
-                              key="brand-search"
                               type="text"
                               placeholder="Поиск бренда…"
                               value={brandQuery}
                               onChange={(e) => setBrandQuery(e.target.value)}
-                              className="w-full max-w-xs rounded-full border border-black/10 px-3 py-2 text-sm"
-                              style={{ minWidth: 120 }}
-                              initial={{ opacity: 0, width: 0 }}
-                              animate={{ opacity: 1, width: "100%" }}
-                              exit={{ opacity: 0, width: 0, transition: { duration: 0.15 } }}
-                              transition={{ duration: 0.22 }}
+                              className="w-full rounded-full border border-black/10 px-3 py-2 pl-9 text-sm focus:outline-none focus:ring-2 focus:ring-black/20"
                             />
-                          )}
-                        </AnimatePresence>
-                      </motion.div>
+                            <svg
+                              width={18}
+                              height={18}
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={2}
+                              viewBox="0 0 24 24"
+                              className="absolute left-3 top-1/2 -translate-y-1/2 text-black/40"
+                            >
+                              <circle cx={11} cy={11} r={7} />
+                              <line x1={16.5} y1={16.5} x2={21} y2={21} />
+                            </svg>
+                          </div>
 
-                      {/* Снять выбор — всегда рядом */}
-                      {pickedBrands.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setPickedBrands([])}
-                          className="px-3 py-2 rounded-full text-sm border border-black/10 hover:bg-black/5"
-                        >
-                          Снять выбор ({pickedBrands.length})
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Brand cloud (max 6, +N button) */}
-                    <div className="max-h-40 overflow-auto pr-1 flex flex-wrap gap-2">
-                      {filteredBrands.length === 0 ? (
-                        <span className="text-sm text-gray-500">Ничего не найдено</span>
-                      ) : (
-                        <>
-                          {visibleBrands.map((b) => {
-                            const active = pickedBrands.includes(b);
-                            return (
-                              <button
-                                key={b}
-                                type="button"
-                                onClick={() =>
-                                  setPickedBrands((prev) =>
-                                    prev.includes(b) ? prev.filter((x) => x !== b) : [...prev, b]
-                                  )
-                                }
-                                className={`px-3 py-1.5 rounded-full text-sm border transition ${
-                                  active ? "bg-black text-white border-black" : "bg-white text-black hover:bg-black/5"
-                                }`}
-                                title={b}
-                              >
-                                {b}
-                              </button>
-                            );
-                          })}
-                          {hiddenCount > 0 && (
+                          {/* Снять выбор — всегда рядом */}
+                          {pickedBrands.length > 0 && (
                             <button
                               type="button"
-                              className="px-3 py-1.5 rounded-full text-sm border border-black/10 bg-white text-black hover:bg-black/5 font-semibold"
-                              onClick={() => setShowAllBrands((v) => !v)}
+                              onClick={() => setPickedBrands([])}
+                              className="px-3 py-2 rounded-full text-sm border border-black/10 hover:bg-black/5"
                             >
-                              {showAllBrands ? "Свернуть" : `+${hiddenCount}`}
+                              Снять выбор ({pickedBrands.length})
                             </button>
                           )}
-                        </>
-                      )}
-                    </div>
-                  </>
-                </div>
+                        </div>
 
-                {/* Price slider */}
-                <div className="mb-2">
-                  <p className="text-xs text-gray-500 mb-1">
-                    Потяните ползунок, чтобы скрыть товары дороже выбранного значения.
-                  </p>
-                  <p className="text-sm font-semibold mb-2">
-                    Цена до: <span className="font-bold">{maxPrice}₽</span>
-                  </p>
-                  <input
-                    type="range"
-                    min={Math.floor(priceBounds.min)}
-                    max={Math.ceil(priceBounds.max)}
-                    step={1}
-                    value={Math.min(maxPrice, Math.ceil(priceBounds.max))}
-                    onChange={(e) =>
-                      setMaxPrice(Math.min(Number(e.target.value), Math.ceil(priceBounds.max)))
-                    }
-                    onMouseUp={() =>
-                      setMaxPrice((v) =>
-                        Math.abs(v - Math.ceil(priceBounds.max)) <= 1
-                          ? Math.ceil(priceBounds.max)
-                          : v
-                      )
-                    }
-                    onTouchEnd={() =>
-                      setMaxPrice((v) =>
-                        Math.abs(v - Math.ceil(priceBounds.max)) <= 1
-                          ? Math.ceil(priceBounds.max)
-                          : v
-                      )
-                    }
-                    className="w-full accent-black"
-                  />
-                  <div className="text-xs text-gray-500 mt-1">
-                    Диапазон: {priceBounds.min}₽ — {priceBounds.max}₽
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                    <div className="text-sm text-gray-700">Подходит товаров: <span className="font-semibold">{filteredPremium.length}</span></div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setPickedBrands([])}
-                        className="px-3 py-2 rounded-full text-sm border border-black/10 hover:bg-black/5"
-                      >
-                        Сбросить бренды
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setMaxPrice(priceBounds.max)}
-                        className="px-3 py-2 rounded-full text-sm border border-black/10 hover:bg-black/5"
-                      >
-                        Сбросить цену
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setPickedBrands([]); setMaxPrice(priceBounds.max); }}
-                        className="px-4 py-2 rounded-full text-sm bg-black text-white font-semibold"
-                      >
-                        Сбросить всё
-                      </button>
+                        {/* Brand cloud (max 6, +N button) */}
+                        <div className="max-h-40 overflow-y-auto overflow-x-hidden overscroll-contain pr-2 flex flex-wrap gap-2" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,0,0,0.2) transparent' }}>
+                          {filteredBrands.length === 0 ? (
+                            <span className="text-sm text-gray-500">Ничего не найдено</span>
+                          ) : (
+                            <>
+                              {visibleBrands.map((b) => {
+                                const active = pickedBrands.includes(b);
+                                return (
+                                  <button
+                                    key={b}
+                                    type="button"
+                                    onClick={() =>
+                                      setPickedBrands((prev) =>
+                                        prev.includes(b) ? prev.filter((x) => x !== b) : [...prev, b]
+                                      )
+                                    }
+                                    className={`px-3 py-1.5 rounded-full text-sm border transition ${
+                                      active ? "bg-black text-white border-black" : "bg-white text-black hover:bg-black/5"
+                                    }`}
+                                    title={b}
+                                  >
+                                    {b}
+                                  </button>
+                                );
+                              })}
+                              {hiddenCount > 0 && (
+                                <button
+                                  type="button"
+                                  className="px-3 py-1.5 rounded-full text-sm border border-black/10 bg-white text-black hover:bg-black/5 font-semibold"
+                                  onClick={() => setShowAllBrands((v) => !v)}
+                                >
+                                  {showAllBrands ? "Свернуть" : `+${hiddenCount}`}
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </>
                     </div>
-                  </div>
+
+                    {/* Price slider */}
+                    <div className="mb-2">
+                      <p className="text-xs text-gray-500 mb-1">
+                        Потяните ползунок, чтобы скрыть товары дороже выбранного значения.
+                      </p>
+                      <p className="text-sm font-semibold mb-2">
+                        Цена до: <span className="font-bold">{maxPrice}₽</span>
+                      </p>
+                      <input
+                        type="range"
+                        min={Math.floor(priceBounds.min)}
+                        max={Math.ceil(priceBounds.max)}
+                        step={1}
+                        value={Math.min(maxPrice, Math.ceil(priceBounds.max))}
+                        onChange={(e) =>
+                          setMaxPrice(Math.min(Number(e.target.value), Math.ceil(priceBounds.max)))
+                        }
+                        onMouseUp={() =>
+                          setMaxPrice((v) =>
+                            Math.abs(v - Math.ceil(priceBounds.max)) <= 1
+                              ? Math.ceil(priceBounds.max)
+                              : v
+                          )
+                        }
+                        onTouchEnd={() =>
+                          setMaxPrice((v) =>
+                            Math.abs(v - Math.ceil(priceBounds.max)) <= 1
+                              ? Math.ceil(priceBounds.max)
+                              : v
+                          )
+                        }
+                        className="w-full accent-black"
+                      />
+                      <div className="text-xs text-gray-500 mt-1">
+                        Диапазон: {priceBounds.min}₽ — {priceBounds.max}₽
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                        <div className="text-sm text-gray-700">Подходит товаров: <span className="font-semibold"><AnimatedCounter value={filteredPremium.length} /></span></div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setPickedBrands([])}
+                            className="px-3 py-2 rounded-full text-sm border border-black/10 hover:bg-black/5"
+                          >
+                            Сбросить бренды
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setMaxPrice(priceBounds.max)}
+                            className="px-3 py-2 rounded-full text-sm border border-black/10 hover:bg-black/5"
+                          >
+                            Сбросить цену
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setPickedBrands([]); setMaxPrice(priceBounds.max); }}
+                            className="px-4 py-2 rounded-full text-sm bg-black text-white font-semibold"
+                          >
+                            Сбросить всё
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
                 </div>
               </motion.div>
             )}
@@ -3526,8 +3840,25 @@ export default function PremiumPage() {
         </div>
 
         {/* Stage Store Top */}
-        <div className="max-w-[1200px] mx-auto mt-16">
-          <h3 className="text-3xl md:text-5xl font-extrabold mb-6">Stage Store Top</h3>
+        <div className="max-w-[1200px] mx-auto mt-16 px-4 md:px-0">
+          {/* Заголовок с премиум-стилем */}
+          <div className="mb-8 md:mb-12">
+            <div className="inline-block mb-3">
+              <span className="text-xs md:text-sm font-bold uppercase tracking-[0.2em] text-black/60">
+                ⭐ Хиты продаж
+              </span>
+            </div>
+            
+            <h3 className="text-4xl md:text-6xl font-black bg-gradient-to-r from-black via-black/90 to-black bg-clip-text text-transparent mb-3">
+              Stage Store Top
+            </h3>
+
+            <div className="w-20 h-1.5 bg-gradient-to-r from-black to-black/40 rounded-full" />
+            
+            <p className="text-sm md:text-base text-black/60 mt-4 max-w-2xl">
+              Лучшие товары месяца, отобранные нашей экспертной командой. Только проверенные бренды и редкие находки.
+            </p>
+          </div>
 
           {/* helper to pick some top items */}
           {(() => {
@@ -3537,23 +3868,66 @@ export default function PremiumPage() {
             const rowA = top.slice(0, Math.ceil(top.length / 2));
             const rowB = top.slice(Math.ceil(top.length / 2));
 
-            const Card = ({ item }: { item: any }) => (
-              <div className="relative group rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
+            const Card = ({ item, index }: { item: any; index: number }) => {
+              const isViewed = topViewedItem === item.id;
+              const ref = useRef<HTMLDivElement | null>(null);
+
+              useEffect(() => {
+                const observer = new IntersectionObserver(
+                  ([entry]) => {
+                    if (entry.isIntersecting) {
+                      setTopViewedItem(item.id);
+                    }
+                  },
+                  {
+                    threshold: 0.6, // срабатывает когда 60% элемента видно
+                  }
+                );
+
+                if (ref.current) {
+                  observer.observe(ref.current);
+                }
+
+                return () => {
+                  if (ref.current) {
+                    observer.unobserve(ref.current);
+                  }
+                };
+              }, [item.id]);
+
+              return (
+              <motion.div
+                ref={ref}
+                className="relative group rounded-2xl"
+                whileHover={{ y: -8, scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              >
+
+                {/* Блеск при наведении */}
+                <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                    animate={{ x: ["0%", "100%"] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                    initial={{ x: "-100%" }}
+                  />
+                </div>
+
                 <Link
                   href={buildProductHref(item.id)}
                   onClick={rememberPremiumScroll}
-                  className="relative block rounded-2xl overflow-hidden bg-white border border-black/10 shadow-sm hover:shadow-md hover:-translate-y-[2px] transition-all duration-300 min-w-[240px] max-w-[240px]"
+                  className="relative block rounded-2xl overflow-hidden bg-white border border-black/10 hover:border-black/30 shadow-sm hover:shadow-xl transition-all duration-300 min-w-[240px] max-w-[240px]"
                 >
                   {(item as any).premium && (
                     <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
                       <svg
                         viewBox="0 0 24 24"
                         aria-hidden="true"
-                        className="w-4 h-4 drop-shadow transition-colors duration-200 fill-transparent stroke-black stroke-[2] group-hover:fill-black"
+                        className="w-4 h-4 drop-shadow transition-colors duration-200 fill-black stroke-black stroke-[2]"
                       >
                         <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
                       </svg>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide text-white bg-gradient-to-br from-black to-neutral-900">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide text-white bg-gradient-to-br from-black to-neutral-900 shadow-md">
                         premium
                       </span>
                     </div>
@@ -3570,30 +3944,32 @@ export default function PremiumPage() {
                             : "linear-gradient(135deg,#000000,#111111)",
                       }}
                     >
-                        {(item as any).badge}
-                      </span>
-                    )}
-                    <SwipeablePreview
-                      images={getPreviewImages(item)}
-                      alt={item.name}
-                      className="w-full h-[180px] bg-white"
-                    />
-                    <div className="p-3">
-                      <p className="text-sm font-semibold line-clamp-2">{item.name}</p>
-                      <p className="text-xs text-gray-500 mt-1">от {item.price}₽</p>
-                    </div>
-                  </Link>
-              </div>
-            );
+                      {(item as any).badge}
+                    </span>
+                  )}
+                  <SwipeablePreview
+                    cacheKey={`top-${item.id}`}
+                    images={getPreviewImages(item)}
+                    alt={item.name}
+                    className="w-full h-[180px] bg-white"
+                  />
+                  <div className="p-3">
+                    <p className="text-sm font-semibold line-clamp-2">{item.name}</p>
+                    <p className="text-xs text-gray-500 mt-1">от {item.price}₽</p>
+                  </div>
+                </Link>
+              </motion.div>
+              );
+            };
 
             return (
               <>
                 {/* mobile: inertial horizontal scroll, no marquee jank */}
-                <div className="md:hidden -mx-4 px-4 mb-6">
+                <div className="md:hidden -mx-4 px-4 mb-6 overflow-hidden">
                   <div className="flex overflow-x-auto gap-3 pb-3 snap-x snap-mandatory scrollbar-hide">
-                    {top.map((it) => (
+                    {top.map((it, idx) => (
                       <div key={`m-${it.id}`} className="snap-start">
-                        <Card item={it} />
+                        <Card item={it} index={idx} />
                       </div>
                     ))}
                   </div>
@@ -3605,7 +3981,7 @@ export default function PremiumPage() {
                     <div className="track">
                       {[...rowA, ...rowA].map((it, i) => (
                         <div key={`a-${it.id}-${i}`} className="mr-5 last:mr-0">
-                          <Card item={it} />
+                          <Card item={it} index={i % rowA.length} />
                         </div>
                       ))}
                     </div>
@@ -3614,7 +3990,7 @@ export default function PremiumPage() {
                     <div className="track">
                       {[...rowB, ...rowB].map((it, i) => (
                         <div key={`b-${it.id}-${i}`} className="mr-5 last:mr-0">
-                          <Card item={it} />
+                          <Card item={it} index={rowA.length + (i % rowB.length)} />
                         </div>
                       ))}
                     </div>
@@ -3663,12 +4039,14 @@ export default function PremiumPage() {
             >
               <h3 className="text-3xl md:text-4xl font-extrabold mb-4">{LABELS[key] || String(key)}</h3>
 
-              {/* Чипы подкатегорий (Все + доступные подкатегории) */}
-              <SubcategoryChips
-                subcategories={orderedSubs as any}
-                active={activeSub}
-                onChange={(sub) => setSubByMain((prev) => ({ ...prev, [key]: sub }))}
-              />
+              {/* Чипы подкатегорий (Все + доступные подкатегории) - только на мобильном */}
+              <div className="md:hidden mb-4">
+                <SubcategoryChips
+                  subcategories={orderedSubs as any}
+                  active={activeSub}
+                  onChange={(sub) => setSubByMain((prev) => ({ ...prev, [key]: sub }))}
+                />
+              </div>
               {/* Показано N из M + кнопка показать ещё */}
               <div className="mt-5 mb-2 flex items-center justify-between">
                 <span className="text-sm text-gray-600">Показано <b>{visible}</b> из <b>{total}</b></span>
@@ -3682,13 +4060,20 @@ export default function PremiumPage() {
                   </button>
                 )}
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6 mt-6">
-                {sliced.map((it: any) => (
-                  <div key={`grid-${it.id}`} className="w-full">
-                    <GridCard item={it} />
-                  </div>
-                ))}
-              </div>
+              <SectionMount>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6 mt-6">
+                  {sliced.map((it: any, idx: number) => (
+                    <AnimatedGridItem key={`grid-${it.id}`} index={idx}>
+                      <GridCard 
+                        item={it} 
+                        rememberPremiumScroll={rememberPremiumScroll}
+                        buildProductHref={buildProductHref}
+                        getPreviewImages={getPreviewImages}
+                      />
+                    </AnimatedGridItem>
+                  ))}
+                </div>
+              </SectionMount>
               {/* JSON-LD для SEO (часть премиум-товаров) */}
               <script
                 type="application/ld+json"
@@ -3802,48 +4187,6 @@ export default function PremiumPage() {
           </form>
         </section>
 
-        {/* Footer */}
-        <footer className="mt-20 bg-black text-white pt-12">
-          <div className="max-w-[1200px] mx-auto px-6 md:px-12">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-10 pb-10">
-              <div>
-                <div className="flex items-center gap-3 mb-3">
-                  <img src="/img/IMG_0363.PNG" alt="StageStore" className="w-12 h-8" onError={(e:any)=>{e.currentTarget.style.display='none'}} />
-                  <span className="text-xl font-bold">StageStore</span>
-                </div>
-                <p className="text-sm text-gray-400">Оригинальные кроссовки и одежда от ведущих мировых брендов.</p>
-              </div>
-              <div>
-                <h4 className="text-base font-semibold mb-3">Меню</h4>
-                <ul className="space-y-2 text-sm">
-                  <li><Link href="/">Главная</Link></li>
-                  <li><Link href="/#catalog">Каталог</Link></li>
-                  <li><Link href="/premium">Premium</Link></li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="text-base font-semibold mb-3">Помощь</h4>
-                <ul className="space-y-2 text-sm">
-                  <li><Link href="/#delivery">Доставка</Link></li>
-                  <li><Link href="/#returns">Возврат</Link></li>
-                  <li><Link href="/#size-guide">Таблица размеров</Link></li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="text-base font-semibold mb-3">Контакты</h4>
-                <ul className="space-y-2 text-sm text-gray-300">
-                  <li>Москва, ул. Тверская, 12</li>
-                  <li><a href="mailto:info@stagestore.ru" className="hover:underline">info@stagestore.ru</a></li>
-                  <li><a href="tel:+74951234567" className="hover:underline">+7 (495) 123-45-67</a></li>
-                </ul>
-              </div>
-            </div>
-            <div className="border-t border-white/10 py-4 flex flex-col md:flex-row items-center justify-between gap-3 text-[13px] text-gray-400">
-              <span>© 2025 StageStore. Все права защищены.</span>
-              <Link href="/privacy" className="hover:underline">Политика конфиденциальности</Link>
-            </div>
-          </div>
-        </footer>
         {/* Quick View Modal */}
         <AnimatePresence>
           {quickItem && (
@@ -3887,7 +4230,7 @@ export default function PremiumPage() {
         </AnimatePresence>
       </div>
       {/* Concierge modal (mounted once at end) */}
-      <Concierge open={conciergeOpen} setOpen={setConciergeOpen} />
+      <PremiumConcierge open={conciergeOpen} setOpen={setConciergeOpen} />
 
       <style jsx>{`
         .premium-title {
@@ -3941,6 +4284,7 @@ export default function PremiumPage() {
           filter: grayscale(1) contrast(1.15);
           opacity: 0.85;
           transition: filter .3s ease, opacity .3s ease, transform .3s ease;
+          will-change: auto;
         }
         .brand-logo:hover {
           filter: grayscale(0) contrast(1);

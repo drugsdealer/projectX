@@ -1,6 +1,7 @@
 // app/api/favorites/brands/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getUserIdFromRequest } from '@/lib/session';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,77 +20,9 @@ const brandLogoFallbacks: Record<string, string> = {
   supreme: 'https://res.cloudinary.com/dhufbfxcy/image/upload/v1761176286/idiZv-aD8G_logos_qrn7qg.png',
 };
 
-// ---- helpers ----
-function readCookie(cookieHeader: string | null, name: string): string | null {
-  if (!cookieHeader) return null;
-  const escaped = name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
-  const m = cookieHeader.match(new RegExp('(?:^|;\\s*)' + escaped + '=([^;]+)'));
-  return m ? decodeURIComponent(m[1]) : null;
-}
-
-function readReqCookie(req: NextRequest, name: string): string | null {
-  try {
-    // NextRequest in route handlers exposes cookies()
-    const v = (req as any).cookies?.get?.(name)?.value;
-    return v ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function readAuthUserId(h: Headers): number | null {
-  const auth = h.get('authorization');
-  if (!auth) return null;
-  // Support: "Bearer 123", "User 123", "user 123"
-  const m = auth.match(/^(?:Bearer|User)\s+(\d+)$/i);
-  return m ? parseInt(m[1], 10) : null;
-}
-
-/**
- * Extract userId from (priority):
- * 1) body.userId
- * 2) request headers: Authorization Bearer/User, x-user-id / x-userid / x-uid
- * 3) cookies: userId / uid / userid
- */
-function getUserId(req: NextRequest, body?: any): number | null {
-  // 1) body.userId
-  if (body?.userId && /^\d+$/.test(String(body.userId))) {
-    return parseInt(String(body.userId), 10);
-  }
-
-  const h = req.headers;
-
-  // 2) Authorization header (Bearer 123 / User 123)
-  const authId = readAuthUserId(h);
-  if (authId) return authId;
-
-  // 3) explicit headers
-  const headerId = h.get('x-user-id') || h.get('x-userid') || h.get('x-uid');
-  if (headerId && /^\d+$/.test(headerId)) return parseInt(headerId, 10);
-
-  // 4) cookies via NextRequest.cookies
-  const directCookieId =
-    readReqCookie(req, 'userId') || readReqCookie(req, 'uid') || readReqCookie(req, 'userid');
-  if (directCookieId && /^\d+$/.test(directCookieId)) return parseInt(directCookieId, 10);
-
-  // 5) cookie header fallback (works in both node/edge)
-  const cookieHeader = h.get('cookie') || '';
-  const cookieId =
-    readCookie(cookieHeader, 'userId') ||
-    readCookie(cookieHeader, 'uid') ||
-    readCookie(cookieHeader, 'userid');
-  if (cookieId && /^\d+$/.test(cookieId)) return parseInt(cookieId, 10);
-
-  return null;
-}
-
 // ---- GET: list favorite brands for current user ----
 export async function GET(req: NextRequest) {
-  const url = new URL(req.url);
-  const qsUser = url.searchParams.get('userId');
-  const uid =
-    (qsUser && /^\d+$/.test(qsUser) ? parseInt(qsUser, 10) : null) ??
-    getUserId(req);
+  const uid = await getUserIdFromRequest();
 
   if (!uid) {
     // не авторизован — вернём пусто (клиент сам подставит localStorage)
@@ -175,7 +108,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } });
   }
 
-  const uid = getUserId(req, body);
+  const uid = await getUserIdFromRequest();
   if (!uid) {
     return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401, headers: { 'Access-Control-Allow-Origin': '*' } });
   }
@@ -212,7 +145,7 @@ export async function OPTIONS() {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Id, X-Userid, X-Uid',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Max-Age': '86400',
     },
   });

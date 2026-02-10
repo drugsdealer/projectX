@@ -5,6 +5,12 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
+  const readCookie = (name: string) => {
+    if (typeof document === "undefined") return null;
+    const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()\[\]\\/+^])/g, '\\$1') + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : null;
+  };
+
   const benefits = [
     { id: 1, title: "Ранний доступ к дропам", img: "/img/slider1.jpg" },
     { id: 2, title: "Персональные подборки", img: "/img/slider2.jpg" },
@@ -30,6 +36,24 @@ export default function RegisterPage() {
   const [submitting, setSubmitting] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
   const [msg, setMsg] = React.useState<string | null>(null);
+  const [activeSession, setActiveSession] = React.useState(false);
+  const [activeEmail, setActiveEmail] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const vfy = readCookie("vfy");
+    if (!vfy) return;
+    let storedEmail: string | null = null;
+    try {
+      storedEmail = sessionStorage.getItem("email") || localStorage.getItem("email");
+    } catch {}
+    if (storedEmail) {
+      setActiveSession(true);
+      setActiveEmail(storedEmail);
+      try { sessionStorage.setItem("reg_active", "1"); } catch {}
+      // Возвращаем на подтверждение, не давая отправить запрос заново
+      router.replace("/verify-email?reason=active");
+    }
+  }, [router]);
 
   const isStrongPassword = (v: string) => {
     if (v.length < 8) return false;
@@ -43,6 +67,10 @@ export default function RegisterPage() {
 
     if (submitting) {
       // Уже идёт запрос — не даём отправить повторно
+      return;
+    }
+    if (activeSession) {
+      // Активная сессия подтверждения — не отправляем повторно
       return;
     }
 
@@ -131,6 +159,8 @@ export default function RegisterPage() {
 
       try {
         sessionStorage.setItem("email", normalizedEmail);
+        localStorage.setItem("email", normalizedEmail);
+        sessionStorage.setItem("reg_active", "1");
       } catch {}
       router.push("/verify-email");
     } catch (e: any) {
@@ -174,18 +204,6 @@ export default function RegisterPage() {
 
         {/* Правая часть с формой */}
         <div className="w-full lg:w-1/2">
-          {/* Мобильный топ-бар */}
-          <div className="mb-4 flex items-center justify-between lg:hidden">
-            <img src="/img/IMG_0363.PNG" alt="StageStore Logo" className="h-8 w-auto" />
-            <button
-              type="button"
-              className="text-sm font-semibold text-blue-600 underline underline-offset-4"
-              onClick={() => router.push("/login")}
-            >
-              Уже есть аккаунт
-            </button>
-          </div>
-
           {/* Мобильный слайдер преимуществ */}
           <div className="mb-5 block lg:hidden">
             <p className="mb-3 text-base font-semibold text-slate-800">Почему стоит создать аккаунт</p>
@@ -212,6 +230,11 @@ export default function RegisterPage() {
             transition={{ duration: 0.5, ease: "easeOut" }}
             className="w-full max-w-xl rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-xl backdrop-blur transition duration-300 sm:p-6 lg:h-screen lg:max-w-none lg:rounded-none lg:border-0 lg:px-16 lg:py-16 lg:shadow-none"
           >
+            {activeSession && (
+              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                Уже есть активная сессия регистрации{activeEmail ? ` для ${activeEmail}` : ""}. Перенаправляем на подтверждение.
+              </div>
+            )}
             <div className="flex items-center gap-3 pb-5 sm:pb-6">
               <img src="/img/IMG_0363.PNG" alt="StageStore Logo" className="hidden h-10 w-auto lg:block" />
               <div>
@@ -220,7 +243,21 @@ export default function RegisterPage() {
                   Доступ к премиум-дропам, отслеживание заказов и персональные рекомендации.
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={() => router.push("/")}
+                className="ml-auto hidden sm:inline-flex items-center text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-700 hover:text-gray-900 hover:border-gray-900 transition"
+              >
+                На главную
+              </button>
             </div>
+            <button
+              type="button"
+              onClick={() => router.push("/")}
+              className="sm:hidden mb-4 inline-flex items-center text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-700 hover:text-gray-900 hover:border-gray-900 transition"
+            >
+              На главную
+            </button>
 
             <form className="space-y-5" onSubmit={handleSubmit}>
               <div className="relative">

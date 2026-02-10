@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { getUserIdFromRequest } from "@/lib/session";
 import { cookies } from "next/headers";
+import { sendOrderNotificationToTelegram } from "@/lib/telegram";
+import { redeemPromoForOrder } from "@/lib/promos";
 
 
 // Универсально получаем enum значения из разных версий Prisma Client
@@ -57,8 +59,9 @@ export async function POST(req: Request) {
       );
     }
 
+    const alreadySucceeded = String(order.status) === String(SUCCEEDED_ENUM);
     // Если заказ уже оплачен — считаем ок и возвращаем id
-    if (String(order.status) === String(SUCCEEDED_ENUM)) {
+    if (alreadySucceeded) {
       return NextResponse.json({ success: true, orderId: order.id });
     }
 
@@ -69,23 +72,47 @@ export async function POST(req: Request) {
     const updateBase: Prisma.OrderUpdateInput = {
       status: { set: SUCCEEDED_ENUM } as any,
       publicNumber: { set: publicNumber } as any,
-      ...(userId ? { User: { connect: { id: userId } } } : {}),
+      ...(userId && !order.userId ? { User: { connect: { id: userId } } } : {}),
     };
 
     // 5) Пытаемся обновить с paidAt, если колонки нет — дублируем попытку без paidAt
-    let updated: { id: number; token: string | null; publicNumber: string | null } | null = null;
+    let updated: {
+      id: number;
+      token: string | null;
+      publicNumber: string | null;
+      totalAmount: number | null;
+      fullName: string | null;
+      phone: string | null;
+      email: string | null;
+    } | null = null;
     try {
       updated = await prisma.order.update({
         where: { id: order.id },
         data: { ...(updateBase as any), paidAt: new Date() },
-        select: { id: true, token: true, publicNumber: true },
+        select: {
+          id: true,
+          token: true,
+          publicNumber: true,
+          totalAmount: true,
+          fullName: true,
+          phone: true,
+          email: true,
+        },
       });
     } catch (err) {
       // Колонка paidAt может отсутствовать — повторяем без неё
       updated = await prisma.order.update({
         where: { id: order.id },
         data: updateBase,
-        select: { id: true, token: true, publicNumber: true },
+        select: {
+          id: true,
+          token: true,
+          publicNumber: true,
+          totalAmount: true,
+          fullName: true,
+          phone: true,
+          email: true,
+        },
       });
     }
 
@@ -103,6 +130,40 @@ export async function POST(req: Request) {
         path: "/",
         maxAge: 60 * 60 * 24 * 60, // 60 дней
       });
+    }
+
+    try {
+      await sendOrderNotificationToTelegram({
+        orderId: updated.publicNumber || updated.id,
+        token: updated.token ?? null,
+        amount: Number(updated.totalAmount || 0),
+        fullName: updated.fullName || undefined,
+        phone: updated.phone || undefined,
+        email: updated.email || undefined,
+      });
+    } catch (err) {
+      console.error("[order.complete] telegram notify failed:", err);
+    }
+
+    // Промокод списываем только после успешной оплаты
+    try {
+      const promoOrder = await prisma.order.findUnique({
+        where: { id: updated.id },
+        select: { promoCode: true, userId: true, status: true },
+      });
+      if (
+        promoOrder?.promoCode &&
+        promoOrder.userId &&
+        String(promoOrder.status) === String(SUCCEEDED_ENUM)
+      ) {
+        await redeemPromoForOrder({
+          code: promoOrder.promoCode,
+          userId: promoOrder.userId,
+          orderId: updated.id,
+        });
+      }
+    } catch (err) {
+      console.error("[order.complete] promo redeem failed:", err);
     }
 
     return res;

@@ -18,6 +18,7 @@ type BodyItem = {
   image?: string | null;
   size?: string | number | null;
   quantity?: number;
+  postponed?: boolean;
 };
 
 async function resolveUserId() {
@@ -85,6 +86,7 @@ function normalizePayload(it: BodyItem) {
     image: it.image ?? null,
     sizeLabel: it.size != null ? String(it.size) : null,
     quantity: Math.max(1, Number(it.quantity ?? 1)),
+    postponed: typeof it.postponed === "boolean" ? it.postponed : undefined,
   };
 }
 
@@ -145,6 +147,7 @@ export async function POST(req: Request) {
             sizeLabel: data.sizeLabel ?? existing.sizeLabel,
             productId: data.productId ?? existing.productId,
             productItemId: data.productItemId ?? existing.productItemId,
+            ...(typeof data.postponed === "boolean" ? { postponed: data.postponed } : {}),
             updatedAt: new Date(),
           },
         });
@@ -154,6 +157,7 @@ export async function POST(req: Request) {
           data: {
             cartId: cart.id,
             ...data,
+            ...(typeof data.postponed === "boolean" ? { postponed: data.postponed } : {}),
             updatedAt: new Date(),
           },
         });
@@ -179,13 +183,19 @@ export async function PATCH(req: Request) {
     if (!Number.isFinite(id) || id <= 0) {
       return NextResponse.json({ success: false, message: "id required" }, { status: 400 });
     }
-    if (!Number.isFinite(qty) || qty <= 0) {
-      return NextResponse.json({ success: false, message: "quantity must be > 0" }, { status: 400 });
+    const hasQty = Number.isFinite(qty) && qty > 0;
+    const hasPostponed = typeof body?.postponed === "boolean";
+    if (!hasQty && !hasPostponed) {
+      return NextResponse.json({ success: false, message: "quantity or postponed required" }, { status: 400 });
     }
 
     await prisma.cartItem.updateMany({
       where: { id, cartId: cart.id },
-      data: { quantity: qty, updatedAt: new Date() },
+      data: {
+        ...(hasQty ? { quantity: qty } : {}),
+        ...(hasPostponed ? { postponed: body.postponed } : {}),
+        updatedAt: new Date(),
+      },
     });
 
     const items = await prisma.cartItem.findMany({ where: { cartId: cart.id } });
@@ -201,7 +211,14 @@ export async function DELETE(req: Request) {
     const jar = await cookies();
     const { cart } = await resolveCart(jar);
     const body = await req.json().catch(() => ({} as any));
+    const idsRaw = Array.isArray(body?.ids) ? body.ids : null;
+    const ids = idsRaw ? idsRaw.map((v: any) => Number(v)).filter((n: number) => Number.isFinite(n) && n > 0) : [];
     const id = Number(body?.id);
+    if (ids.length > 0) {
+      await prisma.cartItem.deleteMany({ where: { id: { in: ids }, cartId: cart.id } });
+      const items = await prisma.cartItem.findMany({ where: { cartId: cart.id } });
+      return NextResponse.json({ success: true, items });
+    }
     if (!Number.isFinite(id) || id <= 0) {
       return NextResponse.json({ success: false, message: "id required" }, { status: 400 });
     }

@@ -76,6 +76,27 @@ export async function sendOrderNotificationToTelegram(payload: {
   );
 }
 
+export async function sendDeliveryRequestToTelegram(payload: {
+  orderNumber: number | string;
+  fullName: string;
+  address: string;
+  scheduledAt: string;
+  phone?: string;
+}) {
+  const { orderNumber, fullName, address, scheduledAt, phone } = payload;
+  const lines: string[] = [];
+  lines.push("🚚 <b>Запрос доставки на дом</b>");
+  lines.push("");
+  lines.push(`<b>Заказ:</b> ${orderNumber}`);
+  lines.push(`<b>ФИО:</b> ${fullName}`);
+  lines.push(`<b>Адрес:</b> ${address}`);
+  lines.push(`<b>Время:</b> ${scheduledAt}`);
+  if (phone) lines.push(`<b>Телефон:</b> ${phone}`);
+
+  const text = lines.join("\n");
+  await sendTelegramMessage(ORDER_BOT_TOKEN as string, ORDER_CHAT_ID as string, text);
+}
+
 // ============================
 //   КОНСЬЕРЖ + ВЛОЖЕНИЯ
 // ============================

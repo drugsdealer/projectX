@@ -21,6 +21,8 @@ function brandSlugFrom(name: string): string {
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
 }
+
+const RECENT_STORAGE_KEY = "recent_products_v1";
 import { useParams, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -37,6 +39,7 @@ import "swiper/css/navigation";
 import "swiper/css/pagination";
 
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import { Heart } from "lucide-react";
 import { normalizeProduct, type NormalizedProduct } from "@/lib/normalizeProduct";
 
 
@@ -321,8 +324,8 @@ export default function ProductPage() {
     (async () => {
       try {
         const [oneRes, listRes] = await Promise.all([
-          fetch(`/api/products/${productId}?include=relations`, { cache: 'no-store' }),
-          fetch(`/api/products`, { cache: 'no-store' }),
+          fetch(`/api/products/${productId}?include=relations`),
+          fetch(`/api/products`),
         ]);
         const oneJson = oneRes.ok ? await oneRes.json() : null;
         const listJson = listRes.ok ? await listRes.json() : null;
@@ -566,6 +569,7 @@ const { user } = useUser();
   }, [product, rawProduct]);
   const { showToast } = useToast();
   const [recentProducts, setRecentProducts] = useState<Product[]>([]);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
   // Delivery modal state
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   // Moscow availability modal state
@@ -608,13 +612,66 @@ useEffect(() => {
 }, [product?.id]);
 
 
+// Touch detection (used for mobile swiper)
 useEffect(() => {
-  if (product) {
-    const viewed = JSON.parse(localStorage.getItem("recentlyViewed") || "[]");
-    const updated = [product.id, ...viewed.filter((id: number) => id !== product.id)].slice(0, 6);
-    localStorage.setItem("recentlyViewed", JSON.stringify(updated));
+  const detect = () => {
+    try {
+      const coarse = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
+      const touchCapable =
+        ("ontouchstart" in window) ||
+        ((navigator as any)?.maxTouchPoints ?? 0) > 0 ||
+        ((navigator as any)?.msMaxTouchPoints ?? 0) > 0;
+      const small = window.matchMedia?.("(max-width: 767px)")?.matches ?? false;
+      setIsTouchDevice(Boolean(coarse || touchCapable || small));
+    } catch {
+      setIsTouchDevice(true);
+    }
+  };
+
+  detect();
+  window.addEventListener("resize", detect);
+  window.addEventListener("orientationchange", detect);
+  return () => {
+    window.removeEventListener("resize", detect);
+    window.removeEventListener("orientationchange", detect);
+  };
+}, []);
+
+// Persist current product in "recently viewed" (localStorage)
+useEffect(() => {
+  if (!product?.id) return;
+  try {
+    const raw = localStorage.getItem(RECENT_STORAGE_KEY);
+    const list: string[] = raw ? JSON.parse(raw) : [];
+    const next = [String(product.id), ...list.filter((id) => id !== String(product.id))].slice(0, 12);
+    localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // ignore storage errors
   }
-}, [product]);
+}, [product?.id]);
+
+// Build recentProducts from ids stored in localStorage (preserve order, exclude current product)
+useEffect(() => {
+  try {
+    const raw = localStorage.getItem(RECENT_STORAGE_KEY);
+    const ids: string[] = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(ids) || ids.length === 0) {
+      setRecentProducts([]);
+      return;
+    }
+    const map = new Map<string, Product>(allProducts.map((p) => [String(p.id), p as Product]));
+    const items: Product[] = [];
+    ids.forEach((id) => {
+      const key = String(id);
+      if (key === String(product?.id)) return;
+      const found = map.get(key);
+      if (found) items.push(found);
+    });
+    setRecentProducts(items);
+  } catch {
+    setRecentProducts([]);
+  }
+}, [allProducts, product?.id]);
 
 useEffect(() => {
   return () => {
@@ -1093,17 +1150,13 @@ const handleCancel = () => {
               aria-label="Добавить в избранное"
             >
               <div className="w-10 h-10 rounded-full bg-white/80 backdrop-blur flex items-center justify-center shadow">
-                <svg
-                  viewBox="0 0 24 24"
+                <Heart
                   className={`h-5 w-5 transition-colors ${
                     isFavProduct ? "text-red-500" : "text-gray-700"
                   }`}
-                  fill={isFavProduct ? "currentColor" : "none"}
-                  stroke="currentColor"
                   strokeWidth={1.7}
-                >
-                  <path d="M12 21s-5.5-3.6-8.2-7.3C2.1 12.7 2 11.1 2.5 9.9 3.3 7.9 5.2 7 6.8 7c1.5 0 2.6.7 3.2 1.7.6-1 1.7-1.7 3.2-1.7 1.6 0 3.5.9 4.3 2.9.5 1.2.4 2.8-1.3 3.9C17.5 17.4 12 21 12 21z" />
-                </svg>
+                  fill={isFavProduct ? "currentColor" : "none"}
+                />
               </div>
             </button>
             {primaryBrand && (
@@ -2016,6 +2069,56 @@ const handleCancel = () => {
             })}
           </Swiper>
         </div>
+        {/* Recently viewed (read from localStorage) */}
+        {recentProducts && recentProducts.length > 0 && (
+          <div className="relative z-0 mt-10 px-3 sm:px-4">
+            <h2 className="text-lg sm:text-xl font-semibold text-center text-gray-700 mb-4 sm:mb-6">
+              Недавно просмотренные
+            </h2>
+            <Swiper
+              modules={[Navigation, Pagination, Mousewheel]}
+              loop={false}
+              freeMode={true}
+              spaceBetween={12}
+              breakpoints={{
+                320: { slidesPerView: 1.4, spaceBetween: 10 },
+                480: { slidesPerView: 2, spaceBetween: 12 },
+                768: { slidesPerView: 3, spaceBetween: 14 },
+                1024: { slidesPerView: 4, spaceBetween: 18 },
+              }}
+              className="w-full max-w-full overflow-hidden"
+            >
+              {recentProducts.map((r) => {
+                const minInfo = getMinPriceInfo(r);
+                return (
+                  <SwiperSlide key={`recent-${r.id}`} style={{ width: '190px' }}>
+                    <Link href={`/product/${r.id}`} className="block h-full group relative">
+                      <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
+                        <div className="relative aspect-square w-full bg-gray-50">
+                          <Image
+                            src={r.images[0] || "/img/fallback.jpg"}
+                            alt={r.name}
+                            fill
+                            className="object-cover transition-transform group-hover:scale-105"
+                          />
+                        </div>
+                        <div className="p-3 sm:p-4 flex-grow">
+                          <h3 className="font-semibold text-[11px] md:text-sm line-clamp-2">
+                            {r.name}
+                          </h3>
+                          <p className="text-gray-700 mt-1 text-[11px] md:text-sm">
+                            {`от ${minInfo.price.toLocaleString('ru-RU')}₽`}
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
+                  </SwiperSlide>
+                );
+              })}
+            </Swiper>
+          </div>
+        )}
+
         {/* Moscow Availability Modal */}
         <AnimatePresence>
           {showMoscowModal && (
@@ -2208,71 +2311,6 @@ const handleCancel = () => {
         </AnimatePresence>
       </main>
 
-      {/* Footer */}
-      <footer className="w-full bg-black text-white py-12 mt-auto">
-        <div className="px-4 sm:px-6 lg:px-8 max-w-[1800px] mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 relative">
-                  <Image 
-                    src="/img/IMG_0363.PNG"
-                    alt="StageStore Logo"
-                    fill
-                    className="object-contain"
-                    priority
-                  />
-                </div>
-                <h3 className="text-lg font-bold">StageStore</h3>
-              </div>
-              <p className="text-gray-400">
-                Оригинальные кроссовки и одежда от ведущих мировых брендов.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-bold mb-4">Меню</h3>
-              <ul className="space-y-2">
-                <li><Link href="/" className="text-gray-400 hover:text-white transition">Главная</Link></li>
-                <li><Link href="/products" className="text-gray-400 hover:text-white transition">Каталог</Link></li>
-                <li><Link href="/about" className="text-gray-400 hover:text-white transition">О нас</Link></li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-bold mb-4">Помощь</h3>
-              <ul className="space-y-2">
-                <li><Link href="/shipping" className="text-gray-400 hover:text-white transition">Доставка</Link></li>
-                <li><Link href="/returns" className="text-gray-400 hover:text-white transition">Возврат</Link></li>
-                <li><Link href="/size-guide" className="text-gray-400 hover:text-white transition">Таблица размеров</Link></li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-bold mb-4">Контакты</h3>
-              <address className="not-italic text-gray-400">
-                <p className="mb-2">Москва, ул. Тверская, 12</p>
-                <p className="mb-2">
-                  <a href="mailto:info@stagestore.ru" className="hover:text-white transition">
-                    info@stagestore.ru
-                  </a>
-                </p>
-                <p>
-                  <a href="tel:+74951234567" className="hover:text-white transition">
-                    +7 (495) 123-45-67
-                  </a>
-                </p>
-              </address>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-gray-500 text-sm mb-4 md:mb-0">
-              © {new Date().getFullYear()} StageStore. Все права защищены.
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

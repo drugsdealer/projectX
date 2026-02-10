@@ -5,7 +5,10 @@ import { normalizeProduct } from "@/lib/normalizeProduct";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
+
+const PUBLIC_CACHE_HEADERS = {
+  "Cache-Control": "public, max-age=30, s-maxage=120, stale-while-revalidate=300",
+};
 
 function inferCategorySlug(raw: any, normalized?: any): string {
   const hints: Array<string> = [];
@@ -84,7 +87,13 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" },
       take: take + 1,
       include: {
-        Brand: true,
+        Brand: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
         Category: true,
         ProductItem: {
           include: {
@@ -142,10 +151,29 @@ export async function GET(req: NextRequest) {
         new Set([primary, ...tailFromRel, ...tailFromArray].filter(Boolean))
       );
 
+      const brandObj = (p as any)?.Brand || null;
+      const brandName =
+        (brandObj?.name && String(brandObj.name).trim()) ||
+        (normalized as any)?.brandName ||
+        (normalized as any)?.brand ||
+        null;
+      const brandSlug =
+        (brandObj?.slug && String(brandObj.slug).trim()) || (normalized as any)?.brandSlug || null;
+      const brandId = brandObj?.id ?? (normalized as any)?.brandId ?? null;
+
       const normalizedWithImages = {
         ...normalized,
         images: mergedImages.length ? mergedImages : normalized.images,
         imageUrl: mergedImages[0] || normalized.imageUrl,
+
+        // --- Brand fields (for Premium picker filtering/search) ---
+        // Keep both a nested object and flat fields so the client can reliably filter/search.
+        Brand: brandObj,
+        brandId,
+        brandName,
+        brandSlug,
+        // Common fallback key some UI code expects
+        brand: brandName,
       };
       const inferred = inferCategorySlug(p, normalizedWithImages);
 
@@ -176,11 +204,7 @@ export async function GET(req: NextRequest) {
       },
       {
         status: 200,
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-          Pragma: "no-cache",
-          Expires: "0",
-        },
+        headers: PUBLIC_CACHE_HEADERS,
       }
     );
   } catch (error) {

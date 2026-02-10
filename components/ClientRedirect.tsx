@@ -12,8 +12,8 @@ export function ClientRedirect() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!user && pathname !== "/register") {
-      router.push("/register");
+    if (!user && pathname.startsWith("/user")) {
+      router.replace("/");
     }
   }, [user, pathname, router]);
 

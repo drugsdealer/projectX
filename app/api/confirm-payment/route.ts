@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUserId } from '../_utils/session';
 import { cookies, headers } from 'next/headers';
+import { sendOrderNotificationToTelegram } from '@/lib/telegram';
+import { redeemPromoForOrder } from '@/lib/promos';
 
 // аккуратный парсер числа
 function toInt(v: unknown): number | null {
@@ -200,6 +202,7 @@ export async function POST(req: Request) {
       existing.publicNumber ||
       `STG-${String(targetOrderId).padStart(6, '0')}`;
 
+    const shouldNotify = existing.status !== 'SUCCEEDED';
     let confirmed = existing;
 
     if (existing.status !== 'SUCCEEDED') {
@@ -209,6 +212,7 @@ export async function POST(req: Request) {
           status: 'SUCCEEDED',
           paidAt: new Date(),
           publicNumber,
+          ...(userId && !existing.userId ? { userId } : {}),
         },
         select: {
           id: true,
@@ -217,6 +221,56 @@ export async function POST(req: Request) {
           status: true,
         },
       });
+    }
+
+    if (shouldNotify) {
+      try {
+        const orderForNotify = await prisma.order.findUnique({
+          where: { id: targetOrderId },
+          select: {
+            id: true,
+            token: true,
+            totalAmount: true,
+            fullName: true,
+            phone: true,
+            email: true,
+            publicNumber: true,
+          },
+        });
+        if (orderForNotify) {
+          await sendOrderNotificationToTelegram({
+            orderId: orderForNotify.publicNumber || orderForNotify.id,
+            token: orderForNotify.token,
+            amount: Number(orderForNotify.totalAmount || 0),
+            fullName: orderForNotify.fullName || undefined,
+            phone: orderForNotify.phone || undefined,
+            email: orderForNotify.email || undefined,
+          });
+        }
+      } catch (err) {
+        console.error('[api.confirm-payment] failed to send telegram notification', err);
+      }
+    }
+
+    // Промокод списываем только после успешной оплаты
+    try {
+      const promoOrder = await prisma.order.findUnique({
+        where: { id: targetOrderId },
+        select: { promoCode: true, userId: true, status: true },
+      });
+      if (
+        promoOrder?.promoCode &&
+        promoOrder.userId &&
+        String(promoOrder.status) === 'SUCCEEDED'
+      ) {
+        await redeemPromoForOrder({
+          code: promoOrder.promoCode,
+          userId: promoOrder.userId,
+          orderId: targetOrderId,
+        });
+      }
+    } catch (err) {
+      console.error('[api.confirm-payment] promo redeem failed', err);
     }
 
     /* 4.1 Берём позиции заказа */
