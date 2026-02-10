@@ -49,3 +49,4 @@ used in the project https://vercel.com / for the Postgresql database and linked 
 - Для разработки держите отдельный DATABASE_URL в `.env.local`, продовый URL в репо не коммитим.
 - Резервная копия: `npm run db:backup` (создаст `backups/backup-YYYY-MM-DD-HHMM.sql`, нужен установленный `pg_dump`).
 - Перед миграциями/сидом на боевой — обязательно сделать бэкап и убедиться, что смотрите в отдельную dev/test базу.
+# projectX
