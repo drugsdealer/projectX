@@ -3,6 +3,7 @@ import { SESSION_COOKIE } from "../_session";
 import { cookies as nextCookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { SESSION_TOKEN_COOKIE } from "../../_utils/session";
+import { enforceSameOrigin } from "@/lib/security";
 
 export const runtime = "nodejs";
 
@@ -53,8 +54,10 @@ async function doLogout() {
   return res;
 }
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
+    const blocked = enforceSameOrigin(req);
+    if (blocked) return blocked;
     const jar = await nextCookies();
     const token = jar.get(SESSION_TOKEN_COOKIE)?.value;
     if (token) {
@@ -68,15 +71,8 @@ export async function POST() {
 }
 
 export async function GET() {
-  try {
-    const jar = await nextCookies();
-    const token = jar.get(SESSION_TOKEN_COOKIE)?.value;
-    if (token) {
-      prisma.userSession.update({
-        where: { token },
-        data: { revokedAt: new Date() },
-      }).catch(() => {});
-    }
-  } catch {}
-  return doLogout();
+  return NextResponse.json(
+    { success: false, message: "Method Not Allowed" },
+    { status: 405 }
+  );
 }

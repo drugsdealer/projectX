@@ -40,6 +40,38 @@ export default function RegisterPage() {
   const [activeEmail, setActiveEmail] = React.useState<string | null>(null);
 
   React.useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("reg_draft");
+      if (!raw) return;
+      const draft = JSON.parse(raw) as {
+        email?: string;
+        password?: string;
+        confirm?: string;
+      };
+      if (typeof draft.email === "string") setInputValue(draft.email);
+      if (typeof draft.password === "string") setPasswordValue(draft.password);
+      if (typeof draft.confirm === "string") setConfirmPasswordValue(draft.confirm);
+    } catch {}
+  }, []);
+
+  React.useEffect(() => {
+    try {
+      if (!inputValue && !passwordValue && !confirmPasswordValue) {
+        sessionStorage.removeItem("reg_draft");
+        return;
+      }
+      sessionStorage.setItem(
+        "reg_draft",
+        JSON.stringify({
+          email: inputValue,
+          password: passwordValue,
+          confirm: confirmPasswordValue,
+        })
+      );
+    } catch {}
+  }, [inputValue, passwordValue, confirmPasswordValue]);
+
+  React.useEffect(() => {
     const vfy = readCookie("vfy");
     if (!vfy) return;
     let storedEmail: string | null = null;
@@ -319,7 +351,7 @@ export default function RegisterPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-[120%] text-base text-slate-500"
+                    className="absolute right-3 top-1/2 -translate-y-[140%] text-base text-slate-500"
                     title={showPassword ? "Скрыть пароль" : "Показать пароль"}
                     aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
                   >

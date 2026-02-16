@@ -327,17 +327,20 @@ const SwipeablePreview = React.memo(function SwipeablePreviewComponent({
         </AnimatePresence>
 
         {count > 1 && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex gap-1.5">
-            {images.map((_, i) => (
-              <motion.span
-                key={i}
-                className={`h-1.5 rounded-full ${
-                  i === index ? "bg-black/80" : "bg-black/25"
-                }`}
-                animate={{ width: i === index ? 12 : 6 }}
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              />
-            ))}
+          <div
+            className="absolute bottom-2 left-0 right-0 z-10 flex items-center justify-center gap-1.5 pointer-events-none"
+          >
+            {images.map((_, i) => {
+              const active = i === index;
+              return (
+                <span
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all duration-300 ease-out ${
+                    active ? "w-5 bg-black/50" : "w-1.5 bg-black/20"
+                  }`}
+                />
+              );
+            })}
           </div>
         )}
       </div>
@@ -377,19 +380,20 @@ const SwipeablePreview = React.memo(function SwipeablePreviewComponent({
 
       {/* Progress dots */}
       {count > 1 && (
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex gap-1.5">
-          {images.map((_, i) => (
-            <motion.span
-              key={i}
-              className={`h-1.5 rounded-full ${
-                i === index ? "bg-black/80" : "bg-black/25"
-              }`}
-              animate={{
-                width: i === index ? 12 : 6,
-              }}
-              transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            />
-          ))}
+        <div
+          className="absolute bottom-2 left-0 right-0 z-10 flex items-center justify-center gap-1.5 pointer-events-none"
+        >
+          {images.map((_, i) => {
+            const active = i === index;
+            return (
+              <span
+                key={i}
+                className={`h-1.5 rounded-full transition-all duration-300 ease-out ${
+                  active ? "w-5 bg-black/50" : "w-1.5 bg-black/20"
+                }`}
+              />
+            );
+          })}
         </div>
       )}
     </div>
@@ -1981,20 +1985,53 @@ export default function PremiumPage() {
       body.style.width = prevWidth;
     };
   }, [mobileMenuOpen, mobileFiltersOpen]);
-  // Always show the intro overlay initially
-  const [showAnimation, setShowAnimation] = useState(true);
-    // Показывать интро только один раз: если флаг уже стоит в localStorage — сразу скрываем
+  // Intro overlay visibility — driven by localStorage + DB flag
+  const [showAnimation, setShowAnimation] = useState(false);
+  const [introChecked, setIntroChecked] = useState(false);
+
   useEffect(() => {
-    try {
-      if (typeof window !== "undefined") {
-        const seen = window.localStorage.getItem("premium_intro_seen");
-        if (seen === "1") {
-          setShowAnimation(false);
+    let cancelled = false;
+    (async () => {
+      try {
+        const seenLocal =
+          typeof window !== "undefined" &&
+          window.localStorage.getItem("premium_intro_seen") === "1";
+        if (seenLocal) {
+          if (!cancelled) {
+            setShowAnimation(false);
+            setIntroChecked(true);
+          }
+          return;
         }
+
+        // Check server flag if logged in
+        const res = await fetch("/api/user/premium-intro", {
+          credentials: "include",
+        });
+        if (res.ok) {
+          const data = await res.json().catch(() => ({} as any));
+          if (data?.seen) {
+            try {
+              window.localStorage.setItem("premium_intro_seen", "1");
+            } catch {}
+            if (!cancelled) {
+              setShowAnimation(false);
+              setIntroChecked(true);
+            }
+            return;
+          }
+        }
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
-    }
+      if (!cancelled) {
+        setShowAnimation(true);
+        setIntroChecked(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Expect API like /api/premium/products that returns { products: Product[] } or Product[]
@@ -2132,7 +2169,7 @@ export default function PremiumPage() {
       },
     },
   };
-    const handleIntroClose = React.useCallback(() => {
+  const handleIntroClose = React.useCallback(() => {
     setShowAnimation(false);
     try {
       if (typeof window !== "undefined") {
@@ -2141,6 +2178,11 @@ export default function PremiumPage() {
     } catch {
       // ignore
     }
+    // Persist server flag if user is logged in
+    fetch("/api/user/premium-intro", {
+      method: "POST",
+      credentials: "include",
+    }).catch(() => {});
   }, []);
   useEffect(() => {
     setTitle("Stage Premium");
@@ -4210,10 +4252,12 @@ export default function PremiumPage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="relative w-full aspect-[4/3] bg-white rounded-xl border border-black/10 overflow-hidden">
-                    <img src={quickItem.images?.[0] || '/img/placeholder.png'} alt={quickItem.name} className="absolute inset-0 w-full h-full object-contain" />
-                    {quickItem.images?.[1] && (
-                      <img src={quickItem.images?.[1]} alt={`${quickItem.name} preview`} className="absolute inset-0 w-full h-full object-contain opacity-0 hover:opacity-100 transition-opacity" />
-                    )}
+                    <SwipeablePreview
+                      cacheKey={`quick-${quickItem.id}`}
+                      images={getPreviewImages(quickItem)}
+                      alt={quickItem.name}
+                      className="w-full h-full"
+                    />
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 mb-2">Цена</p>

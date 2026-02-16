@@ -4,9 +4,12 @@ export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
 import { getUserIdFromRequest } from "@/lib/session";
 import bcrypt from "bcryptjs";
+import { enforceSameOrigin } from "@/lib/security";
 
 export async function POST(req: Request) {
   try {
+    const blocked = enforceSameOrigin(req);
+    if (blocked) return blocked;
     const userId = await getUserIdFromRequest();
     if (!userId) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });

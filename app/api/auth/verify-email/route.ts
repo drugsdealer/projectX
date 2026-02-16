@@ -6,6 +6,7 @@ import { clearSessionTokenOnResponse, setSessionOnResponse, setSessionTokenOnRes
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { isAdminEmail } from "@/lib/admin-emails";
 import { randomBytes } from "crypto";
+import { enforceSameOrigin } from "@/lib/security";
 
 const parseUserAgentInfo = (
   uaRaw: string | null,
@@ -113,6 +114,8 @@ function bad(message = "Bad Request", init = 400) {
 
 export async function POST(req: Request) {
   try {
+    const blocked = enforceSameOrigin(req);
+    if (blocked) return blocked;
     const { email, code } = await req.json().catch(() => ({}));
     if (!email || typeof email !== "string" || !email.includes("@")) {
       return bad("Некорректный email");

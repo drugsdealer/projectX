@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getTierPricing, getTierPricingMap, getTierPricingMapByProductItem } from "@/lib/price-tiers";
 
 // --- Runtime relation-name detector (handles category/brand vs Category/Brand) ---
 // --- Relation names for Product model (fixed to match Prisma schema) ---
@@ -217,10 +218,28 @@ export async function GET(req: Request) {
         subCategorySlug
       );
 
+      const tierPricing = await getTierPricing(item.id);
+      const dynamicPrice = tierPricing.hasTiers ? tierPricing.price : null;
+      const dynamicStock = tierPricing.hasTiers ? tierPricing.remainingInTier : null;
+      const itemIds = Array.isArray((item as any).ProductItem)
+        ? (item as any).ProductItem.map((pi: any) => pi?.id).filter((id: any) => Number.isFinite(Number(id)))
+        : [];
+      const itemTierMap = itemIds.length ? await getTierPricingMapByProductItem(itemIds.map(Number)) : new Map();
+      const itemPrices = Array.isArray((item as any).ProductItem)
+        ? (item as any).ProductItem.map((pi: any) => {
+            const piId = Number(pi?.id);
+            const piTier = Number.isFinite(piId) ? itemTierMap.get(piId) : null;
+            if (piTier?.hasTiers && piTier.price != null) return Number(piTier.price);
+            const base = Number(pi?.price ?? NaN);
+            return Number.isFinite(base) ? base : NaN;
+          }).filter((v: number) => Number.isFinite(v))
+        : [];
+      const minItemPrice = itemPrices.length ? Math.min(...itemPrices) : null;
+
       const product = {
         id: item.id,
         name: item.name,
-        price: Number(item.price ?? 0),
+        price: minItemPrice != null ? minItemPrice : (tierPricing.hasTiers ? dynamicPrice : Number(item.price ?? 0)),
         oldPrice: null as number | null,
         description: item.description ?? "",
         categoryId:
@@ -250,7 +269,43 @@ export async function GET(req: Request) {
         brandLogo: (item as any)?.brandLogo ?? null, // keep scalar if present
         gender: (item as any)?.gender ?? null,
         premium: Boolean((item as any)?.premium),
-        sizes: buildSizesFromProductItem((item as any).ProductItem),
+        sizes: (() => {
+          const baseSizes = buildSizesFromProductItem((item as any).ProductItem);
+          if (!baseSizes) return baseSizes;
+          const nextPrices: Record<string, number> = {};
+          const nextStock: Record<string, boolean> = { ...(baseSizes as any).inStockMoscow };
+          for (const pi of (item as any).ProductItem || []) {
+            const label =
+              pi?.sizeLabel ?? pi?.Size?.name ?? pi?.SizeCl?.name ?? pi?.OneSize?.name ?? null;
+            if (label == null) continue;
+            const piId = Number(pi?.id);
+            const piTier = Number.isFinite(piId) ? itemTierMap.get(piId) : null;
+            if (piTier?.hasTiers && piTier.price != null) {
+              nextPrices[String(label)] = Number(piTier.price);
+            } else if (typeof pi?.price === "number") {
+              nextPrices[String(label)] = Number(pi.price);
+            }
+            if (piTier?.hasTiers) {
+              const remaining = Number(piTier.remainingInTier ?? 0);
+              nextStock[String(label)] = Number.isFinite(remaining) && remaining > 0;
+            }
+          }
+          if (Object.keys(nextPrices).length) {
+            (baseSizes as any).prices = nextPrices;
+          }
+          if (Object.keys(nextStock).length) {
+            (baseSizes as any).inStockMoscow = nextStock;
+          }
+          return baseSizes;
+        })(),
+        stock: dynamicStock != null ? dynamicStock : (typeof (item as any)?.stock === "number" ? (item as any).stock : null),
+        pricing: tierPricing.hasTiers
+          ? {
+              price: dynamicPrice,
+              remaining: dynamicStock,
+              remainingTotal: tierPricing.remainingTotal ?? null,
+            }
+          : null,
       };
 
       return NextResponse.json({ success: true, product }, { status: 200, headers: PUBLIC_CACHE_HEADERS });
@@ -336,6 +391,12 @@ export async function GET(req: Request) {
         })
       : [];
 
+    const tierMap = rows.length ? await getTierPricingMap(rows.map((r: any) => r.id)) : new Map();
+    const productItemIds = rows.flatMap((r: any) =>
+      Array.isArray(r?.ProductItem) ? r.ProductItem.map((pi: any) => pi?.id).filter((id: any) => Number.isFinite(Number(id))) : []
+    );
+    const itemTierMap = productItemIds.length ? await getTierPricingMapByProductItem(productItemIds.map(Number)) : new Map();
+
     const products = rows.map((p: any) => {
       const baseImages = Array.isArray((p as any).images) ? ((p as any).images as string[]) : [];
       const rel = imagesByProductId[p.id] || [];
@@ -344,6 +405,20 @@ export async function GET(req: Request) {
       const tailBase = baseImages.filter((u) => u && u !== primary);
       const mergedImages = Array.from(new Set([primary, ...tailRel, ...tailBase].filter(Boolean)));
       const images = mergedImages.length ? mergedImages : ["/img/placeholder.png"];
+
+      const tier = tierMap.get(p.id);
+      const dynamicPrice = tier?.hasTiers ? tier.price : null;
+      const dynamicStock = tier?.hasTiers ? tier.remainingInTier : null;
+      const itemPrices = Array.isArray((p as any)?.ProductItem)
+        ? (p as any).ProductItem.map((pi: any) => {
+            const piId = Number(pi?.id);
+            const piTier = Number.isFinite(piId) ? itemTierMap.get(piId) : null;
+            if (piTier?.hasTiers && piTier.price != null) return Number(piTier.price);
+            const base = Number(pi?.price ?? NaN);
+            return Number.isFinite(base) ? base : NaN;
+          }).filter((v: number) => Number.isFinite(v))
+        : [];
+      const minItemPrice = itemPrices.length ? Math.min(...itemPrices) : null;
 
       const dbCategorySlug = (p as any)?.category?.slug ?? (p as any)?.Category?.slug ?? null;
       const subCategorySlug =
@@ -362,7 +437,7 @@ export async function GET(req: Request) {
         id: p.id,
         name: p.name,
         description: p.description ?? "",
-        price: Number(p.price ?? 0),
+        price: minItemPrice != null ? minItemPrice : (tier?.hasTiers ? dynamicPrice : Number(p.price ?? 0)),
         oldPrice: null as number | null,
         categoryId:
           p.categoryId ?? (p as any).category?.id ?? (p as any).Category?.id ?? null,
@@ -385,6 +460,14 @@ export async function GET(req: Request) {
         brandLogo: (p as any)?.brandLogo ?? null,
         gender: (p as any)?.gender ?? null,
         sizes: buildSizesFromProductItem((p as any).ProductItem),
+        stock: dynamicStock != null ? dynamicStock : (typeof (p as any)?.stock === "number" ? (p as any).stock : null),
+        pricing: tier?.hasTiers
+          ? {
+              price: dynamicPrice,
+              remaining: dynamicStock,
+              remainingTotal: tier?.remainingTotal ?? null,
+            }
+          : null,
       };
     });
 

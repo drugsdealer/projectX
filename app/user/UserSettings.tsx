@@ -273,7 +273,6 @@ export default function UserSettings() {
     <div className="p-4 border rounded-2xl shadow-sm bg-white">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold">Настройки</h2>
           <p className="text-sm text-black/60">{subtitle}</p>
         </div>
         <div className="flex items-center gap-2 text-xs px-3 py-1 rounded-full border border-black/10 bg-black/5">

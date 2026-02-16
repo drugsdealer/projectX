@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getTierPricingMap, getTierPricingMapByProductItem } from '@/lib/price-tiers';
 import { Prisma } from '@prisma/client';
 import { slugify } from '@/lib/slug';
 
@@ -496,22 +497,50 @@ export async function GET(req: Request) {
       take,
       include: {
         Brand: true,
+        ProductItem: true,
       },
     });
+
+    const tierMap = products.length ? await getTierPricingMap(products.map((p: any) => p.id)) : new Map();
+    const itemIds = products.flatMap((p: any) =>
+      Array.isArray(p?.ProductItem) ? p.ProductItem.map((pi: any) => pi?.id).filter((id: any) => Number.isFinite(Number(id))) : []
+    );
+    const itemTierMap = itemIds.length ? await getTierPricingMapByProductItem(itemIds.map(Number)) : new Map();
 
     const items = products.map((p: any) => {
       const arrayFirst = Array.isArray(p.images) && p.images.length > 0 ? p.images[0] : null;
       const img = typeof p.imageUrl === 'string' && p.imageUrl.length > 0 ? p.imageUrl : arrayFirst;
+      const tier = tierMap.get(p.id);
+      const dynamicPrice = tier?.hasTiers ? tier.price : null;
+      const dynamicStock = tier?.hasTiers ? tier.remainingInTier : null;
+      const itemPrices = Array.isArray((p as any)?.ProductItem)
+        ? (p as any).ProductItem.map((pi: any) => {
+            const piId = Number(pi?.id);
+            const piTier = Number.isFinite(piId) ? itemTierMap.get(piId) : null;
+            if (piTier?.hasTiers && piTier.price != null) return Number(piTier.price);
+            const base = Number(pi?.price ?? NaN);
+            return Number.isFinite(base) ? base : NaN;
+          }).filter((v: number) => Number.isFinite(v))
+        : [];
+      const minItemPrice = itemPrices.length ? Math.min(...itemPrices) : null;
 
       return {
         id: String(p.id),
         name: p.name,
-        price: p.price ?? null,
+        price: minItemPrice != null ? minItemPrice : (tier?.hasTiers ? dynamicPrice : (p.price ?? null)),
         brandName: p.Brand?.name ?? null,
         brandSlug: p.Brand?.slug ?? null,
         brandLogo: p.Brand?.logoUrl ?? null,
         imageUrl: img,
         images: Array.isArray(p.images) ? p.images : [],
+        stock: dynamicStock != null ? dynamicStock : (typeof p.stock === "number" ? p.stock : null),
+        pricing: tier?.hasTiers
+          ? {
+              price: dynamicPrice,
+              remaining: dynamicStock,
+              remainingTotal: tier?.remainingTotal ?? null,
+            }
+          : null,
       };
     });
 

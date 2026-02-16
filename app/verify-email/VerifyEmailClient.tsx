@@ -190,6 +190,7 @@ export default function VerifyClient() {
         try {
           sessionStorage.removeItem("email");
           localStorage.removeItem("email");
+          sessionStorage.removeItem("reg_draft");
         } catch {}
         try { window.dispatchEvent(new Event("auth:changed")); } catch {}
         try { await refresh(); } catch {}
@@ -471,19 +472,13 @@ export default function VerifyClient() {
             >
               {cooldown > 0 ? `Отправить повторно через ${cooldown}s` : "Отправить повторно"}
             </button>
-            {!email && hasVfy ? (
-              <button
-                type="button"
-                onClick={startOver}
-                className="text-xs sm:text-sm text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                Начать заново
-              </button>
-            ) : (
-              <p className="text-xs sm:text-sm text-gray-500">
-                Изменить email можно после завершения текущей сессии подтверждения.
-              </p>
-            )}
+            <button
+              type="button"
+              onClick={startOver}
+              className="text-xs sm:text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              Изменить email
+            </button>
           </div>
 
           {error && <p className="mt-4 text-center text-sm font-medium text-red-500">{error}</p>}

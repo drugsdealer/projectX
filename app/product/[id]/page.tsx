@@ -774,6 +774,12 @@ useEffect(() => {
 const handleAddToCart = () => {
   if (!product) return;
 
+  const stockVal = Number((product as any)?.stock ?? NaN);
+  if (Number.isFinite(stockVal) && stockVal <= 0) {
+    showToast({ title: "Нет в наличии", details: "Товар временно недоступен" });
+    return;
+  }
+
   if (requiresSizeSelection() && !selectedSize) {
     setShowError(true);
     return;
@@ -1842,12 +1848,9 @@ const handleCancel = () => {
                 </div>
               );
             })()}
-            <div className="flex gap-4 mt-6">
-              <Button className="flex-grow">
-                С чем сочетать?
-              </Button>
+            <div className="mt-6">
               <button
-                className={`relative flex-grow px-6 py-3 font-semibold rounded-lg transition-all duration-300 overflow-hidden ${
+                className={`relative w-full px-6 py-3 font-semibold rounded-lg transition-all duration-300 overflow-hidden ${
                   cartStatus === "pending" ? "bg-gray-400 text-white" :
                   cartStatus === "added" ? "bg-gray-500 text-white" :
                   cartStatus === "canceled" ? "bg-gray-300 text-black" :
@@ -1860,14 +1863,14 @@ const handleCancel = () => {
                 }
               >
                 <span className="relative z-10">
-                {cartStatus === "pending"
-                  ? "Отменить"
-                  : cartStatus === "canceled"
-                  ? "Отменено ❌"
-                  : cartStatus === "added"
-                  ? "Добавлено ✅"
-                  : `Добавить в корзину – ${currentPrice.toLocaleString('ru-RU')}₽`}
-              </span>
+                  {cartStatus === "pending"
+                    ? "Отменить"
+                    : cartStatus === "canceled"
+                    ? "Отменено ❌"
+                    : cartStatus === "added"
+                    ? "Добавлено ✅"
+                    : `Добавить в корзину – ${currentPrice.toLocaleString('ru-RU')}₽`}
+                </span>
                 {cartStatus === "pending" && (
                   <motion.span
                     className="absolute left-0 top-0 h-full bg-gray-500/30"

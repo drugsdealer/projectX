@@ -4,6 +4,9 @@ import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
 import { getUserIdFromRequest } from '@/lib/session';
 import { validatePromo } from '@/lib/promos';
+import { enforceSameOrigin } from '@/lib/security';
+import { getClientIp, rateLimit } from '@/lib/rate-limit';
+import { getTierPricingMap, getTierPricingMapByProductItem } from '@/lib/price-tiers';
 
 const toNum = (v: any): number | null => {
   const n = Number(v);
@@ -38,6 +41,16 @@ const normalizeSize = (v: any): string | null => {
 
 export async function POST(req: Request) {
   try {
+    const blocked = enforceSameOrigin(req);
+    if (blocked) return blocked;
+    const ip = getClientIp(req);
+    const ipLimit = await rateLimit(`checkout:ip:${ip}`, 15, 60_000);
+    if (!ipLimit.ok) {
+      return NextResponse.json(
+        { ok: false, success: false, message: 'Слишком много запросов. Попробуйте позже.' },
+        { status: 429, headers: { 'Retry-After': String(ipLimit.retryAfter) } }
+      );
+    }
     const body = await req.json().catch(() => ({} as any));
 
     const rawItems: any[] = Array.isArray(body?.items) ? body.items : [];
@@ -382,6 +395,67 @@ export async function POST(req: Request) {
       );
     }
 
+    // --- Tier pricing (price by stock batches) ---
+    const productIds = Array.from(new Set(itemsForCreate.map((it) => it.productId).filter(Boolean)));
+    const productItemIds = Array.from(
+      new Set(itemsForCreate.map((it) => it.productItemId).filter((v): v is number => Number.isFinite(Number(v))))
+    );
+    const tierMap = productIds.length ? await getTierPricingMap(productIds) : new Map();
+    const itemTierMap = productItemIds.length ? await getTierPricingMapByProductItem(productItemIds) : new Map();
+    if (tierMap.size || itemTierMap.size) {
+      const qtyByKey = new Map<string, number>();
+      const tierByKey = new Map<string, { price: number; remaining: number }>();
+
+      for (const it of itemsForCreate) {
+        const itemId = it.productItemId != null ? Number(it.productItemId) : null;
+        const itemTier = itemId != null ? itemTierMap.get(itemId) : null;
+        if (itemTier?.hasTiers && itemTier.price != null) {
+          const key = `pi:${itemId}`;
+          qtyByKey.set(key, (qtyByKey.get(key) ?? 0) + Number(it.quantity || 0));
+          tierByKey.set(key, { price: Number(itemTier.price), remaining: Number(itemTier.remainingInTier ?? 0) });
+          continue;
+        }
+        const prodTier = tierMap.get(it.productId);
+        if (prodTier?.hasTiers && prodTier.price != null) {
+          const key = `p:${it.productId}`;
+          qtyByKey.set(key, (qtyByKey.get(key) ?? 0) + Number(it.quantity || 0));
+          tierByKey.set(key, { price: Number(prodTier.price), remaining: Number(prodTier.remainingInTier ?? 0) });
+        }
+      }
+
+      for (const [key, qty] of qtyByKey.entries()) {
+        const meta = tierByKey.get(key);
+        if (!meta) continue;
+        const remaining = Number(meta.remaining ?? 0);
+        const tierPrice = Number(meta.price ?? 0);
+        if (!Number.isFinite(remaining) || remaining <= 0 || !Number.isFinite(tierPrice) || tierPrice <= 0) {
+          return NextResponse.json(
+            { ok: false, success: false, message: 'Товар закончился' },
+            { status: 400 },
+          );
+        }
+        if (qty > remaining) {
+          return NextResponse.json(
+            { ok: false, success: false, message: `Недостаточно товара. Доступно: ${remaining} шт.` },
+            { status: 400 },
+          );
+        }
+      }
+
+      itemsForCreate = itemsForCreate.map((it) => {
+        const itemId = it.productItemId != null ? Number(it.productItemId) : null;
+        const itemTier = itemId != null ? itemTierMap.get(itemId) : null;
+        if (itemTier?.hasTiers && itemTier.price != null) {
+          return { ...it, price: Number(itemTier.price) };
+        }
+        const prodTier = tierMap.get(it.productId);
+        if (prodTier?.hasTiers && prodTier.price != null) {
+          return { ...it, price: Number(prodTier.price) };
+        }
+        return it;
+      });
+    }
+
     const subtotal = calcTotal(itemsForCreate);
     const promoRaw = body?.promo?.code ? String(body.promo.code) : "";
     const promoCode = promoRaw.trim() ? promoRaw.trim().toUpperCase() : null;
@@ -504,6 +578,13 @@ export async function POST(req: Request) {
       image: i.image,
       size: i.size,
       Product: { connect: { id: i.productId } },
+      ...(i.productItemId
+        ? {
+            ProductItem: {
+              connect: { id: i.productItemId },
+            },
+          }
+        : {}),
       // если к позиции заказа привязан элемент корзины — подключаем relation
       ...(i.cartItemId
         ? {

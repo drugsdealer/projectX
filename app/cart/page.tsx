@@ -63,7 +63,9 @@ function AuthGateModal({
     <div className="fixed inset-0 z-[9999] flex items-center justify-center">
       <div className="absolute inset-0 bg-black/35 backdrop-blur-md" onClick={onClose} />
       <div className="relative z-10 w-[92%] max-w-md rounded-3xl border border-black/10 bg-white p-6 shadow-[0_25px_80px_rgba(0,0,0,0.25)]">
-        <div className="text-3xl">😊</div>
+        <div className="flex justify-center">
+          <div className="text-3xl">😊</div>
+        </div>
         <h3 className="mt-3 text-xl font-semibold">Войдите или зарегистрируйтесь</h3>
         <p className="mt-2 text-sm text-gray-600">
           Чтобы продолжить шоппинг и оформить заказ, нужен аккаунт.
@@ -94,7 +96,7 @@ function AuthGateModal({
 }
 
 export default function CartPage() {
-  const { cartItems, removeFromCart, postponedItems, setPostponedItems, togglePostponed, getPostponedKey } = useCart();
+  const { cartItems, removeFromCart, postponedItems, setPostponedItems, togglePostponed, getPostponedKey, updateQuantity } = useCart();
   const { discount, applyDiscount, resetDiscount } = useDiscount();
   const { showToast } = useToast();
 
@@ -117,11 +119,12 @@ export default function CartPage() {
   const [posting, setPosting] = useState(false);
   const summaryRef = useRef<HTMLDivElement | null>(null);
   const [isBottomSummaryVisible, setIsBottomSummaryVisible] = useState(false);
-  const [productMetaById, setProductMetaById] = useState<Record<number, { premium: boolean; brand: string | null }>>({});
+  const [productMetaById, setProductMetaById] = useState<Record<number, { premium: boolean; brand: string | null; stock?: number | null }>>({});
   const [promoMeta, setPromoMeta] = useState<{
     appliesTo: "ALL" | "PREMIUM_ONLY" | "NON_PREMIUM_ONLY";
     excludedBrands: string[];
   } | null>(null);
+  const [updatingQtyId, setUpdatingQtyId] = useState<number | null>(null);
   const hasDiscount =
     discount.type === "AMOUNT" ? discount.value > 0 : discount.value > 0;
   const getDiscountAmount = (subtotal: number) =>
@@ -135,6 +138,71 @@ export default function CartPage() {
     const productId = Number(it?.productId ?? it?.product?.id);
     if (Number.isFinite(id) && Number.isFinite(productId) && id !== productId) return id;
     return Number.isFinite(id) && !Number.isFinite(productId) ? id : null;
+  };
+  const getProductId = (it: any) => {
+    const pid = Number(it?.productId ?? it?.product?.id ?? it?.id);
+    return Number.isFinite(pid) ? pid : null;
+  };
+
+  const getMaxQtyForItem = (item: any): number | null => {
+    const direct =
+      Number(item?.stock ?? item?.stockMoscow ?? item?.availableStock ?? item?.maxQty ?? item?.maxQuantity);
+    if (Number.isFinite(direct)) return direct;
+    const meta = productMetaById[Number(item?.productId ?? item?.id)];
+    const metaStock = Number(meta?.stock ?? NaN);
+    if (Number.isFinite(metaStock)) return metaStock;
+    return null;
+  };
+
+  const changeQty = async (item: any, delta: number) => {
+    const id = getCartItemId(item) ?? Number(item?.id);
+    if (!Number.isFinite(id)) return;
+    const current = Number(item?.quantity ?? 1);
+    const next = current + delta;
+    const maxQty = getMaxQtyForItem(item);
+    const productId = getProductId(item);
+    const itemProductItemId = Number((item as any)?.productItemId ?? NaN);
+    const matchKey = Number.isFinite(itemProductItemId)
+      ? `pi:${itemProductItemId}`
+      : productId != null
+      ? `p:${productId}`
+      : null;
+    const otherQty =
+      matchKey != null
+        ? cartItems
+            .filter((it) => {
+              const otherId = getCartItemId(it) ?? it.id;
+              if (otherId === id) return false;
+              if (postponedItems.includes(getPostponedKey(it))) return false;
+              const otherPi = Number((it as any)?.productItemId ?? NaN);
+              const otherKey = Number.isFinite(otherPi)
+                ? `pi:${otherPi}`
+                : getProductId(it) != null
+                ? `p:${getProductId(it)}`
+                : null;
+              return otherKey === matchKey;
+            })
+            .reduce((sum, it) => sum + Number(it?.quantity ?? 1), 0)
+        : 0;
+    if (maxQty != null && maxQty <= 0) {
+      showToast({ title: "Нет в наличии", details: item?.name || "Товар временно недоступен" });
+      return;
+    }
+    if (maxQty != null && next + otherQty > maxQty) {
+      const allowed = Math.max(0, maxQty - otherQty);
+      showToast({ title: "Ограничение по наличию", details: `Доступно: ${allowed} шт.` });
+      return;
+    }
+    if (next <= 0) {
+      await removeFromCart(id as number);
+      return;
+    }
+    setUpdatingQtyId(id as number);
+    try {
+      await updateQuantity(id as number, item?.size ?? item?.sizeLabel ?? undefined, next);
+    } finally {
+      setUpdatingQtyId(null);
+    }
   };
 
   const normalizeBrand = (v?: string | null) => {
@@ -150,22 +218,23 @@ export default function CartPage() {
       const results = await Promise.all(
         missing.map(async (id) => {
           try {
-            const res = await fetch(`/api/products/${id}`);
-            if (!res.ok) return null;
-            const data = await res.json().catch(() => null);
-            const p = (data && (data.product || data)) || null;
-            if (!p) return null;
-            const premium = Boolean(p?.premium || p?.badge === "EXCLUSIVE" || p?.category === "premium");
-            const brand = normalizeBrand(p?.Brand?.name ?? p?.brand?.name ?? p?.brand ?? p?.brandName ?? null);
-            return { id, premium, brand };
+          const res = await fetch(`/api/products/${id}`);
+          if (!res.ok) return null;
+          const data = await res.json().catch(() => null);
+          const p = (data && (data.product || data)) || null;
+          if (!p) return null;
+          const premium = Boolean(p?.premium || p?.badge === "EXCLUSIVE" || p?.category === "premium");
+          const brand = normalizeBrand(p?.Brand?.name ?? p?.brand?.name ?? p?.brand ?? p?.brandName ?? null);
+          const stock = Number(p?.stock ?? NaN);
+          return { id, premium, brand, stock: Number.isFinite(stock) ? stock : undefined };
           } catch {
             return null;
           }
         })
       );
-      const next: Record<number, { premium: boolean; brand: string | null }> = {};
+      const next: Record<number, { premium: boolean; brand: string | null; stock?: number | null }> = {};
       results.forEach((r) => {
-        if (r?.id) next[r.id] = { premium: r.premium, brand: r.brand };
+        if (r?.id) next[r.id] = { premium: r.premium, brand: r.brand, stock: r.stock };
       });
       if (Object.keys(next).length) {
         setProductMetaById((prev) => ({ ...prev, ...next }));
@@ -180,6 +249,23 @@ export default function CartPage() {
       setHasCheckoutData(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (!showCheckout) return;
+    const timer = setTimeout(() => {
+      setShowCheckout(false);
+      setHasCheckoutData(false);
+      try {
+        localStorage.removeItem("checkoutState");
+      } catch {}
+      window.dispatchEvent(new Event("cart:refresh"));
+      showToast({
+        title: "Сессия оформления истекла",
+        details: "Цена могла обновиться. Откройте оформление ещё раз.",
+      });
+    }, 15 * 60 * 1000);
+    return () => clearTimeout(timer);
+  }, [showCheckout, showToast]);
 
   useEffect(() => {
     const ids = Array.from(new Set(cartItems.map((it: any) => Number(it?.productId ?? it?.id)).filter((n) => Number.isFinite(n) && n > 0)));
@@ -398,12 +484,38 @@ useEffect(() => {
   const ownedPromoLabel = (p: { type: "PERCENT" | "AMOUNT"; value: number }) =>
     p.type === "AMOUNT" ? `${formatPrice(p.value)}₽` : `${Math.round(p.value)}%`;
 
+  const clearPromo = () => {
+    resetDiscount();
+    setApplied(false);
+    setPromoCode("");
+    setPromoMeta(null);
+    setPromoInput("");
+    setPromoError(false);
+    setPromoErrorText(null);
+    try {
+      localStorage.removeItem("promoCode");
+      localStorage.removeItem("promoApplied");
+      localStorage.removeItem("promoType");
+      localStorage.removeItem("promoValue");
+      localStorage.removeItem("promoMeta");
+    } catch {}
+    try {
+      document.cookie = "promoCode=; Path=/; Max-Age=0; SameSite=Lax";
+      document.cookie = "promoType=; Path=/; Max-Age=0; SameSite=Lax";
+      document.cookie = "promoDiscount=; Path=/; Max-Age=0; SameSite=Lax";
+    } catch {}
+  };
+
   const applyPromoCode = async (rawCode: string) => {
     const code = String(rawCode || "").trim().toUpperCase();
     if (!code) {
       setPromoError(true);
       setPromoErrorText("Введите промокод");
       setInputBounceTrigger((v) => v + 1);
+      return;
+    }
+    if (applied && promoCode === code) {
+      clearPromo();
       return;
     }
     if (activeCartItems.length === 0) {
@@ -795,7 +907,7 @@ useEffect(() => {
                       isPostponed ? 'border-dashed border-gray-300 bg-gray-50' : 'border-gray-200 bg-white/90'
                     } shadow-[0_25px_50px_rgba(15,23,42,0.08)] transition`}
                   >
-                    <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gray-100 sm:w-32 sm:h-32">
+                    <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-transparent sm:w-32 sm:h-32">
                       <Image
                         src={
                           (item as any).image ||
@@ -833,14 +945,14 @@ useEffect(() => {
                       </div>
 
                       <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-                        {qty > 1 && (
-                          <span className="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-gray-100 font-medium">
-                            <span>Количество: {qty}</span>
+                        <span className="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-gray-100 font-medium">
+                          <span>Количество: {qty}</span>
+                          {qty > 1 && (
                             <span className="text-gray-400 text-xs">
                               + {formatPrice(basePrice * (qty - 1))}₽
                             </span>
-                          </span>
-                        )}
+                          )}
+                        </span>
                         {item.badge && <span className="px-2 py-1 rounded-full bg-gray-100 font-medium">{item.badge}</span>}
                       </div>
 
@@ -867,6 +979,44 @@ useEffect(() => {
                           )}
                         </div>
                         <div className="flex items-center gap-3">
+                          {(() => {
+                            const maxQty = getMaxQtyForItem(item);
+                            const idForUpdate = getCartItemId(item) ?? Number(item?.id);
+                            const isUpdating = updatingQtyId === idForUpdate;
+                            const disableMinus = qty <= 1 || isUpdating;
+                            const disablePlus = isUpdating || (maxQty != null && qty >= maxQty);
+                            return (
+                              <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-2 py-1">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                changeQty(item, -1);
+                              }}
+                              disabled={disableMinus}
+                              className="h-7 w-7 rounded-full border border-gray-200 text-gray-600 text-sm font-semibold hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed"
+                              aria-label="Уменьшить количество"
+                            >
+                              −
+                            </button>
+                            <span className="min-w-[24px] text-center text-sm font-semibold text-gray-700">
+                              {qty}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                changeQty(item, 1);
+                              }}
+                              disabled={disablePlus}
+                              className="h-7 w-7 rounded-full border border-gray-200 text-gray-600 text-sm font-semibold hover:border-gray-400 disabled:opacity-40 disabled:cursor-not-allowed"
+                              aria-label="Увеличить количество"
+                            >
+                              +
+                            </button>
+                          </div>
+                            );
+                          })()}
                           <button
                             onClick={(e) => {
                               e.preventDefault();
@@ -912,7 +1062,7 @@ useEffect(() => {
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-lg font-semibold">Промокоды</h3>
               <Link
-                href="/profile/promocodes"
+                href="/user?tab=promos"
                 className="text-xs sm:text-sm text-gray-500 hover:text-black transition"
               >
                 Все промокоды
@@ -946,7 +1096,7 @@ useEffect(() => {
                             ? "border-black bg-black text-white"
                             : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
                         }`}
-                        title="Применить промокод"
+                        title={isActive ? "Отменить промокод" : "Применить промокод"}
                       >
                         {p.code} · {ownedPromoLabel(p)}
                       </button>
@@ -988,8 +1138,17 @@ useEffect(() => {
             </div>
 
             {applied && (
-              <div className="text-sm sm:text-base rounded-2xl border border-green-200 bg-green-50 px-4 py-4 text-green-800">
-                ✅ Активен промокод <strong>{promoCode}</strong> — скидка {promoLabel}
+              <div className="text-sm sm:text-base rounded-2xl border border-green-200 bg-green-50 px-4 py-4 text-green-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  ✅ Активен промокод <strong>{promoCode}</strong> — скидка {promoLabel}
+                </div>
+                <button
+                  type="button"
+                  onClick={clearPromo}
+                  className="h-9 px-4 rounded-full border border-red-200 text-red-600 text-xs sm:text-sm font-semibold hover:bg-red-50 transition"
+                >
+                  Отменить
+                </button>
               </div>
             )}
           </div>

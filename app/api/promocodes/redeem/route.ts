@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { redeemPromoForOrder, validatePromo } from "@/lib/promos";
 import { getUserIdFromRequest } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { enforceSameOrigin } from "@/lib/security";
 
 export async function POST(req: NextRequest) {
+  const blocked = enforceSameOrigin(req);
+  if (blocked) return blocked;
   const body = await req.json().catch(() => ({}));
   const rawCode = (body?.code ?? "").toString().trim();
   const orderIdRaw = body?.orderId ?? null;
@@ -21,10 +24,13 @@ export async function POST(req: NextRequest) {
 
   const order = await prisma.order.findFirst({
     where: { id: orderId, userId },
-    select: { id: true, status: true },
+    select: { id: true, status: true, promoCode: true },
   });
   if (!order || String(order.status) !== "SUCCEEDED") {
     return NextResponse.json({ ok: false, error: "order_not_paid" }, { status: 400 });
+  }
+  if (!order.promoCode || order.promoCode.toUpperCase() !== code) {
+    return NextResponse.json({ ok: false, error: "promo_mismatch" }, { status: 400 });
   }
 
   // Проверяем, существует ли промокод и активен ли он

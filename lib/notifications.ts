@@ -28,8 +28,56 @@ function getSmtpTransport() {
   });
 }
 
+function parseFromAddress(raw?: string | null) {
+  if (!raw) return { email: "", name: "" };
+  const match = raw.match(/^(.*)<([^>]+)>$/);
+  if (match) {
+    return {
+      name: match[1].trim().replace(/^"|"$/g, ""),
+      email: match[2].trim(),
+    };
+  }
+  return { email: raw.trim(), name: "" };
+}
+
 export async function sendEmail(payload: EmailPayload) {
   const from = process.env.EMAIL_FROM || process.env.MAIL_FROM || process.env.SMTP_USER;
+  const mailtrapToken = process.env.MAILTRAP_API_TOKEN;
+  const mailtrapUrl = process.env.MAILTRAP_API_URL || "https://send.api.mailtrap.io/api/send";
+
+  if (mailtrapToken) {
+    const fromParsed = parseFromAddress(from);
+    if (!fromParsed.email) {
+      console.warn("[email] MAILTRAP_API_TOKEN set, but FROM is empty");
+      return false;
+    }
+    const res = await fetch(mailtrapUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${mailtrapToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: {
+          email: fromParsed.email,
+          name: fromParsed.name || undefined,
+        },
+        to: [{ email: payload.to }],
+        subject: payload.subject,
+        text: payload.text,
+      }),
+    }).catch((err) => {
+      console.error("[email] mailtrap api failed", err);
+      return null;
+    });
+
+    if (!res || !res.ok) {
+      console.error("[email] mailtrap api error", { status: res?.status });
+      return false;
+    }
+    return true;
+  }
+
   const transport = getSmtpTransport();
   if (!from || !transport) {
     console.warn("[email] SMTP not configured, skip email", { to: payload.to });

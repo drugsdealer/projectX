@@ -179,6 +179,7 @@ model OrderItem {
   id         Int       @id @default(autoincrement())
   orderId    Int
   productId  Int
+  productItemId Int?
   cartItemId Int?
 
   name       String
@@ -189,10 +190,12 @@ model OrderItem {
 
   Order      Order     @relation(fields: [orderId], references: [id])
   Product    Product   @relation(fields: [productId], references: [id])
+  ProductItem ProductItem? @relation(fields: [productItemId], references: [id])
   CartItem   CartItem? @relation(fields: [cartItemId], references: [id])
 
   @@index([orderId])
   @@index([productId])
+  @@index([productItemId])
   @@index([cartItemId])
 }
 
@@ -255,6 +258,7 @@ model Product {
   SizeCl      SizeCl[]      @relation("ProductSizeCls")
   Size        Size[]        @relation("ProductSizes")
   PerfumeVariant PerfumeVariant[]
+  PriceTiers   ProductPriceTier[]
 
   @@index([brandId])
   @@index([categoryId])
@@ -263,6 +267,23 @@ model Product {
   @@index([subcategory])
   @@index([modelKey])
   @@index([brandId, popularity], map: "idx_product_brand_popularity")
+}
+
+model ProductPriceTier {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  productItemId Int?
+  price     Int
+  quantity  Int
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  Product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ProductItem ProductItem? @relation(fields: [productItemId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([productItemId])
 }
 
 model ProductItem {
@@ -277,6 +298,8 @@ model ProductItem {
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   CartItem  CartItem[]
+  OrderItem OrderItem[]
+  PriceTiers ProductPriceTier[]
   OneSize   OneSize?   @relation(fields: [oneSizeId], references: [id])
   Product   Product    @relation(fields: [productId], references: [id])
   SizeCl    SizeCl?    @relation(fields: [sizeClId], references: [id])
@@ -375,6 +398,7 @@ model User {
   gender           String?
   loyaltyPoints    Int               @default(0)
   phone            String?           @db.VarChar(32)
+  premiumIntroSeenAt DateTime?
   deletedAt        DateTime?         @db.Timestamp(6)
   Cart             Cart?
   FavoriteBrand    FavoriteBrand[]

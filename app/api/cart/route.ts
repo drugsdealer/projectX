@@ -3,6 +3,8 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
 import { getSessionUserId } from "../_utils/session";
+import { enforceSameOrigin } from "@/lib/security";
+import { getTierPricingMap, getTierPricingMapByProductItem } from "@/lib/price-tiers";
 
 export const runtime = "nodejs";
 
@@ -101,7 +103,49 @@ export async function GET() {
         ProductItem: true,
       },
     });
-    return NextResponse.json({ success: true, cartId: cart.id, items });
+    const productIds = Array.from(
+      new Set(
+        items
+          .map((it: any) => it.productId ?? it.ProductItem?.productId)
+          .filter((id: any) => Number.isFinite(Number(id)))
+          .map((id: any) => Number(id))
+      )
+    );
+    const productItemIds = Array.from(
+      new Set(
+        items
+          .map((it: any) => it.productItemId ?? it.ProductItem?.id)
+          .filter((id: any) => Number.isFinite(Number(id)))
+          .map((id: any) => Number(id))
+      )
+    );
+    const tierMap = productIds.length ? await getTierPricingMap(productIds) : new Map();
+    const itemTierMap = productItemIds.length ? await getTierPricingMapByProductItem(productItemIds) : new Map();
+
+    const itemsOut = items.map((it: any) => {
+      const resolvedProductId = it.productId ?? it.ProductItem?.productId ?? null;
+      const itemId = Number(it?.productItemId ?? it?.ProductItem?.id ?? NaN);
+      const itemTier = Number.isFinite(itemId) ? itemTierMap.get(itemId) : null;
+      const prodTier = Number.isFinite(Number(resolvedProductId)) ? tierMap.get(Number(resolvedProductId)) : null;
+      const tier = itemTier?.hasTiers ? itemTier : prodTier;
+      const dynamicPrice = tier?.hasTiers ? tier.price : null;
+      const dynamicStock = tier?.hasTiers ? tier.remainingInTier : null;
+      return {
+        ...it,
+        productId: resolvedProductId ?? it.productId,
+        price: tier?.hasTiers ? dynamicPrice : it.price,
+        stock: dynamicStock != null ? dynamicStock : (typeof it?.stock === "number" ? it.stock : null),
+        pricing: tier?.hasTiers
+          ? {
+              price: dynamicPrice,
+              remaining: dynamicStock,
+              remainingTotal: tier?.remainingTotal ?? null,
+            }
+          : null,
+      };
+    });
+
+    return NextResponse.json({ success: true, cartId: cart.id, items: itemsOut });
   } catch (e) {
     console.error("[cart][GET] error", e);
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
@@ -110,6 +154,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const blocked = enforceSameOrigin(req);
+    if (blocked) return blocked;
     const jar = await cookies();
     const { cart } = await resolveCart(jar);
     const body = await req.json().catch(() => ({} as any));
@@ -118,6 +164,47 @@ export async function POST(req: Request) {
     const created: any[] = [];
     for (const raw of items) {
       const data = normalizePayload(raw);
+      let resolvedProductId = data.productId ?? null;
+      if (!resolvedProductId && data.productItemId) {
+        const pi = await prisma.productItem.findUnique({
+          where: { id: data.productItemId },
+          select: { productId: true },
+        });
+        resolvedProductId = pi?.productId ?? null;
+      }
+      if (resolvedProductId && data.postponed !== true) {
+        const itemId = data.productItemId ? Number(data.productItemId) : null;
+        const itemTierMap = itemId ? await getTierPricingMapByProductItem([itemId]) : new Map();
+        const itemTier = itemId ? itemTierMap.get(itemId) : null;
+        const prodTierMap = await getTierPricingMap([resolvedProductId]);
+        const prodTier = prodTierMap.get(resolvedProductId);
+        const tier = itemTier?.hasTiers ? itemTier : prodTier;
+        const remaining = Number(tier?.remainingInTier ?? NaN);
+        const tierPrice = Number(tier?.price ?? NaN);
+        if (tier?.hasTiers) {
+          if (!Number.isFinite(remaining) || remaining <= 0 || !Number.isFinite(tierPrice) || tierPrice <= 0) {
+            return NextResponse.json(
+              { success: false, message: "Товар закончился" },
+              { status: 400 }
+            );
+          }
+          const currentRows = await prisma.cartItem.findMany({
+            where: {
+              cartId: cart.id,
+              ...(itemId ? { productItemId: itemId } : { productId: resolvedProductId }),
+              postponed: false,
+            },
+            select: { quantity: true },
+          });
+          const currentQty = currentRows.reduce((sum, r) => sum + Number(r.quantity || 0), 0);
+          if (currentQty + data.quantity > remaining) {
+            return NextResponse.json(
+              { success: false, message: `Доступно только ${remaining} шт.` },
+              { status: 400 }
+            );
+          }
+        }
+      }
       // try merge existing by productId + sizeLabel or productItemId
       const orConditions: any[] = [];
       if (data.productItemId != null) {
@@ -145,7 +232,7 @@ export async function POST(req: Request) {
             price: data.price || existing.price,
             image: data.image ?? existing.image,
             sizeLabel: data.sizeLabel ?? existing.sizeLabel,
-            productId: data.productId ?? existing.productId,
+            productId: resolvedProductId ?? data.productId ?? existing.productId,
             productItemId: data.productItemId ?? existing.productItemId,
             ...(typeof data.postponed === "boolean" ? { postponed: data.postponed } : {}),
             updatedAt: new Date(),
@@ -157,6 +244,7 @@ export async function POST(req: Request) {
           data: {
             cartId: cart.id,
             ...data,
+            productId: resolvedProductId ?? data.productId ?? undefined,
             ...(typeof data.postponed === "boolean" ? { postponed: data.postponed } : {}),
             updatedAt: new Date(),
           },
@@ -175,6 +263,8 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
+    const blocked = enforceSameOrigin(req);
+    if (blocked) return blocked;
     const jar = await cookies();
     const { cart } = await resolveCart(jar);
     const body = await req.json().catch(() => ({} as any));
@@ -189,11 +279,65 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ success: false, message: "quantity or postponed required" }, { status: 400 });
     }
 
+    const current = await prisma.cartItem.findFirst({
+      where: { id, cartId: cart.id },
+      select: { id: true, productId: true, productItemId: true, postponed: true, quantity: true },
+    });
+    if (!current) {
+      return NextResponse.json({ success: false, message: "Товар не найден" }, { status: 404 });
+    }
+    let resolvedProductId = current.productId ?? null;
+    if (!resolvedProductId && current.productItemId) {
+      const pi = await prisma.productItem.findUnique({
+        where: { id: current.productItemId },
+        select: { productId: true },
+      });
+      resolvedProductId = pi?.productId ?? null;
+    }
+    const nextQty = hasQty ? qty : Number(current.quantity ?? 1);
+    const nextPostponed = hasPostponed ? body.postponed : current.postponed;
+
+    if (resolvedProductId && nextPostponed !== true) {
+      const itemId = current.productItemId ? Number(current.productItemId) : null;
+      const itemTierMap = itemId ? await getTierPricingMapByProductItem([itemId]) : new Map();
+      const itemTier = itemId ? itemTierMap.get(itemId) : null;
+      const prodTierMap = await getTierPricingMap([resolvedProductId]);
+      const prodTier = prodTierMap.get(resolvedProductId);
+      const tier = itemTier?.hasTiers ? itemTier : prodTier;
+      const remaining = Number(tier?.remainingInTier ?? NaN);
+      const tierPrice = Number(tier?.price ?? NaN);
+      if (tier?.hasTiers) {
+        if (!Number.isFinite(remaining) || remaining <= 0 || !Number.isFinite(tierPrice) || tierPrice <= 0) {
+          return NextResponse.json(
+            { success: false, message: "Товар закончился" },
+            { status: 400 }
+          );
+        }
+        const otherRows = await prisma.cartItem.findMany({
+          where: {
+            cartId: cart.id,
+            ...(itemId ? { productItemId: itemId } : { productId: resolvedProductId }),
+            postponed: false,
+            id: { not: id },
+          },
+          select: { quantity: true },
+        });
+        const otherQty = otherRows.reduce((sum, r) => sum + Number(r.quantity || 0), 0);
+        if (otherQty + nextQty > remaining) {
+          return NextResponse.json(
+            { success: false, message: `Доступно только ${remaining} шт.` },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     await prisma.cartItem.updateMany({
       where: { id, cartId: cart.id },
       data: {
         ...(hasQty ? { quantity: qty } : {}),
         ...(hasPostponed ? { postponed: body.postponed } : {}),
+        ...(resolvedProductId ? { productId: resolvedProductId } : {}),
         updatedAt: new Date(),
       },
     });
@@ -208,6 +352,8 @@ export async function PATCH(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
+    const blocked = enforceSameOrigin(req);
+    if (blocked) return blocked;
     const jar = await cookies();
     const { cart } = await resolveCart(jar);
     const body = await req.json().catch(() => ({} as any));

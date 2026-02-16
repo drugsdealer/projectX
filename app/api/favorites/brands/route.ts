@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserIdFromRequest } from '@/lib/session';
+import { enforceSameOrigin } from '@/lib/security';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -94,6 +95,8 @@ export async function GET(req: NextRequest) {
 
 // ---- POST: add/remove favorite brand ----
 export async function POST(req: NextRequest) {
+  const blocked = enforceSameOrigin(req);
+  if (blocked) return blocked;
   let body: any = {};
   try {
     body = await req.json();

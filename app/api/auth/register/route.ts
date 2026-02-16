@@ -5,6 +5,7 @@ import { prisma } from '../../../../prisma/prisma-client';
 import bcrypt from 'bcryptjs';
 import { getClientIp, rateLimit } from '@/lib/rate-limit';
 import { isAdminEmail } from '@/lib/admin-emails';
+import { enforceSameOrigin } from '@/lib/security';
 
 /**
  * Email+Password registration (direct, without OTP).
@@ -16,6 +17,8 @@ import { isAdminEmail } from '@/lib/admin-emails';
  */
 export async function POST(req: Request) {
   try {
+    const blocked = enforceSameOrigin(req);
+    if (blocked) return blocked;
     const body = await req.json().catch(() => ({} as any));
     const rawEmail: string = body?.email ?? '';
     const password: string = body?.password ?? '';

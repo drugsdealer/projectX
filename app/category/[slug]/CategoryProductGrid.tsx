@@ -362,15 +362,20 @@ export default function CategoryProductGrid({ products }: { products: CategoryPr
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as 'new' | 'price-asc' | 'price-desc')}
-              className="h-11 rounded-full border border-black/10 bg-white px-4 text-sm font-semibold"
-            >
-              <option value="new">Сначала новые</option>
-              <option value="price-asc">Сначала дешевле</option>
-              <option value="price-desc">Сначала дороже</option>
-            </select>
+            <div className="relative">
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as 'new' | 'price-asc' | 'price-desc')}
+                className="h-11 rounded-full border border-black/10 bg-white pl-4 pr-10 text-sm font-semibold appearance-none"
+              >
+                <option value="new">Сначала новые</option>
+                <option value="price-asc">Сначала дешевле</option>
+                <option value="price-desc">Сначала дороже</option>
+              </select>
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-black/60 text-xs">
+                ▾
+              </span>
+            </div>
 
             <button
               type="button"

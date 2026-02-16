@@ -31,6 +31,15 @@ const normalizeCartItem = (it: any): CartItem => {
   postponed: Boolean(it?.postponed) || false,
   quantity: Number(it?.quantity ?? 1),
   productItemId: it?.productItemId ?? it?.ProductItem?.id ?? null,
+  stock: typeof it?.stock === "number"
+    ? it.stock
+    : typeof it?.availableStock === "number"
+    ? it.availableStock
+    : typeof it?.maxQty === "number"
+    ? it.maxQty
+    : typeof it?.maxQuantity === "number"
+    ? it.maxQuantity
+    : null,
   };
 };
 
@@ -44,6 +53,7 @@ interface CartItem {
   size?: string | number;
   postponed?: boolean;
   quantity?: number;
+  stock?: number | null;
 
   finalPrice?: number;
   priceAfterDiscount?: number;

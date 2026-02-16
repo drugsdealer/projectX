@@ -5,6 +5,7 @@ import { getUserIdFromRequest } from "@/lib/session";
 import { cookies } from "next/headers";
 import { sendOrderNotificationToTelegram } from "@/lib/telegram";
 import { redeemPromoForOrder } from "@/lib/promos";
+import { enforceSameOrigin } from "@/lib/security";
 
 
 // Универсально получаем enum значения из разных версий Prisma Client
@@ -17,6 +18,8 @@ const SUCCEEDED_ENUM: any = (Prisma as any)?.OrderStatus?.SUCCEEDED
 
 export async function POST(req: Request) {
   try {
+    const blocked = enforceSameOrigin(req);
+    if (blocked) return blocked;
     // 1) Собираем источники orderId / token
     let body: any = {};
     try { body = await req.json(); } catch {}

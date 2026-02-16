@@ -9,11 +9,24 @@ type Size = { id: number; name: string };
 type SizeCl = { id: number; name: string };
 type Color = { id: number; name: string };
 
+type PriceTier = {
+  id: string;
+  price: string;
+  quantity: string;
+};
+
+const newTier = (): PriceTier => ({
+  id: Math.random().toString(36).slice(2),
+  price: "",
+  quantity: "",
+});
+
 type SizeGroup = {
   id: string;
   price: string;
   sizeIds: number[];
   sizeClIds: number[];
+  tiers: PriceTier[];
 };
 
 const newGroup = (): SizeGroup => ({
@@ -21,6 +34,7 @@ const newGroup = (): SizeGroup => ({
   price: "",
   sizeIds: [],
   sizeClIds: [],
+  tiers: [newTier()],
 });
 
 export default function AdminProductsPage() {
@@ -53,6 +67,8 @@ export default function AdminProductsPage() {
   const [widthCm, setWidthCm] = useState("");
   const [heightCm, setHeightCm] = useState("");
   const [depthCm, setDepthCm] = useState("");
+  const [usePriceTiers, setUsePriceTiers] = useState(false);
+  const [priceTiers, setPriceTiers] = useState<PriceTier[]>([newTier()]);
 
   const [newBrand, setNewBrand] = useState("");
   const [newBrandLogo, setNewBrandLogo] = useState("");
@@ -117,6 +133,51 @@ export default function AdminProductsPage() {
                 ? g.sizeClIds.filter((x) => x !== id)
                 : [...g.sizeClIds, id],
             }
+          : g
+      )
+    );
+  };
+
+  const updateTier = (id: string, patch: Partial<PriceTier>) => {
+    setPriceTiers((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  };
+
+  const addTier = () => setPriceTiers((prev) => [...prev, newTier()]);
+
+  const removeTier = (id: string) => {
+    setPriceTiers((prev) => (prev.length > 1 ? prev.filter((t) => t.id !== id) : prev));
+  };
+
+  const updateGroupTier = (
+    groupId: string,
+    tierId: string,
+    patch: Partial<PriceTier>,
+    type: "SHOE" | "CLOTH"
+  ) => {
+    const setter = type === "SHOE" ? setShoeGroups : setClothGroups;
+    setter((prev) =>
+      prev.map((g) =>
+        g.id === groupId
+          ? {
+              ...g,
+              tiers: g.tiers.map((t) => (t.id === tierId ? { ...t, ...patch } : t)),
+            }
+          : g
+      )
+    );
+  };
+
+  const addGroupTier = (groupId: string, type: "SHOE" | "CLOTH") => {
+    const setter = type === "SHOE" ? setShoeGroups : setClothGroups;
+    setter((prev) => prev.map((g) => (g.id === groupId ? { ...g, tiers: [...g.tiers, newTier()] } : g)));
+  };
+
+  const removeGroupTier = (groupId: string, tierId: string, type: "SHOE" | "CLOTH") => {
+    const setter = type === "SHOE" ? setShoeGroups : setClothGroups;
+    setter((prev) =>
+      prev.map((g) =>
+        g.id === groupId
+          ? { ...g, tiers: g.tiers.length > 1 ? g.tiers.filter((t) => t.id !== tierId) : g.tiers }
           : g
       )
     );
@@ -199,10 +260,43 @@ export default function AdminProductsPage() {
     setMsg(null);
     const sizeGroups =
       sizeType === "SHOE"
-        ? shoeGroups.map((g) => ({ price: Number(g.price), sizeIds: g.sizeIds }))
+        ? shoeGroups.map((g) => ({
+            price: Number(g.price),
+            sizeIds: g.sizeIds,
+            tiers: usePriceTiers
+              ? g.tiers
+                  .map((t, idx) => ({
+                    price: Number(t.price),
+                    quantity: Number(t.quantity),
+                    sortOrder: idx + 1,
+                  }))
+                  .filter((t) => Number.isFinite(t.price) && t.price > 0 && Number.isFinite(t.quantity) && t.quantity > 0)
+              : [],
+          }))
         : sizeType === "CLOTH"
-          ? clothGroups.map((g) => ({ price: Number(g.price), sizeClIds: g.sizeClIds }))
+          ? clothGroups.map((g) => ({
+              price: Number(g.price),
+              sizeClIds: g.sizeClIds,
+              tiers: usePriceTiers
+                ? g.tiers
+                    .map((t, idx) => ({
+                      price: Number(t.price),
+                      quantity: Number(t.quantity),
+                      sortOrder: idx + 1,
+                    }))
+                    .filter((t) => Number.isFinite(t.price) && t.price > 0 && Number.isFinite(t.quantity) && t.quantity > 0)
+                : [],
+            }))
           : [];
+    const normalizedPriceTiers = usePriceTiers
+      ? priceTiers
+          .map((t, idx) => ({
+            price: Number(t.price),
+            quantity: Number(t.quantity),
+            sortOrder: idx + 1,
+          }))
+          .filter((t) => Number.isFinite(t.price) && t.price > 0 && Number.isFinite(t.quantity) && t.quantity > 0)
+      : [];
 
     const res = await fetch("/api/admin/products", {
       method: "POST",
@@ -223,6 +317,7 @@ export default function AdminProductsPage() {
         description,
         sizeType,
         sizeGroups,
+        priceTiers: normalizedPriceTiers,
         premium,
         widthCm: widthCm ? Number(widthCm) : null,
         heightCm: heightCm ? Number(heightCm) : null,
@@ -251,6 +346,8 @@ export default function AdminProductsPage() {
     setWidthCm("");
     setHeightCm("");
     setDepthCm("");
+    setUsePriceTiers(false);
+    setPriceTiers([newTier()]);
     await loadCatalog();
   };
 
@@ -371,6 +468,60 @@ export default function AdminProductsPage() {
               onChange={(e) => setPrice(e.target.value)}
               disabled={sizeType !== "NONE"}
             />
+            <div className="sm:col-span-2 rounded-2xl border border-black/10 p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm font-semibold">Партии цен (по остаткам)</div>
+                <label className="flex items-center gap-2 text-xs text-black/70">
+                  <input
+                    type="checkbox"
+                    checked={usePriceTiers}
+                    onChange={(e) => setUsePriceTiers(e.target.checked)}
+                  />
+                  Использовать партии
+                </label>
+              </div>
+              <p className="mt-1 text-xs text-black/50">
+                Если партии включены, цена берётся из первой партии. Количество — сколько товаров
+                продаётся по этой цене, затем берётся следующая.
+              </p>
+              {usePriceTiers && (
+                <div className="mt-3 grid gap-3">
+                  {priceTiers.map((t) => (
+                    <div
+                      key={t.id}
+                      className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] items-center"
+                    >
+                      <input
+                        className="rounded-xl border border-black/10 px-3 py-2 text-sm"
+                        placeholder="Цена партии"
+                        value={t.price}
+                        onChange={(e) => updateTier(t.id, { price: e.target.value })}
+                      />
+                      <input
+                        className="rounded-xl border border-black/10 px-3 py-2 text-sm"
+                        placeholder="Количество в партии"
+                        value={t.quantity}
+                        onChange={(e) => updateTier(t.id, { quantity: e.target.value })}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeTier(t.id)}
+                        className="rounded-full border border-black/10 px-3 py-2 text-xs text-black/70 hover:bg-black/5"
+                      >
+                        Удалить
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addTier}
+                    className="w-fit rounded-full border border-black/10 px-4 py-2 text-xs font-semibold hover:bg-black/5"
+                  >
+                    Добавить партию
+                  </button>
+                </div>
+              )}
+            </div>
             <input
               className="rounded-xl border border-black/10 px-3 py-2 text-sm sm:col-span-2"
               placeholder="Ссылка на фото"
@@ -510,24 +661,27 @@ export default function AdminProductsPage() {
                 <div className="text-sm font-semibold">Цены по размерам</div>
                 <div className="mt-2 text-xs text-black/60">
                   Создай группу: укажи цену и выбери несколько размеров — всем выбранным размерам назначится эта цена.
+                  Если нужны разные цены по размерам — делай отдельную группу на каждый размер.
                 </div>
                 {(sizeType === "SHOE" ? shoeGroups : clothGroups).map((group) => (
                   <div key={group.id} className="mt-4 rounded-2xl border border-black/10 p-3">
                     <div className="flex flex-wrap items-center gap-3">
-                      <input
-                        className="w-40 rounded-xl border border-black/10 px-3 py-2 text-sm"
-                        placeholder="Цена"
-                        value={group.price}
-                        onChange={(e) =>
-                          sizeType === "SHOE"
-                            ? setShoeGroups((prev) =>
-                                prev.map((g) => (g.id === group.id ? { ...g, price: e.target.value } : g))
-                              )
-                            : setClothGroups((prev) =>
-                                prev.map((g) => (g.id === group.id ? { ...g, price: e.target.value } : g))
-                              )
-                        }
-                      />
+                      {!usePriceTiers && (
+                        <input
+                          className="w-40 rounded-xl border border-black/10 px-3 py-2 text-sm"
+                          placeholder="Цена"
+                          value={group.price}
+                          onChange={(e) =>
+                            sizeType === "SHOE"
+                              ? setShoeGroups((prev) =>
+                                  prev.map((g) => (g.id === group.id ? { ...g, price: e.target.value } : g))
+                                )
+                              : setClothGroups((prev) =>
+                                  prev.map((g) => (g.id === group.id ? { ...g, price: e.target.value } : g))
+                                )
+                          }
+                        />
+                      )}
                       <button
                         onClick={() =>
                           sizeType === "SHOE"
@@ -539,6 +693,52 @@ export default function AdminProductsPage() {
                         Удалить группу
                       </button>
                     </div>
+                    {usePriceTiers && (
+                      <div className="mt-3 rounded-2xl border border-black/10 p-3">
+                        <div className="text-xs text-black/60 mb-2">
+                          Партии цены для выбранных размеров (каждая партия имеет цену и количество).
+                        </div>
+                        <div className="grid gap-2">
+                          {group.tiers.map((t) => (
+                            <div
+                              key={t.id}
+                              className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] items-center"
+                            >
+                              <input
+                                className="rounded-xl border border-black/10 px-3 py-2 text-sm"
+                                placeholder="Цена партии"
+                                value={t.price}
+                                onChange={(e) =>
+                                  updateGroupTier(group.id, t.id, { price: e.target.value }, sizeType)
+                                }
+                              />
+                              <input
+                                className="rounded-xl border border-black/10 px-3 py-2 text-sm"
+                                placeholder="Количество"
+                                value={t.quantity}
+                                onChange={(e) =>
+                                  updateGroupTier(group.id, t.id, { quantity: e.target.value }, sizeType)
+                                }
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeGroupTier(group.id, t.id, sizeType)}
+                                className="rounded-full border border-black/10 px-3 py-2 text-xs text-black/70 hover:bg-black/5"
+                              >
+                                Удалить
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => addGroupTier(group.id, sizeType)}
+                            className="w-fit rounded-full border border-black/10 px-4 py-2 text-xs font-semibold hover:bg-black/5"
+                          >
+                            Добавить партию
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <div className="mt-3 flex flex-wrap gap-2">
                       {(sizeType === "SHOE" ? sizes : sizeCls).map((size) => {
                         const checked =

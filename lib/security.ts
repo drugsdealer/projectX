@@ -11,6 +11,12 @@ export function enforceSameOrigin(req: Request) {
   const referer = req.headers.get("referer");
   const fetchSite = req.headers.get("sec-fetch-site");
 
+  // If it's a non-browser/internal call (no origin/referrer/fetch-site),
+  // allow it to pass to avoid breaking server-to-server requests.
+  if (!origin && !referer && !fetchSite) {
+    return null;
+  }
+
   if (fetchSite === "same-origin" || fetchSite === "same-site") {
     return null;
   }

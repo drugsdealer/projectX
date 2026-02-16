@@ -30,18 +30,38 @@ export async function POST(req: Request) {
   const sizeType = sizeTypeRaw === "SHOE" || sizeTypeRaw === "CLOTH" ? sizeTypeRaw : "NONE";
   const subcategoryId = body?.subcategoryId ? Number(body.subcategoryId) : null;
   const sizeGroups = Array.isArray(body?.sizeGroups) ? body.sizeGroups : [];
+  const priceTiersInput = Array.isArray(body?.priceTiers) ? body.priceTiers : [];
 
   const parsePrice = (val: any) => {
     const num = Number(val);
     if (!Number.isFinite(num) || num <= 0) return null;
     return Math.round(num);
   };
+  const parseQty = (val: any) => {
+    const num = Number(val);
+    if (!Number.isFinite(num) || num <= 0) return null;
+    return Math.floor(num);
+  };
+
+  const normalizedTiers = priceTiersInput
+    .map((t: any, idx: number) => {
+      const tierPrice = parsePrice(t?.price);
+      const tierQty = parseQty(t?.quantity);
+      if (!tierPrice || !tierQty) return null;
+      return {
+        price: tierPrice,
+        quantity: tierQty,
+        sortOrder: Number.isFinite(Number(t?.sortOrder)) ? Number(t.sortOrder) : idx + 1,
+      };
+    })
+    .filter(Boolean) as Array<{ price: number; quantity: number; sortOrder: number }>;
+  const firstTierPrice = normalizedTiers.length ? normalizedTiers[0].price : null;
 
   if (!name) {
     return NextResponse.json({ success: false, message: "Название обязательно" }, { status: 400 });
   }
   const basePrice = parsePrice(price);
-  if (sizeType === "NONE" && !basePrice) {
+  if (sizeType === "NONE" && !basePrice && !firstTierPrice) {
     return NextResponse.json({ success: false, message: "Цена должна быть больше 0" }, { status: 400 });
   }
   if (!Number.isFinite(categoryId)) {
@@ -72,13 +92,27 @@ export async function POST(req: Request) {
       : sizeGroups
           .map((group: any) => {
             const groupPrice = parsePrice(group?.price);
+            const groupTiers = Array.isArray(group?.tiers)
+              ? group.tiers
+                  .map((t: any, idx: number) => {
+                    const price = parsePrice(t?.price);
+                    const quantity = parseQty(t?.quantity);
+                    if (!price || !quantity) return null;
+                    return {
+                      price,
+                      quantity,
+                      sortOrder: Number.isFinite(Number(t?.sortOrder)) ? Number(t.sortOrder) : idx + 1,
+                    };
+                  })
+                  .filter(Boolean)
+              : [];
             const sizeIds = Array.isArray(group?.sizeIds) ? group.sizeIds.map(Number).filter(Number.isFinite) : [];
             const sizeClIds = Array.isArray(group?.sizeClIds)
               ? group.sizeClIds.map(Number).filter(Number.isFinite)
               : [];
-            return { price: groupPrice, sizeIds, sizeClIds };
+            return { price: groupPrice, sizeIds, sizeClIds, tiers: groupTiers };
           })
-          .filter((group: any) => group.price && (group.sizeIds.length || group.sizeClIds.length));
+          .filter((group: any) => (group.price || (group.tiers && group.tiers.length)) && (group.sizeIds.length || group.sizeClIds.length));
 
   if (sizeType !== "NONE" && normalizedGroups.length === 0) {
     return NextResponse.json(
@@ -88,8 +122,15 @@ export async function POST(req: Request) {
   }
 
   const minGroupPrice =
-    normalizedGroups.length > 0 ? Math.min(...normalizedGroups.map((g: any) => Number(g.price))) : null;
-  const finalPrice = sizeType === "NONE" ? basePrice : minGroupPrice;
+    normalizedGroups.length > 0
+      ? Math.min(
+          ...normalizedGroups.map((g: any) => {
+            const tierPrice = Array.isArray(g.tiers) && g.tiers.length ? Number(g.tiers[0].price) : null;
+            return Number(tierPrice ?? g.price ?? 0);
+          })
+        )
+      : null;
+  const finalPrice = firstTierPrice ?? (sizeType === "NONE" ? basePrice : minGroupPrice);
 
   const product = await prisma.product.create({
     data: {
@@ -112,28 +153,71 @@ export async function POST(req: Request) {
     select: { id: true, name: true, price: true },
   });
 
+  if (normalizedTiers.length && sizeType === "NONE") {
+    const tierModel = (prisma as any).productPriceTier;
+    if (typeof tierModel?.createMany === "function") {
+      await tierModel.createMany({
+        data: normalizedTiers.map((t) => ({
+          productId: product.id,
+          price: t.price,
+          quantity: t.quantity,
+          sortOrder: t.sortOrder,
+        })),
+      });
+    }
+  }
+
   if (sizeType !== "NONE" && normalizedGroups.length) {
     const sizeIds = new Set<number>();
     const sizeClIds = new Set<number>();
-    const createItems = normalizedGroups.flatMap((group: any) => {
-      const rows: Array<{ price: number; productId: number; sizeId?: number; sizeClId?: number }> = [];
+    const tierModel = (prisma as any).productPriceTier;
+
+    for (const group of normalizedGroups as any[]) {
+      const tierList: Array<{ price: number; quantity: number; sortOrder: number }> = Array.isArray(group.tiers)
+        ? group.tiers
+        : [];
+      const basePrice = tierList.length ? Number(tierList[0].price) : Number(group.price);
+
       if (sizeType === "SHOE") {
         for (const id of group.sizeIds) {
           sizeIds.add(id);
-          rows.push({ price: group.price, productId: product.id, sizeId: id });
+          const item = await prisma.productItem.create({
+            data: { price: basePrice, productId: product.id, sizeId: id },
+            select: { id: true },
+          });
+          if (tierList.length && typeof tierModel?.createMany === "function") {
+            await tierModel.createMany({
+              data: tierList.map((t) => ({
+                productId: product.id,
+                productItemId: item.id,
+                price: t.price,
+                quantity: t.quantity,
+                sortOrder: t.sortOrder,
+              })),
+            });
+          }
         }
       }
       if (sizeType === "CLOTH") {
         for (const id of group.sizeClIds) {
           sizeClIds.add(id);
-          rows.push({ price: group.price, productId: product.id, sizeClId: id });
+          const item = await prisma.productItem.create({
+            data: { price: basePrice, productId: product.id, sizeClId: id },
+            select: { id: true },
+          });
+          if (tierList.length && typeof tierModel?.createMany === "function") {
+            await tierModel.createMany({
+              data: tierList.map((t) => ({
+                productId: product.id,
+                productItemId: item.id,
+                price: t.price,
+                quantity: t.quantity,
+                sortOrder: t.sortOrder,
+              })),
+            });
+          }
         }
       }
-      return rows;
-    });
-
-    if (createItems.length) {
-      await prisma.productItem.createMany({ data: createItems });
     }
 
     if (sizeIds.size) {

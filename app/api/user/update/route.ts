@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { getUserIdFromRequest } from '@/lib/session';
+import { enforceSameOrigin } from '@/lib/security';
 
 /**
  * Secure profile persistence via HttpOnly cookie (AES‑GCM, WebCrypto)
@@ -158,6 +159,8 @@ async function writeCookieProfile(p: Profile) {
 // ---------- routes ----------
 export async function POST(req: NextRequest) {
   try {
+    const blocked = enforceSameOrigin(req);
+    if (blocked) return blocked;
     const payload = (await req.json()) as Record<string, unknown>;
 
     const incoming: Profile = {

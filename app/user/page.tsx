@@ -1,6 +1,7 @@
 // @ts-nocheck
 "use client";
 import React, { useMemo, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import UserInfo from "./UserInfo";
@@ -26,6 +27,7 @@ type Tab =
 export default function UserProfilePage() {
   const { user } = useUser();
   const [giftDesign, setGiftDesign] = useState("✨");
+  const searchParams = useSearchParams();
 
   // Sidebar display name that instantly reflects edits (from context, event, or LS)
   const [displayName, setDisplayName] = useState<string>('Введите ФИО');
@@ -261,6 +263,15 @@ export default function UserProfilePage() {
   }, [user]);
 
   const [tab, setTab] = useState<Tab>("info");
+
+  useEffect(() => {
+    const raw = searchParams?.get("tab");
+    if (!raw) return;
+    const allowed: Tab[] = ["overview", "info", "orders", "settings", "favorites", "cards", "promos", "loyalty"];
+    if (allowed.includes(raw as Tab)) {
+      setTab(raw as Tab);
+    }
+  }, [searchParams]);
 
   // Stage Mode activation
   const [isStageMode, setIsStageMode] = useState(false);

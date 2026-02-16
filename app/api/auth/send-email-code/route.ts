@@ -3,15 +3,20 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getClientIp, rateLimit } from '@/lib/rate-limit';
 import { Prisma } from '@prisma/client';
+import { sendEmail } from '@/lib/notifications';
+import { enforceSameOrigin } from '@/lib/security';
 
 export const runtime = 'nodejs';
 
 function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
 }
+console.log("MAILTRAP_API_TOKEN:", process.env.MAILTRAP_API_TOKEN?.slice(0, 6));
 
 export async function POST(req: Request) {
   try {
+    const blocked = enforceSameOrigin(req);
+    if (blocked) return blocked;
     const { email } = await req.json();
     if (!email) {
       return NextResponse.json({ success: false, message: 'Email обязателен' }, { status: 400 });
@@ -83,9 +88,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: 'Не удалось сгенерировать код' }, { status: 500 });
     }
 
-    // Здесь можно интегрировать реальную отправку письма.
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[send-email-code] code for', normalizedEmail, ':', code);
+    // Отправляем письмо с кодом
+    const sent = await sendEmail({
+      to: normalizedEmail,
+      subject: 'Код подтверждения StageStore',
+      text: `Ваш код подтверждения: ${code}\nКод действителен 10 минут.`,
+    });
+    if (!sent) {
+      return NextResponse.json({ success: false, message: 'Не удалось отправить письмо' }, { status: 500 });
     }
 
     const res = NextResponse.json({ success: true });

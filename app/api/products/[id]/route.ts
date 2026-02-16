@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getTierPricing, getTierPricingMapByProductItem } from "@/lib/price-tiers";
 import { NextResponse } from "next/server";
 
 const PUBLIC_CACHE_HEADERS = {
@@ -347,11 +348,66 @@ export async function GET(
     }
 
     // Нормализованный ответ для фронта
+    const tierPricing = await getTierPricing(product.id);
+    const dynamicPrice = tierPricing.hasTiers ? tierPricing.price : null;
+    const dynamicStock = tierPricing.hasTiers ? tierPricing.remainingInTier : null;
+
+    const itemIds = normalizedItems.map((it: any) => Number(it?.id)).filter((n) => Number.isFinite(n));
+    const itemTierMap = itemIds.length ? await getTierPricingMapByProductItem(itemIds) : new Map();
+    const hasItemTiers = Array.from(itemTierMap.values()).some((t) => t?.hasTiers);
+
+    const adjustedItems = normalizedItems.map((it) => {
+      const itemId = Number(it?.id);
+      const tier = Number.isFinite(itemId) ? itemTierMap.get(itemId) : null;
+      if (tier?.hasTiers && tier.price != null) {
+        return { ...it, price: Number(tier.price) };
+      }
+      if (!hasItemTiers && tierPricing.hasTiers && dynamicPrice != null) {
+        return { ...it, price: Number(dynamicPrice) };
+      }
+      return it;
+    });
+
+    if (sizes?.prices) {
+      const nextPrices: Record<string, number> = {};
+      for (const it of adjustedItems) {
+        const label = it?.sizeLabel;
+        if (label != null && typeof it?.price === "number") {
+          nextPrices[String(label)] = Number(it.price);
+        }
+      }
+      if (Object.keys(nextPrices).length > 0) {
+        sizes.prices = nextPrices;
+      }
+    }
+
+    if (sizes?.inStockMoscow && hasItemTiers) {
+      const nextStock: Record<string, boolean> = { ...(sizes.inStockMoscow as any) };
+      for (const it of adjustedItems) {
+        const label = it?.sizeLabel;
+        const itemId = Number(it?.id);
+        const tier = Number.isFinite(itemId) ? itemTierMap.get(itemId) : null;
+        if (label != null && tier?.hasTiers) {
+          const remaining = Number(tier.remainingInTier ?? 0);
+          nextStock[String(label)] = Number.isFinite(remaining) && remaining > 0;
+        }
+      }
+      sizes.inStockMoscow = nextStock as any;
+    }
+
+    const minSizePrice = (() => {
+      const values = Object.values((sizes as any)?.prices ?? {}).filter((v) => typeof v === "number") as number[];
+      if (!values.length) return null;
+      return Math.min(...values);
+    })();
+
     const normalized = {
       id: product.id,
       name: pAny?.name ?? "",
       premium: Boolean((pAny as any)?.premium),
-      price: pAny?.price ?? null,
+      price: hasItemTiers
+        ? (minSizePrice != null ? minSizePrice : pAny?.price ?? null)
+        : (tierPricing.hasTiers ? dynamicPrice : pAny?.price ?? null),
       oldPrice: pAny?.oldPrice ?? null,
       description: pAny?.description ?? null,
       imageUrl: pAny?.imageUrl ?? null,
@@ -361,6 +417,7 @@ export async function GET(
       sizeType: pAny?.sizeType ?? null,
       brandId: pAny?.brandId ?? null,
       colorId: pAny?.colorId ?? null,
+      stock: dynamicStock != null ? dynamicStock : typeof pAny?.stock === "number" ? pAny.stock : null,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
       dimensions,
@@ -374,10 +431,17 @@ export async function GET(
       categoryName,
       subCategorySlug,
       // важно: всегда возвращаем items, чтобы Checkout мог сопоставить productItemId
-      items: normalizedItems,
+      items: adjustedItems,
       // sizes: удобный формат для фронта (доступные размеры + цены по размерам)
       sizes,
       colorVariants,
+      pricing: tierPricing.hasTiers && !hasItemTiers
+        ? {
+            price: dynamicPrice,
+            remaining: dynamicStock,
+            remainingTotal: tierPricing.remainingTotal ?? null,
+          }
+        : null,
     };
 
     // Для обратной совместимости вернём дубли в верхних полях
@@ -386,8 +450,8 @@ export async function GET(
         success: true,
         product: normalized,
         premium: normalized.premium,
-        items: normalizedItems,
-        productItems: normalizedItems,
+        items: adjustedItems,
+        productItems: adjustedItems,
         colorVariants,
       },
       { status: 200, headers: PUBLIC_CACHE_HEADERS }

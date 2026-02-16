@@ -11,7 +11,7 @@ import React, {
 import { createPortal } from "react-dom";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
+import { Map as LeafletMap, Marker as LeafletMarker } from "leaflet";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle,
@@ -74,54 +74,139 @@ type MapPickerProps = {
   invalidateKey?: number;
 };
 
-const MapContainerAny = MapContainer as unknown as React.ComponentType<any>;
-const TileLayerAny = TileLayer as unknown as React.ComponentType<any>;
-const MarkerAny = Marker as unknown as React.ComponentType<any>;
-
 function MapPicker({ center, marker, onPick, mapRef, invalidateKey }: MapPickerProps) {
-  const MapClick = () => {
-    useMapEvents({
-      click(e: any) {
-        const coords: [number, number] = [e.latlng.lat, e.latlng.lng];
-        onPick(coords);
-      },
-    });
-    return null;
-  };
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<LeafletMap | null>(null);
+  const markerRef = useRef<LeafletMarker | null>(null);
+  const onPickRef = useRef(onPick);
+  const mountedRef = useRef(false);
 
-  const MapSizer = () => {
-    const map = useMap();
-    useEffect(() => {
+  useEffect(() => {
+    onPickRef.current = onPick;
+  }, [onPick]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    const container = containerRef.current;
+    if (!container) return () => { mountedRef.current = false; };
+
+    let raf = 0;
+    let observer: ResizeObserver | null = null;
+    const init = () => {
+      if (!mountedRef.current) return;
+      if (!container || container.clientWidth === 0 || container.clientHeight === 0) {
+        raf = requestAnimationFrame(init);
+        return;
+      }
+
+      if ((container as any)._leaflet_id) {
+        (container as any)._leaflet_id = null;
+      }
+
+      const map = L.map(container, {
+        center,
+        zoom: 10,
+        scrollWheelZoom: true,
+      });
+      L.tileLayer(tileUrl, { attribution: tileAttribution }).addTo(map);
+      map.on("click", (e: any) => {
+        const coords: [number, number] = [e.latlng.lat, e.latlng.lng];
+        onPickRef.current?.(coords);
+      });
+
+      mapInstanceRef.current = map;
+      if (mapRef) mapRef.current = map;
+
+      if (marker) {
+        markerRef.current = L.marker(marker).addTo(map);
+      }
+
+      if (typeof ResizeObserver !== "undefined") {
+        observer = new ResizeObserver(() => {
+          if (!mapInstanceRef.current) return;
+          mapInstanceRef.current.invalidateSize();
+        });
+        observer.observe(container);
+      }
+
       const t1 = setTimeout(() => map.invalidateSize(), 0);
-      const t2 = setTimeout(() => map.invalidateSize(), 120);
-      const t3 = setTimeout(() => map.invalidateSize(), 300);
-      const t4 = setTimeout(() => map.invalidateSize(), 600);
+      const t2 = setTimeout(() => map.invalidateSize(), 200);
+      const t3 = setTimeout(() => map.invalidateSize(), 600);
+
       return () => {
         clearTimeout(t1);
         clearTimeout(t2);
         clearTimeout(t3);
-        clearTimeout(t4);
       };
-    }, [map, invalidateKey]);
-    return null;
-  };
+    };
 
-  return (
-    <MapContainerAny
-      center={center}
-      zoom={10}
-      style={{ width: "100%", height: "100%" }}
-      scrollWheelZoom={true}
-      whenCreated={(map: any) => {
-        if (mapRef) mapRef.current = map;
-      }}
-    >
-      <TileLayerAny attribution={tileAttribution} url={tileUrl} />
-      <MapSizer />
-      <MapClick />
-      {marker ? <MarkerAny position={marker} /> : null}
-    </MapContainerAny>
-  );
+    raf = requestAnimationFrame(init);
+
+    return () => {
+      mountedRef.current = false;
+      if (raf) cancelAnimationFrame(raf);
+      if (observer && container) observer.disconnect();
+      if (markerRef.current) {
+        try {
+          markerRef.current.remove();
+        } catch {}
+        markerRef.current = null;
+      }
+      if (mapInstanceRef.current) {
+        try {
+          mapInstanceRef.current.off();
+          mapInstanceRef.current.remove();
+        } catch {}
+      }
+      mapInstanceRef.current = null;
+      if (mapRef) mapRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    if (map._loaded) {
+      map.setView(center);
+    } else {
+      map.whenReady(() => {
+        map.setView(center);
+      });
+    }
+  }, [center[0], center[1]]);
+
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    if (map._loaded) {
+      map.invalidateSize();
+    } else {
+      map.whenReady(() => map.invalidateSize());
+    }
+  }, [invalidateKey]);
+
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    if (markerRef.current) {
+      try {
+        markerRef.current.remove();
+      } catch {}
+      markerRef.current = null;
+    }
+    if (marker) {
+      if (map._loaded) {
+        markerRef.current = L.marker(marker).addTo(map);
+      } else {
+        map.whenReady(() => {
+          if (!mapInstanceRef.current) return;
+          markerRef.current = L.marker(marker).addTo(map);
+        });
+      }
+    }
+  }, [marker?.[0], marker?.[1]]);
+
+  return <div ref={containerRef} className="h-full w-full" />;
 }
 
 const steps = ["ФИО", "Подтверждение", "Оплата"];
@@ -1614,10 +1699,14 @@ export default function CheckoutModal({
               className="fixed inset-0 z-[1200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
             >
               <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.95, opacity: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 transition={{ duration: 0.25 }}
+                onAnimationComplete={() => {
+                  setMapInvalidateKey((v) => v + 1);
+                  mapRef.current?.invalidateSize?.();
+                }}
                 className="bg-white rounded-3xl w-full max-w-2xl h-[520px] relative shadow-2xl overflow-hidden"
               >
                 <button

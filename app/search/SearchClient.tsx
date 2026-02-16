@@ -527,14 +527,14 @@ export default function SearchPage() {
   // close history panel on outside click
   useEffect(() => {
     if (!panelOpen) return;
-    const onDown = (e: MouseEvent) => {
+    const onClick = (e: MouseEvent) => {
       const el = e.target as HTMLElement | null;
       if (!el) return;
       const root = document.getElementById('menu-search-root');
       if (root && !root.contains(el)) setPanelOpen(false);
     };
-    window.addEventListener('mousedown', onDown);
-    return () => window.removeEventListener('mousedown', onDown);
+    window.addEventListener('click', onClick);
+    return () => window.removeEventListener('click', onClick);
   }, [panelOpen]);
 
   const filteredHistory = useMemo(() => {
@@ -710,7 +710,7 @@ export default function SearchPage() {
     return (
       <Link
         href={c.href}
-        className="group relative overflow-hidden rounded-2xl sm:rounded-3xl border border-black/10 bg-white p-4 sm:p-5 transition-colors duration-200 md:hover:border-black/20 md:hover:bg-black/[0.02]"
+        className="group relative overflow-hidden rounded-2xl sm:rounded-3xl border border-black/10 bg-white p-4 sm:p-5"
       >
         <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white to-black/[0.02]" />
         <div className="absolute inset-0 pointer-events-none opacity-[0.05] [background-image:radial-gradient(rgba(0,0,0,1)_1px,transparent_1px)] [background-size:14px_14px]" />
@@ -742,7 +742,7 @@ export default function SearchPage() {
           </div>
 
           <div className="shrink-0">
-            <div className="h-10 sm:h-11 px-3 sm:px-4 rounded-full border border-black/10 bg-white flex items-center gap-2 text-xs sm:text-sm font-semibold text-black/70 transition-colors duration-200">
+            <div className="h-10 sm:h-11 px-3 sm:px-4 rounded-full border border-black/10 bg-white flex items-center gap-2 text-xs sm:text-sm font-semibold text-black/70 transition-colors duration-200 group-hover:border-black/20">
               <span className="hidden md:inline">Открыть</span>
               <span className="inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-black/5 text-black/70 transition-colors duration-200">
                 →
@@ -797,6 +797,29 @@ export default function SearchPage() {
     }
     return m;
   }, [facetCats]);
+
+  // If search input is focused, some mobile browsers swallow the first tap.
+  // Capture it early and navigate immediately.
+  useEffect(() => {
+    if (!inputFocused) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      const main = document.getElementById('search-main');
+      if (main && !main.contains(target)) return;
+      const anchor = target.closest('a[href]') as HTMLAnchorElement | null;
+      if (!anchor) return;
+      const href = anchor.getAttribute('href') || '';
+      if (!href.startsWith('/category/')) return;
+      e.preventDefault();
+      setPanelOpen(false);
+      setInputFocused(false);
+      inputRef.current?.blur();
+      router.push(href);
+    };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => document.removeEventListener('pointerdown', onPointerDown, true);
+  }, [inputFocused, router]);
 
   // -------------------- LIVE SEARCH --------------------
   const liveQuery = normalizeQuery(q);
@@ -962,61 +985,63 @@ export default function SearchPage() {
                 </button>
 
                 {panelOpen && (
-                  <div
-                    className="absolute left-0 right-0 mt-2 rounded-2xl border border-black/10 bg-white shadow-[0_20px_70px_rgba(0,0,0,0.12)] overflow-hidden"
-                    onMouseDown={(e) => e.preventDefault()}
-                  >
-                    <div className="flex items-center justify-between px-4 py-3 bg-black/[0.02]">
-                      <div className="text-xs font-semibold text-black/60">История поиска</div>
-                      <button
-                        type="button"
-                        onClick={clearHistory}
-                        className="text-xs font-semibold text-black/60 hover:text-black transition"
-                      >
-                        Очистить
-                      </button>
-                    </div>
+                  <div className="absolute left-0 right-0 mt-2 pointer-events-none">
+                    <div
+                      className="pointer-events-auto rounded-2xl border border-black/10 bg-white shadow-[0_20px_70px_rgba(0,0,0,0.12)] overflow-hidden"
+                      onMouseDown={(e) => e.preventDefault()}
+                    >
+                      <div className="flex items-center justify-between px-4 py-3 bg-black/[0.02]">
+                        <div className="text-xs font-semibold text-black/60">История поиска</div>
+                        <button
+                          type="button"
+                          onClick={clearHistory}
+                          className="text-xs font-semibold text-black/60 hover:text-black transition"
+                        >
+                          Очистить
+                        </button>
+                      </div>
 
-                    <div className="max-h-[42vh] sm:max-h-[340px] overflow-auto">
-                      {normalizeQuery(q).length > 0 && (
-                        <div className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-black/[0.03] transition">
-                          <button
-                            type="button"
-                            className="flex-1 text-left text-sm font-semibold"
-                            onClick={() => pushSearch(q)}
-                          >
-                            Искать «{normalizeQuery(q)}»
-                          </button>
-                          <div className="text-xs text-black/45">Enter</div>
-                        </div>
-                      )}
-
-                      {filteredHistory.length === 0 ? (
-                        <div className="px-4 py-4 text-sm text-black/50">История пока пустая.</div>
-                      ) : (
-                        filteredHistory.map((item) => (
-                          <div
-                            key={item.q}
-                            className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-black/[0.03] transition"
-                          >
+                      <div className="max-h-[42vh] sm:max-h-[340px] overflow-auto">
+                        {normalizeQuery(q).length > 0 && (
+                          <div className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-black/[0.03] transition">
                             <button
                               type="button"
-                              className="flex-1 text-left text-sm font-medium"
-                              onClick={() => pushSearch(item.q)}
+                              className="flex-1 text-left text-sm font-semibold"
+                              onClick={() => pushSearch(q)}
                             >
-                              {item.q}
+                              Искать «{normalizeQuery(q)}»
                             </button>
-                            <button
-                              type="button"
-                              aria-label="Удалить"
-                              className="h-8 w-8 rounded-full hover:bg-black/[0.06] transition flex items-center justify-center text-black/60"
-                              onClick={() => removeHistoryItem(item.q)}
-                            >
-                              ×
-                            </button>
+                            <div className="text-xs text-black/45">Enter</div>
                           </div>
-                        ))
-                      )}
+                        )}
+
+                        {filteredHistory.length === 0 ? (
+                          <div className="px-4 py-4 text-sm text-black/50">История пока пустая.</div>
+                        ) : (
+                          filteredHistory.map((item) => (
+                            <div
+                              key={item.q}
+                              className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-black/[0.03] transition"
+                            >
+                              <button
+                                type="button"
+                                className="flex-1 text-left text-sm font-medium"
+                                onClick={() => pushSearch(item.q)}
+                              >
+                                {item.q}
+                              </button>
+                              <button
+                                type="button"
+                                aria-label="Удалить"
+                                className="h-8 w-8 rounded-full hover:bg-black/[0.06] transition flex items-center justify-center text-black/60"
+                                onClick={() => removeHistoryItem(item.q)}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1102,7 +1127,7 @@ export default function SearchPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 sm:py-8">
+      <main id="search-main" className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 sm:py-8">
         {showResults ? (
           <section>
             <div className="mb-4 sm:mb-6 rounded-3xl border border-black/10 bg-black/[0.02] p-4 sm:p-5">

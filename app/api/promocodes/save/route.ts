@@ -1,8 +1,11 @@
 // app/api/promocodes/save/route.ts
 import { prisma } from "@/lib/prisma";
 import { getUserIdFromRequest } from "@/lib/session";
+import { enforceSameOrigin } from "@/lib/security";
 
 export async function POST(req: Request) {
+  const blocked = enforceSameOrigin(req);
+  if (blocked) return blocked;
   const body = await req.json().catch(() => ({}));
   const rawCode = (body?.code ?? "").toString().trim();
   if (!rawCode) {

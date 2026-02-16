@@ -133,10 +133,12 @@ export default function PaymentResultClient() {
                   className="absolute rounded-sm"
                   style={{
                     left: `${left}%`,
+                    top: -20,
                     width: size,
                     height: size * 2,
                     background: color,
                     opacity: 0.9,
+                    willChange: "transform",
                     animation: `confetti-fall ${duration}s linear ${delay}s forwards`,
                   }}
                 />
@@ -200,10 +202,10 @@ export default function PaymentResultClient() {
       <style jsx global>{`
         @keyframes confetti-fall {
           from {
-            transform: translateY(-10%) rotate(0deg);
+            transform: translate3d(0, -10vh, 0) rotate(0deg);
           }
           to {
-            transform: translateY(120%) rotate(220deg);
+            transform: translate3d(0, 140vh, 0) rotate(260deg);
           }
         }
       `}</style>

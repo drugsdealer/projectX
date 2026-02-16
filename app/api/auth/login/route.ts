@@ -11,6 +11,7 @@ import { logAction } from "@/lib/logAction";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { isAdminEmail } from "@/lib/admin-emails";
 import { randomBytes } from "crypto";
+import { enforceSameOrigin } from "@/lib/security";
 
 const parseUserAgentInfo = (
   uaRaw: string | null,
@@ -115,6 +116,8 @@ const geoByIp = async (ip?: string) => {
 // которую читает твой getSessionUserId() / getUserIdFromRequest().
 export async function POST(req: Request) {
   try {
+    const blocked = enforceSameOrigin(req);
+    if (blocked) return blocked;
     const body = await req.json().catch(() => ({}));
     const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
     const password = typeof body?.password === "string" ? body.password : "";

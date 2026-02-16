@@ -5,11 +5,14 @@ import { prisma } from "@/lib/prisma";
 import { getUserIdFromRequest } from "@/lib/session";
 import { cookies } from "next/headers";
 import { SESSION_TOKEN_COOKIE } from "../../../_utils/session";
+import { enforceSameOrigin } from "@/lib/security";
 
 const HOURS_24 = 24 * 60 * 60 * 1000;
 
 export async function POST(req: Request) {
   try {
+    const blocked = enforceSameOrigin(req);
+    if (blocked) return blocked;
     const userId = await getUserIdFromRequest();
     if (!userId) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
