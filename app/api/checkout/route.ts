@@ -423,24 +423,28 @@ export async function POST(req: Request) {
         }
       }
 
-      for (const [key, qty] of qtyByKey.entries()) {
+      let tierErrorResponse: NextResponse | null = null;
+      qtyByKey.forEach((qty, key) => {
+        if (tierErrorResponse) return;
         const meta = tierByKey.get(key);
-        if (!meta) continue;
+        if (!meta) return;
         const remaining = Number(meta.remaining ?? 0);
         const tierPrice = Number(meta.price ?? 0);
         if (!Number.isFinite(remaining) || remaining <= 0 || !Number.isFinite(tierPrice) || tierPrice <= 0) {
-          return NextResponse.json(
+          tierErrorResponse = NextResponse.json(
             { ok: false, success: false, message: 'Товар закончился' },
             { status: 400 },
           );
+          return;
         }
         if (qty > remaining) {
-          return NextResponse.json(
+          tierErrorResponse = NextResponse.json(
             { ok: false, success: false, message: `Недостаточно товара. Доступно: ${remaining} шт.` },
             { status: 400 },
           );
         }
-      }
+      });
+      if (tierErrorResponse) return tierErrorResponse;
 
       itemsForCreate = itemsForCreate.map((it) => {
         const itemId = it.productItemId != null ? Number(it.productItemId) : null;
