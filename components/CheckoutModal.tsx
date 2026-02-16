@@ -11,7 +11,6 @@ import React, {
 import { createPortal } from "react-dom";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { Map as LeafletMap, Marker as LeafletMarker } from "leaflet";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle,
@@ -76,8 +75,8 @@ type MapPickerProps = {
 
 function MapPicker({ center, marker, onPick, mapRef, invalidateKey }: MapPickerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapInstanceRef = useRef<LeafletMap | null>(null);
-  const markerRef = useRef<LeafletMarker | null>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const markerRef = useRef<L.Marker | null>(null);
   const onPickRef = useRef(onPick);
   const mountedRef = useRef(false);
 
