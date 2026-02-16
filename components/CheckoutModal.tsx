@@ -75,8 +75,8 @@ type MapPickerProps = {
 
 function MapPicker({ center, marker, onPick, mapRef, invalidateKey }: MapPickerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
-  const markerRef = useRef<L.Marker | null>(null);
+  const mapInstanceRef = useRef<any | null>(null);
+  const markerRef = useRef<any | null>(null);
   const onPickRef = useRef(onPick);
   const mountedRef = useRef(false);
 
