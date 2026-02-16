@@ -71,10 +71,10 @@ export async function getTierPricingMap(productIds: number[]) {
     soldByProduct.set(row.productId, prev + Number(row.quantity || 0));
   }
 
-  for (const [productId, productTiers] of tiersByProduct.entries()) {
+  tiersByProduct.forEach((productTiers, productId) => {
     const sold = soldByProduct.get(productId) ?? 0;
     out.set(productId, computeTierPricing(productTiers, sold));
-  }
+  });
   return out;
 }
 
@@ -121,9 +121,9 @@ export async function getTierPricingMapByProductItem(productItemIds: number[]) {
     soldByItem.set(row.productItemId, prev + Number(row.quantity || 0));
   }
 
-  for (const [productItemId, itemTiers] of tiersByItem.entries()) {
+  tiersByItem.forEach((itemTiers, productItemId) => {
     const sold = soldByItem.get(productItemId) ?? 0;
     out.set(productItemId, computeTierPricing(itemTiers, sold));
-  }
+  });
   return out;
 }
