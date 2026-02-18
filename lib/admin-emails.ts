@@ -1,4 +1,4 @@
-const FALLBACK_ADMIN = "eldheykrut@gmail.com";
+const FALLBACK_ADMIN = "eldheykrut@gmail.com, nyakotaro6@gmail.com";
 
 export function isAdminEmail(email: string): boolean {
   const raw = process.env.ADMIN_EMAILS || FALLBACK_ADMIN;
