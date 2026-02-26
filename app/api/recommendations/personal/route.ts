@@ -134,8 +134,8 @@ export async function GET(req: Request) {
 
     const data = await upstream.json().catch(() => ({} as any));
     const recItemsRaw = Array.isArray(data?.items) ? data.items : [];
-    const recommendationMeta: RecommendationMeta[] = recItemsRaw
-      .map((item: any) => ({
+    const recommendationMeta: RecommendationMeta[] = (recItemsRaw as any[])
+      .map((item: any): RecommendationMeta => ({
         productId: Number(item?.productId),
         score: Number(item?.score ?? 0),
         reason: String(item?.reason ?? "global_trending"),
@@ -178,8 +178,8 @@ export async function GET(req: Request) {
     }
 
     const topBrandsRaw: TopBrand[] = Array.isArray(data?.topBrands)
-      ? data.topBrands
-          .map((row: any) => ({
+      ? (data.topBrands as any[])
+          .map((row: any): TopBrand => ({
             brandId: Number(row?.brandId),
             brandName: String(row?.brandName ?? ""),
             views: Number(row?.views ?? 0),

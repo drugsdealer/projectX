@@ -57,9 +57,9 @@ function normalizeCampaign(row: any, index: number): HomePromoCampaign | null {
 
 function normalizeSpace(raw: any): HomePromocodeSpace {
   const campaigns = Array.isArray(raw?.campaigns)
-    ? raw.campaigns
+    ? (raw.campaigns as any[])
         .map((row: any, idx: number) => normalizeCampaign(row, idx))
-        .filter((row): row is HomePromoCampaign => Boolean(row))
+        .filter((row: HomePromoCampaign | null): row is HomePromoCampaign => Boolean(row))
         .slice(0, 8)
     : [];
 
