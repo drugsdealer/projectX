@@ -1,0 +1,575 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: auto;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+} 
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.75rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --header-h: 80px; /* default header height; will be overwritten from JS */
+    --safe-top: env(safe-area-inset-top);
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Leaflet map sizing fix inside modals */
+.leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+}
+@layer utilities {
+  .max-w-screen-2xl {
+    max-width: 1536px;
+  }
+}
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-preserve-3d {
+  transform-style: preserve-3d;
+}
+.swiper-pagination {
+  bottom: 20px !important;
+  z-index: 20 !important;
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.swiper-pagination-bullet {
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background-color: black;
+  opacity: 0.5;
+  transition: all 0.3s ease;
+}
+
+.swiper-pagination-bullet-active {
+  opacity: 1;
+  background-color: black;
+}
+
+.swiper-slide:nth-child(2n) .swiper-pagination-bullet,
+.swiper-slide:nth-child(2n) .swiper-pagination-bullet-active {
+  background-color: white;
+}
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  min-height: 100%;
+  height: auto;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  line-height: 1.6;
+  color: #333;
+  /* do not lock global scroll */
+  overflow-x: hidden;
+  overflow-y: auto;
+  touch-action: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: auto;
+}
+
+html.modal-open,
+body.modal-open {
+  height: 100%;
+  overflow: hidden;
+}
+
+body.modal-open {
+  position: fixed;
+  width: 100%;
+}
+
+body.modal-open .safe-top {
+  overflow: hidden;
+}
+
+/* Keep mobile inputs from triggering browser zoom */
+@media (max-width: 768px) {
+  input:not(.otp-input),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+#__next {
+  min-height: 100%;
+}
+
+/* Анимации для плавного появления */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.frame {
+  animation: fadeIn 0.8s ease-out forwards;
+}
+
+/* Кастомный скроллбар */
+.container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.container::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+.container::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* Utility: stick element right under header, accounting for safe area */
+.sticky-under-header {
+  position: sticky;
+  top: calc(var(--header-h, 80px) + var(--safe-top, 0px));
+}
+
+/* --- Safe area helpers (для вырезов / камер / жестовой панели) --- */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-x {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.safe-all {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Hero: allow background to extend into iOS safe-area (Dynamic Island/Notch) */
+.hero-bleed-top {
+  margin-top: calc(env(safe-area-inset-top) * -1);
+  padding-top: env(safe-area-inset-top);
+}
+.parallax-section {
+  position: relative;
+  /* Экран минус шапка: чтобы слайды не залезали на хедер */
+  height: calc(100vh - var(--header-h, 80px));
+  /* Никаких просветов из-под предыдущего блока */
+  background: #000;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  contain: layout paint;
+}
+
+.parallax-slide {
+  position: absolute; /* раньше было fixed — именно это перекрывало интро */
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  pointer-events: none; /* клики пропускаем сквозь фон */
+}
+
+/* Картинка внутри слайда — безопасный cover */
+.parallax-slide > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.parallax-content {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  color: white;
+  padding: 0 2rem;
+  max-width: 800px;
+  pointer-events: auto; /* содержимое снова кликабельно */
+  text-shadow: 0 8px 40px rgba(0, 0, 0, .35);
+}
+
+.parallax-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.22); /* мягче, чтобы фото не "грязнились" */
+}
+
+/* Мягкие фейды по краям секции */
+.parallax-section::before,
+.parallax-section::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 64px;
+  pointer-events: none;
+  z-index: 5;
+}
+.parallax-section::before {
+  top: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,.6), rgba(0,0,0,0));
+}
+.parallax-section::after {
+  bottom: 0;
+  background: linear-gradient(to top, rgba(0,0,0,.6), rgba(0,0,0,0));
+}
+
+@media (max-width: 768px) {
+  .parallax-overlay { background: rgba(0,0,0,.32); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .parallax-slide {
+    transform: none !important;
+    will-change: auto;
+  }
+}
+
+/* === Stage Mode (для страницы Stage Loyalty) === */
+.stage-mode {
+  background: radial-gradient(circle at 30% 40%, #0a0a0a 0%, #000 100%);
+  color: #e5e5e5 !important;
+  transition: background 0.6s ease, color 0.6s ease;
+}
+
+.stage-mode * {
+  color: #e5e5e5 !important;
+}
+
+/* Боковая панель и навигация в Stage Mode */
+.stage-mode .sidebar,
+.stage-mode nav {
+  background: rgba(20, 20, 20, 0.6) !important;
+  backdrop-filter: blur(12px) saturate(140%);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Стеклянные блоки */
+.glass-block {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px) saturate(160%);
+  border-radius: 20px;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.glass-block:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 50px rgba(255, 255, 255, 0.1);
+}
+
+/* Анимация плавного входа Stage Mode */
+@keyframes fadeInStage {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+.stage-mode body {
+  animation: fadeInStage 0.8s ease-out forwards;
+}
+
+/* Эффект карт (Stage Wallet) */
+.wallet-card {
+  position: relative;
+  border-radius: 24px;
+  background: rgba(20, 20, 20, 0.55); /* ближе к фону Stage Mode */
+  backdrop-filter: blur(25px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.wallet-card:hover {
+  transform: translateY(-10px) rotateX(2deg) rotateY(-2deg);
+}
+/* === Stage Mode Sidebar === */
+.stage-mode .sidebar {
+  background: rgba(30, 30, 30, 0.5) !important;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 30px rgba(255, 255, 255, 0.02),
+              0 10px 40px rgba(0, 0, 0, 0.4);
+  transition: all 0.4s ease;
+  color: #e0e0e0 !important;
+}
+
+.stage-mode .sidebar * {
+  color: #e0e0e0 !important;
+}
+
+/* Подсветка активной вкладки */
+.stage-mode .sidebar button[aria-current="true"],
+.stage-mode .sidebar .active {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px;
+  color: #fff !important;
+  transition: background 0.3s ease;
+}
+
+/* Ховер эффект на элементы */
+.stage-mode .sidebar button:hover,
+.stage-mode .sidebar a:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+}
+.stage-mode,
+.stage-mode html,
+.stage-mode body {
+  background-color: #0a0a0a !important;
+  background-image: radial-gradient(circle at 30% 40%, #0b0b0b 0%, #000 100%) !important;
+  color: #e5e5e5 !important;
+}
+
+.stage-mode body {
+  background-attachment: fixed;
+  background-size: cover;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* === Анимированное сияние по всей странице для Stage Mode === */
+.stage-mode::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(
+      circle at 20% 30%,
+      rgba(255, 215, 0, 0.05),
+      rgba(255, 255, 255, 0) 60%
+    ),
+    radial-gradient(
+      circle at 80% 70%,
+      rgba(255, 255, 255, 0.05),
+      rgba(255, 255, 255, 0) 60%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(255, 255, 255, 0.03),
+      rgba(255, 255, 255, 0) 70%
+    );
+  background-size: 200% 200%;
+  animation: stageGlowFull 30s ease-in-out infinite;
+  pointer-events: none;
+  filter: blur(60px);
+}
+
+/* Ключевые кадры сияния */
+@keyframes stageGlowFull {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* === Дополнительные слои глобального сияния для Stage Mode === */
+html.stage-mode,
+body.stage-mode {
+  position: relative;
+  overflow-x: hidden;
+  background: radial-gradient(circle at center, #0a0a0a 0%, #000 100%);
+}
+
+.stage-glow-layer {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.stage-glow-layer > div {
+  position: absolute;
+  width: 150vw;
+  height: 150vh;
+  filter: blur(120px);
+  opacity: 0.2;
+  animation: moveGlow 20s ease-in-out infinite;
+}
+
+.stage-glow-1 {
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.15), transparent 70%);
+}
+
+.stage-glow-2 {
+  background: radial-gradient(circle at 80% 70%, rgba(255, 230, 180, 0.1), transparent 70%);
+  animation-delay: 5s;
+}
+
+.stage-glow-3 {
+  background: radial-gradient(circle at 50% 50%, rgba(180, 220, 255, 0.1), transparent 70%);
+  animation-delay: 10s;
+}
+
+@keyframes moveGlow {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-5%, -3%) scale(1.1);
+  }
+}
+/* Дополнительные стили для улучшения анимаций */
+.premium-image-slider {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+
+  /* Important for mobile: let vertical scroll win, so the image doesn’t get “dragged” sideways on swipe up/down */
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+
+/* Prevent iOS/Safari from trying to drag/select the image itself */
+.premium-image-slider img,
+.premium-image-slider picture,
+.premium-image-slider video,
+.premium-image-slider canvas {
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.premium-image-slider:active {
+  cursor: grabbing;
+}
+
+/* Анимация появления подсказки */
+@keyframes swipeHint {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}
+
+.swipe-hint {
+  animation: swipeHint 2s ease-in-out infinite;
+}
+
+/* Градиент для кнопок навигации */
+.nav-button-gradient {
+  background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.85));
+}

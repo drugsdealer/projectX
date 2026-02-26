@@ -1,0 +1,18 @@
+[
+  {
+    "id": "core-editorial-01",
+    "name": "Editorial Drop",
+    "tag": "Editorial",
+    "title": "Season Highlight",
+    "subtitle": "Собери витрину из Cloudinary-плакатов и релевантных товаров",
+    "backgroundImageUrl": "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg",
+    "logoImageUrl": "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg",
+    "accentColor": "#111111",
+    "brandQueries": ["acne", "fstu"],
+    "productIds": [],
+    "maxItems": 8,
+    "position": 2,
+    "enabled": false,
+    "variant": "generic"
+  }
+]

@@ -1,0 +1,25 @@
+{
+  "eyebrow": "Промокоды",
+  "title": "Билеты на скидку",
+  "subtitle": "Здесь только общедоступные промокоды без лимита использований.",
+  "telegramUrl": "https://t.me/stagestore",
+  "telegramText": "В нашем Telegram ещё больше промокодов и быстрые анонсы акций.",
+  "campaigns": [
+    {
+      "id": "weekly-drop",
+      "badge": "DROP",
+      "title": "Еженедельные дропы",
+      "subtitle": "Обновления коллекций и подборок каждую неделю.",
+      "href": "/search",
+      "tone": "drop"
+    },
+    {
+      "id": "sale-showcase",
+      "badge": "SALE",
+      "title": "Текущие акции",
+      "subtitle": "Собрали отдельную витрину с акционными позициями.",
+      "href": "/search?tag=sale",
+      "tone": "sale"
+    }
+  ]
+}

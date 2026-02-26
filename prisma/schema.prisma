@@ -1,0 +1,497 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Brand {
+  id              Int             @id @default(autoincrement())
+  name            String          @unique
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  isOfficialBrand Boolean         @default(true)
+  isPremium       Boolean         @default(false)
+  logoUrl         String?
+  aboutLong       String?
+  description     String?
+  // Общие текстовые атрибуты для описания
+  material        String?
+  features        String?
+  styleNotes      String?
+
+  // Ароматы / духи
+  fragranceNotes      Json?
+  sillageDescription  String?
+
+  // Ювелирные изделия
+  metal           String?
+  stones          String?
+  coating         String?
+  jewelryType     String?
+  occasion        String?
+
+  // Сумки
+  outerMaterial       String?
+  innerMaterial       String?
+  bagType             String?
+  capacityDescription String?
+
+  isFeatured      Boolean         @default(false)
+  slug            String          @unique
+  tags            String[]        @default([])
+  deletedAt       DateTime?       @db.Timestamp(6)
+  FavoriteBrand   FavoriteBrand[]
+  Product         Product[]
+}
+
+model Cart {
+  id          Int        @id @default(autoincrement())
+  userId      Int?       @unique
+  token       String?    @unique
+  totalAmount Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  User        User?      @relation(fields: [userId], references: [id])
+  CartItem    CartItem[]
+}
+
+model CartItem {
+  id             Int          @id @default(autoincrement())
+  cartId         Int
+  productItemId  Int?
+  productId      Int?
+  name           String       @default("")
+  price          Int          @default(0)
+  image          String?
+  sizeLabel      String?
+  quantity       Int
+  postponed      Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  Cart           Cart         @relation(fields: [cartId], references: [id])
+  ProductItem    ProductItem? @relation(fields: [productItemId], references: [id])
+  OneSize        OneSize[]
+  Size           Size[]
+  SizeCl         SizeCl[]
+  OrderItem      OrderItem[]
+
+  @@index([cartId])
+  @@index([productId])
+  @@index([productItemId])
+}
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? @db.Timestamp(6)
+  slug      String    @unique
+  Product   Product[]
+  Subcategory Subcategory[]
+}
+
+model Subcategory {
+  id         Int       @id @default(autoincrement())
+  name       String
+  slug       String    @unique
+  categoryId Int
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime? @db.Timestamp(6)
+
+  Category   Category @relation(fields: [categoryId], references: [id])
+
+  @@index([categoryId])
+}
+
+model Color {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  Product   Product[]
+}
+
+model FavoriteBrand {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  brandId   Int
+  createdAt DateTime @default(now())
+  Brand     Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, brandId])
+  @@index([brandId])
+  @@index([userId])
+}
+
+model OneSize {
+  id          Int           @id @default(autoincrement())
+  name        String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  ProductItem ProductItem[]
+  CartItem    CartItem[]
+}
+
+model Order {
+  id          Int         @id @default(autoincrement())
+  userId      Int?
+  token       String?     @unique
+  totalAmount Int         @default(0)
+  status      OrderStatus @default(PENDING)
+  shippingStatus OrderShippingStatus @default(PROCESSING)
+  publicNumber String?    @unique
+  paymentId   String?
+  fullName    String
+  email       String
+  phone       String
+  address     String
+  comment     String?
+  deliveryRequestedAt DateTime?
+  deliveryScheduledAt DateTime?
+  deliveryAddress String?
+  deliveryRecipientName String?
+  deliveryPhone String?
+  deliveryNotifiedAt DateTime?
+  handedAt DateTime?
+  promoCode   String?
+  promoDiscountType DiscountType?
+  promoDiscountValue Int?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  paidAt      DateTime?
+  deletedAt   DateTime?   @db.Timestamp(6)
+  User        User?       @relation(fields: [userId], references: [id])
+  OrderItem   OrderItem[]
+  PromoRedemption PromoRedemption[]  // back-relation to PromoRedemption.Order
+
+  @@index([userId, createdAt])
+}
+
+model OrderItem {
+  id         Int       @id @default(autoincrement())
+  orderId    Int
+  productId  Int
+  cartItemId Int?
+
+  name       String
+  price      Float
+  size       String?
+  quantity   Int
+  image      String?
+
+  Order      Order     @relation(fields: [orderId], references: [id])
+  Product    Product   @relation(fields: [productId], references: [id])
+  CartItem   CartItem? @relation(fields: [cartItemId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([cartItemId])
+}
+
+model Product {
+  id          Int           @id @default(autoincrement())
+  name        String
+  imageUrl    String
+  categoryId  Int
+  brandId     Int?
+  colorId     Int?
+  modelKey    String?       @db.VarChar(100) // общий ключ модели для цветовых вариантов (одинаковый у всех цветов одной модели)
+  price       Float?
+  dewuSpuId   String?
+  sizeType    SizeType      @default(NONE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  description String?
+  // Общие текстовые атрибуты для описания
+  material        String?
+  features        String?
+  styleNotes      String?
+
+  // Ароматы / духи
+  fragranceNotes      Json?
+  sillageDescription  String?
+
+  // Ювелирные изделия
+  metal           String?
+  stones          String?
+  coating         String?
+  jewelryType     String?
+  occasion        String?
+
+  // Сумки
+  outerMaterial       String?
+  innerMaterial       String?
+  bagType             String?
+  capacityDescription String?
+
+  available   Boolean       @default(true)
+  gender      String?
+  images      String[]      @default([])
+  volume      Int?
+  widthCm     Float?
+  heightCm    Float?
+  depthCm     Float?
+  badge       String?
+  oldPrice    Float?
+  popularity  Int           @default(0)
+  premium     Boolean       @default(false)
+  stock       Int?
+  subcategory String?
+  deletedAt   DateTime?     @db.Timestamp(6)
+  OrderItem   OrderItem[]
+  FavoriteProduct FavoriteProduct[]
+  Brand       Brand?        @relation(fields: [brandId], references: [id])
+  Category    Category      @relation(fields: [categoryId], references: [id])
+  Color       Color?        @relation(fields: [colorId], references: [id])
+  ProductItem ProductItem[]
+  SizeCl      SizeCl[]      @relation("ProductSizeCls")
+  Size        Size[]        @relation("ProductSizes")
+  PerfumeVariant PerfumeVariant[]
+
+  @@index([brandId])
+  @@index([categoryId])
+  @@index([colorId])
+  @@index([name])
+  @@index([subcategory])
+  @@index([modelKey])
+  @@index([brandId, popularity], map: "idx_product_brand_popularity")
+}
+
+model ProductItem {
+  id        Int        @id @default(autoincrement())
+  price     Int
+  oldPrice  Int?
+  sizeLabel String?
+  productId Int
+  sizeId    Int?
+  sizeClId  Int?
+  oneSizeId Int?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  CartItem  CartItem[]
+  OneSize   OneSize?   @relation(fields: [oneSizeId], references: [id])
+  Product   Product    @relation(fields: [productId], references: [id])
+  SizeCl    SizeCl?    @relation(fields: [sizeClId], references: [id])
+  Size      Size?      @relation(fields: [sizeId], references: [id])
+}
+
+model PerfumeVariant {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  volumeMl  Int
+  price     Int
+  oldPrice  Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  Product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model PromoCode {
+  id              Int               @id @default(autoincrement())
+  code            String            @unique
+  description     String?
+  discountType    DiscountType      @default(PERCENT)
+  percentOff      Int?
+  amountOff       Int?
+  appliesTo       PromoAppliesTo    @default(ALL)
+  excludedBrands  String[]          @default([])
+  minSubtotal     Int?
+  maxRedemptions  Int?
+  startsAt        DateTime?
+  endsAt          DateTime?
+  claimedAt       DateTime?
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  userId          Int?
+  deletedAt       DateTime?         @db.Timestamp(6)
+  User            User?             @relation(fields: [userId], references: [id])
+  PromoRedemption PromoRedemption[]
+}
+
+model PromoRedemption {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  promoCodeId Int
+  usedAt      DateTime  @default(now())
+  orderId     Int?
+  PromoCode   PromoCode @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)
+  User        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Order       Order?    @relation(fields: [orderId], references: [id])
+
+  @@index([promoCodeId])
+  @@index([userId])
+  @@index([orderId])
+}
+
+model Size {
+  id          Int           @id @default(autoincrement())
+  name        String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  ProductItem ProductItem[]
+  CartItem    CartItem[]
+  Product     Product[]     @relation("ProductSizes")
+}
+
+model SizeCl {
+  id          Int           @id @default(autoincrement())
+  name        String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  ProductItem ProductItem[]
+  CartItem    CartItem[]
+  Product     Product[]     @relation("ProductSizeCls")
+}
+
+model User {
+  id               Int               @id @default(autoincrement())
+  fullName         String
+  email            String            @unique
+  password         String
+  role             UserRole          @default(USER)
+  verified         DateTime
+  provider         String?
+  providerId       String?
+  adminTotpSecretEnc String?
+  adminTotpEnabled Boolean          @default(false)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  address          String?
+  avatarEmoji      String?
+  birthDate        DateTime?
+  city             String?
+  gender           String?
+  loyaltyPoints    Int               @default(0)
+  phone            String?           @db.VarChar(32)
+  deletedAt        DateTime?         @db.Timestamp(6)
+  Cart             Cart?
+  FavoriteBrand    FavoriteBrand[]
+  FavoriteProduct  FavoriteProduct[]
+  Order            Order[]
+  PromoCode        PromoCode[]
+  PromoRedemption  PromoRedemption[]
+  VerificationCode VerificationCode?
+  LoginHistory     UserLoginHistory[]
+  Sessions         UserSession[]
+  PasswordResetCode PasswordResetCode?
+}
+
+model FavoriteProduct {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  productId Int
+  createdAt DateTime @default(now())
+
+  User    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
+}
+
+model VerificationCode {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  code      String   @unique
+  createdAt DateTime @default(now())
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, code])
+}
+
+model PasswordResetCode {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  code      String
+  createdAt DateTime @default(now())
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+}
+
+model UserLoginHistory {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  ip         String?  @db.VarChar(64)
+  city       String?
+  country    String?
+  device     String?
+  os         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  User       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model UserSession {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  token      String    @unique
+  isPrimary  Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  lastSeen   DateTime  @default(now())
+  ip         String?   @db.VarChar(64)
+  city       String?
+  country    String?
+  device     String?
+  os         String?
+  userAgent  String?
+  revokedAt  DateTime?
+
+  User       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([lastSeen])
+}
+
+enum DiscountType {
+  PERCENT
+  AMOUNT
+}
+
+enum PromoAppliesTo {
+  ALL
+  PREMIUM_ONLY
+  NON_PREMIUM_ONLY
+}
+
+enum OrderStatus {
+  PENDING
+  SUCCEEDED
+  CANCELED
+}
+
+enum OrderShippingStatus {
+  PROCESSING
+  ABROAD
+  IN_RUSSIA
+  ARRIVED
+}
+
+enum SizeType {
+  SHOE
+  CLOTH
+  NONE
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
