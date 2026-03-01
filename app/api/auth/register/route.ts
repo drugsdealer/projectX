@@ -5,6 +5,7 @@ import { prisma } from '../../../../prisma/prisma-client';
 import bcrypt from 'bcryptjs';
 import { getClientIp, rateLimit } from '@/lib/rate-limit';
 import { isAdminEmail } from '@/lib/admin-emails';
+import { blockIfCsrf, requireJsonRequest } from '@/lib/api-hardening';
 
 /**
  * Email+Password registration (direct, without OTP).
@@ -16,6 +17,11 @@ import { isAdminEmail } from '@/lib/admin-emails';
  */
 export async function POST(req: Request) {
   try {
+    const csrfBlocked = blockIfCsrf(req);
+    if (csrfBlocked) return csrfBlocked;
+    const jsonBlocked = requireJsonRequest(req);
+    if (jsonBlocked) return jsonBlocked;
+
     const body = await req.json().catch(() => ({} as any));
     const rawEmail: string = body?.email ?? '';
     const password: string = body?.password ?? '';

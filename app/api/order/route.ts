@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { getUserIdFromRequest } from "@/lib/session";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { privateJson, tooManyRequests } from "@/lib/api-hardening";
 
 /**
  * Возвращает историю заказов:
@@ -11,6 +13,12 @@ import { getUserIdFromRequest } from "@/lib/session";
  */
 export async function GET(req: NextRequest) {
   try {
+    const ip = getClientIp(req);
+    const ipLimit = await rateLimit(`order:history:ip:${ip}`, 120, 60_000);
+    if (!ipLimit.ok) {
+      return tooManyRequests(ipLimit.retryAfter);
+    }
+
     // Достаём cookies один раз (в App Router cookies() нужно вызывать как async)
     const jar = await cookies();
 
@@ -49,7 +57,13 @@ export async function GET(req: NextRequest) {
     const qsToken = qs.get("token");
     const hdrToken = req.headers.get("x-guest-token");
 
-    const token = (qsToken || hdrToken || cookieToken) ?? null;
+    const tokenRaw = (qsToken || hdrToken || cookieToken) ?? null;
+    const token =
+      typeof tokenRaw === "string" &&
+      tokenRaw.length <= 128 &&
+      /^[a-zA-Z0-9._:-]+$/.test(tokenRaw)
+        ? tokenRaw
+        : null;
 
     // 3) DEV-перекрытие userId (?userId=...) — только в non-production окружениях
     if (!effectiveUserId && process.env.NODE_ENV !== "production") {
@@ -65,10 +79,7 @@ export async function GET(req: NextRequest) {
     // 4) Если нет ни userId, ни токена — 401
     if (!effectiveUserId && !token) {
       console.log("[api.order] Unauthorized: no userId and no token");
-      return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 401 }
-      );
+      return privateJson({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
     // 5) where-условие (по userId и/или токену)
@@ -142,15 +153,9 @@ export async function GET(req: NextRequest) {
       publicNumber: o.publicNumber ?? null,
     }));
 
-    return NextResponse.json(
-      { success: true, orders: normalized },
-      { status: 200 },
-    );
+    return privateJson({ success: true, orders: normalized }, { status: 200 });
   } catch (err) {
     console.error("[api.order] failed:", err);
-    return NextResponse.json(
-      { success: false, message: "Server error" },
-      { status: 500 }
-    );
+    return privateJson({ success: false, message: "Server error" }, { status: 500 });
   }
 }

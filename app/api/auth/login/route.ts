@@ -11,6 +11,7 @@ import { logAction } from "@/lib/logAction";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { isAdminEmail } from "@/lib/admin-emails";
 import { randomBytes } from "crypto";
+import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
 
 const parseUserAgentInfo = (
   uaRaw: string | null,
@@ -115,6 +116,11 @@ const geoByIp = async (ip?: string) => {
 // которую читает твой getSessionUserId() / getUserIdFromRequest().
 export async function POST(req: Request) {
   try {
+    const csrfBlocked = blockIfCsrf(req);
+    if (csrfBlocked) return csrfBlocked;
+    const jsonBlocked = requireJsonRequest(req);
+    if (jsonBlocked) return jsonBlocked;
+
     const body = await req.json().catch(() => ({}));
     const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
     const password = typeof body?.password === "string" ? body.password : "";

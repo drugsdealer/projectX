@@ -7,11 +7,76 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+:root {
+  --motion-fast: 180ms;
+  --motion-base: 320ms;
+  --motion-slow: 520ms;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
 } 
+
+html[data-motion="reduced"] {
+  --motion-fast: 110ms;
+  --motion-base: 160ms;
+  --motion-slow: 220ms;
+}
+
+html[data-motion="balanced"] {
+  --motion-fast: 140ms;
+  --motion-base: 240ms;
+  --motion-slow: 360ms;
+}
+
+html[data-motion="reduced"] *,
+html[data-motion="reduced"] *::before,
+html[data-motion="reduced"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: var(--motion-fast) !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-motion="reduced"] .ambient-plane,
+html[data-motion="reduced"] .premium-belt-track,
+html[data-motion="reduced"] .marquee-right .track,
+html[data-motion="reduced"] .marquee-left .track,
+html[data-motion="reduced"] .swipe-hint,
+html[data-motion="reduced"] .stage-mode::before,
+html[data-motion="reduced"] .stage-glow-layer > div {
+  animation: none !important;
+}
+
+html[data-motion="balanced"] .ambient-plane {
+  opacity: 0.55 !important;
+}
+
+html[data-motion="balanced"] .premium-belt-track {
+  animation-duration: 52s !important;
+}
+
+html[data-motion="balanced"] .marquee-right .track,
+html[data-motion="balanced"] .marquee-left .track {
+  animation-duration: 34s !important;
+}
+
+html[data-motion="balanced"] .stage-mode::before,
+html[data-motion="balanced"] .stage-glow-layer > div {
+  animation-duration: 44s !important;
+  filter: blur(42px);
+  opacity: 0.14 !important;
+}
+
+html[data-motion-paused="1"] *,
+html[data-motion-paused="1"] *::before,
+html[data-motion-paused="1"] *::after {
+  animation-play-state: paused !important;
+  transition-duration: 0ms !important;
+}
 
 @layer base {
   :root {

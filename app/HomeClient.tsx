@@ -22,6 +22,7 @@ import HomePromoRail from "@/components/home/HomePromoRail";
 import CmsPromoBlock from "@/components/home/promos/CmsPromoBlock";
 import { renderAuthorHomePromo } from "@/components/home/promos/author-promos";
 import type { HomeCmsPromoConfig, HomePromoProduct } from "@/components/home/promos/types";
+import { useMotionBudget, type MotionLevel } from "@/components/MotionBudgetProvider";
 // Локальные подписи основных категорий
 const LABELS: Record<string, string> = {
   footwear: 'Обувь',
@@ -112,6 +113,17 @@ function buildCampaignIndexMap(
   return out;
 }
 
+function pickSeeded<T>(source: T[], count: number, seedSource: string): T[] {
+  if (!Array.isArray(source) || source.length === 0 || count <= 0) return [];
+  const rnd = seededRandom(hashText(seedSource));
+  const pool = [...source];
+  for (let i = pool.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rnd() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, Math.min(count, pool.length));
+}
+
 
 // Smooth image swipe/hover preview for product cards (isolated from page re-renders)
 const CARD_SWIPE_VARIANTS = {
@@ -141,19 +153,46 @@ const CARD_SWIPE_VARIANTS = {
   }),
 };
 
+const CARD_SWIPE_VARIANTS_REDUCED = {
+  enter: {
+    x: 0,
+    clipPath: "inset(0 0 0 0)",
+    opacity: 0,
+    scale: 1,
+    zIndex: 2,
+  },
+  center: {
+    x: 0,
+    clipPath: "inset(0 0 0 0)",
+    opacity: 1,
+    scale: 1,
+    zIndex: 2,
+  },
+  exit: {
+    x: 0,
+    opacity: 0,
+    scale: 1,
+    zIndex: 1,
+  },
+};
+
 const ProductCardImage = memo(function ProductCardImage({
   productId,
   imagesArr,
   alt,
   isTouchDevice,
   lastSwipeRef,
+  motionLevel,
 }: {
   productId: string;
   imagesArr: string[];
   alt: string;
   isTouchDevice: boolean;
   lastSwipeRef: MutableRefObject<{ id: string | null; ts: number }>;
+  motionLevel: MotionLevel;
 }) {
+  const reduceMotion = motionLevel === "reduced";
+  const balancedMotion = motionLevel === "balanced";
   const [activeIdx, setActiveIdx] = useState(0);
   const [swipeDir, setSwipeDir] = useState<'left' | 'right'>('left');
   const [touchActionMode, setTouchActionMode] = useState<'pan-y' | 'none'>('pan-y');
@@ -189,16 +228,18 @@ const ProductCardImage = memo(function ProductCardImage({
       try {
         if (typeof window === 'undefined') return;
         if (!Array.isArray(imagesArr) || imagesArr.length <= 1) return;
+        if (reduceMotion) return;
         const nextSrc = imagesArr[Math.min(idx + 1, imagesArr.length - 1)];
         const prevSrc = imagesArr[Math.max(idx - 1, 0)];
-        [nextSrc, prevSrc].forEach((src) => {
+        const pool = balancedMotion ? [nextSrc] : [nextSrc, prevSrc];
+        pool.forEach((src) => {
           if (!src) return;
           const img = new window.Image();
           img.src = src;
         });
       } catch {}
     },
-    [imagesArr]
+    [balancedMotion, imagesArr, reduceMotion]
   );
 
   return (
@@ -336,18 +377,18 @@ const ProductCardImage = memo(function ProductCardImage({
         <motion.div
           key={`${activeSrc}-${displaySrc}`}
           custom={swipeDir}
-          variants={CARD_SWIPE_VARIANTS}
+          variants={reduceMotion ? CARD_SWIPE_VARIANTS_REDUCED : CARD_SWIPE_VARIANTS}
           initial="enter"
           animate="center"
           exit="exit"
           transition={{
-            duration: 0.32,
+            duration: reduceMotion ? 0.14 : balancedMotion ? 0.22 : 0.32,
             ease: [0.22, 1, 0.36, 1],
-            opacity: { duration: 0.16, ease: 'linear' },
-            scale: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
+            opacity: { duration: reduceMotion ? 0.1 : 0.16, ease: "linear" },
+            scale: { duration: reduceMotion || balancedMotion ? 0 : 0.32, ease: [0.22, 1, 0.36, 1] },
           }}
           className="absolute inset-0 transform-gpu"
-          style={{ willChange: 'transform, clip-path' }}
+          style={{ willChange: reduceMotion ? "opacity" : "transform, clip-path" }}
         >
           <Image
             src={displaySrc}
@@ -374,7 +415,7 @@ const ProductCardImage = memo(function ProductCardImage({
           {imagesArr.map((_: string, i: number) => (
             <span
               key={i}
-              className={`h-1.5 rounded-full transition-all duration-300 ease-out ${
+              className={`h-1.5 rounded-full transition-all ${reduceMotion ? "duration-150" : balancedMotion ? "duration-200" : "duration-300"} ease-out ${
                 i === activeIdx ? 'w-5 bg-black/50' : 'w-1.5 bg-black/20'
               }`}
             />
@@ -385,8 +426,167 @@ const ProductCardImage = memo(function ProductCardImage({
   );
 });
 
+const DiscountCampaignBrick = memo(function DiscountCampaignBrick({
+  campaign,
+  products,
+  motionLevel,
+  isMotionPaused,
+}: {
+  campaign: HomeCampaignItem;
+  products: any[];
+  motionLevel: MotionLevel;
+  isMotionPaused: boolean;
+}) {
+  const reduceMotion = motionLevel === "reduced";
+  const balancedMotion = motionLevel === "balanced";
+  const safeProducts = Array.isArray(products) ? products : [];
+  const [activeIdx, setActiveIdx] = useState(0);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const [isVisible, setIsVisible] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const node = cardRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsVisible(Boolean(entry?.isIntersecting)),
+      { root: null, threshold: 0.25 }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    setActiveIdx(0);
+  }, [safeProducts.length]);
+
+  useEffect(() => {
+    if (safeProducts.length <= 1 || reduceMotion || isMotionPaused || !isVisible) return;
+    const timer = window.setInterval(() => {
+      setActiveIdx((prev) => (prev + 1) % safeProducts.length);
+    }, balancedMotion ? 4200 : 3200);
+    return () => window.clearInterval(timer);
+  }, [balancedMotion, isMotionPaused, isVisible, safeProducts.length, reduceMotion]);
+
+  const activeProduct = safeProducts[activeIdx] || null;
+  const activeImage =
+    (Array.isArray(activeProduct?.images) && activeProduct.images[0]) ||
+    activeProduct?.imageUrl ||
+    "/img/placeholder.png";
+  const activePrice = Number(activeProduct?.price ?? 0);
+  const activeOldPrice = Number(activeProduct?.oldPrice ?? 0);
+  const hasOldPrice = Number.isFinite(activeOldPrice) && activeOldPrice > activePrice && activePrice > 0;
+
+  return (
+    <motion.div
+      ref={cardRef}
+      layoutId={`discount-campaign-${campaign.id}`}
+      initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+      transition={
+        reduceMotion
+          ? { duration: 0.14, ease: "easeOut" }
+          : balancedMotion
+          ? { duration: 0.16, ease: "easeOut" }
+          : { duration: 0.2, type: "spring", stiffness: 500, damping: 50 }
+      }
+      className="group relative rounded-2xl overflow-hidden bg-white shadow-sm ring-1 ring-black/5 hover:ring-black/10 hover:shadow-md transition-transform hover:-translate-y-0.5 will-change-transform [contain:content]"
+    >
+      <Link
+        href={activeProduct ? `/product/${activeProduct.id}` : campaign.href}
+        className="absolute inset-0 z-20"
+        aria-label={activeProduct ? `Открыть ${activeProduct.name}` : `Открыть ${campaign.title}`}
+      />
+
+      <div className="relative w-full aspect-[1/1] sm:aspect-[4/3] bg-white overflow-hidden">
+        <AnimatePresence mode="wait" initial={false}>
+          {activeProduct ? (
+            <motion.div
+              key={`sale-img-${activeProduct?.id ?? activeIdx}`}
+              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 18, scale: 0.98 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -18, scale: 0.98 }}
+              transition={{ duration: reduceMotion ? 0.16 : balancedMotion ? 0.24 : 0.42, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute inset-0"
+            >
+              <Image
+                src={activeImage}
+                alt={activeProduct?.name || "Товар со скидкой"}
+                fill
+                className="object-contain p-2"
+                sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="sale-empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 flex items-center justify-center text-xs text-black/45"
+            >
+              Скоро появятся товары со скидкой
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="pointer-events-none absolute left-2 top-2 inline-flex rounded-full border border-[#c2410c]/20 bg-[#fff3e6]/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a3412]">
+          {campaign.badge || "SALE"}
+        </div>
+      </div>
+
+      <div className="p-3">
+        <div className="text-[11px] uppercase tracking-wide text-black/50 leading-none mb-1 pointer-events-none">
+          Акция
+        </div>
+        <h3 className="text-sm font-semibold leading-snug line-clamp-1 pointer-events-none">
+          {campaign.title}
+        </h3>
+
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={`sale-text-${activeProduct?.id ?? activeIdx}`}
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+            transition={{ duration: reduceMotion ? 0.14 : balancedMotion ? 0.2 : 0.34, ease: [0.22, 1, 0.36, 1] }}
+            className="pointer-events-none"
+          >
+            {activeProduct ? (
+              <>
+                <div className="mt-1 text-[12px] font-semibold text-black line-clamp-1">
+                  {activeProduct?.name}
+                </div>
+                <p className="text-xs text-gray-500 mt-1 line-clamp-1">
+                  {campaign.subtitle}
+                </p>
+              </>
+            ) : (
+              <p className="text-xs text-gray-500 mt-1 line-clamp-1">{campaign.subtitle}</p>
+            )}
+
+            <div className="mt-2 flex items-baseline gap-2">
+              {hasOldPrice ? (
+                <span className="text-[11px] text-gray-400 line-through">
+                  {activeOldPrice.toLocaleString("ru-RU")} ₽
+                </span>
+              ) : null}
+              <span className="text-sm font-semibold">
+                {activePrice > 0 ? `${activePrice.toLocaleString("ru-RU")} ₽` : "Смотреть"}
+              </span>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  );
+});
+
 
 export default function Home() {
+  const { reduceMotion, motionLevel, isMotionPaused } = useMotionBudget();
+  const balancedMotion = motionLevel === "balanced";
   const [isHydrated, setIsHydrated] = useState(false);
   useEffect(() => {
     setIsHydrated(true);
@@ -591,6 +791,7 @@ export default function Home() {
   const [cmsPromos, setCmsPromos] = useState<HomeCmsPromoConfig[]>([]);
   const [publicPromoCodes, setPublicPromoCodes] = useState<any[]>([]);
   const [promocodeSpace, setPromocodeSpace] = useState<HomePromocodeSpacePayload | null>(null);
+  const [restoredHomeProductId, setRestoredHomeProductId] = useState<string | null>(null);
   const [homePromoSeed] = useState(() => Math.floor(Math.random() * 1_000_000_000));
   const [isHomeRecsLoading, setIsHomeRecsLoading] = useState(false);
   const homeSeenRecommendationIdsRef = useRef<Set<number>>(new Set());
@@ -830,6 +1031,19 @@ export default function Home() {
       cancelled = true;
     };
   }, []);
+
+  const isDiscountProduct = useCallback((product: any) => {
+    const badge = String(product?.badge || "").toUpperCase();
+    const price = Number(product?.price ?? product?.minPrice ?? 0);
+    const oldPrice = Number(product?.oldPrice ?? 0);
+    const hasPriceDrop = Number.isFinite(oldPrice) && oldPrice > 0 && oldPrice > price;
+    return hasPriceDrop || badge.includes("SALE");
+  }, []);
+
+  const discountedProducts = useMemo(
+    () => products.filter((product) => isDiscountProduct(product)),
+    [isDiscountProduct, products]
+  );
 
   const editorialCollections = useMemo(() => {
     const SYSTEM_BADGES = new Set(["NEW", "HIT", "SALE", "EXCLUSIVE", "PREMIUM"]);
@@ -1247,6 +1461,7 @@ export default function Home() {
   const [hoveredSide, setHoveredSide] = useState<"left" | "right" | null>(null);
   const [parallaxY, setParallaxY] = useState(0);
   const [heroFade, setHeroFade] = useState(0); // 0..1 based on scrollY
+  const [isHeroInView, setIsHeroInView] = useState(true);
   const { user } = useUser();
   const [isScrollingProgrammatically, setIsScrollingProgrammatically] = useState(false);
   // Touch-only: swipe preview on product cards (do not block normal click on desktop)
@@ -1290,12 +1505,6 @@ export default function Home() {
   // Возврат к карточке на главной: скроллим к последнему товару (или к сохранённой позиции)
   useEffect(() => {
     try {
-      // Восстанавливаем скролл только при возврате назад (back/forward),
-      // чтобы не было "фантомных" прыжков при обычной навигации.
-      const navEntry = typeof performance !== 'undefined'
-        ? (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)
-        : undefined;
-      const navType = navEntry?.type;
       const shouldRestore = sessionStorage.getItem('restoreScroll') === '1';
       if (!shouldRestore) return;
 
@@ -1304,10 +1513,8 @@ export default function Home() {
       const tsRaw = sessionStorage.getItem('restoreScrollAt');
       sessionStorage.removeItem('restoreScrollAt');
 
-      // Только при back/forward и "свежем" клике (до 5 минут)
-      const isBackNav = navType === 'back_forward';
       const ts = tsRaw ? Number(tsRaw) : 0;
-      if (!isBackNav || (ts && Date.now() - ts > 5 * 60 * 1000)) return;
+      if (ts && Date.now() - ts > 5 * 60 * 1000) return;
 
       const lastRoute = sessionStorage.getItem('lastListRoute');
       const lastProductId = sessionStorage.getItem('lastProductId');
@@ -1318,34 +1525,47 @@ export default function Home() {
       const isHomeRoute = !lastRoute || lastRoute.split('?')[0] === '/';
       if (!isHomeRoute) return;
 
-      const scrollToTarget = () => {
-        // Пытаемся найти карточку по id
+      const highlight = (id: string) => {
+        setRestoredHomeProductId(id);
+        window.setTimeout(() => setRestoredHomeProductId((prev) => (prev === id ? null : prev)), 2200);
+      };
+
+      const tryRestore = (attempt = 0) => {
         if (lastProductId) {
           const el = document.getElementById(`product-${lastProductId}`);
           if (el) {
             el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            highlight(lastProductId);
             return;
           }
         }
-        // иначе пробуем восстановить сохранённую позицию
+        if (attempt < 24) {
+          window.setTimeout(() => tryRestore(attempt + 1), 80);
+          return;
+        }
         if (!Number.isNaN(lastScrollY)) {
           window.scrollTo({ top: lastScrollY, behavior: 'smooth' });
         }
       };
 
-      // Даём странице дорендериться
-      setTimeout(scrollToTarget, 0);
+      window.setTimeout(() => tryRestore(0), 0);
     } catch {}
   }, []);
   
   useEffect(() => {
     if (searchParams.get("premium") === "true") {
+      if (reduceMotion || balancedMotion) {
+        setShowAnimation(false);
+        return;
+      }
       setShowAnimation(true);
-      setTimeout(() => {
+      const timeoutId = window.setTimeout(() => {
         setShowAnimation(false);
       }, 1500);
+      return () => window.clearTimeout(timeoutId);
     }
-  }, [searchParams]);
+    return;
+  }, [searchParams, reduceMotion, balancedMotion]);
 
   // Products skeleton for loading state
   const ProductsSkeleton = () => {
@@ -1373,17 +1593,31 @@ export default function Home() {
   // Parallax value computed only on client, also compute heroFade
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    const hero = document.getElementById("home-hero");
+    if (!hero) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsHeroInView(Boolean(entry?.isIntersecting)),
+      { root: null, threshold: 0.01 }
+    );
+    observer.observe(hero);
+    return () => observer.disconnect();
+  }, []);
+
+  // Parallax value computed only while hero block is visible
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
     let raf: number | null = null;
 
     const compute = () => {
+      if (!isHeroInView) return;
       const y = window.scrollY || 0;
-      setParallaxY(y * 0.1);
+      setParallaxY(reduceMotion ? y * 0.04 : balancedMotion ? y * 0.07 : y * 0.1);
 
       // Stronger hero disappearance: 0..1 within first ~320px of scroll.
       const raw = Math.min(1, Math.max(0, y / 320));
       // Smoothstep easing for nicer feel
       const t = raw * raw * (3 - 2 * raw);
-      setHeroFade(t);
+      setHeroFade(reduceMotion ? t * 0.7 : balancedMotion ? t * 0.85 : t);
     };
 
     const onScroll = () => {
@@ -1402,7 +1636,7 @@ export default function Home() {
       if (raf) cancelAnimationFrame(raf);
       window.removeEventListener('scroll', onScroll);
     };
-  }, []);
+  }, [reduceMotion, balancedMotion, isHeroInView]);
 
   // Для кнопки "Смотреть каталог"
   const [isHovered, setIsHovered] = useState(false);
@@ -1543,13 +1777,31 @@ useEffect(() => {
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "-100%" }}
-            transition={{ duration: 1.5, ease: "easeInOut" }}
+            transition={{ duration: reduceMotion ? 0.25 : 1.5, ease: "easeInOut" }}
             className="fixed bottom-0 left-0 right-0 h-screen bg-black flex justify-center items-center text-white text-4xl font-bold z-50"
           >
-            <motion.span initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }} transition={{ duration: 1 }} className="relative">
+            <motion.span
+              initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: reduceMotion ? 1 : 0.5 }}
+              transition={{ duration: reduceMotion ? 0.2 : 1 }}
+              className="relative"
+            >
               Premium
-              <Image src="/img/звезддочкиии.png" alt="Stars" width={40} height={40} className="absolute -top-4 -right-4 animate-spin" />
-              <Image src="/img/звездочкиии.png" alt="Stars" width={40} height={40} className="absolute -bottom-4 -left-4 animate-spin" />
+              <Image
+                src="/img/звезддочкиии.png"
+                alt="Stars"
+                width={40}
+                height={40}
+                className={`absolute -top-4 -right-4 ${reduceMotion ? "" : "animate-spin"}`}
+              />
+              <Image
+                src="/img/звездочкиии.png"
+                alt="Stars"
+                width={40}
+                height={40}
+                className={`absolute -bottom-4 -left-4 ${reduceMotion ? "" : "animate-spin"}`}
+              />
             </motion.span>
           </motion.div>
         )}
@@ -1563,8 +1815,12 @@ useEffect(() => {
         className="hero-bleed-top relative z-0 w-screen overflow-hidden h-[380px] md:h-[520px] lg:h-[600px] bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#0b1224] transform-gpu will-change-transform"
         style={{
           opacity: 1 - heroFade * 0.92,
-          filter: `blur(${heroFade * 10}px)`,
-          transform: `translateY(${-heroFade * 36}px) scale(${1 - heroFade * 0.06})`,
+          filter: reduceMotion ? "none" : balancedMotion ? `blur(${heroFade * 4}px)` : `blur(${heroFade * 10}px)`,
+          transform: reduceMotion
+            ? `translateY(${-heroFade * 16}px) scale(${1 - heroFade * 0.02})`
+            : balancedMotion
+            ? `translateY(${-heroFade * 24}px) scale(${1 - heroFade * 0.04})`
+            : `translateY(${-heroFade * 36}px) scale(${1 - heroFade * 0.06})`,
         }}
         aria-hidden={heroFade > 0.98}
         onMouseLeave={() => setHoveredSide(null)}
@@ -1633,7 +1889,7 @@ useEffect(() => {
           style={{
             opacity: Math.max(0, Math.min(1, 1 - heroFade * 1.2)),
             pointerEvents: heroFade > 0.9 ? "none" : "auto",
-            transition: "opacity 260ms ease",
+            transition: reduceMotion ? "none" : balancedMotion ? "opacity 160ms ease" : "opacity 260ms ease",
           }}
         ></div>
         {/* HERO pagination bullets styling + animation */}
@@ -1836,6 +2092,19 @@ useEffect(() => {
                     campaignPool,
                     `${homePromoSeed}-${main}-${sectionIndex}-${displayLimit}`
                   );
+                  const sectionDiscounted = items.filter((product) => isDiscountProduct(product));
+                  const campaignProductsById = new Map<string, any[]>(
+                    campaignPool.map((campaign) => {
+                      const preferredPool = sectionDiscounted.length ? sectionDiscounted : discountedProducts;
+                      const fallbackPool = preferredPool.length ? preferredPool : items;
+                      const picked = pickSeeded(
+                        fallbackPool,
+                        6,
+                        `${homePromoSeed}-${main}-${sectionIndex}-${campaign.id}`
+                      );
+                      return [campaign.id, picked];
+                    })
+                  );
 
                   return (
                     <Fragment key={`sec-wrap-${main}`}>
@@ -1919,41 +2188,20 @@ useEffect(() => {
                       </div>
 
                       <motion.div
-                        layout
+                        layout={motionLevel === "full"}
                         className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-5 sm:gap-4"
                       >
                         {displayList.map((product: any, productIndex: number) => {
                             const campaignSlot = campaignByIndex.get(productIndex);
                             if (campaignSlot) {
                               return (
-                                <motion.div
-                                  layout
+                                <DiscountCampaignBrick
                                   key={`campaign-slot-${main}-${productIndex}-${campaignSlot.id}`}
-                                  initial={{ opacity: 0, y: 8 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  exit={{ opacity: 0, y: -8 }}
-                                  transition={{ duration: 0.2, type: 'spring', stiffness: 500, damping: 50 }}
-                                >
-                                  <Link
-                                    href={campaignSlot.href}
-                                    className="group flex aspect-square flex-col justify-between rounded-2xl border border-black/15 bg-gradient-to-br from-[#fff8ef] via-[#fff2df] to-[#ffe8cc] p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                                  >
-                                    <div>
-                                      <div className="inline-flex rounded-full border border-black/15 bg-white/75 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-black/70">
-                                        {campaignSlot.badge || "SALE"}
-                                      </div>
-                                      <div className="mt-2 text-[22px] font-black uppercase leading-none text-black/85">
-                                        скидка
-                                      </div>
-                                      <div className="mt-2 text-sm font-semibold leading-tight text-black/90 line-clamp-2">
-                                        {campaignSlot.title}
-                                      </div>
-                                    </div>
-                                    <div className="text-xs text-black/65 line-clamp-2">
-                                      {campaignSlot.subtitle}
-                                    </div>
-                                  </Link>
-                                </motion.div>
+                                  campaign={campaignSlot}
+                                  products={campaignProductsById.get(campaignSlot.id) || []}
+                                  motionLevel={motionLevel}
+                                  isMotionPaused={isMotionPaused}
+                                />
                               );
                             }
                             const imgSrc =
@@ -1982,6 +2230,7 @@ useEffect(() => {
                             };
                             const typeLabel = TYPE_LABELS[typeKey] ?? (LABELS[cat] ?? "");
                             const brandName = extractBrand(product);
+                            const isRestoredHomeTarget = restoredHomeProductId === String(product.id);
                             // Try to take the first sentence of any description-like field
                             let descToShow = firstSentence(pickDescription(product));
                             // If there is no textual description in the DB, compose a compact technical snippet
@@ -2126,15 +2375,25 @@ useEffect(() => {
                               <motion.div
                                 layoutId={`product-card-${product.id}`}
                                 key={product.id}
-                                initial={{ opacity: 0, y: 8 }}
+                                initial={reduceMotion ? false : { opacity: 0, y: 8 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -8 }}
-                                transition={{ duration: 0.2, type: 'spring', stiffness: 500, damping: 50 }}
+                                exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+                                transition={
+                                  reduceMotion
+                                    ? { duration: 0.14, ease: "easeOut" }
+                                    : balancedMotion
+                                    ? { duration: 0.16, ease: "easeOut" }
+                                    : { duration: 0.2, type: "spring", stiffness: 500, damping: 50 }
+                                }
                               >
                                 <a
                                   id={`product-${product.id}`}
                                   href={`/product/${product.id}`}
-                                  className="group rounded-2xl overflow-hidden bg-white shadow-sm ring-1 ring-black/5 hover:ring-black/10 hover:shadow-md transition-transform hover:-translate-y-0.5 will-change-transform [contain:content]"
+                                  className={`group rounded-2xl overflow-hidden bg-white shadow-sm ring-1 transition-transform will-change-transform [contain:content] ${
+                                    isRestoredHomeTarget
+                                      ? `ring-[#2563eb]/45 shadow-[0_0_0_7px_rgba(37,99,235,0.18)] ${reduceMotion ? "" : "animate-pulse"}`
+                                      : "ring-black/5 hover:ring-black/10 hover:shadow-md hover:-translate-y-0.5"
+                                  }`}
                                   onClickCapture={(e) => {
                                     // If the user just swiped images on touch devices, do NOT navigate.
                                     if (!isTouchDevice) return;
@@ -2161,6 +2420,7 @@ useEffect(() => {
                                     alt={product.name || "Товар"}
                                     isTouchDevice={isTouchDevice}
                                     lastSwipeRef={lastSwipeRef}
+                                    motionLevel={motionLevel}
                                   />
                                   <div className="p-3">
                                     {brandName && (

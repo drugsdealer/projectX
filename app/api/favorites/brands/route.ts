@@ -2,6 +2,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserIdFromRequest } from '@/lib/session';
+import { getClientIp, rateLimit } from '@/lib/rate-limit';
+import {
+  buildPrivateHeaders,
+  blockIfCsrf,
+  privateJson,
+  requireJsonRequest,
+  tooManyRequests,
+} from '@/lib/api-hardening';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,12 +34,7 @@ export async function GET(req: NextRequest) {
 
   if (!uid) {
     // не авторизован — вернём пусто (клиент сам подставит localStorage)
-    return NextResponse.json({ items: [] }, {
-      status: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-      },
-    });
+    return privateJson({ items: [] }, { status: 200 });
   }
 
   const rows = await prisma.favoriteBrand.findMany({
@@ -86,36 +89,49 @@ export async function GET(req: NextRequest) {
   });
   return NextResponse.json({ items }, {
     status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-    },
+    headers: buildPrivateHeaders(),
   });
 }
 
 // ---- POST: add/remove favorite brand ----
 export async function POST(req: NextRequest) {
-  let body: any = {};
+  const csrfBlocked = blockIfCsrf(req);
+  if (csrfBlocked) return csrfBlocked;
+
+  const ip = getClientIp(req);
+  const limitByIp = await rateLimit(`fav:brands:ip:${ip}`, 45, 60_000);
+  if (!limitByIp.ok) {
+    return tooManyRequests(limitByIp.retryAfter, 'rate_limited');
+  }
+
+  const jsonBlocked = requireJsonRequest(req);
+  if (jsonBlocked) return jsonBlocked;
+
+  let body: any = null;
   try {
     body = await req.json();
   } catch {
-    // ignore
+    return privateJson({ ok: false, error: 'invalid_json' }, { status: 400 });
   }
 
-  const slug: string = typeof body.slug === 'string' ? body.slug : '';
-  const action: 'add' | 'remove' = body.action === 'remove' ? 'remove' : 'add';
+  const slugRaw = typeof body?.slug === 'string' ? body.slug.trim().toLowerCase() : '';
+  const slug = slugRaw.slice(0, 80);
+  const action = body?.action;
+  const actionAllowed = action === 'add' || action === 'remove';
+  const slugValid = /^[a-z0-9-]{1,80}$/.test(slug);
 
-  if (!slug) {
-    return NextResponse.json({ ok: false, error: 'bad_request' }, { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } });
+  if (!slugValid || !actionAllowed) {
+    return privateJson({ ok: false, error: 'bad_request' }, { status: 400 });
   }
 
   const uid = await getUserIdFromRequest();
   if (!uid) {
-    return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401, headers: { 'Access-Control-Allow-Origin': '*' } });
+    return privateJson({ ok: false, error: 'unauthorized' }, { status: 401 });
   }
 
   const brand = await prisma.brand.findUnique({ where: { slug } });
   if (!brand) {
-    return NextResponse.json({ ok: false, error: 'brand_not_found' }, { status: 404, headers: { 'Access-Control-Allow-Origin': '*' } });
+    return privateJson({ ok: false, error: 'brand_not_found' }, { status: 404 });
   }
 
   if (action === 'add') {
@@ -133,20 +149,13 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true }, {
     status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-    },
+    headers: buildPrivateHeaders(),
   });
 }
 
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Max-Age': '86400',
-    },
+    headers: buildPrivateHeaders({ Allow: 'GET, POST, OPTIONS' }),
   });
 }

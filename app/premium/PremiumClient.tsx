@@ -4,6 +4,7 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { motion, AnimatePresence, useReducedMotion, Variants, useMotionValue, animate } from "framer-motion";
 import { useTitle } from "@/context/TitleContext"; // Импортируем контекст
+import { useMotionBudget } from "@/components/MotionBudgetProvider";
 import Link from "next/link";
 import { PremiumConcierge } from "@/components/PremiumConcierge";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
@@ -1864,7 +1865,13 @@ const AnimatedGridItem = React.memo(({ children, index }: { children: React.Reac
 });
 
 // GridCard мемоизирован чтобы не пересоздаваться при каждом render
-const GridCard = React.memo(({ item, rememberPremiumScroll, buildProductHref, getPreviewImages }: any) => {
+const GridCard = React.memo(({
+  item,
+  rememberPremiumScroll,
+  buildProductHref,
+  getPreviewImages,
+  isRestoreTarget,
+}: any) => {
   const imgs = Array.isArray(item.images) ? item.images.filter(Boolean) : [];
   const primary = (item as any).imageUrl || imgs[0] || "/img/placeholder.png";
   const secondary = imgs.find((u: any) => u && u !== primary);
@@ -1876,9 +1883,14 @@ const GridCard = React.memo(({ item, rememberPremiumScroll, buildProductHref, ge
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
     >
       <Link
+        id={`premium-product-${item.id}`}
         href={buildProductHref(item.id)}
-        onClick={rememberPremiumScroll}
-        className="relative group block rounded-2xl overflow-hidden bg-white border border-black/10 shadow-sm hover:shadow-xl transition-all duration-300 w-full h-full"
+        onClick={() => rememberPremiumScroll(item.id)}
+        className={`relative group block rounded-2xl overflow-hidden bg-white border shadow-sm transition-all duration-300 w-full h-full ${
+          isRestoreTarget
+            ? "border-[#2563eb]/40 shadow-[0_0_0_8px_rgba(37,99,235,0.18)] animate-pulse"
+            : "border-black/10 hover:shadow-xl"
+        }`}
       >
         {(item as any).premium && (
           <div className="absolute top-2 right-2 z-20 flex items-center gap-1">
@@ -1933,10 +1945,12 @@ const GridCard = React.memo(({ item, rememberPremiumScroll, buildProductHref, ge
          prev.item.premium === next.item.premium &&
          prev.item.badge === next.item.badge &&
          prev.item.images?.length === next.item.images?.length &&
-         prev.item.imageUrl === next.item.imageUrl;
+         prev.item.imageUrl === next.item.imageUrl &&
+         prev.isRestoreTarget === next.isRestoreTarget;
 });
 
 export default function PremiumPage() {
+  const { motionLevel, reduceMotion: adaptiveReduceMotion, isMotionPaused } = useMotionBudget();
   const [whyOpen, setWhyOpen] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -2070,17 +2084,22 @@ export default function PremiumPage() {
 
 
   const { setTitle } = useTitle(); // Деструктурируем метод смены заголовка
-  const prefersReduced = useReducedMotion();
+  const prefersReducedMedia = useReducedMotion();
+  const prefersReduced = prefersReducedMedia || adaptiveReduceMotion || motionLevel !== "full";
 
   // A/B выключатель тяжёлых FX: если низкий FPS или пользователь просит меньше анимаций
   const [lowFps, setLowFps] = useState(false);
-  const allowFX = !prefersReduced && !lowFps;
+  const allowFX = motionLevel === "full" && !prefersReduced && !lowFps && !isMotionPaused;
 
 
   // (removed effect that tied intro to ?intro=1)
 
   // Замер FPS ~1 сек и обновление каждые 3 сек
   useEffect(() => {
+    if (prefersReduced || isMotionPaused) {
+      setLowFps(true);
+      return;
+    }
     let raf = 0, frames = 0; let start = performance.now();
     let cancelled = false;
     const sample = () => {
@@ -2088,7 +2107,7 @@ export default function PremiumPage() {
       const now = performance.now();
       if (now - start >= 1000) {
         const fps = frames * 1000 / (now - start);
-        setLowFps(fps < 30);
+        setLowFps(fps < 35);
         frames = 0; start = now;
       }
       if (!cancelled) raf = requestAnimationFrame(sample);
@@ -2096,7 +2115,7 @@ export default function PremiumPage() {
     raf = requestAnimationFrame(sample);
     const interval = setInterval(() => { /* просто продлеваем сэмплинг */ }, 3000);
     return () => { cancelled = true; cancelAnimationFrame(raf); clearInterval(interval); };
-  }, []);
+  }, [prefersReduced, isMotionPaused]);
 
   // Состояние 3D tilt для заголовка
   const [tilt, setTilt] = useState({ rx: 0, ry: 0, s: 1 });
@@ -2142,6 +2161,12 @@ export default function PremiumPage() {
       // ignore
     }
   }, []);
+
+  useEffect(() => {
+    if (motionLevel !== "full") {
+      setShowAnimation(false);
+    }
+  }, [motionLevel]);
   useEffect(() => {
     setTitle("Stage Premium");
     document.body.style.overflow = showAnimation ? "hidden" : "auto";
@@ -2277,7 +2302,18 @@ export default function PremiumPage() {
     try {
       const should = sessionStorage.getItem('premium_restore');
       if (should === '1') {
+        const headerOffsetForRestore = (() => {
+          try {
+            const cs = getComputedStyle(document.documentElement);
+            const h = parseFloat(cs.getPropertyValue("--header-h")) || 72;
+            const safe = parseFloat(cs.getPropertyValue("--safe-top")) || 0;
+            return Math.round(h + safe + 10);
+          } catch {
+            return 84;
+          }
+        })();
         const y = parseFloat(sessionStorage.getItem('premium_scroll') || '0');
+        const lastProductId = sessionStorage.getItem('premium_last_product_id');
                 // restore filters snapshot as well
         try {
           const raw = sessionStorage.getItem('premium_filters_snapshot');
@@ -2293,8 +2329,7 @@ export default function PremiumPage() {
         // clear the flag early to avoid loops
         sessionStorage.removeItem('premium_restore');
 
-        const doSmoothScroll = () => {
-          const target = Number.isFinite(y) ? y : 0;
+        const doSmoothScroll = (target: number) => {
           const start = window.scrollY || 0;
           const dist = target - start;
           if (Math.abs(dist) < 2) return; // already there
@@ -2313,20 +2348,42 @@ export default function PremiumPage() {
           requestAnimationFrame(step);
         };
 
+        const runRestore = (attempt = 0) => {
+          if (lastProductId) {
+            const el = document.getElementById(`premium-product-${lastProductId}`);
+            if (el) {
+              const rect = el.getBoundingClientRect();
+              const targetY = Math.max(0, window.scrollY + rect.top - headerOffsetForRestore - 14);
+              doSmoothScroll(targetY);
+              setRestoredPremiumProductId(lastProductId);
+              window.setTimeout(() => {
+                setRestoredPremiumProductId((prev) => (prev === lastProductId ? null : prev));
+              }, 2200);
+              return;
+            }
+            if (attempt < 24) {
+              window.setTimeout(() => runRestore(attempt + 1), 80);
+              return;
+            }
+          }
+          const fallbackY = Number.isFinite(y) ? y : 0;
+          doSmoothScroll(fallbackY);
+        };
+
         // If the intro overlay is shown, wait until it closes, then scroll
         if (showAnimation) {
           const id = setInterval(() => {
             if (!showAnimation) {
               clearInterval(id);
               // next frame to ensure layout settled
-              requestAnimationFrame(doSmoothScroll);
+              requestAnimationFrame(() => runRestore(0));
             }
           }, 50);
           return () => clearInterval(id);
         }
 
         // Otherwise scroll immediately after paint
-        requestAnimationFrame(doSmoothScroll);
+        requestAnimationFrame(() => runRestore(0));
       }
     } catch {}
   }, [showAnimation]);
@@ -2697,10 +2754,14 @@ export default function PremiumPage() {
   }, [headerOffsetPx]);
 
   // --- remember & restore scroll for Premium page when navigating to product and back ---
-  const rememberPremiumScroll = useCallback(() => {
+  const [restoredPremiumProductId, setRestoredPremiumProductId] = useState<string | null>(null);
+  const rememberPremiumScroll = useCallback((productId?: string | number) => {
     try {
       sessionStorage.setItem('premium_scroll', String(window.scrollY || 0));
       sessionStorage.setItem('premium_restore', '1');
+      if (productId !== undefined && productId !== null) {
+        sessionStorage.setItem('premium_last_product_id', String(productId));
+      }
       if (gender) sessionStorage.setItem('premium_gender', gender);
       sessionStorage.setItem('premium_filters_snapshot', JSON.stringify({ subByMain, maxPrice, pickedBrands }));
     } catch {}
@@ -3914,9 +3975,14 @@ export default function PremiumPage() {
                 </div>
 
                 <Link
+                  id={`premium-product-${item.id}`}
                   href={buildProductHref(item.id)}
-                  onClick={rememberPremiumScroll}
-                  className="relative block rounded-2xl overflow-hidden bg-white border border-black/10 hover:border-black/30 shadow-sm hover:shadow-xl transition-all duration-300 min-w-[240px] max-w-[240px]"
+                  onClick={() => rememberPremiumScroll(item.id)}
+                  className={`relative block rounded-2xl overflow-hidden bg-white border hover:border-black/30 shadow-sm hover:shadow-xl transition-all duration-300 min-w-[240px] max-w-[240px] ${
+                    restoredPremiumProductId === String(item.id)
+                      ? "border-[#2563eb]/45 shadow-[0_0_0_8px_rgba(37,99,235,0.18)] animate-pulse"
+                      : "border-black/10"
+                  }`}
                 >
                   {(item as any).premium && (
                     <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
@@ -4069,6 +4135,7 @@ export default function PremiumPage() {
                         rememberPremiumScroll={rememberPremiumScroll}
                         buildProductHref={buildProductHref}
                         getPreviewImages={getPreviewImages}
+                        isRestoreTarget={restoredPremiumProductId === String(it.id)}
                       />
                     </AnimatedGridItem>
                   ))}
@@ -4219,7 +4286,7 @@ export default function PremiumPage() {
                     <p className="text-sm text-gray-600 mb-2">Цена</p>
                     <p className="text-2xl font-extrabold mb-4">{quickItem.price}₽</p>
                     <div className="flex items-center gap-3">
-                      <Link href={buildProductHref(quickItem.id)} onClick={rememberPremiumScroll} className="px-5 py-2.5 rounded-full bg-black text-white font-semibold hover:shadow-md active:scale-[.98] transition">Открыть страницу товара</Link>
+                      <Link href={buildProductHref(quickItem.id)} onClick={() => rememberPremiumScroll(quickItem.id)} className="px-5 py-2.5 rounded-full bg-black text-white font-semibold hover:shadow-md active:scale-[.98] transition">Открыть страницу товара</Link>
                       <button type="button" className="px-5 py-2.5 rounded-full border border-black/10" onClick={() => setQuickItem(null)}>Закрыть</button>
                     </div>
                   </div>

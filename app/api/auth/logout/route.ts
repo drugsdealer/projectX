@@ -3,6 +3,7 @@ import { SESSION_COOKIE } from "../_session";
 import { cookies as nextCookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { SESSION_TOKEN_COOKIE } from "../../_utils/session";
+import { blockIfCsrf, methodNotAllowed } from "@/lib/api-hardening";
 
 export const runtime = "nodejs";
 
@@ -53,7 +54,9 @@ async function doLogout() {
   return res;
 }
 
-export async function POST() {
+export async function POST(req: Request) {
+  const csrfBlocked = blockIfCsrf(req);
+  if (csrfBlocked) return csrfBlocked;
   try {
     const jar = await nextCookies();
     const token = jar.get(SESSION_TOKEN_COOKIE)?.value;
@@ -68,15 +71,5 @@ export async function POST() {
 }
 
 export async function GET() {
-  try {
-    const jar = await nextCookies();
-    const token = jar.get(SESSION_TOKEN_COOKIE)?.value;
-    if (token) {
-      prisma.userSession.update({
-        where: { token },
-        data: { revokedAt: new Date() },
-      }).catch(() => {});
-    }
-  } catch {}
-  return doLogout();
+  return methodNotAllowed(["POST"]);
 }

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getUserIdFromRequest } from "@/lib/session";
 import { sendEmail } from "@/lib/notifications";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
 
 function generateCode() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -12,6 +13,11 @@ function generateCode() {
 
 export async function POST(req: Request) {
   try {
+    const csrfBlocked = blockIfCsrf(req);
+    if (csrfBlocked) return csrfBlocked;
+    const jsonBlocked = requireJsonRequest(req);
+    if (jsonBlocked) return jsonBlocked;
+
     const userId = await getUserIdFromRequest();
     if (!userId) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });

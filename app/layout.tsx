@@ -9,6 +9,7 @@ import { ToastContainer } from '@/components/ui/ToastContainer';
 import { UserProvider } from "@/user/UserContext";
 import ClientLayout from "@/components/ClientLayout";
 import RouteTransitions from "@/components/RouteTransitions";
+import MotionBudgetProvider from "@/components/MotionBudgetProvider";
 
 const nunito = Nunito({ 
   subsets: ['cyrillic'],
@@ -40,10 +41,12 @@ export default function RootLayout({
               <UserProvider>
                 <ToastProvider>
                   <TitleProvider>
-                    <ClientLayout>
-                      <RouteTransitions>{children}</RouteTransitions>
-                    </ClientLayout>
-                    <ToastContainer />
+                    <MotionBudgetProvider>
+                      <ClientLayout>
+                        <RouteTransitions>{children}</RouteTransitions>
+                      </ClientLayout>
+                      <ToastContainer />
+                    </MotionBudgetProvider>
                   </TitleProvider>
                 </ToastProvider>
               </UserProvider>

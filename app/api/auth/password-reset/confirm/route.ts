@@ -4,9 +4,15 @@ export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
 import { getUserIdFromRequest } from "@/lib/session";
 import bcrypt from "bcryptjs";
+import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
 
 export async function POST(req: Request) {
   try {
+    const csrfBlocked = blockIfCsrf(req);
+    if (csrfBlocked) return csrfBlocked;
+    const jsonBlocked = requireJsonRequest(req);
+    if (jsonBlocked) return jsonBlocked;
+
     const userId = await getUserIdFromRequest();
     if (!userId) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });

@@ -1,4 +1,5 @@
 import { NextResponse, NextRequest } from "next/server";
+import { enforceSameOrigin } from "@/lib/security";
 
 // Быстрый путь: читаем id из httpOnly куки без похода к API
 const SESSION_COOKIE = 'session_user_id';
@@ -46,7 +47,23 @@ async function fetchUser(request: NextRequest) {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const isApiPath = pathname.startsWith("/api/");
   const isAdminArea = pathname.startsWith("/admin") || pathname.startsWith("/liza");
+  const isPrivateApiPath =
+    pathname.startsWith("/api/admin") ||
+    pathname.startsWith("/api/user") ||
+    pathname.startsWith("/api/cart") ||
+    pathname.startsWith("/api/order") ||
+    pathname.startsWith("/api/checkout") ||
+    pathname.startsWith("/api/favorites") ||
+    pathname.startsWith("/api/promocodes/save") ||
+    pathname.startsWith("/api/promocodes/owned") ||
+    pathname.startsWith("/api/auth/login") ||
+    pathname.startsWith("/api/auth/register") ||
+    pathname.startsWith("/api/auth/send-email-code") ||
+    pathname.startsWith("/api/auth/password-reset") ||
+    pathname.startsWith("/api/auth/me") ||
+    pathname.startsWith("/api/auth/logout");
   const isPrefetchRequest =
     request.headers.get("purpose") === "prefetch" ||
     request.headers.get("next-router-prefetch") === "1" ||
@@ -61,6 +78,8 @@ export async function middleware(request: NextRequest) {
       accept.includes("text/html")
     );
   const applySecurityHeaders = (res: NextResponse) => {
+    const reqId = request.headers.get("x-request-id") || crypto.randomUUID();
+    res.headers.set("X-Request-Id", reqId);
     // базовые заголовки безопасности
     res.headers.set("X-Frame-Options", "DENY");
     res.headers.set("X-Content-Type-Options", "nosniff");
@@ -68,6 +87,13 @@ export async function middleware(request: NextRequest) {
     res.headers.set("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
     res.headers.set("Cross-Origin-Opener-Policy", "same-origin");
     res.headers.set("Cross-Origin-Resource-Policy", "same-origin");
+    if (isApiPath) {
+      res.headers.set("X-Robots-Tag", "noindex, nofollow");
+      // приватные API нельзя кэшировать в браузере/прокси
+      if (isPrivateApiPath && !res.headers.has("Cache-Control")) {
+        res.headers.set("Cache-Control", "private, no-store, max-age=0");
+      }
+    }
     // HSTS только для https
     if (request.nextUrl.protocol === "https:") {
       res.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
@@ -89,6 +115,21 @@ export async function middleware(request: NextRequest) {
   };
 
   const needUserFor = pathname.startsWith('/user') || pathname === "/verify-email" || isAdminArea;
+
+  // CSRF: для мутаций API с auth cookies принимаем только same-origin/same-site запросы.
+  // Исключения: внешние вебхуки/интеграции, где Origin обычно отсутствует.
+  if (isApiPath && !["GET", "HEAD", "OPTIONS"].includes(request.method.toUpperCase())) {
+    const webhookBypass =
+      pathname === "/api/yookassa" ||
+      pathname === "/api/confirm-payment";
+    const cookieHeader = request.headers.get("cookie") || "";
+    const hasAuthCookie =
+      /(?:^|;\s*)(session_user_id|session_token|auth_session|sid|admin_2fa_ok)=/.test(cookieHeader);
+    if (!webhookBypass && hasAuthCookie) {
+      const blocked = enforceSameOrigin(request);
+      if (blocked) return applySecurityHeaders(blocked);
+    }
+  }
 
   // В middleware полагаемся только на httpOnly cookie, чтобы не дергать API и не ловить fetch failed
   const hasSessionToken = Boolean(request.cookies.get(SESSION_TOKEN_COOKIE)?.value);
@@ -179,6 +220,7 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|api).*)",
+    "/api/:path*",
     "/user/:path*",
     "/register",
     "/login",

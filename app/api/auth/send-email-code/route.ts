@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getClientIp, rateLimit } from '@/lib/rate-limit';
 import { Prisma } from '@prisma/client';
+import { blockIfCsrf, requireJsonRequest } from '@/lib/api-hardening';
 
 export const runtime = 'nodejs';
 
@@ -12,6 +13,11 @@ function generateCode(): string {
 
 export async function POST(req: Request) {
   try {
+    const csrfBlocked = blockIfCsrf(req);
+    if (csrfBlocked) return csrfBlocked;
+    const jsonBlocked = requireJsonRequest(req);
+    if (jsonBlocked) return jsonBlocked;
+
     const { email } = await req.json();
     if (!email) {
       return NextResponse.json({ success: false, message: 'Email обязателен' }, { status: 400 });
@@ -45,10 +51,8 @@ export async function POST(req: Request) {
       select: { id: true },
     });
     if (!user) {
-      return NextResponse.json(
-        { success: false, message: 'Пользователь не найден' },
-        { status: 404 }
-      );
+      // Не раскрываем существование email (anti-enumeration)
+      return NextResponse.json({ success: true });
     }
 
     // гарантируем, что у пользователя есть корзина

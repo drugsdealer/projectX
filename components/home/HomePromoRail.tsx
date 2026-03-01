@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMotionBudget } from '@/components/MotionBudgetProvider';
 
 type PromoCodeItem = {
   code: string;
@@ -44,7 +45,10 @@ export default function HomePromoRail({
   telegramUrl = 'https://t.me/stagestore',
   telegramText = 'В Telegram ещё больше промокодов и быстрые анонсы акций.',
 }: Props) {
+  const { reduceMotion, motionLevel, isMotionPaused } = useMotionBudget();
+  const balancedMotion = motionLevel === "balanced";
   const [fallbackPromos, setFallbackPromos] = useState<PromoCodeItem[]>([]);
+  const [showAmbientPlanes, setShowAmbientPlanes] = useState(false);
   const [ownedCodes, setOwnedCodes] = useState<Set<string>>(() => new Set());
   const [claimingCode, setClaimingCode] = useState<string | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
@@ -135,6 +139,21 @@ export default function HomePromoRail({
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const compute = () => {
+      if (reduceMotion || balancedMotion) {
+        setShowAmbientPlanes(false);
+        return;
+      }
+      const small = window.matchMedia("(max-width: 1024px)").matches;
+      setShowAmbientPlanes(!small);
+    };
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
+  }, [reduceMotion, balancedMotion]);
+
   const resolvedPromos = useMemo(
     () => (incomingPromos.length > 0 ? incomingPromos : fallbackPromos),
     [fallbackPromos, incomingPromos]
@@ -216,48 +235,52 @@ export default function HomePromoRail({
     <section className="relative overflow-hidden rounded-[30px] border border-black/15 bg-gradient-to-br from-[#f6f8fb] via-[#fbfcff] to-[#f3f6fb] p-4 sm:p-5">
       <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_82%,rgba(37,99,235,0.12),transparent_44%),radial-gradient(circle_at_82%_18%,rgba(29,78,216,0.10),transparent_42%)]" />
-        <div className="ambient-plane plane-a">
-          <svg
-            viewBox="0 0 24 24"
-            className="h-6 w-6 text-[#1d4ed8]"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.9"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M3 11.5 21 3 13 21 10.2 13.8 3 11.5Z" />
-            <path d="M10.2 13.8 21 3" />
-          </svg>
-        </div>
-        <div className="ambient-plane plane-b">
-          <svg
-            viewBox="0 0 24 24"
-            className="h-5 w-5 text-[#2563eb]"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.9"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M3 11.5 21 3 13 21 10.2 13.8 3 11.5Z" />
-            <path d="M10.2 13.8 21 3" />
-          </svg>
-        </div>
-        <div className="ambient-plane plane-c">
-          <svg
-            viewBox="0 0 24 24"
-            className="h-4 w-4 text-[#3b82f6]"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.9"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M3 11.5 21 3 13 21 10.2 13.8 3 11.5Z" />
-            <path d="M10.2 13.8 21 3" />
-          </svg>
-        </div>
+        {showAmbientPlanes ? (
+          <>
+            <div className="ambient-plane plane-a">
+              <svg
+                viewBox="0 0 24 24"
+                className="h-6 w-6 text-[#1d4ed8]"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 11.5 21 3 13 21 10.2 13.8 3 11.5Z" />
+                <path d="M10.2 13.8 21 3" />
+              </svg>
+            </div>
+            <div className="ambient-plane plane-b">
+              <svg
+                viewBox="0 0 24 24"
+                className="h-5 w-5 text-[#2563eb]"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 11.5 21 3 13 21 10.2 13.8 3 11.5Z" />
+                <path d="M10.2 13.8 21 3" />
+              </svg>
+            </div>
+            <div className="ambient-plane plane-c">
+              <svg
+                viewBox="0 0 24 24"
+                className="h-4 w-4 text-[#3b82f6]"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 11.5 21 3 13 21 10.2 13.8 3 11.5Z" />
+                <path d="M10.2 13.8 21 3" />
+              </svg>
+            </div>
+          </>
+        ) : null}
       </div>
 
       <div className="relative z-10">
@@ -330,7 +353,7 @@ export default function HomePromoRail({
             href={telegramUrl}
             target="_blank"
             rel="noreferrer"
-            className="relative w-[220px] shrink-0 snap-start rounded-2xl border border-[#2563eb]/25 bg-gradient-to-br from-[#eff6ff] to-[#dbeafe] p-3 shadow-[0_10px_22px_rgba(0,0,0,0.06)] transition hover:-translate-y-0.5"
+            className={`relative w-[220px] shrink-0 snap-start rounded-2xl border border-[#2563eb]/25 bg-gradient-to-br from-[#eff6ff] to-[#dbeafe] p-3 shadow-[0_10px_22px_rgba(0,0,0,0.06)] transition ${reduceMotion || balancedMotion ? "" : "hover:-translate-y-0.5"}`}
           >
             <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#1d4ed8]">Telegram</div>
             <div className="mt-2 text-sm font-extrabold leading-tight text-[#1e3a8a]">Больше промокодов в канале</div>
@@ -345,12 +368,12 @@ export default function HomePromoRail({
       {flyingTicket ? (
         <div className="pointer-events-none fixed left-0 top-0 z-[80]">
           <div
-            className="rounded-xl border border-black/15 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-black/80 shadow-lg transition-transform duration-700"
+            className={`rounded-xl border border-black/15 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-black/80 shadow-lg transition-transform ${reduceMotion ? "duration-200" : balancedMotion ? "duration-500" : "duration-700"}`}
             style={{
               transform: isFlightActive
                 ? `translate(${flyingTicket.endX - 56}px, ${flyingTicket.endY - 16}px) scale(0.5) rotate(-12deg)`
                 : `translate(${flyingTicket.startX - 56}px, ${flyingTicket.startY - 16}px) scale(1) rotate(0deg)`,
-              transitionTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+              transitionTimingFunction: reduceMotion || balancedMotion ? "ease-out" : "cubic-bezier(0.2, 0.8, 0.2, 1)",
             }}
           >
             {flyingTicket.code}
@@ -369,23 +392,27 @@ export default function HomePromoRail({
         }
         .ambient-plane svg {
           animation: plane-soft-tilt 4.8s ease-in-out infinite;
+          animation-play-state: ${isMotionPaused ? "paused" : "running"};
         }
         .plane-a {
           left: -8%;
           top: 74%;
           animation: plane-fly-a 18s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+          animation-play-state: ${isMotionPaused ? "paused" : "running"};
         }
         .plane-b {
           left: -10%;
           top: 32%;
           animation: plane-fly-b 20s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
           animation-delay: 1.8s;
+          animation-play-state: ${isMotionPaused ? "paused" : "running"};
         }
         .plane-c {
           left: -12%;
           top: 58%;
           animation: plane-fly-c 22s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
           animation-delay: 4.2s;
+          animation-play-state: ${isMotionPaused ? "paused" : "running"};
         }
         @keyframes plane-soft-tilt {
           0%,

@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/admin";
-import { buildEventsServiceUrl, getEventsServiceApiKey } from "@/lib/events-upstream";
+import {
+  buildEventsServiceUrl,
+  fetchEventsServiceJson,
+  getEventsServiceApiKey,
+  parseAnalyticsLimit,
+  parseIsoRangeDate,
+} from "@/lib/events-upstream";
 
 export const runtime = "nodejs";
 
@@ -17,9 +23,14 @@ export async function GET(req: Request) {
   }
 
   const urlIn = new URL(req.url);
-  const from = urlIn.searchParams.get("from");
-  const to = urlIn.searchParams.get("to");
-  const limit = urlIn.searchParams.get("limit") || "20";
+  const fromRaw = urlIn.searchParams.get("from");
+  const toRaw = urlIn.searchParams.get("to");
+  const from = parseIsoRangeDate(fromRaw);
+  const to = parseIsoRangeDate(toRaw);
+  const limit = parseAnalyticsLimit(urlIn.searchParams.get("limit"), 20);
+  if ((fromRaw && !from) || (toRaw && !to)) {
+    return NextResponse.json({ success: false, message: "Invalid date range" }, { status: 400 });
+  }
 
   const upstreamUrl = buildEventsServiceUrl("/api/v1/analytics/top-brands", { from, to, limit });
   if (!upstreamUrl) {
@@ -30,27 +41,27 @@ export async function GET(req: Request) {
   }
 
   try {
-    const upstream = await fetch(upstreamUrl.toString(), {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Events-Api-Key": apiKey,
-      },
-      cache: "no-store",
+    const upstream = await fetchEventsServiceJson<any>(upstreamUrl, {
+      apiKey,
+      requestId: req.headers.get("x-request-id"),
+      timeoutMs: 6000,
+      retries: 1,
     });
-
-    const data = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {
       return NextResponse.json(
         {
           success: false,
-          message: data?.message || "Failed to fetch top brands analytics",
+          message: upstream.message || "Failed to fetch top brands analytics",
           upstreamStatus: upstream.status,
         },
-        { status: upstream.status || 502 }
+        { status: upstream.status || 502, headers: { "Cache-Control": "private, no-store, max-age=0" } }
       );
     }
-    return NextResponse.json({ success: true, items: data });
+
+    return NextResponse.json(
+      { success: true, items: upstream.data },
+      { headers: { "Cache-Control": "private, no-store, max-age=0" } }
+    );
   } catch (error) {
     console.error("[admin.events.top-brands] upstream error", error);
     return NextResponse.json(

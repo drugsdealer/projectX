@@ -6,7 +6,14 @@ import { cookies } from "next/headers";
 import { sendOrderNotificationToTelegram } from "@/lib/telegram";
 import { redeemPromoForOrder } from "@/lib/promos";
 import { emitServerEvents, type ServerTrackEventPayload } from "@/lib/events-server";
-
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import {
+  blockIfCsrf,
+  buildPrivateHeaders,
+  privateJson,
+  requireJsonRequest,
+  tooManyRequests,
+} from "@/lib/api-hardening";
 
 // Универсально получаем enum значения из разных версий Prisma Client
 const PENDING_ENUM: any = (Prisma as any)?.OrderStatus?.PENDING
@@ -18,6 +25,21 @@ const SUCCEEDED_ENUM: any = (Prisma as any)?.OrderStatus?.SUCCEEDED
 
 export async function POST(req: Request) {
   try {
+    const csrfBlocked = blockIfCsrf(req);
+    if (csrfBlocked) return csrfBlocked;
+
+    const ip = getClientIp(req);
+    const ipLimit = await rateLimit(`order:complete:ip:${ip}`, 30, 60_000);
+    if (!ipLimit.ok) {
+      return tooManyRequests(ipLimit.retryAfter);
+    }
+
+    const contentType = req.headers.get("content-type") || "";
+    if (contentType) {
+      const jsonBlocked = requireJsonRequest(req);
+      if (jsonBlocked) return jsonBlocked;
+    }
+
     // 1) Собираем источники orderId / token
     let body: any = {};
     try { body = await req.json(); } catch {}
@@ -32,7 +54,11 @@ export async function POST(req: Request) {
     // 2) Нормализуем orderId
     const parsedId = orderIdRaw !== undefined && orderIdRaw !== null ? Number(orderIdRaw) : NaN;
     const hasId = Number.isFinite(parsedId) && parsedId > 0;
-    const token = typeof tokenRaw === "string" && tokenRaw.trim() !== "" ? tokenRaw.trim() : null;
+    const tokenCandidate = typeof tokenRaw === "string" && tokenRaw.trim() !== "" ? tokenRaw.trim() : null;
+    const token =
+      tokenCandidate && tokenCandidate.length <= 128 && /^[a-zA-Z0-9._:-]+$/.test(tokenCandidate)
+        ? tokenCandidate
+        : null;
 
     // 3) Находим целевой заказ: по id, по токену, либо последнюю PENDING запись пользователя
     const selectBase = { id: true, token: true, status: true, userId: true } as const;
@@ -49,21 +75,21 @@ export async function POST(req: Request) {
     }
 
     if (!order) {
-      return NextResponse.json({ success: false, message: "Order not found" }, { status: 404 });
+      return privateJson({ success: false, message: "Order not found" }, { status: 404 });
     }
 
     // Дополнительная защита: если заказ привязан к другому пользователю — запрещаем завершение
     if (order.userId && userId && order.userId !== userId) {
       return NextResponse.json(
         { success: false, message: "Forbidden" },
-        { status: 403 },
+        { status: 403, headers: buildPrivateHeaders() },
       );
     }
 
     const alreadySucceeded = String(order.status) === String(SUCCEEDED_ENUM);
     // Если заказ уже оплачен — считаем ок и возвращаем id
     if (alreadySucceeded) {
-      return NextResponse.json({ success: true, orderId: order.id });
+      return privateJson({ success: true, orderId: order.id });
     }
 
     // Человеко-читаемый номер заказа, детерминированный по id (исключает гонки и пересечения)
@@ -118,11 +144,13 @@ export async function POST(req: Request) {
     }
 
     // 6) Выставляем гостевой токен, чтобы история заказов отображалась
-    const res = NextResponse.json({
-      success: true,
-      orderId: updated.id,
-      publicNumber: updated.publicNumber,
-    });
+    const res = privateJson(
+      {
+        success: true,
+        orderId: updated.id,
+        publicNumber: updated.publicNumber,
+      },
+    );
     if (updated.token) {
       res.cookies.set("orderToken", updated.token, {
         httpOnly: true,
@@ -226,6 +254,6 @@ export async function POST(req: Request) {
     return res;
   } catch (e) {
     console.error("[order.complete] fail:", e);
-    return NextResponse.json({ success: false, message: "Confirm failed" }, { status: 400 });
+    return privateJson({ success: false, message: "Confirm failed" }, { status: 400 });
   }
 }

@@ -4,6 +4,13 @@ import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
 import { getUserIdFromRequest } from '@/lib/session';
 import { validatePromo } from '@/lib/promos';
+import { getClientIp, rateLimit } from '@/lib/rate-limit';
+import {
+  blockIfCsrf,
+  privateJson,
+  requireJsonRequest,
+  tooManyRequests,
+} from '@/lib/api-hardening';
 
 const toNum = (v: any): number | null => {
   const n = Number(v);
@@ -38,6 +45,18 @@ const normalizeSize = (v: any): string | null => {
 
 export async function POST(req: Request) {
   try {
+    const csrfBlocked = blockIfCsrf(req);
+    if (csrfBlocked) return csrfBlocked;
+
+    const ip = getClientIp(req);
+    const ipLimit = await rateLimit(`checkout:ip:${ip}`, 25, 60_000);
+    if (!ipLimit.ok) {
+      return tooManyRequests(ipLimit.retryAfter, 'Слишком много запросов. Попробуйте позже.');
+    }
+
+    const jsonBlocked = requireJsonRequest(req);
+    if (jsonBlocked) return jsonBlocked;
+
     const body = await req.json().catch(() => ({} as any));
 
     const rawItems: any[] = Array.isArray(body?.items) ? body.items : [];
@@ -61,7 +80,7 @@ export async function POST(req: Request) {
     const comment: string = sanitizeString(body?.comment, 1000);
 
     if (!rawItems.length) {
-      return NextResponse.json(
+      return privateJson(
         { ok: false, success: false, message: 'Корзина пуста' },
         { status: 400 },
       );

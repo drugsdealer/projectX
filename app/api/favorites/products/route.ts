@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserIdFromRequest } from '@/lib/session';
-
+import { getClientIp, rateLimit } from '@/lib/rate-limit';
+import {
+  buildPrivateHeaders,
+  blockIfCsrf,
+  privateJson,
+  requireJsonRequest,
+  tooManyRequests,
+} from '@/lib/api-hardening';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -10,10 +17,7 @@ export async function GET(req: NextRequest) {
   const uid = await getUserIdFromRequest();
 
   if (!uid) {
-    return NextResponse.json({ items: [] }, {
-      status: 200,
-      headers: { 'Access-Control-Allow-Origin': '*' },
-    });
+    return privateJson({ items: [] }, { status: 200 });
   }
 
   const rows = await prisma.favoriteProduct.findMany({
@@ -45,45 +49,47 @@ export async function GET(req: NextRequest) {
       addedAt: r.createdAt,
     }));
 
-  return NextResponse.json({ items }, {
-    status: 200,
-    headers: { 'Access-Control-Allow-Origin': '*' },
-  });
+  return privateJson({ items }, { status: 200 });
 }
 
 // --- POST: add/remove favorite product ---
 export async function POST(req: NextRequest) {
-  let body: any = {};
+  const csrfBlocked = blockIfCsrf(req);
+  if (csrfBlocked) return csrfBlocked;
+
+  const ip = getClientIp(req);
+  const limitByIp = await rateLimit(`fav:products:ip:${ip}`, 50, 60_000);
+  if (!limitByIp.ok) {
+    return tooManyRequests(limitByIp.retryAfter, 'rate_limited');
+  }
+
+  const jsonBlocked = requireJsonRequest(req);
+  if (jsonBlocked) return jsonBlocked;
+
+  let body: any = null;
   try {
     body = await req.json();
   } catch {
-    // ignore parse errors
+    return privateJson({ ok: false, error: 'invalid_json' }, { status: 400 });
   }
 
-  const productId = body?.productId ? Number(body.productId) : NaN;
-  const action: 'add' | 'remove' = body?.action === 'remove' ? 'remove' : 'add';
+  const rawProductId = body?.productId;
+  const productId = Number(rawProductId);
+  const action = body?.action;
+  const actionAllowed = action === 'add' || action === 'remove';
 
-  if (!Number.isInteger(productId)) {
-    return NextResponse.json({ ok: false, error: 'bad_request' }, {
-      status: 400,
-      headers: { 'Access-Control-Allow-Origin': '*' },
-    });
+  if (!Number.isInteger(productId) || productId <= 0 || productId > 2_147_483_647 || !actionAllowed) {
+    return privateJson({ ok: false, error: 'bad_request' }, { status: 400 });
   }
 
   const uid = await getUserIdFromRequest();
   if (!uid) {
-    return NextResponse.json({ ok: false, error: 'unauthorized' }, {
-      status: 401,
-      headers: { 'Access-Control-Allow-Origin': '*' },
-    });
+    return privateJson({ ok: false, error: 'unauthorized' }, { status: 401 });
   }
 
   const product = await prisma.product.findFirst({ where: { id: productId, deletedAt: null } });
   if (!product) {
-    return NextResponse.json({ ok: false, error: 'product_not_found' }, {
-      status: 404,
-      headers: { 'Access-Control-Allow-Origin': '*' },
-    });
+    return privateJson({ ok: false, error: 'product_not_found' }, { status: 404 });
   }
 
   if (action === 'add') {
@@ -98,20 +104,12 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({ ok: true }, {
-    status: 200,
-    headers: { 'Access-Control-Allow-Origin': '*' },
-  });
+  return privateJson({ ok: true }, { status: 200 });
 }
 
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Max-Age': '86400',
-    },
+    headers: buildPrivateHeaders({ Allow: 'GET, POST, OPTIONS' }),
   });
 }
