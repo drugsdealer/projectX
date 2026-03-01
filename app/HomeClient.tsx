@@ -1459,8 +1459,8 @@ export default function Home() {
   const swiperRef = useRef<any>(null);
   const heroTapRef = useRef<{ x: number; y: number; active: boolean }>({ x: 0, y: 0, active: false });
   const [hoveredSide, setHoveredSide] = useState<"left" | "right" | null>(null);
-  const [parallaxY, setParallaxY] = useState(0);
   const [heroFade, setHeroFade] = useState(0); // 0..1 based on scrollY
+  const heroFadeRef = useRef(0);
   const [isHeroInView, setIsHeroInView] = useState(true);
   const { user } = useUser();
   const [isScrollingProgrammatically, setIsScrollingProgrammatically] = useState(false);
@@ -1611,13 +1611,17 @@ export default function Home() {
     const compute = () => {
       if (!isHeroInView) return;
       const y = window.scrollY || 0;
-      setParallaxY(reduceMotion ? y * 0.04 : balancedMotion ? y * 0.07 : y * 0.1);
 
       // Stronger hero disappearance: 0..1 within first ~320px of scroll.
       const raw = Math.min(1, Math.max(0, y / 320));
       // Smoothstep easing for nicer feel
       const t = raw * raw * (3 - 2 * raw);
-      setHeroFade(reduceMotion ? t * 0.7 : balancedMotion ? t * 0.85 : t);
+      const nextFade = reduceMotion ? t * 0.7 : balancedMotion ? t * 0.85 : t;
+      // Avoid full Home rerender on every scroll tick.
+      if (Math.abs(nextFade - heroFadeRef.current) > 0.018) {
+        heroFadeRef.current = nextFade;
+        setHeroFade(nextFade);
+      }
     };
 
     const onScroll = () => {
@@ -1815,7 +1819,8 @@ useEffect(() => {
         className="hero-bleed-top relative z-0 w-screen overflow-hidden h-[380px] md:h-[520px] lg:h-[600px] bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#0b1224] transform-gpu will-change-transform"
         style={{
           opacity: 1 - heroFade * 0.92,
-          filter: reduceMotion ? "none" : balancedMotion ? `blur(${heroFade * 4}px)` : `blur(${heroFade * 10}px)`,
+          // Blur on large hero is expensive on weaker devices; keep it only in full motion mode.
+          filter: reduceMotion || balancedMotion ? "none" : `blur(${heroFade * 4}px)`,
           transform: reduceMotion
             ? `translateY(${-heroFade * 16}px) scale(${1 - heroFade * 0.02})`
             : balancedMotion

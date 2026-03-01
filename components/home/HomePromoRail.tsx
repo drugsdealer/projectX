@@ -142,17 +142,18 @@ export default function HomePromoRail({
   useEffect(() => {
     if (typeof window === "undefined") return;
     const compute = () => {
-      if (reduceMotion || balancedMotion) {
+      if (reduceMotion) {
         setShowAmbientPlanes(false);
         return;
       }
       const small = window.matchMedia("(max-width: 1024px)").matches;
+      // In balanced mode keep ambient planes on desktop, but fewer CSS effects are already reduced globally.
       setShowAmbientPlanes(!small);
     };
     compute();
     window.addEventListener("resize", compute);
     return () => window.removeEventListener("resize", compute);
-  }, [reduceMotion, balancedMotion]);
+  }, [reduceMotion]);
 
   const resolvedPromos = useMemo(
     () => (incomingPromos.length > 0 ? incomingPromos : fallbackPromos),
