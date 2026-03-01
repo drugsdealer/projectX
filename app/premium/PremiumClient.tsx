@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
-import { motion, AnimatePresence, useReducedMotion, Variants, useMotionValue, animate } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion, Variants } from "framer-motion";
 import { useTitle } from "@/context/TitleContext"; // Импортируем контекст
 import { useMotionBudget } from "@/components/MotionBudgetProvider";
 import Link from "next/link";
@@ -42,6 +42,29 @@ const CARD_SWIPE_VARIANTS = {
   }),
 };
 
+const CARD_SWIPE_VARIANTS_REDUCED = {
+  enter: {
+    x: 0,
+    clipPath: "inset(0 0 0 0)",
+    opacity: 0,
+    scale: 1,
+    zIndex: 2,
+  },
+  center: {
+    x: 0,
+    clipPath: "inset(0 0 0 0)",
+    opacity: 1,
+    scale: 1,
+    zIndex: 2,
+  },
+  exit: {
+    x: 0,
+    opacity: 0,
+    scale: 1,
+    zIndex: 1,
+  },
+};
+
 const getPreviewImages = (item: any): string[] => {
   if (!item) return [];
   const imgs = Array.isArray(item?.images) ? item.images.filter(Boolean) : [];
@@ -49,6 +72,14 @@ const getPreviewImages = (item: any): string[] => {
   if (item?.imageUrl) return [item.imageUrl];
   if (item?.image) return [item.image];
   return [];
+};
+
+const getDisplayBadge = (item: any): string => {
+  const raw = String(item?.badge || "").trim();
+  if (!raw) return "";
+  const upper = raw.toUpperCase();
+  if (upper === "PREMIUM" || upper === "EXCLUSIVE") return "";
+  return raw;
 };
 
 // Персистим последний кадр превью по ключу набора изображений,
@@ -90,10 +121,13 @@ const SwipeablePreview = React.memo(function SwipeablePreviewComponent({
   className = "",
   cacheKey,
 }: SwipeablePreviewProps) {
-  const reduceMotion = useReducedMotion();
+  const { motionLevel } = useMotionBudget();
+  const reduceMotion = motionLevel === "reduced";
+  const balancedMotion = motionLevel === "balanced";
   const [isTouch, setIsTouch] = React.useState(false);
+  const [touchActionMode, setTouchActionMode] = React.useState<"pan-y" | "none">("pan-y");
+  const [brokenSrcs, setBrokenSrcs] = React.useState<Set<string>>(() => new Set());
 
-  // Делаем ключ более стабильным: берём переданный cacheKey или комбинацию alt+картинок
   const imagesKey = React.useMemo(
     () => cacheKey ?? `${alt || "item"}::${(images || []).join("|")}`,
     [cacheKey, alt, images]
@@ -123,156 +157,55 @@ const SwipeablePreview = React.memo(function SwipeablePreviewComponent({
     };
   }, []);
 
-  const [page, setPage] = React.useState(() => loadSavedIndex(imagesKey));
-  const count = images?.length ?? 0;
-  const index = count > 0 ? wrapIndex(0, count, page) : 0;
-  const [swipeDir, setSwipeDir] = React.useState<'left' | 'right'>('left');
+  const [activeIdx, setActiveIdx] = React.useState(() => loadSavedIndex(imagesKey));
+  const activeIdxRef = React.useRef(activeIdx);
+  const [swipeDir, setSwipeDir] = React.useState<"left" | "right">("left");
+  const swipeBlockTsRef = React.useRef(0);
 
-  // Сохраняем текущий кадр для набора картинок
+  const swipeStateRef = React.useRef<{
+    startX: number;
+    startY: number;
+    active: boolean;
+    lastStepTs: number;
+    pointerId: number | null;
+    intent: "h" | "v" | null;
+  }>({ startX: 0, startY: 0, active: false, lastStepTs: 0, pointerId: null, intent: null });
+
   React.useEffect(() => {
-    saveIndex(imagesKey, index);
-  }, [imagesKey, index]);
+    activeIdxRef.current = activeIdx;
+  }, [activeIdx]);
 
-  // --- Simplified swipe logic with RAF throttling ---
-  const x = useMotionValue(0);
-  const resetAnimRef = React.useRef<ReturnType<typeof animate> | null>(null);
-  const touchStartRef = React.useRef<{ x: number; y: number } | null>(null);
-  const dirRef = React.useRef(0);
-  const blockClickRef = React.useRef(false);
-  const hasMovedRef = React.useRef(false);
-  const isHorizontalRef = React.useRef(false);
-  const lastTouchRef = React.useRef<{ x: number; y: number } | null>(null);
-  const rafRef = React.useRef<number | null>(null);
-
-  const paginate = (newDirection: number) => {
-    if (count <= 1) return;
-    dirRef.current = newDirection;
-    setSwipeDir(newDirection > 0 ? 'left' : 'right');
-    setPage((p) => {
-      const next = wrapIndex(0, count, p + newDirection);
-      saveIndex(imagesKey, next);
+  React.useEffect(() => {
+    setActiveIdx((prev) => {
+      const max = Math.max(0, (images?.length || 1) - 1);
+      const next = Math.min(Math.max(prev, 0), max);
+      activeIdxRef.current = next;
       return next;
     });
-  };
+  }, [images]);
 
-  const stopResetAnim = React.useCallback(() => {
-    if (resetAnimRef.current) {
-      try {
-        resetAnimRef.current.stop();
-      } catch {}
-      resetAnimRef.current = null;
-    }
-  }, []);
-
-  const resetDrag = () => {
-    stopResetAnim();
-    if (reduceMotion) {
-      x.set(0);
-      return;
-    }
-    resetAnimRef.current = animate(x, 0, { type: "spring", stiffness: 300, damping: 30 });
-  };
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    const t = e.touches?.[0];
-    if (!t || count <= 1) return;
-    
-    stopResetAnim();
-    x.set(0);
-    
-    // Очищаем предыдущий RAF
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    
-    touchStartRef.current = { x: t.clientX, y: t.clientY };
-    lastTouchRef.current = { x: t.clientX, y: t.clientY };
-    hasMovedRef.current = false;
-    isHorizontalRef.current = false;
-    blockClickRef.current = false;
-    
-    // Сигнализируем что начался свайп
-    document.dispatchEvent(new CustomEvent("swipe:start"));
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    const t = e.touches?.[0];
-    const start = touchStartRef.current;
-    if (!t || !start || count <= 1) return;
-
-    // Сохраняем текущую позицию для обработки в RAF
-    lastTouchRef.current = { x: t.clientX, y: t.clientY };
-
-    // Отменяем предыдущий RAF
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-
-    // Обрабатываем в следующем кадре
-    rafRef.current = requestAnimationFrame(() => {
-      if (!lastTouchRef.current || !start) return;
-
-      const dx = lastTouchRef.current.x - start.x;
-      const dy = Math.abs(lastTouchRef.current.y - start.y);
-
-      // Если это явно вертикальный скролл — выходим
-      if (dy > Math.abs(dx) + 10 && dy > 15) {
-        isHorizontalRef.current = false;
-        return;
-      }
-
-      // Если движение есть и оно горизонтальное
-      if (Math.abs(dx) > 5) {
-        hasMovedRef.current = true;
-        isHorizontalRef.current = true;
-        blockClickRef.current = true;
-        e.preventDefault?.();
-        x.set(Math.max(-120, Math.min(120, dx)));
-      }
-    });
-  };
-
-  const onTouchEnd = () => {
-    const start = touchStartRef.current;
-    
-    // Если это был вертикальный скролл или вообще не было движения - просто сбрасываем
-    if (!start || count <= 1 || !isHorizontalRef.current) {
-      resetDrag();
-      touchStartRef.current = null;
-      // Сигнализируем конец свайпа
-      document.dispatchEvent(new CustomEvent("swipe:end"));
-      return;
-    }
-
-    const current = x.get();
-    const threshold = 30;
-
-    // Проверяем был ли это реальный горизонтальный свайп
-    if (Math.abs(current) > 5) {
-      if (current <= -threshold) {
-        dirRef.current = 1;
-        paginate(1);
-      } else if (current >= threshold) {
-        dirRef.current = -1;
-        paginate(-1);
-      } else {
-        resetDrag();
-      }
-    } else {
-      // Если движение было мало - просто возвращаемся
-      resetDrag();
-    }
-    
-    touchStartRef.current = null;
-    // Сигнализируем конец свайпа
-    document.dispatchEvent(new CustomEvent("swipe:end"));
-  };
-
-  // Cleanup RAF при unmount
   React.useEffect(() => {
-    return () => {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-    };
-  }, []);
+    saveIndex(imagesKey, activeIdx);
+  }, [imagesKey, activeIdx]);
+
+  const prefetchAround = React.useCallback(
+    (idx: number) => {
+      try {
+        if (typeof window === "undefined") return;
+        if (!Array.isArray(images) || images.length <= 1) return;
+        if (reduceMotion) return;
+        const nextSrc = images[Math.min(idx + 1, images.length - 1)];
+        const prevSrc = images[Math.max(idx - 1, 0)];
+        const pool = balancedMotion ? [nextSrc] : [nextSrc, prevSrc];
+        pool.forEach((src) => {
+          if (!src) return;
+          const img = new window.Image();
+          img.src = src;
+        });
+      } catch {}
+    },
+    [balancedMotion, images, reduceMotion]
+  );
 
   if (!images?.length) {
     return (
@@ -282,113 +215,180 @@ const SwipeablePreview = React.memo(function SwipeablePreviewComponent({
     );
   }
 
-  // Desktop: hover swipe preview like on the main page
-  if (!isTouch) {
-    return (
-      <div
-        className={`relative overflow-hidden rounded-xl bg-white ${className}`}
-        style={{ touchAction: "pan-y pinch-zoom" }}
-        onMouseMove={(e) => {
-          if (!images?.length || images.length <= 1) return;
-          const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-          const xPos = e.clientX - rect.left;
-          const ratio = rect.width > 0 ? xPos / rect.width : 0;
-          let idx = Math.floor(ratio * images.length);
-          if (idx < 0) idx = 0;
-          if (idx >= images.length) idx = images.length - 1;
-          if (idx === index) return;
-          setSwipeDir(idx > index ? 'left' : 'right');
-          setPage(idx);
-        }}
-        onMouseLeave={() => {
-          if (!images?.length || images.length <= 1) return;
-          if (index === 0) return;
-          setSwipeDir('right');
-          setPage(0);
-        }}
-      >
-        <AnimatePresence initial={false} mode="sync" custom={swipeDir}>
-          <motion.img
-            key={`${images[index]}-${index}`}
-            custom={swipeDir}
-            variants={CARD_SWIPE_VARIANTS}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{
-              duration: 0.32,
-              ease: [0.22, 1, 0.36, 1],
-              opacity: { duration: 0.16, ease: "linear" },
-              scale: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
-            }}
-            src={images[index]}
-            alt={alt}
-            className="absolute inset-0 w-full h-full object-contain"
-          />
-        </AnimatePresence>
-
-        {count > 1 && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex gap-1.5">
-            {images.map((_, i) => (
-              <motion.span
-                key={i}
-                className={`h-1.5 rounded-full ${
-                  i === index ? "bg-black/80" : "bg-black/25"
-                }`}
-                animate={{ width: i === index ? 12 : 6 }}
-                transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
+  const activeSrc = images?.[activeIdx] || images?.[0] || "/img/placeholder.png";
+  const displaySrc = brokenSrcs.has(activeSrc) ? "/img/placeholder.png" : activeSrc;
 
   return (
     <div
       className={`relative overflow-hidden rounded-xl bg-white ${className}`}
-      style={{
-        touchAction: "pan-y pinch-zoom",
+      style={{ touchAction: isTouch ? touchActionMode : undefined, WebkitUserSelect: "none", userSelect: "none" }}
+      onMouseMove={(e) => {
+        if (isTouch) return;
+        if (!images?.length || images.length <= 1) return;
+        const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const ratio = rect.width > 0 ? x / rect.width : 0;
+        let idx = Math.floor(ratio * images.length);
+        if (idx < 0) idx = 0;
+        if (idx >= images.length) idx = images.length - 1;
+        if (idx === activeIdx) return;
+        setSwipeDir(idx > activeIdx ? "left" : "right");
+        setActiveIdx(idx);
       }}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-      onTouchCancel={onTouchEnd}
+      onMouseLeave={() => {
+        if (isTouch) return;
+        if (!images?.length || images.length <= 1) return;
+        if (activeIdx === 0) return;
+        setSwipeDir("right");
+        setActiveIdx(0);
+      }}
+      onPointerDown={(e) => {
+        if (!isTouch) return;
+        if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
+        if (!images?.length || images.length <= 1) return;
+        setTouchActionMode("pan-y");
+        try {
+          (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+        } catch {}
+
+        swipeStateRef.current = {
+          startX: e.clientX,
+          startY: e.clientY,
+          active: true,
+          lastStepTs: 0,
+          pointerId: e.pointerId,
+          intent: null,
+        };
+        prefetchAround(activeIdx);
+      }}
+      onPointerMove={(e) => {
+        if (!isTouch) return;
+        const st = swipeStateRef.current;
+        if (!st.active) return;
+        if (st.pointerId !== null && e.pointerId !== st.pointerId) return;
+        if (!images?.length || images.length <= 1) return;
+
+        const dx = e.clientX - st.startX;
+        const dy = e.clientY - st.startY;
+
+        if (st.intent === null) {
+          const SLOP = 10;
+          if (Math.abs(dx) < SLOP && Math.abs(dy) < SLOP) return;
+          st.intent = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
+          if (st.intent === "h") setTouchActionMode("none");
+        }
+
+        if (st.intent === "v") return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const THRESHOLD = 72;
+        if (Math.abs(dx) < THRESHOLD) return;
+
+        const now = Date.now();
+        if (st.lastStepTs && now - st.lastStepTs < 160) return;
+
+        const dir: "left" | "right" = dx < 0 ? "left" : "right";
+        const delta = dir === "left" ? 1 : -1;
+
+        const maxIdx = images.length - 1;
+        let nextIdx = activeIdxRef.current + delta;
+        if (nextIdx < 0) nextIdx = 0;
+        if (nextIdx > maxIdx) nextIdx = maxIdx;
+
+        if (nextIdx !== activeIdxRef.current) {
+          activeIdxRef.current = nextIdx;
+          setSwipeDir(dir);
+          setActiveIdx(nextIdx);
+          prefetchAround(nextIdx);
+          swipeBlockTsRef.current = Date.now();
+        }
+
+        st.startX = e.clientX;
+        st.startY = e.clientY;
+        st.lastStepTs = now;
+      }}
+      onPointerUp={(e) => {
+        try {
+          if (swipeStateRef.current.pointerId !== null) {
+            (e.currentTarget as HTMLDivElement).releasePointerCapture(swipeStateRef.current.pointerId);
+          }
+        } catch {}
+        swipeStateRef.current.active = false;
+        swipeStateRef.current.lastStepTs = 0;
+        swipeStateRef.current.pointerId = null;
+        swipeStateRef.current.intent = null;
+        setTouchActionMode("pan-y");
+      }}
+      onPointerCancel={(e) => {
+        try {
+          if (swipeStateRef.current.pointerId !== null) {
+            (e.currentTarget as HTMLDivElement).releasePointerCapture(swipeStateRef.current.pointerId);
+          }
+        } catch {}
+        swipeStateRef.current.active = false;
+        swipeStateRef.current.lastStepTs = 0;
+        swipeStateRef.current.pointerId = null;
+        swipeStateRef.current.intent = null;
+        setTouchActionMode("pan-y");
+      }}
+      onLostPointerCapture={() => {
+        swipeStateRef.current.active = false;
+        swipeStateRef.current.lastStepTs = 0;
+        swipeStateRef.current.pointerId = null;
+        swipeStateRef.current.intent = null;
+        setTouchActionMode("pan-y");
+      }}
       onClickCapture={(e) => {
-        if (blockClickRef.current) {
+        if (Date.now() - swipeBlockTsRef.current < 620) {
           e.preventDefault();
           e.stopPropagation();
-          blockClickRef.current = false;
         }
       }}
     >
-      {/* Single image with smooth motion */}
-      <motion.img
-        key={`img-${index}`}
-        src={images[index]}
-        alt={alt}
-        className="w-full h-full object-contain"
-        style={{ x }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 400, damping: 35 }}
-        initial={{ opacity: 0 }}
-        exit={{ opacity: 0 }}
-      />
+      <AnimatePresence initial={false} mode="sync" custom={swipeDir}>
+        <motion.div
+          key={`${activeSrc}-${displaySrc}`}
+          custom={swipeDir}
+          variants={reduceMotion ? CARD_SWIPE_VARIANTS_REDUCED : CARD_SWIPE_VARIANTS}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{
+            duration: reduceMotion ? 0.14 : balancedMotion ? 0.22 : 0.32,
+            ease: [0.22, 1, 0.36, 1],
+            opacity: { duration: reduceMotion ? 0.1 : 0.16, ease: "linear" },
+            scale: { duration: reduceMotion || balancedMotion ? 0 : 0.32, ease: [0.22, 1, 0.36, 1] },
+          }}
+          className="absolute inset-0 transform-gpu"
+          style={{ willChange: reduceMotion ? "opacity" : "transform, clip-path" }}
+        >
+          <img
+            src={displaySrc}
+            alt={alt}
+            className="absolute inset-0 w-full h-full object-contain"
+            onError={() => {
+              if (!activeSrc || activeSrc === "/img/placeholder.png") return;
+              setBrokenSrcs((prev) => {
+                if (prev.has(activeSrc)) return prev;
+                const next = new Set(prev);
+                next.add(activeSrc);
+                return next;
+              });
+            }}
+          />
+        </motion.div>
+      </AnimatePresence>
 
-      {/* Progress dots */}
-      {count > 1 && (
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex gap-1.5">
+      {images.length > 1 && (
+        <div className="absolute bottom-2 left-0 right-0 z-20 flex items-center justify-center gap-1.5 pointer-events-none">
           {images.map((_, i) => (
-            <motion.span
+            <span
               key={i}
-              className={`h-1.5 rounded-full ${
-                i === index ? "bg-black/80" : "bg-black/25"
+              className={`h-1.5 rounded-full transition-all ${reduceMotion ? "duration-150" : balancedMotion ? "duration-200" : "duration-300"} ease-out ${
+                i === activeIdx ? "w-5 bg-black/50" : "w-1.5 bg-black/20"
               }`}
-              animate={{
-                width: i === index ? 12 : 6,
-              }}
-              transition={{ type: "spring", stiffness: 300, damping: 25 }}
             />
           ))}
         </div>
@@ -1876,6 +1876,7 @@ const GridCard = React.memo(({
   const primary = (item as any).imageUrl || imgs[0] || "/img/placeholder.png";
   const secondary = imgs.find((u: any) => u && u !== primary);
   const gallery = getPreviewImages(item);
+  const displayBadge = getDisplayBadge(item);
 
   return (
     <motion.div
@@ -1892,33 +1893,19 @@ const GridCard = React.memo(({
             : "border-black/10 hover:shadow-xl"
         }`}
       >
-        {(item as any).premium && (
-          <div className="absolute top-2 right-2 z-20 flex items-center gap-1">
-            <svg
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-              className="w-4 h-4 drop-shadow-[0_1px_4px_rgba(0,0,0,0.25)] transition-colors duration-200 fill-transparent stroke-black stroke-[2] group-hover:fill-black"
-            >
-              <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-            </svg>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide text-white shadow-[0_2px_10px_rgba(0,0,0,0.15)] bg-gradient-to-br from-black to-neutral-900 select-none">
-              premium
-            </span>
-          </div>
-        )}
-        {(item as any).badge && (
+        {displayBadge && (
           <span
             className="absolute top-2 left-2 z-20 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide text-white shadow-[0_2px_10px_rgba(0,0,0,0.15)]"
             style={{
               background:
-                (item as any).badge === "NEW"
+                displayBadge === "NEW"
                   ? "linear-gradient(135deg,#60a5fa,#2563eb)"
-                  : (item as any).badge === "HIT"
+                  : displayBadge === "HIT"
                   ? "linear-gradient(135deg,#34d399,#059669)"
                   : "linear-gradient(135deg,#000000,#111111)",
             }}
           >
-            {(item as any).badge}
+            {displayBadge}
           </span>
         )}
 
@@ -3932,6 +3919,7 @@ export default function PremiumPage() {
             const Card = ({ item, index }: { item: any; index: number }) => {
               const isViewed = topViewedItem === item.id;
               const ref = useRef<HTMLDivElement | null>(null);
+              const displayBadge = getDisplayBadge(item);
 
               useEffect(() => {
                 const observer = new IntersectionObserver(
@@ -3957,13 +3945,12 @@ export default function PremiumPage() {
               }, [item.id]);
 
               return (
-              <motion.div
-                ref={ref}
-                className="relative group rounded-2xl"
-                whileHover={{ y: -8, scale: 1.02 }}
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              >
-
+                <motion.div
+                  ref={ref}
+                  className="relative group rounded-2xl"
+                  whileHover={{ y: -8, scale: 1.02 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                >
                 {/* Блеск при наведении */}
                 <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
                   <motion.div
@@ -3984,33 +3971,19 @@ export default function PremiumPage() {
                       : "border-black/10"
                   }`}
                 >
-                  {(item as any).premium && (
-                    <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
-                      <svg
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                        className="w-4 h-4 drop-shadow transition-colors duration-200 fill-black stroke-black stroke-[2]"
-                      >
-                        <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-                      </svg>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide text-white bg-gradient-to-br from-black to-neutral-900 shadow-md">
-                        premium
-                      </span>
-                    </div>
-                  )}
-                  {(item as any).badge && (
+                  {displayBadge && (
                     <span
                       className="absolute top-2 left-2 z-10 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide text-white shadow-[0_2px_10px_rgba(0,0,0,0.15)]"
                       style={{
                         background:
-                          (item as any).badge === "NEW"
+                          displayBadge === "NEW"
                             ? "linear-gradient(135deg,#60a5fa,#2563eb)"
-                            : (item as any).badge === "HIT"
+                            : displayBadge === "HIT"
                             ? "linear-gradient(135deg,#34d399,#059669)"
                             : "linear-gradient(135deg,#000000,#111111)",
                       }}
                     >
-                      {(item as any).badge}
+                      {displayBadge}
                     </span>
                   )}
                   <SwipeablePreview
@@ -4024,7 +3997,7 @@ export default function PremiumPage() {
                     <p className="text-xs text-gray-500 mt-1">от {item.price}₽</p>
                   </div>
                 </Link>
-              </motion.div>
+                </motion.div>
               );
             };
 

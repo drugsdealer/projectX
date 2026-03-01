@@ -1920,12 +1920,9 @@ const handleCancel = () => {
                 </div>
               );
             })()}
-            <div className="flex gap-4 mt-6">
-              <Button className="flex-grow">
-                С чем сочетать?
-              </Button>
+            <div className="mt-6">
               <button
-                className={`relative flex-grow px-6 py-3 font-semibold rounded-lg transition-all duration-300 overflow-hidden ${
+                className={`relative w-full px-6 py-3 font-semibold rounded-lg transition-all duration-300 overflow-hidden ${
                   cartStatus === "pending" ? "bg-gray-400 text-white" :
                   cartStatus === "added" ? "bg-gray-500 text-white" :
                   cartStatus === "canceled" ? "bg-gray-300 text-black" :
