@@ -25,17 +25,19 @@ export async function GET(req: Request) {
   const { default: QRCode } = await import("qrcode");
 
   if (user.adminTotpSecretEnc) {
-    // Если 2FA уже включен — QR не показываем (можно сбросить отдельно)
-    if (user.adminTotpEnabled) {
-      return NextResponse.json({
-        success: true,
-        alreadySetup: true,
-        adminTotpEnabled: true,
-      });
-    }
-    // Если секрет есть, но не подтверждён — покажем QR повторно
+    // Всегда пробуем расшифровать секрет.
+    // Если ключ на сервере поменялся/секрет битый — пересоздадим ниже.
     try {
       const secret = decryptSecret(user.adminTotpSecretEnc);
+      // Если 2FA уже включен и секрет валиден — QR не показываем.
+      if (user.adminTotpEnabled) {
+        return NextResponse.json({
+          success: true,
+          alreadySetup: true,
+          adminTotpEnabled: true,
+        });
+      }
+      // Если секрет есть, но не подтверждён — показываем QR повторно.
       const otpauthUrl = authenticator.keyuri(user.email, issuer, secret);
       const qr = await QRCode.toDataURL(otpauthUrl, { margin: 1, width: 240 });
       return NextResponse.json({
@@ -46,7 +48,7 @@ export async function GET(req: Request) {
         qr,
       });
     } catch {
-      // Если секрет поврежден — пересоздадим
+      // Если секрет поврежден — пересоздаём и просим подтвердить заново.
     }
   }
 

@@ -121,10 +121,26 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     try {
       const res = await fetch('/api/auth/me', { cache: 'no-store' });
       const data = await res.json().catch(() => ({}));
+      const serverAnswered = Boolean(res?.ok) && data?.success === true;
 
       const serverUser = data?.success && data?.user
         ? buildUserFromLoose(data.user)
         : null;
+
+      // Важный кейс для production: сервер явно говорит, что сессии нет.
+      // Не оставляем "фантомный" профиль из localStorage/cookie.
+      if (serverAnswered && !serverUser) {
+        setUser(null);
+        try {
+          localStorage.removeItem('ui_user_data');
+          localStorage.removeItem('ui_profile_fullName');
+        } catch {}
+        try {
+          document.cookie = 'ui_user_data=; Path=/; Max-Age=0; SameSite=Lax';
+          document.cookie = 'ui_fullname=; Path=/; Max-Age=0; SameSite=Lax';
+        } catch {}
+        return;
+      }
 
       // берём базу из текущего стейта, затем из LS, затем из cookie
       let base: User | null = user;
