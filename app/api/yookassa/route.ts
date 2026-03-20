@@ -54,7 +54,7 @@ export async function POST(req: Request) {
   }
 
   // Проверка статуса (не оплачиваем повторно)
-  if (order.status === "PAID" || order.status === "COMPLETED") {
+  if (order.status === "SUCCEEDED") {
     return NextResponse.json({ error: "Заказ уже оплачен" }, { status: 400 });
   }
 
