@@ -8,11 +8,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const brand = await prisma.brand.findFirst({
     where: { slug: { equals: slug.trim().toLowerCase(), mode: 'insensitive' } },
-    select: { name: true, meta: true },
+    select: { name: true, description: true },
   });
   if (!brand) return {};
-  const meta = (brand.meta || {}) as { about?: string };
-  const description = meta.about || `Коллекция бренда ${brand.name} в Stage Store. Оригинальная брендовая одежда и аксессуары.`;
+  const description = brand.description || `Коллекция бренда ${brand.name} в Stage Store. Оригинальная брендовая одежда и аксессуары.`;
   return {
     title: brand.name,
     description,
