@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { emitServerEvents } from "@/lib/events-server";
 import crypto from "crypto";
 import { getSessionUserId } from "../_utils/session";
+import { blockIfCsrf } from "@/lib/api-hardening";
 
 export const runtime = "nodejs";
 
@@ -110,6 +111,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const csrf = blockIfCsrf(req);
+  if (csrf) return csrf;
   try {
     const jar = await cookies();
     const { cart, token, userId } = await resolveCart(jar);
@@ -218,6 +221,8 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+  const csrf = blockIfCsrf(req);
+  if (csrf) return csrf;
   try {
     const jar = await cookies();
     const { cart } = await resolveCart(jar);
@@ -251,6 +256,8 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const csrf = blockIfCsrf(req);
+  if (csrf) return csrf;
   try {
     const jar = await cookies();
     const { cart } = await resolveCart(jar);

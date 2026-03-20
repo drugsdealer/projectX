@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { slugify } from '@/lib/slug';
+import { getClientIp, rateLimit } from '@/lib/rate-limit';
 
 const PUBLIC_CACHE_HEADERS = {
   'Cache-Control': 'public, max-age=30, s-maxage=120, stale-while-revalidate=300',
@@ -227,6 +228,12 @@ const CATEGORY_SYNONYMS: Record<string, string> = {
 // GET /api/search?category=...&take=36
 // Returns: { items: Array<{id,name,price,brandName,imageUrl,images}>, suggestion?: string|null, brand?: {name,slug,logoUrl,count} }
 export async function GET(req: Request) {
+  const ip = getClientIp(req);
+  const rl = await rateLimit(`search:${ip}`, 30, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json({ products: [], brands: [], categories: [] }, { status: 429 });
+  }
+
   try {
     const { searchParams } = new URL(req.url);
     const qRaw = searchParams.get('q') ?? '';

@@ -89,7 +89,7 @@ export async function POST(req: Request) {
 
     // Здесь можно интегрировать реальную отправку письма.
     if (process.env.NODE_ENV !== 'production') {
-      console.log('[send-email-code] code for', normalizedEmail, ':', code);
+      console.log('[send-email-code] code generated for user', user.id);
     }
 
     const res = NextResponse.json({ success: true });

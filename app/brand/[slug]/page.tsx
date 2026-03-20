@@ -2,6 +2,26 @@ import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
 import BrandClient from '@/components/ui/BrandClient';
 import type { Brand, Product } from '@prisma/client';
+import type { Metadata } from 'next';
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const brand = await prisma.brand.findFirst({
+    where: { slug: { equals: slug.trim().toLowerCase(), mode: 'insensitive' } },
+    select: { name: true, meta: true },
+  });
+  if (!brand) return {};
+  const meta = (brand.meta || {}) as { about?: string };
+  const description = meta.about || `Коллекция бренда ${brand.name} в Stage Store. Оригинальная брендовая одежда и аксессуары.`;
+  return {
+    title: brand.name,
+    description,
+    openGraph: {
+      title: `${brand.name} — Stage Store`,
+      description,
+    },
+  };
+}
 
 type BrandMeta = {
   logo?: string;

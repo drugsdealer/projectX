@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
+import { timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getUserIdFromRequest } from "@/lib/session";
 import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
     const record = await prisma.passwordResetCode.findUnique({
       where: { userId },
     });
-    if (!record || record.code !== code) {
+    if (!record || !timingSafeEqual(Buffer.from(record.code), Buffer.from(code))) {
       return NextResponse.json({ success: false, message: "Неверный код." }, { status: 400 });
     }
 

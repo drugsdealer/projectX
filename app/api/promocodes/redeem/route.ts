@@ -2,8 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { redeemPromoForOrder, validatePromo } from "@/lib/promos";
 import { getUserIdFromRequest } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { blockIfCsrf } from "@/lib/api-hardening";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
+  const csrf = blockIfCsrf(req);
+  if (csrf) return csrf;
+
+  const ip = getClientIp(req);
+  const rl = await rateLimit(`promo-redeem:${ip}`, 10, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json({ ok: false }, { status: 429 });
+  }
+
   const body = await req.json().catch(() => ({}));
   const rawCode = (body?.code ?? "").toString().trim();
   const orderIdRaw = body?.orderId ?? null;
@@ -58,9 +69,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Fallback: explicit server error
+    console.error("[promocodes/redeem] error:", e);
     return NextResponse.json(
-      { ok: false, error: 'server_error', details: String(e?.message ?? e) },
+      { ok: false, error: 'server_error' },
       { status: 500 }
     );
   }

@@ -792,7 +792,8 @@ export default function Home() {
   const [publicPromoCodes, setPublicPromoCodes] = useState<any[]>([]);
   const [promocodeSpace, setPromocodeSpace] = useState<HomePromocodeSpacePayload | null>(null);
   const [restoredHomeProductId, setRestoredHomeProductId] = useState<string | null>(null);
-  const [homePromoSeed] = useState(() => Math.floor(Math.random() * 1_000_000_000));
+  const [homePromoSeed, setHomePromoSeed] = useState(0);
+  useEffect(() => { setHomePromoSeed(Math.floor(Math.random() * 1_000_000_000)); }, []);
   const [isHomeRecsLoading, setIsHomeRecsLoading] = useState(false);
   const homeSeenRecommendationIdsRef = useRef<Set<number>>(new Set());
 

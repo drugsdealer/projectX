@@ -4,8 +4,19 @@ import {
   sendConciergeRequestToTelegram,
   type ConciergeAttachment,
 } from "@/lib/telegram";
+import { blockIfCsrf } from "@/lib/api-hardening";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
+  const csrf = blockIfCsrf(req);
+  if (csrf) return csrf;
+
+  const ip = getClientIp(req);
+  const rl = await rateLimit(`concierge:${ip}`, 5, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json({ ok: false }, { status: 429 });
+  }
+
   try {
     const body = await req.json();
 

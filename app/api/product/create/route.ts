@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/admin";
 
 export async function POST(req: Request) {
-  const guard = await requireAdminApi();
+  const guard = await requireAdminApi({ req });
   if (!guard.ok) return guard.response;
 
   const body = await req.json();

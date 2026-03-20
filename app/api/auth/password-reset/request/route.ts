@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       create: { userId: user.id, code },
     });
 
-    console.log(`[password-reset] code for ${user.email}: ${code}`);
+    console.log(`[password-reset] code generated for user ${user.id}`);
 
     const sent = await sendEmail({
       to: user.email,
@@ -56,9 +56,10 @@ export async function POST(req: Request) {
     }).catch(() => {});
 
     if (!sent) {
+      console.error("[password-reset/request] email send failed");
       return NextResponse.json({
         success: false,
-        message: "SMTP не настроен. Проверьте SMTP_* в .env.local.",
+        message: "Не удалось отправить письмо. Попробуйте позже.",
       }, { status: 500 });
     }
     return NextResponse.json({ success: true });

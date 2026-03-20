@@ -46,9 +46,12 @@ const parseUserAgentInfo = (
 
 const pickClientIp = (req: Request, fallback?: string) => {
   const h = req.headers;
-  const xf = h.get("x-forwarded-for") || h.get("x-real-ip") || h.get("x-vercel-forwarded-for");
   const cf = h.get("cf-connecting-ip");
-  const raw = (xf || cf || fallback || "").split(",")[0].trim();
+  if (cf) return cf.trim() || undefined;
+  const real = h.get("x-real-ip");
+  if (real) return real.trim() || undefined;
+  const xf = h.get("x-forwarded-for") || h.get("x-vercel-forwarded-for");
+  const raw = (xf || fallback || "").split(",")[0].trim();
   return raw || undefined;
 };
 
@@ -204,19 +207,6 @@ export async function POST(req: Request) {
         sameSite: "lax",
         secure: process.env.NODE_ENV === "production",
       });
-      // UI/helper cookies (non-httpOnly) for client hydration
-      res.cookies.set("stage_session", JSON.stringify({
-        id: existingUser.id,
-        email: existingUser.email,
-        fullName: existingUser.fullName ?? "",
-        role: existingUser.role,
-      }), {
-        httpOnly: false,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
-        path: "/",
-        maxAge: 60 * 60 * 24 * 30,
-      });
       res.cookies.set("uid", String(existingUser.id), {
         httpOnly: true,
         sameSite: "lax",
@@ -308,18 +298,6 @@ export async function POST(req: Request) {
       clearSessionTokenOnResponse(res);
     }
     res.cookies.set("vfy", "", { path: "/", expires: new Date(0), httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
-    res.cookies.set("stage_session", JSON.stringify({
-      id: updatedUser.id,
-      email: updatedUser.email,
-      fullName: updatedUser.fullName ?? "",
-      role: updatedUser.role,
-    }), {
-      httpOnly: false,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
-    });
     res.cookies.set("uid", String(updatedUser.id), {
       httpOnly: true,
       sameSite: "lax",

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdminApi } from "@/lib/admin";
 
 export const runtime = "nodejs";
 
@@ -7,19 +8,9 @@ function clearCookie(res: NextResponse) {
   return res;
 }
 
-export async function POST() {
+export async function POST(req: Request) {
+  const guard = await requireAdminApi({ require2FA: false, req });
+  if (!guard.ok) return guard.response;
+
   return clearCookie(NextResponse.json({ success: true }));
-}
-
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const next = url.searchParams.get("next") || "/";
-  const safeNext = next.startsWith("/") ? next : "/";
-  const res = NextResponse.redirect(new URL(safeNext, url.origin));
-  return clearCookie(res);
-}
-
-export async function HEAD() {
-  const res = NextResponse.json({ success: true });
-  return clearCookie(res);
 }

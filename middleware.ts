@@ -104,7 +104,7 @@ export async function middleware(request: NextRequest) {
       [
         "default-src 'self'",
         "img-src 'self' https: data:",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+        "script-src 'self' 'unsafe-inline'",
         "style-src 'self' 'unsafe-inline'",
         "font-src 'self' https: data:",
         "connect-src 'self'",

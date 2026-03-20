@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
+import { timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getUserIdFromRequest } from "@/lib/session";
 import bcrypt from "bcryptjs";
 import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   try {
@@ -12,6 +14,12 @@ export async function POST(req: Request) {
     if (csrfBlocked) return csrfBlocked;
     const jsonBlocked = requireJsonRequest(req);
     if (jsonBlocked) return jsonBlocked;
+
+    const ip = getClientIp(req);
+    const rl = await rateLimit(`pwreset-confirm:${ip}`, 5, 60_000);
+    if (!rl.ok) {
+      return NextResponse.json({ success: false, message: "Слишком много попыток." }, { status: 429 });
+    }
 
     const userId = await getUserIdFromRequest();
     if (!userId) {
@@ -31,7 +39,7 @@ export async function POST(req: Request) {
     const record = await prisma.passwordResetCode.findUnique({
       where: { userId },
     });
-    if (!record || record.code !== code) {
+    if (!record || !timingSafeEqual(Buffer.from(record.code), Buffer.from(code))) {
       return NextResponse.json({ success: false, message: "Неверный код." }, { status: 400 });
     }
 

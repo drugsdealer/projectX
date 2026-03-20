@@ -54,9 +54,13 @@ const parseUserAgentInfo = (
 
 const pickClientIp = (req: Request, fallback?: string) => {
   const h = req.headers;
-  const xf = h.get("x-forwarded-for") || h.get("x-real-ip") || h.get("x-vercel-forwarded-for");
+  // cf-connecting-ip первым — его нельзя подделать
   const cf = h.get("cf-connecting-ip");
-  const raw = (xf || cf || fallback || "").split(",")[0].trim();
+  if (cf) return cf.trim() || undefined;
+  const real = h.get("x-real-ip");
+  if (real) return real.trim() || undefined;
+  const xf = h.get("x-forwarded-for") || h.get("x-vercel-forwarded-for");
+  const raw = (xf || fallback || "").split(",")[0].trim();
   return raw || undefined;
 };
 
@@ -202,20 +206,6 @@ export async function POST(req: Request) {
     const isProd = process.env.NODE_ENV === "production";
     // Ставит основную httpOnly куку сессии (session_user_id)
     setSessionOnResponse(res, user.id);
-
-    // Доп. не-httpOnly кука для клиентского UI (по желанию)
-    res.cookies.set("stage_session", JSON.stringify({
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      role: user.role,
-    }), {
-      httpOnly: false,
-      sameSite: "lax",
-      secure: isProd,
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
-    });
 
     // Совместимость: часть кода читает `uid`. Дублируем id в эту куку.
     res.cookies.set("uid", String(user.id), {

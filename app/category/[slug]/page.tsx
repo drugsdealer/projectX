@@ -1,10 +1,27 @@
-
-
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 
 import prisma from '@/lib/prisma';
 import CategoryProductGrid from './CategoryProductGrid';
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const decoded = decodeURIComponent(slug).trim();
+  const category = await prisma.category.findFirst({
+    where: { slug: { equals: decoded, mode: 'insensitive' } },
+    select: { name: true },
+  });
+  const name = category?.name || decoded.replace(/[-_]+/g, ' ');
+  return {
+    title: name,
+    description: `${name} — купить в Stage Store. Оригинальная брендовая одежда и аксессуары с доставкой по России.`,
+    openGraph: {
+      title: `${name} — Stage Store`,
+      description: `Каталог ${name.toLowerCase()} в интернет-магазине Stage Store.`,
+    },
+  };
+}
 
 export const dynamic = 'force-dynamic';
 

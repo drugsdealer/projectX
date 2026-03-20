@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buildEventsServiceUrl, getEventsServiceApiKey } from "@/lib/events-upstream";
 import { getViewerIdentity } from "@/lib/session";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -79,6 +80,12 @@ async function fallbackProducts(limit: number, categoryId: number | null, exclud
 }
 
 export async function GET(req: Request) {
+  const ip = getClientIp(req);
+  const rl = await rateLimit(`recs-personal:${ip}`, 20, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json({ items: [] }, { status: 429 });
+  }
+
   const url = new URL(req.url);
   const limitRaw = Number(url.searchParams.get("limit") || "16");
   const limit = Math.max(1, Math.min(60, Number.isFinite(limitRaw) ? limitRaw : 16));

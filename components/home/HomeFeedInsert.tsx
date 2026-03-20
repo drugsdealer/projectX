@@ -169,7 +169,7 @@ export default function HomeFeedInsert({
                       fill
                       className="object-contain p-2 sm:p-3 transition duration-300 group-hover:scale-[1.01]"
                     />
-                  ) : null}
+                  ) : null}п
                 </div>
 
                 <div className="p-2.5">

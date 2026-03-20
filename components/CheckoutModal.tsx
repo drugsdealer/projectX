@@ -603,11 +603,11 @@ export default function CheckoutModal({
     ) => {
       try {
         if (typeof window === "undefined") return;
-        const raw = localStorage.getItem("checkoutState");
+        const raw = sessionStorage.getItem("checkoutState");
         const prev = raw ? JSON.parse(raw) : {};
         const base = { step, fio, email, phone, agree, address };
         const next = { ...prev, ...base, ...partial };
-        localStorage.setItem("checkoutState", JSON.stringify(next));
+        sessionStorage.setItem("checkoutState", JSON.stringify(next));
       } catch {
         // ignore
       }
@@ -618,7 +618,7 @@ export default function CheckoutModal({
   // первичное восстановление черновика
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("checkoutState");
+      const saved = sessionStorage.getItem("checkoutState");
       if (saved) {
         const parsed = JSON.parse(saved);
         if (typeof parsed.step === "number") setStep(parsed.step);
@@ -953,7 +953,7 @@ export default function CheckoutModal({
       const token = data?.token;
 
       try {
-        localStorage.removeItem("checkoutState");
+        sessionStorage.removeItem("checkoutState");
       } catch {
         // ignore
       }

@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { getUserIdFromRequest } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { logAction } from '@/lib/logAction';
+import { blockIfCsrf } from '@/lib/api-hardening';
+import { getClientIp, rateLimit } from '@/lib/rate-limit';
+
+const MAX_AUDIT_ENTRIES = 1000;
 
 type AuditRecord = {
   timestamp: string;
@@ -32,6 +36,15 @@ function sanitizeDetails(raw: unknown): Record<string, any> {
 
 // POST — добавление записи в журнал (только для авторизованных)
 export async function POST(req: Request) {
+  const csrf = blockIfCsrf(req);
+  if (csrf) return csrf;
+
+  const ip = getClientIp(req);
+  const rl = await rateLimit(`audit:${ip}`, 20, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json({ success: false }, { status: 429 });
+  }
+
   try {
     const userId = await getUserIdFromRequest();
     if (!userId) {
@@ -53,8 +66,9 @@ export async function POST(req: Request) {
       details: safeDetails,
     };
 
-    // Локальный in-memory лог для быстрой отладки
+    // Локальный in-memory лог для быстрой отладки (capped)
     auditLog.push(record);
+    while (auditLog.length > MAX_AUDIT_ENTRIES) auditLog.shift();
 
     // Пытаемся также записать в централизованный AuditLog в БД (если он сконфигурирован)
     try {

@@ -39,6 +39,14 @@ export async function GET(req: NextRequest) {
           { OR: [{ endsAt: null }, { endsAt: { gte: now } }] },
         ],
       },
+      select: {
+        code: true,
+        description: true,
+        discountType: true,
+        percentOff: true,
+        amountOff: true,
+        endsAt: true,
+      },
       orderBy: { createdAt: "desc" },
     });
 
@@ -46,10 +54,10 @@ export async function GET(req: NextRequest) {
     if (userId) {
       const redemptions = await (prisma as any).promoRedemption.findMany({
         where: { userId },
-        include: { promoCode: true },
+        include: { PromoCode: true },
         orderBy: { usedAt: "desc" },
       });
-      my = redemptions.map((r: any) => ({ code: r.promoCode.code, usedAt: r.usedAt }));
+      my = redemptions.map((r: any) => ({ code: r.PromoCode.code, usedAt: r.usedAt }));
     }
 
     return NextResponse.json({ items: active, my });

@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
 export async function GET(req: Request) {
+  const ip = getClientIp(req);
+  const rl = await rateLimit(`geo:${ip}`, 10, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json({ success: false }, { status: 429 });
+  }
+
   const url = new URL(req.url);
   const lat = Number(url.searchParams.get("lat"));
   const lng = Number(url.searchParams.get("lng"));

@@ -165,10 +165,7 @@ export async function POST(req: Request) {
     }
 
     if (!targetOrderId) {
-      console.warn('[api.confirm-payment] 400 – no order to confirm', {
-        userId,
-        candidates: { orderId, token },
-      });
+      console.warn('[api.confirm-payment] 400 – no order to confirm');
       return NextResponse.json(
         { success: false, message: 'no order to confirm' },
         { status: 400 },
@@ -188,10 +185,7 @@ export async function POST(req: Request) {
     });
 
     if (!existing || existing.userId !== userId) {
-      console.warn('[api.confirm-payment] 403 – foreign or missing order', {
-        userId,
-        targetOrderId,
-      });
+      console.warn('[api.confirm-payment] 403 – foreign or missing order');
       return NextResponse.json(
         { success: false, message: 'Order not found' },
         { status: 403 },

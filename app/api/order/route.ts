@@ -65,20 +65,8 @@ export async function GET(req: NextRequest) {
         ? tokenRaw
         : null;
 
-    // 3) DEV-перекрытие userId (?userId=...) — только в non-production окружениях
-    if (!effectiveUserId && process.env.NODE_ENV !== "production") {
-      const qsUserId = qs.get("userId");
-      if (qsUserId) {
-        const n = Number(qsUserId);
-        if (Number.isFinite(n) && n > 0) {
-          effectiveUserId = n;
-        }
-      }
-    }
-
     // 4) Если нет ни userId, ни токена — 401
     if (!effectiveUserId && !token) {
-      console.log("[api.order] Unauthorized: no userId and no token");
       return privateJson({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
@@ -95,11 +83,6 @@ export async function GET(req: NextRequest) {
       AND: [baseWhere, { deletedAt: null }],
     };
 
-    console.log("[api.order] filters", {
-      userId: effectiveUserId ?? null,
-      hasToken: Boolean(token),
-    });
-
     // 6) Заказы с позициями и продуктами (ограничиваем поля через select)
     const orders = await prisma.order.findMany({
       where: whereSafe,
@@ -107,12 +90,9 @@ export async function GET(req: NextRequest) {
       select: {
         id: true,
         userId: true,
-        token: true,
         totalAmount: true,
         status: true,
-        paymentId: true,
         fullName: true,
-        email: true,
         phone: true,
         address: true,
         comment: true,

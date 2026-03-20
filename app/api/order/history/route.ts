@@ -34,29 +34,6 @@ export async function GET(req: Request) {
     const orderIdNum = orderIdRaw != null ? Number(orderIdRaw) : NaN;
     const orderId = Number.isFinite(orderIdNum) ? orderIdNum : undefined;
 
-    // Немного безопасного логирования (без PII)
-    console.log('[api.order.history] filters', {
-      userId: userId ?? null,
-      hasToken: Boolean(token),
-      orderId: orderId ?? null,
-      src: token
-        ? (jar.get('order_token')
-            ? 'cookie:order_token'
-            : jar.get('orderToken')
-            ? 'cookie:orderToken'
-            : jar.get('guestOrderToken')
-            ? 'cookie:guestOrderToken'
-            : jar.get('order_guest')
-            ? 'cookie:order_guest'
-            : jar.get('last_order_token')
-            ? 'cookie:last_order_token'
-            : hdr.get('x-order-token')
-            ? 'header:x-order-token'
-            : hdr.get('x-order')
-            ? 'header:x-order'
-            : 'query')
-        : null,
-    });
 
     // Если не пришло ничего для фильтрации — отдаём пусто
     if (userId == null && !token && orderId == null) {
@@ -89,13 +66,10 @@ export async function GET(req: Request) {
       select: {
         id: true,
         userId: true,
-        token: true,
         totalAmount: true,
         status: true,
         shippingStatus: true,
-        paymentId: true,
         fullName: true,
-        email: true,
         phone: true,
         address: true,
         comment: true,

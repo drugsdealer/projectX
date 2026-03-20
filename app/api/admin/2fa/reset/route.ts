@@ -4,8 +4,15 @@ export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/admin";
 import { encryptSecret } from "@/lib/totp";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
+  const ip = getClientIp(req);
+  const rl = await rateLimit(`2fa-reset:${ip}`, 3, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json({ success: false }, { status: 429 });
+  }
+
   if (process.env.ALLOW_2FA_RESET !== "true") {
     return NextResponse.json({ success: false, message: "Запрещено" }, { status: 403 });
   }

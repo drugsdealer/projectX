@@ -32,7 +32,7 @@ export default function PaymentResultClient() {
       const raw = localStorage.getItem("pendingPurchasedIds");
       if (raw) localStorage.removeItem("pendingPurchasedIds");
       localStorage.removeItem("pendingPurchasedScope");
-      localStorage.removeItem("checkoutState");
+      sessionStorage.removeItem("checkoutState");
     } catch {}
     try {
       window.dispatchEvent(new Event("cart:refresh"));

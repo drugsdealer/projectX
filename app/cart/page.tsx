@@ -175,7 +175,7 @@ export default function CartPage() {
     return {};
   };
   useEffect(() => {
-    const savedCheckout = localStorage.getItem("checkoutState");
+    const savedCheckout = sessionStorage.getItem("checkoutState");
     if (savedCheckout) {
       setHasCheckoutData(true);
     }
@@ -556,7 +556,7 @@ useEffect(() => {
         },
         createdAt: Date.now(),
       };
-      localStorage.setItem("checkoutState", JSON.stringify(draft));
+      sessionStorage.setItem("checkoutState", JSON.stringify(draft));
       setHasCheckoutData(true);
       console.debug("[cart] checkoutState saved", draft);
     } catch (e) {
@@ -607,7 +607,7 @@ useEffect(() => {
     };
 
     try {
-      localStorage.setItem("checkoutState", JSON.stringify(draft));
+      sessionStorage.setItem("checkoutState", JSON.stringify(draft));
     } catch {}
 
     if (!customer.fullName || !customer.email || !customer.phone || !customer.address) {

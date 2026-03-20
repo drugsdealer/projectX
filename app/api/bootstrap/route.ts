@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "../_utils/session";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,6 +66,12 @@ async function resolveCart(jar: any) {
 }
 
 export async function GET(req: NextRequest) {
+  const ip = getClientIp(req);
+  const rl = await rateLimit(`bootstrap:${ip}`, 30, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json({ success: false }, { status: 429 });
+  }
+
   const jar = await cookies();
   const { cart, userId } = await resolveCart(jar);
 

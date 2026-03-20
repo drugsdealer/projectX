@@ -43,12 +43,17 @@ async function getUpstash() {
 
 export function getClientIp(req: Request): string {
   const h = req.headers;
-  const fwd = h.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0]?.trim() || "unknown";
-  const real = h.get("x-real-ip");
-  if (real) return real.trim();
+  // cf-connecting-ip устанавливается Cloudflare — нельзя подделать
   const cf = h.get("cf-connecting-ip");
   if (cf) return cf.trim();
+  const real = h.get("x-real-ip");
+  if (real) return real.trim();
+  // x-forwarded-for последним — клиент может подделать
+  const fwd = h.get("x-forwarded-for");
+  if (fwd) {
+    const first = fwd.split(",")[0]?.trim();
+    if (first) return first;
+  }
   return "unknown";
 }
 

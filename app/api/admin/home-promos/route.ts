@@ -27,9 +27,8 @@ export async function PUT(req: Request) {
   try {
     const promos = await writeHomeCmsPromos(body?.promos);
     return NextResponse.json({ success: true, promos });
-  } catch (err: any) {
+  } catch (err) {
     console.error("[admin.home-promos.PUT]", err);
-    const message = typeof err?.message === "string" ? err.message : "Не удалось сохранить CMS-промо";
-    return NextResponse.json({ success: false, message }, { status: 400 });
+    return NextResponse.json({ success: false, message: "Не удалось сохранить CMS-промо" }, { status: 400 });
   }
 }

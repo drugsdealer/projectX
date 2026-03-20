@@ -7,10 +7,17 @@ import { getUserIdFromRequest } from "@/lib/session";
 import { cookies } from "next/headers";
 import { SESSION_TOKEN_COOKIE, setSessionTokenOnResponse } from "../../_utils/session";
 import { randomBytes } from "crypto";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 const HOURS_2 = 2 * 60 * 60 * 1000;
 
-export async function GET() {
+export async function GET(req: Request) {
+  const ip = getClientIp(req);
+  const rl = await rateLimit(`sessions:${ip}`, 15, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json({ success: false }, { status: 429 });
+  }
+
   try {
     const userId = await getUserIdFromRequest();
     if (!userId) {

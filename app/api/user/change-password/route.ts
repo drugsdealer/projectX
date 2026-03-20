@@ -4,8 +4,19 @@ export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
 import { getUserIdFromRequest } from "@/lib/session";
 import bcrypt from "bcryptjs";
+import { blockIfCsrf } from "@/lib/api-hardening";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
+  const csrf = blockIfCsrf(req);
+  if (csrf) return csrf;
+
+  const ip = getClientIp(req);
+  const rl = await rateLimit(`chpass:${ip}`, 5, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json({ success: false, message: "Слишком много попыток." }, { status: 429 });
+  }
+
   try {
     const userId = await getUserIdFromRequest();
     if (!userId) {

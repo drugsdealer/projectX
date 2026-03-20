@@ -5,10 +5,14 @@ import { prisma } from "@/lib/prisma";
 import { getUserIdFromRequest } from "@/lib/session";
 import { cookies } from "next/headers";
 import { SESSION_TOKEN_COOKIE } from "../../../_utils/session";
+import { blockIfCsrf } from "@/lib/api-hardening";
 
 const HOURS_24 = 24 * 60 * 60 * 1000;
 
 export async function POST(req: Request) {
+  const csrf = blockIfCsrf(req);
+  if (csrf) return csrf;
+
   try {
     const userId = await getUserIdFromRequest();
     if (!userId) {

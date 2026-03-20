@@ -4,8 +4,15 @@ export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/admin";
 import { encryptSecret, decryptSecret } from "@/lib/totp";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function GET(req: Request) {
+  const ip = getClientIp(req);
+  const rl = await rateLimit(`2fa-setup:${ip}`, 5, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json({ success: false }, { status: 429 });
+  }
+
   const guard = await requireAdminApi({ require2FA: false, req });
   if (!guard.ok) return guard.response;
   const admin = guard.admin;

@@ -4,8 +4,12 @@ export const runtime = "nodejs";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { setSessionOnResponse } from "../../_utils/session";
+import { enforceSameOrigin } from "@/lib/security";
 
-async function handle() {
+export async function POST(req: Request) {
+  const csrf = enforceSameOrigin(req);
+  if (csrf) return csrf;
+
   const jar: any = cookies() as any;
   const c = typeof jar?.then === "function" ? await jar : jar;
   const adminIdRaw = c.get("admin_impersonator")?.value || null;
@@ -27,12 +31,4 @@ async function handle() {
   setSessionOnResponse(res, admin.id);
   res.cookies.set("admin_impersonator", "", { path: "/", maxAge: 0 });
   return res;
-}
-
-export async function POST() {
-  return handle();
-}
-
-export async function GET() {
-  return handle();
 }
