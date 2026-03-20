@@ -32,7 +32,7 @@ export async function sendEmail(payload: EmailPayload) {
   const from = process.env.EMAIL_FROM || process.env.MAIL_FROM || process.env.SMTP_USER;
   const transport = getSmtpTransport();
   if (!from || !transport) {
-    console.warn("[email] SMTP not configured, skip email", { to: payload.to });
+    console.warn("[email] SMTP not configured, skip email");
     return false;
   }
 
@@ -80,14 +80,14 @@ export async function notifyOrderArrived(params: {
   const { email, phone, orderNumber } = params;
   const text = `Ваш заказ №${orderNumber} прибыл. Теперь доступна доставка на дом в вашем личном кабинете.`;
 
-  console.log(`[notify][email] ${email ?? "no-email"}: ${text}`);
+  console.log(`[notify][email] order arrival notification sent`);
 
   if (email) {
     await sendEmail({
       to: email,
       subject: `Заказ №${orderNumber} прибыл`,
       text,
-    }).catch((err) => console.error("[email] notifyOrderArrived", err));
+    }).catch(() => console.error("[email] notifyOrderArrived failed"));
   }
 
   if (phone) {

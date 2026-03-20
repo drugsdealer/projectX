@@ -228,7 +228,7 @@ export async function GET(req: Request) {
       topBrands,
     });
   } catch (error) {
-    console.error("[recommendations.personal] upstream error", error);
+    console.error("[recommendations.personal] upstream error");
     const items = await fallbackProducts(limit, categoryId, exclude);
     return NextResponse.json({
       success: true,

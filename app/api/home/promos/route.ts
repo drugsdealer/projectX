@@ -15,7 +15,7 @@ export async function GET() {
       { headers: { "Cache-Control": "no-store, max-age=0" } }
     );
   } catch (err) {
-    console.error("[home.promos.GET]", err);
+    console.error("[home.promos.GET]");
     return NextResponse.json(
       { success: true, promos: [] },
       { headers: { "Cache-Control": "no-store, max-age=0" } }

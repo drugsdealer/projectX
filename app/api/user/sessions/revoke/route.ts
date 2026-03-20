@@ -66,7 +66,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (e) {
-    console.error("[sessions/revoke] error", e);
+    console.error("[sessions/revoke] error");
     return NextResponse.json({ success: false }, { status: 500 });
   }
 }

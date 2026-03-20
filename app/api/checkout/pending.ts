@@ -24,7 +24,7 @@ export async function GET() {
 
     return NextResponse.json({ order }, { status: 200 });
   } catch (e) {
-    console.error('[api.checkout.pending]', e);
+    console.error('[api.checkout.pending]');
     return NextResponse.json({ order: null }, { status: 200 });
   }
 }

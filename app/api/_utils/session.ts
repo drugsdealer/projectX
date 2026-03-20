@@ -30,7 +30,11 @@ export const GUEST_TOKEN_COOKIE_ALT = 'guest_token';   // backward compatibility
 export const PENDING_ORDER_COOKIE = 'pending_order_id';
 
 // Secret for legacy token signature (HMAC-SHA256). Set STAGE_VAULT_SECRET in .env
-const SECRET = process.env.STAGE_VAULT_SECRET || 'dev_secret_change_me';
+const SECRET = process.env.STAGE_VAULT_SECRET || (
+  process.env.NODE_ENV === 'production'
+    ? (() => { throw new Error('STAGE_VAULT_SECRET must be set in production'); })()
+    : 'dev_secret_change_me'
+);
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 // Use secure cookies in production
@@ -353,12 +357,12 @@ export async function validateUserBySession(userId: number | null) {
       const jar: any = await getCookieJar();
       jar.set({ name: SESSION_COOKIE, value: '', path: '/', maxAge: 0 });
       jar.set({ name: LEGACY_AUTH_COOKIE, value: '', path: '/', maxAge: 0 });
-      console.warn(`⚠️ Сессия недействительна или профиль деактивирован: userId=${userId}`);
+      console.warn("[validateUserBySession] session invalid or profile deactivated");
       return null;
     }
     return user.id;
   } catch (err) {
-    console.error("[validateUserBySession] Ошибка проверки пользователя:", err);
+    console.error("[validateUserBySession] Ошибка проверки пользователя:");
     return null;
   }
 }
@@ -391,7 +395,7 @@ export async function getUserFromSession() {
     });
     return user;
   } catch (e) {
-    console.error('[getUserFromSession] DB error', e);
+    console.error('[getUserFromSession] DB error');
     return null;
   }
 }

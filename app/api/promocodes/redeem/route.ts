@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.error("[promocodes/redeem] error:", e);
+    console.error("[promocodes/redeem] error:");
     return NextResponse.json(
       { ok: false, error: 'server_error' },
       { status: 500 }

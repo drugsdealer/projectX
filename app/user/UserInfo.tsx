@@ -424,7 +424,6 @@ export default function UserInfo() {
     };
     // Ensure birthDate is ISO string for server
     const formattedDate = draft.birthDate ? new Date(draft.birthDate).toISOString() : null;
-    console.log("[user.update] formatted birthDate from draft:", draft.birthDate, "=>", formattedDate);
     const after: Record<string, any> = {
       name: draft.name.trim(),
       phone: normalizePhone(draft.phone.trim()),
@@ -440,7 +439,6 @@ export default function UserInfo() {
 
     try {
       // Update profile
-      console.log("[user.update] submitting birthDate:", after.birthDate);
       const res = await fetch("/api/user/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -456,7 +454,6 @@ export default function UserInfo() {
         }),
       });
       const data = await res.json().catch(() => null);
-      console.log('[user.update] response', { ok: res.ok, status: res.status, data });
       if (!res.ok || !data?.success) {
         throw new Error(data?.message || "Не удалось сохранить изменения");
       }
@@ -525,14 +522,13 @@ export default function UserInfo() {
             changes,
           }),
         });
-        console.log('[user.audit] sent', { changes });
       } catch {}
 
       setMessage("Профиль обновлён.");
       setIsEditing(false);
       await refresh(); // подтягиваем новые данные и обновлённые cookies с бэка
     } catch (e: any) {
-      console.error('[user.update] failed', e);
+      console.error('[user.update] failed');
       setError(e.message || "Ошибка сохранения");
     } finally {
       setSaving(false);

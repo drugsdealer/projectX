@@ -89,7 +89,7 @@ export async function POST(req: Request) {
 
     // Здесь можно интегрировать реальную отправку письма.
     if (process.env.NODE_ENV !== 'production') {
-      console.log('[send-email-code] code generated for user', user.id);
+      console.log('[send-email-code] code generated');
     }
 
     const res = NextResponse.json({ success: true });
@@ -102,7 +102,7 @@ export async function POST(req: Request) {
     });
     return res;
   } catch (e) {
-    console.error('[send-email-code] error', e);
+    console.error('[send-email-code] error');
     return NextResponse.json({ success: false, message: 'Ошибка сервера' }, { status: 500 });
   }
 }

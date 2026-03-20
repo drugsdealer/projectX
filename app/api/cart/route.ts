@@ -105,7 +105,7 @@ export async function GET() {
     });
     return NextResponse.json({ success: true, cartId: cart.id, items });
   } catch (e) {
-    console.error("[cart][GET] error", e);
+    console.error("[cart][GET] error");
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }
@@ -209,13 +209,13 @@ export async function POST(req: Request) {
 
     if (addToCartEvents.length > 0) {
       void emitServerEvents(addToCartEvents).catch((err) => {
-        console.error("[cart][POST] analytics emit failed", err);
+        console.error("[cart][POST] analytics emit failed");
       });
     }
 
     return NextResponse.json({ success: true, items: itemsOut });
   } catch (e) {
-    console.error("[cart][POST] error", e);
+    console.error("[cart][POST] error");
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }
@@ -250,7 +250,7 @@ export async function PATCH(req: Request) {
     const items = await prisma.cartItem.findMany({ where: { cartId: cart.id } });
     return NextResponse.json({ success: true, items });
   } catch (e) {
-    console.error("[cart][PATCH] error", e);
+    console.error("[cart][PATCH] error");
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }
@@ -277,7 +277,7 @@ export async function DELETE(req: Request) {
     const items = await prisma.cartItem.findMany({ where: { cartId: cart.id } });
     return NextResponse.json({ success: true, items });
   } catch (e) {
-    console.error("[cart][DELETE] error", e);
+    console.error("[cart][DELETE] error");
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }

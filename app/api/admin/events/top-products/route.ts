@@ -68,7 +68,7 @@ export async function GET(req: Request) {
       { headers: { "Cache-Control": "private, no-store, max-age=0" } }
     );
   } catch (error) {
-    console.error("[admin.events.top-products] upstream error", error);
+    console.error("[admin.events.top-products] upstream error");
     return NextResponse.json(
       { success: false, message: "Events analytics service unavailable" },
       { status: 502 }

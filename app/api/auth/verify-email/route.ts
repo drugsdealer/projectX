@@ -197,7 +197,7 @@ export async function POST(req: Request) {
         });
         setSessionTokenOnResponse(res, sessionToken);
       } catch (e) {
-        console.warn("[VERIFY] failed to create session:", e);
+        console.warn("[VERIFY] failed to create session:");
         clearSessionTokenOnResponse(res);
       }
       res.cookies.set("vfy", "", {
@@ -294,7 +294,7 @@ export async function POST(req: Request) {
       });
       setSessionTokenOnResponse(res, sessionToken);
     } catch (e) {
-      console.warn("[VERIFY] failed to create session:", e);
+      console.warn("[VERIFY] failed to create session:");
       clearSessionTokenOnResponse(res);
     }
     res.cookies.set("vfy", "", { path: "/", expires: new Date(0), httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
@@ -308,7 +308,7 @@ export async function POST(req: Request) {
 
     return res;
   } catch (e) {
-    console.error("[VERIFY] exception", e);
+    console.error("[VERIFY] exception");
     return bad("Ошибка проверки. Попробуйте позже.", 500);
   }
 }

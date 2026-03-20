@@ -130,7 +130,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ success: true, source: "events-service", items: items.slice(0, limit) });
   } catch (error) {
-    console.error("[recommendations.bestsellers] upstream error", error);
+    console.error("[recommendations.bestsellers] upstream error");
     const items = await fallbackBestsellers(limit, categoryId);
     return NextResponse.json({ success: true, source: "fallback", items });
   }

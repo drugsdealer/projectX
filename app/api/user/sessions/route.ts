@@ -140,7 +140,7 @@ export async function GET(req: Request) {
     }
     return res;
   } catch (e) {
-    console.error("[sessions] error", e);
+    console.error("[sessions] error");
     return NextResponse.json({ success: false }, { status: 500 });
   }
 }

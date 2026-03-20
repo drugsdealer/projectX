@@ -94,7 +94,7 @@ export async function PATCH(req: Request) {
         data: { deliveryNotifiedAt: new Date() },
       });
     } catch (err) {
-      console.error("[admin.orders] notifyOrderArrived failed", err);
+      console.error("[admin.orders] notifyOrderArrived failed");
     }
   }
 

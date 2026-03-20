@@ -32,15 +32,19 @@ export async function emitServerEvents(
 
   const body = Array.isArray(payload) ? { events: payload } : payload;
 
-  const upstream = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Events-Api-Key": apiKey,
-    },
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
-
-  return upstream.ok;
+  try {
+    const upstream = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Events-Api-Key": apiKey,
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+      signal: AbortSignal.timeout(3000),
+    });
+    return upstream.ok;
+  } catch {
+    return false;
+  }
 }

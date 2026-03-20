@@ -58,7 +58,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (e) {
-    console.error("[change-password] error", e);
+    console.error("[change-password] error");
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }

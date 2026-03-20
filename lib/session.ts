@@ -24,7 +24,7 @@ async function validateUserExists(userId: number | null) {
       jar.delete?.("userId");
       jar.delete?.("session_user_id");
       jar.delete?.("auth_user_id");
-      console.warn(`⚠️ Сессия недействительна, userId=${userId} удалён или деактивирован`);
+      console.warn("[session] session invalid or profile deactivated");
       return null;
     }
     return user.id;

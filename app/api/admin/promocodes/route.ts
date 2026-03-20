@@ -138,7 +138,7 @@ export async function POST(req: Request) {
     if (e?.code === "P2002") {
       return NextResponse.json({ success: false, message: "Такой код уже существует" }, { status: 409 });
     }
-    console.error("[admin.promocodes] create failed", e);
+    console.error("[admin.promocodes] create failed");
     return NextResponse.json({ success: false, message: "Ошибка создания" }, { status: 500 });
   }
 }

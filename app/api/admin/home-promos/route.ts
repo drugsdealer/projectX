@@ -13,7 +13,7 @@ export async function GET(req: Request) {
     const promos = await readHomeCmsPromos();
     return NextResponse.json({ success: true, promos });
   } catch (err) {
-    console.error("[admin.home-promos.GET]", err);
+    console.error("[admin.home-promos.GET]");
     return NextResponse.json({ success: false, message: "Не удалось загрузить CMS-промо" }, { status: 500 });
   }
 }
@@ -28,7 +28,7 @@ export async function PUT(req: Request) {
     const promos = await writeHomeCmsPromos(body?.promos);
     return NextResponse.json({ success: true, promos });
   } catch (err) {
-    console.error("[admin.home-promos.PUT]", err);
+    console.error("[admin.home-promos.PUT]");
     return NextResponse.json({ success: false, message: "Не удалось сохранить CMS-промо" }, { status: 400 });
   }
 }

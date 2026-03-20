@@ -156,7 +156,7 @@ export async function GET(req: NextRequest) {
       }
     );
   } catch (err) {
-    console.error("[bootstrap] error", err);
+    console.error("[bootstrap] error");
     return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
 }

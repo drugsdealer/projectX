@@ -135,7 +135,7 @@ export async function GET(req: NextRequest) {
 
     return privateJson({ success: true, orders: normalized }, { status: 200 });
   } catch (err) {
-    console.error("[api.order] failed:", err);
+    console.error("[api.order] failed:");
     return privateJson({ success: false, message: "Server error" }, { status: 500 });
   }
 }

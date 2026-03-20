@@ -128,7 +128,7 @@ export async function GET(req: Request) {
       },
     );
   } catch (err) {
-    console.error('[api.order.history] error:', err);
+    console.error('[api.order.history] error:');
     return NextResponse.json(
       { success: false, error: 'Server error' },
       { status: 500 },

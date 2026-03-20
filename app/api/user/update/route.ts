@@ -222,7 +222,7 @@ export async function POST(req: NextRequest) {
     } catch (e) {
       // Log DB/session errors but keep going: cookie is still authoritative for UI fallback
       // eslint-disable-next-line no-console
-      console.error('[api.user.update] db/session update failed', e);
+      console.error('[api.user.update] db/session update failed');
     }
 
     // Always update encrypted cookie as fallback / quick sync
@@ -256,7 +256,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, profile: outProfile });
   } catch (err) {
-    console.error('[api.user.update] error', err);
+    console.error('[api.user.update] error');
     return NextResponse.json(
       { success: false, message: 'Invalid payload' },
       { status: 400 }
@@ -309,14 +309,14 @@ export async function GET(req: NextRequest) {
     } catch (e) {
       // swallow and fallback to cookie
       // eslint-disable-next-line no-console
-      console.error('[api.user.update] session/db GET failed', e);
+      console.error('[api.user.update] session/db GET failed');
     }
 
     // Fallback: return cookie profile
     const profile = await readCookieProfile();
     return NextResponse.json({ success: true, profile });
   } catch (err) {
-    console.error('[api.user.update] GET error', err);
+    console.error('[api.user.update] GET error');
     return NextResponse.json({ success: false, message: 'Server error' }, { status: 500 });
   }
 }

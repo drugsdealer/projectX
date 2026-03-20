@@ -37,7 +37,7 @@ async function fetchUser(request: NextRequest) {
   } catch (error: any) {
     // Игнорируем AbortError (нормален при быстрых переходах)
     if (error?.name !== 'AbortError' && process.env.NODE_ENV === 'development') {
-      console.log("[middleware] auth fetch error:", error);
+      console.log("[middleware] auth fetch error");
     }
     return null;
   } finally {
@@ -86,7 +86,7 @@ export async function middleware(request: NextRequest) {
     res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
     res.headers.set("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
     res.headers.set("Cross-Origin-Opener-Policy", "same-origin");
-    res.headers.set("Cross-Origin-Resource-Policy", "same-origin");
+    res.headers.set("Cross-Origin-Resource-Policy", "cross-origin");
     if (isApiPath) {
       res.headers.set("X-Robots-Tag", "noindex, nofollow");
       // приватные API нельзя кэшировать в браузере/прокси
@@ -98,16 +98,19 @@ export async function middleware(request: NextRequest) {
     if (request.nextUrl.protocol === "https:") {
       res.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
     }
-    // CSP (мягкая, чтобы не ломать существующие инлайн-стили/скрипты)
+    // CSP: unsafe-inline нужен для Next.js inline-скриптов гидрации
     res.headers.set(
       "Content-Security-Policy",
       [
         "default-src 'self'",
-        "img-src 'self' https: data:",
+        "img-src 'self' https: data: blob:",
         "script-src 'self' 'unsafe-inline'",
         "style-src 'self' 'unsafe-inline'",
         "font-src 'self' https: data:",
-        "connect-src 'self'",
+        "connect-src 'self' https://res.cloudinary.com https://*.upstash.io",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
         "frame-ancestors 'none'",
       ].join("; ")
     );
@@ -120,8 +123,7 @@ export async function middleware(request: NextRequest) {
   // Исключения: внешние вебхуки/интеграции, где Origin обычно отсутствует.
   if (isApiPath && !["GET", "HEAD", "OPTIONS"].includes(request.method.toUpperCase())) {
     const webhookBypass =
-      pathname === "/api/yookassa" ||
-      pathname === "/api/confirm-payment";
+      pathname === "/api/yookassa";
     const cookieHeader = request.headers.get("cookie") || "";
     const hasAuthCookie =
       /(?:^|;\s*)(session_user_id|session_token|auth_session|sid|admin_2fa_ok)=/.test(cookieHeader);

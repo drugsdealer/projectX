@@ -40,7 +40,7 @@ export async function GET() {
 
     return NextResponse.json({ success: true, user }, { status: 200 });
   } catch (e) {
-    console.error('[auth.me] error', e);
+    console.error('[auth.me] error');
     return NextResponse.json({ success: false, user: null }, { status: 500 });
   }
 }

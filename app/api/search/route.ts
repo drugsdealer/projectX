@@ -553,7 +553,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ items, suggestion, brand: brandCard }, { status: 200, headers: PUBLIC_CACHE_HEADERS });
   } catch (err) {
-    console.error('GET /api/search failed', err);
+    console.error('GET /api/search failed');
     return NextResponse.json({ items: [], error: 'Search failed' }, { status: 500 });
   }
 }

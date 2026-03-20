@@ -189,7 +189,7 @@ export async function GET(
         colorVariants = Array.isArray(variants) ? variants : [];
       }
     } catch (err) {
-      console.error("[api.products.[id]] colorVariants error:", err);
+      console.error("[api.products.[id]] colorVariants error");
     }
 
     const images = Array.from(new Set(imgs.filter(Boolean)));
@@ -393,7 +393,7 @@ export async function GET(
       { status: 200, headers: PUBLIC_CACHE_HEADERS }
     );
   } catch (e) {
-    console.error("[api.products.[id]] error:", e);
+    console.error("[api.products.[id]] error");
     return NextResponse.json(
       { success: false, message: "Server error" },
       { status: 500 }

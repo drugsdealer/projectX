@@ -227,7 +227,7 @@ export async function POST(req: Request) {
         res.cookies.set("orderToken", "", { path: "/", maxAge: 0 });
         res.cookies.set("order_token", "", { path: "/", maxAge: 0 });
       } catch (e) {
-        console.warn("[LOGIN] failed to bind guest orders:", e);
+        console.warn("[LOGIN] failed to bind guest orders:");
       }
     }
 
@@ -238,7 +238,7 @@ export async function POST(req: Request) {
         role: user.role,
       });
     } catch (e) {
-      console.error("[LOGIN] failed to write audit log:", e);
+      console.error("[LOGIN] failed to write audit log:");
     }
 
     let sessionMeta: {
@@ -266,7 +266,7 @@ export async function POST(req: Request) {
       }
       sessionMeta = { ipAddr, city, country, device: parsed.device, os: parsed.os, ua };
     } catch (e) {
-      console.warn("[LOGIN] failed to parse session meta:", e);
+      console.warn("[LOGIN] failed to parse session meta:");
     }
 
     try {
@@ -290,13 +290,13 @@ export async function POST(req: Request) {
       });
       setSessionTokenOnResponse(res, sessionToken);
     } catch (e) {
-      console.warn("[LOGIN] failed to create session:", e);
+      console.warn("[LOGIN] failed to create session:");
       clearSessionTokenOnResponse(res);
     }
 
     return res;
   } catch (error) {
-    console.error("[LOGIN] error:", error);
+    console.error("[LOGIN] error:");
     return handleApiError(error);
 }
 }

@@ -171,7 +171,7 @@ export async function POST(req: Request) {
         email: updated.email || undefined,
       });
     } catch (err) {
-      console.error("[order.complete] telegram notify failed:", err);
+      console.error("[order.complete] telegram notify failed");
     }
 
     // Промокод списываем только после успешной оплаты
@@ -192,7 +192,7 @@ export async function POST(req: Request) {
         });
       }
     } catch (err) {
-      console.error("[order.complete] promo redeem failed:", err);
+      console.error("[order.complete] promo redeem failed");
     }
 
     void (async () => {
@@ -247,13 +247,13 @@ export async function POST(req: Request) {
           ];
 
       await emitServerEvents(purchaseEvents);
-    })().catch((err) => {
-      console.error("[order.complete] analytics emit failed:", err);
+    })().catch(() => {
+      console.error("[order.complete] analytics emit failed");
     });
 
     return res;
   } catch (e) {
-    console.error("[order.complete] fail:", e);
+    console.error("[order.complete] fail");
     return privateJson({ success: false, message: "Confirm failed" }, { status: 400 });
   }
 }

@@ -154,7 +154,7 @@ async function loadProducts(): Promise<LoadResult> {
       brandSlug: mainBrand.slug || null,
     };
   } catch (error) {
-    console.error("[margiela-men-page] prisma error:", error);
+    console.error("[margiela-men-page] prisma error");
     return {
       items: [],
       dbError: true,

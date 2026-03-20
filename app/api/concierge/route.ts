@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (e) {
-    console.error("[api/concierge] error", e);
+    console.error("[api/concierge] error");
     return NextResponse.json({ ok: false }, { status: 500 });
   }
 }

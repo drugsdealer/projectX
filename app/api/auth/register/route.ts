@@ -106,7 +106,7 @@ export async function POST(req: Request) {
     // Сессию создаём только после подтверждения email
     return NextResponse.json({ success: true, user: created }, { status: 200 });
   } catch (e) {
-    console.error('[REGISTER] exception', e);
+    console.error('[REGISTER] exception');
     return NextResponse.json(
       { success: false, message: 'Ошибка регистрации' },
       { status: 500 }

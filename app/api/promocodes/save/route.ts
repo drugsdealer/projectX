@@ -69,7 +69,7 @@ export async function POST(req: Request) {
     if (e.code === "P2003") {
       return Response.json({ ok: false, error: "user_not_found" }, { status: 400 });
     }
-    console.error("Ошибка при сохранении промокода:", e);
+    console.error("Ошибка при сохранении промокода:");
     return Response.json({ ok: false, error: "db_error" }, { status: 500 });
   }
 

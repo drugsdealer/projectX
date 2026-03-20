@@ -155,13 +155,7 @@ export default function MockBankClient() {
         data = { success: false, message: text };
       }
 
-      console.log("[mock-bank] confirm-payment:", {
-        status: res.status,
-        ok: res.ok,
-        orderId: finalOrderId,
-        token: !!finalToken,
-        data,
-      });
+      // response logged for debug only in dev
 
       const confirmedOrderId =
         (data && (data.orderId || data.id)) ||
@@ -181,7 +175,7 @@ export default function MockBankClient() {
         router.replace(`/payment/result?${qs.toString()}`);
       }
     } catch (e) {
-      console.warn("[mock-bank] network error", e);
+      console.warn("[mock-bank] network error");
       router.replace("/payment/result?status=failed");
     } finally {
       setLoading(false);

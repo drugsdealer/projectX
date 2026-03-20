@@ -74,12 +74,12 @@ export async function POST(req: Request) {
     try {
       await logAction(userId, 'USER_AUDIT', action, safeDetails);
     } catch (e) {
-      console.error('[audit.POST] failed to persist audit in DB', e);
+      console.error('[audit.POST] failed to persist audit in DB');
     }
 
     return NextResponse.json({ success: true, record });
   } catch (error) {
-    console.error('[audit.POST] error', error);
+    console.error('[audit.POST] error');
     return NextResponse.json({ success: false, message: 'Ошибка при записи аудита' }, { status: 500 });
   }
 }
@@ -103,7 +103,7 @@ export async function GET() {
 
     return NextResponse.json({ success: true, audit: auditLog });
   } catch (error) {
-    console.error('[audit.GET] error', error);
+    console.error('[audit.GET] error');
     return NextResponse.json({ success: false, message: 'Ошибка при получении аудита' }, { status: 500 });
   }
 }

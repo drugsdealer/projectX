@@ -175,7 +175,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, product });
   } catch (err) {
-    console.error("[admin.products.POST] failed", err);
+    console.error("[admin.products.POST] failed");
     return NextResponse.json(
       { success: false, message: "Не удалось добавить товар. Проверьте поля и попробуйте снова." },
       { status: 500 }

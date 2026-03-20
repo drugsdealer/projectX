@@ -42,7 +42,7 @@ export async function POST(req: Request) {
   try {
     secret = decryptSecret(user.adminTotpSecretEnc);
   } catch (e) {
-    console.error("[admin.2fa.verify] decrypt failed", e);
+    console.error("[admin.2fa.verify] decrypt failed");
     return NextResponse.json(
       { success: false, message: "Секрет 2FA поврежден. Выполните сброс 2FA." },
       { status: 400 }

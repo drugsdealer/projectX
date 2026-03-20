@@ -595,7 +595,7 @@ export async function POST(req: Request) {
 
     return res;
   } catch (e: any) {
-    console.error('[api.checkout] error', e?.message || e, e);
+    console.error('[api.checkout] error');
     return NextResponse.json(
       { ok: false, success: false, message: 'Server error' },
       { status: 500 },

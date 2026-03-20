@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       create: { userId: user.id, code },
     });
 
-    console.log(`[password-reset] code generated for user ${user.id}`);
+    console.log('[password-reset] code generated');
 
     const sent = await sendEmail({
       to: user.email,
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ success: true });
   } catch (e) {
-    console.error("[password-reset/request] error", e);
+    console.error("[password-reset/request] error");
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }

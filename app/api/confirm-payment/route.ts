@@ -242,7 +242,7 @@ export async function POST(req: Request) {
           });
         }
       } catch (err) {
-        console.error('[api.confirm-payment] failed to send telegram notification', err);
+        console.error('[api.confirm-payment] failed to send telegram notification');
       }
     }
 
@@ -264,7 +264,7 @@ export async function POST(req: Request) {
         });
       }
     } catch (err) {
-      console.error('[api.confirm-payment] promo redeem failed', err);
+      console.error('[api.confirm-payment] promo redeem failed');
     }
 
     /* 4.1 Берём позиции заказа */
@@ -404,7 +404,7 @@ export async function POST(req: Request) {
 
     return res;
   } catch (e) {
-    console.error('[api.confirm-payment] failed', e);
+    console.error('[api.confirm-payment] failed');
     return NextResponse.json(
       { success: false, message: 'Server error' },
       { status: 500 },

@@ -159,7 +159,6 @@ export default function RegisterPage() {
 
       try {
         sessionStorage.setItem("email", normalizedEmail);
-        localStorage.setItem("email", normalizedEmail);
         sessionStorage.setItem("reg_active", "1");
       } catch {}
       router.push("/verify-email");

@@ -43,7 +43,7 @@ export async function GET() {
       promoCodes,
     });
   } catch (err) {
-    console.error("[api.home.promocode-space]", err);
+    console.error("[api.home.promocode-space]");
     return NextResponse.json(
       {
         success: true,

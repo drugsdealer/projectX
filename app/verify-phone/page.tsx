@@ -22,22 +22,14 @@ export default function VerifyPhonePage() {
 
     const generated = Array.from({ length: 6 }, () => Math.floor(Math.random() * 10)).join("");
     setCorrectCode(generated);
-    console.log("Код для подтверждения телефона:", generated);
   }, []);
 
   const handleVerify = () => {
     if (code.join("").replace(/\s/g, "") === correctCode) {
       setSuccess(true);
       setError("");
-      console.log("✅ Код подтверждён:", code.join(""));
 
       const normalizedPhone = savedPhone.replace(/[^0-9]/g, "").replace(/^8/, "7");
-
-      console.log("📦 Сохраняем пользователя:", {
-        contact: normalizedPhone,
-        method: "phone",
-        confirmed: true,
-      });
 
       localStorage.setItem(
         "user",
@@ -55,7 +47,6 @@ export default function VerifyPhonePage() {
           name: prevUser?.name ?? "Не указано",
           isGuest: false,
           verified: true,
-          password: localStorage.getItem("password") ?? "",
         }));
       }
 

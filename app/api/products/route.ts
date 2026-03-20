@@ -189,7 +189,7 @@ export async function GET(req: Request) {
         }
       } catch (e) {
         // не критично — просто fallback
-        console.warn("[api.products] no productImage relation (detail)", e);
+        console.warn("[api.products] no productImage relation (detail)");
       }
 
       const baseImages = Array.isArray((item as any).images)
@@ -323,7 +323,7 @@ export async function GET(req: Request) {
         }
       }
     } catch (e) {
-      console.warn("[api.products] no productImage relation (list)", e);
+      console.warn("[api.products] no productImage relation (list)");
     }
 
     // Build brand filter options based on loaded products
@@ -408,7 +408,7 @@ export async function GET(req: Request) {
       { status: 200, headers: PUBLIC_CACHE_HEADERS }
     );
   } catch (e) {
-    console.error("[api.products] GET error", e);
+    console.error("[api.products] GET error");
     // Отдаём 500 и простой ответ, чтобы фронт не падал на парсинге
     return NextResponse.json({ success: false, message: "Server error", products: [] }, { status: 500 });
   }

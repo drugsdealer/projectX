@@ -51,7 +51,7 @@ export async function GET(req: Request) {
       address: picked,
     });
   } catch (e) {
-    console.error("[geo.reverse] error", e);
+    console.error("[geo.reverse] error");
     return NextResponse.json(
       { success: false, message: "Reverse geocoding failed" },
       { status: 502 }

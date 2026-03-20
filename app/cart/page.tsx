@@ -558,9 +558,9 @@ useEffect(() => {
       };
       sessionStorage.setItem("checkoutState", JSON.stringify(draft));
       setHasCheckoutData(true);
-      console.debug("[cart] checkoutState saved", draft);
+      console.debug("[cart] checkoutState saved");
     } catch (e) {
-      console.error("[cart] failed to save checkoutState", e);
+      console.error("[cart] failed to save checkoutState");
     }
     setShowCheckout(true);
   };
@@ -655,7 +655,7 @@ useEffect(() => {
 
       const data = await res.json().catch(() => ({} as any));
       if (!res.ok || !data?.orderId) {
-        console.error("[cart] checkout failed", { status: res.status, data });
+        console.error("[cart] checkout failed");
         showToast({ title: "Ошибка оформления", details: data?.message || "Попробуйте чуть позже" });
         return;
       }

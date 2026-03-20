@@ -33,7 +33,7 @@ export default function CheckoutSuccessPage() {
     const token = tokenParam || tokenFromCookie || undefined;
 
     if (!orderId && !token) {
-      console.warn("[checkout/success] neither orderId nor token provided; token cookie:", tokenFromCookie);
+      console.warn("[checkout/success] neither orderId nor token provided");
       setState("error");
       return;
     }
@@ -55,7 +55,7 @@ export default function CheckoutSuccessPage() {
 
         if (!res.ok) {
           const text = await res.text().catch(() => "");
-          console.error("[checkout/success] complete failed:", res.status, text);
+          console.error("[checkout/success] complete failed");
           setState("error");
           return;
         }
@@ -78,7 +78,7 @@ export default function CheckoutSuccessPage() {
         setState("done");
         setTimeout(() => router.replace("/user?tab=orders"), 700);
       } catch (err) {
-        console.error("[checkout/success] error:", err);
+        console.error("[checkout/success] error");
         setState("error");
       }
     })();
