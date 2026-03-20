@@ -12,7 +12,7 @@ import RouteTransitions from "@/components/RouteTransitions";
 import MotionBudgetProvider from "@/components/MotionBudgetProvider";
 import type { Metadata } from "next";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.ru";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -34,6 +34,10 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Stage Store" }],
   creator: "Stage Store",
+  icons: {
+    icon: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008466/IMG_0363_iaalz9.png",
+    apple: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008466/IMG_0363_iaalz9.png",
+  },
   openGraph: {
     type: "website",
     locale: "ru_RU",
@@ -42,12 +46,21 @@ export const metadata: Metadata = {
     title: "Stage Store — Брендовая одежда и аксессуары",
     description:
       "Интернет-магазин оригинальной брендовой одежды, обуви и аксессуаров. Гарантия подлинности.",
+    images: [
+      {
+        url: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008429/IMG_0364_xcrp0m.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Stage Store — Брендовая одежда и аксессуары",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Stage Store — Брендовая одежда и аксессуары",
     description:
       "Интернет-магазин оригинальной брендовой одежды, обуви и аксессуаров.",
+    images: ["https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008429/IMG_0364_xcrp0m.jpg"],
   },
   robots: {
     index: true,
@@ -82,6 +95,44 @@ export default function RootLayout({
         <meta
           name="viewport"
           content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@graph": [
+                {
+                  "@type": "Organization",
+                  "@id": `${SITE_URL}/#organization`,
+                  name: "Stage Store",
+                  url: SITE_URL,
+                  logo: {
+                    "@type": "ImageObject",
+                    url: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008429/IMG_0364_xcrp0m.jpg",
+                  },
+                  description:
+                    "Интернет-магазин оригинальной брендовой одежды, обуви и аксессуаров. Доставка по Москве и России.",
+                  sameAs: ["https://t.me/stagestore"],
+                },
+                {
+                  "@type": "WebSite",
+                  "@id": `${SITE_URL}/#website`,
+                  url: SITE_URL,
+                  name: "Stage Store",
+                  publisher: { "@id": `${SITE_URL}/#organization` },
+                  potentialAction: {
+                    "@type": "SearchAction",
+                    target: {
+                      "@type": "EntryPoint",
+                      urlTemplate: `${SITE_URL}/search?q={search_term_string}`,
+                    },
+                    "query-input": "required name=search_term_string",
+                  },
+                },
+              ],
+            }),
+          }}
         />
       </head>
       <body
