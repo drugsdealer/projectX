@@ -125,13 +125,11 @@ function pickSeeded<T>(source: T[], count: number, seedSource: string): T[] {
 }
 
 
-// Smooth image swipe/hover preview for product cards (isolated from page re-renders)
-const CARD_SWIPE_VARIANTS = {
-  // Cover-reveal: the new image is already positioned on top (x: 0) and is revealed by clipPath.
-  // This removes the moment where the old image “hangs” visibly.
+// Desktop: clipPath reveal (GPU-accelerated on desktop browsers).
+// Mobile/balanced: translateX slide (always GPU-accelerated, avoids Safari clipPath repaint bug).
+const CARD_SWIPE_VARIANTS_DESKTOP = {
   enter: (dir: 'left' | 'right') => ({
     x: 0,
-    // If we swipe left (next image), reveal from the right edge (start clipped from the left).
     clipPath: dir === 'left' ? 'inset(0 0 0 100%)' : 'inset(0 100% 0 0)',
     opacity: 1,
     scale: 1.01,
@@ -144,7 +142,6 @@ const CARD_SWIPE_VARIANTS = {
     scale: 1,
     zIndex: 2,
   },
-  // Old image stays underneath and quickly fades a bit (it is being covered anyway).
   exit: (_dir: 'left' | 'right') => ({
     x: 0,
     opacity: 0,
@@ -153,17 +150,37 @@ const CARD_SWIPE_VARIANTS = {
   }),
 };
 
+// Mobile: simple translateX — always hardware-accelerated on iOS Safari
+const CARD_SWIPE_VARIANTS_MOBILE = {
+  enter: (dir: 'left' | 'right') => ({
+    x: dir === 'left' ? '100%' : '-100%',
+    opacity: 1,
+    scale: 1,
+    zIndex: 2,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+    scale: 1,
+    zIndex: 2,
+  },
+  exit: (dir: 'left' | 'right') => ({
+    x: dir === 'left' ? '-40%' : '40%',
+    opacity: 0,
+    scale: 1,
+    zIndex: 1,
+  }),
+};
+
 const CARD_SWIPE_VARIANTS_REDUCED = {
   enter: {
     x: 0,
-    clipPath: "inset(0 0 0 0)",
     opacity: 0,
     scale: 1,
     zIndex: 2,
   },
   center: {
     x: 0,
-    clipPath: "inset(0 0 0 0)",
     opacity: 1,
     scale: 1,
     zIndex: 2,
@@ -373,22 +390,22 @@ const ProductCardImage = memo(function ProductCardImage({
         setTouchActionMode('pan-y');
       }}
     >
-      <AnimatePresence initial={false} mode="sync" custom={swipeDir}>
+      <AnimatePresence initial={false} mode={isTouchDevice ? "popLayout" : "sync"} custom={swipeDir}>
         <motion.div
           key={`${activeSrc}-${displaySrc}`}
           custom={swipeDir}
-          variants={reduceMotion ? CARD_SWIPE_VARIANTS_REDUCED : CARD_SWIPE_VARIANTS}
+          variants={reduceMotion ? CARD_SWIPE_VARIANTS_REDUCED : isTouchDevice ? CARD_SWIPE_VARIANTS_MOBILE : CARD_SWIPE_VARIANTS_DESKTOP}
           initial="enter"
           animate="center"
           exit="exit"
           transition={{
-            duration: reduceMotion ? 0.14 : balancedMotion ? 0.22 : 0.32,
+            duration: reduceMotion ? 0.14 : isTouchDevice ? 0.25 : balancedMotion ? 0.22 : 0.32,
             ease: [0.22, 1, 0.36, 1],
             opacity: { duration: reduceMotion ? 0.1 : 0.16, ease: "linear" },
-            scale: { duration: reduceMotion || balancedMotion ? 0 : 0.32, ease: [0.22, 1, 0.36, 1] },
+            scale: { duration: reduceMotion || balancedMotion || isTouchDevice ? 0 : 0.32, ease: [0.22, 1, 0.36, 1] },
           }}
           className="absolute inset-0 transform-gpu"
-          style={{ willChange: reduceMotion ? "opacity" : "transform, clip-path" }}
+          style={{ willChange: reduceMotion ? "opacity" : isTouchDevice ? "transform, opacity" : "transform, clip-path" }}
         >
           <Image
             src={displaySrc}
