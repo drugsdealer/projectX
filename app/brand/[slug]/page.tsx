@@ -75,7 +75,6 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
       brandName={brandName}
       meta={meta}
       slug={brandSlug}
-      brandId={brand.id}
     />
   );
 }
