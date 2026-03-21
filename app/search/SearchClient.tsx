@@ -977,7 +977,11 @@ export default function SearchPage() {
                     setPanelOpen(true);
                     setInputFocused(true);
                   }}
-                  onBlur={() => setInputFocused(false)}
+                  onBlur={() => {
+                    setInputFocused(false);
+                    // Close panel after a short delay (allows clicks on panel items to register first)
+                    setTimeout(() => setPanelOpen(false), 200);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -1002,7 +1006,7 @@ export default function SearchPage() {
 
                 {panelOpen && (
                   <div
-                    className="absolute left-0 right-0 mt-2 rounded-2xl border border-black/10 bg-white shadow-[0_20px_70px_rgba(0,0,0,0.12)] overflow-hidden"
+                    className="absolute left-0 right-0 mt-2 z-20 rounded-2xl border border-black/10 bg-white shadow-[0_20px_70px_rgba(0,0,0,0.12)] overflow-hidden"
                     onMouseDown={(e) => {
                       // Prevent input blur on desktop only; on touch devices this blocks taps
                       if (window.matchMedia('(pointer: fine)').matches) e.preventDefault();
@@ -1064,15 +1068,17 @@ export default function SearchPage() {
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={() => pushSearch(q)}
-                className="mt-2 w-full sm:hidden h-10 rounded-full bg-black text-white text-sm font-semibold hover:opacity-90 transition"
-              >
-                Искать
-              </button>
-              {/* Quick actions (primary) */}
-              <div className="mt-3">
+              {!panelOpen && (
+                <button
+                  type="button"
+                  onClick={() => pushSearch(q)}
+                  className="mt-2 w-full sm:hidden h-10 rounded-full bg-black text-white text-sm font-semibold hover:opacity-90 transition"
+                >
+                  Искать
+                </button>
+              )}
+              {/* Quick actions (primary) — hidden when search panel is open to avoid overlap */}
+              <div className={`mt-3${panelOpen ? ' hidden sm:block' : ''}`}>
                 <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-1 sm:pb-2 -mx-1 px-1 [-webkit-overflow-scrolling:touch]">
                   <Link
                     href="/search?tag=sale"

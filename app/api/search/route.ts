@@ -214,6 +214,19 @@ const SUBCATEGORY_SYNONYMS: Record<string, string> = {
   fragance: 'fragrance',
 };
 
+// Generic words that map to MULTIPLE subcategories (e.g. "кофта" = hoodie + sweater + sweatshirt + cardigan)
+const GROUP_SYNONYMS: Record<string, string[]> = {
+  'кофта': ['hoodie', 'sweater', 'sweatshirt', 'cardigan'],
+  'кофты': ['hoodie', 'sweater', 'sweatshirt', 'cardigan'],
+  'кофточка': ['hoodie', 'sweater', 'sweatshirt', 'cardigan'],
+  'верх': ['hoodie', 'sweater', 'sweatshirt', 'cardigan', 'tshirt', 'jacket'],
+  'верхняя одежда': ['jacket', 'coat', 'parka'],
+  'обувь': ['sneakers', 'boots', 'loafers', 'sandals'],
+  'головной убор': ['cap', 'beanie', 'hat'],
+  'головные уборы': ['cap', 'beanie', 'hat'],
+  'трикотаж': ['sweater', 'cardigan', 'sweatshirt'],
+};
+
 const CATEGORY_SYNONYMS: Record<string, string> = {
   обувь: 'обувь',
   одежда: 'одежда',
@@ -283,19 +296,28 @@ export async function GET(req: Request) {
       }
     };
 
+    // Check group synonyms first ("кофта" -> [hoodie, sweater, sweatshirt, cardigan])
+    const groupMatch = GROUP_SYNONYMS[qNorm] ?? GROUP_SYNONYMS[qMatch] ?? null;
+    // Also check if any group synonym appears as a phrase in the query ("кофта balenciaga" -> кофта)
+    const groupPhraseMatch = !groupMatch && qMatch
+      ? findBestPhraseMatch(qMatch, Object.keys(GROUP_SYNONYMS))
+      : null;
+    const groupSubs: string[] | null = groupMatch
+      ?? (groupPhraseMatch ? GROUP_SYNONYMS[groupPhraseMatch.raw] ?? GROUP_SYNONYMS[groupPhraseMatch.norm] ?? null : null);
+
     // exact synonym match ("кроссовки" -> sneakers)
-    const subFromSynExact = SUBCATEGORY_SYNONYMS[qNorm] ?? SUBCATEGORY_SYNONYMS[qMatch];
+    const subFromSynExact = !groupSubs ? (SUBCATEGORY_SYNONYMS[qNorm] ?? SUBCATEGORY_SYNONYMS[qMatch]) : undefined;
 
     // fuzzy synonym match for typos
     const synKeys = Object.keys(SUBCATEGORY_SYNONYMS);
     const canonicalSubs = Array.from(new Set(Object.values(SUBCATEGORY_SYNONYMS)));
 
-    const bestSynKey = !subFromSynExact ? bestSuggestion(qRaw, [...synKeys, ...canonicalSubs]) : null;
+    const bestSynKey = !subFromSynExact && !groupSubs ? bestSuggestion(qRaw, [...synKeys, ...canonicalSubs]) : null;
 
     const subFromSynFuzzy = bestSynKey ? SUBCATEGORY_SYNONYMS[normalizeText(bestSynKey)] ?? bestSynKey : undefined;
 
-    const subMatch = qMatch ? findBestPhraseMatch(qMatch, synKeys) : null;
-    const catMatch = !subMatch && qMatch ? findBestPhraseMatch(qMatch, Object.keys(CATEGORY_SYNONYMS)) : null;
+    const subMatch = !groupSubs && qMatch ? findBestPhraseMatch(qMatch, synKeys) : null;
+    const catMatch = !subMatch && !groupSubs && qMatch ? findBestPhraseMatch(qMatch, Object.keys(CATEGORY_SYNONYMS)) : null;
 
     const subFromMatch = subMatch ? SUBCATEGORY_SYNONYMS[subMatch.raw] ?? SUBCATEGORY_SYNONYMS[subMatch.norm] : null;
     const subForFilter = subFromMatch ?? subFromSynExact ?? null;
@@ -409,12 +431,13 @@ export async function GET(req: Request) {
 
     let smartText = qMatch;
     if (detectedBrand) smartText = stripPhrase(smartText, detectedBrand.norm);
+    if (groupPhraseMatch) smartText = stripPhrase(smartText, normalizeMatchText(groupPhraseMatch.raw));
     if (subMatch) smartText = stripPhrase(smartText, normalizeMatchText(subMatch.raw));
     if (catMatch) smartText = stripPhrase(smartText, normalizeMatchText(catMatch.raw));
     const smartQuery = smartText.trim();
 
     const orFilters: Prisma.ProductWhereInput[] = [];
-    const hasSmartFilters = !!(detectedBrand || subForFilter || catMatch);
+    const hasSmartFilters = !!(detectedBrand || subForFilter || catMatch || groupSubs);
     const textForSearch = smartQuery || (hasSmartFilters ? '' : q);
     if (textForSearch) {
       orFilters.push({ name: { contains: textForSearch, mode: Prisma.QueryMode.insensitive } });
@@ -439,7 +462,7 @@ export async function GET(req: Request) {
         ],
       });
     }
-    if (catMatch && !category && !subMatch) {
+    if (catMatch && !category && !subMatch && !groupSubs) {
       const categoryValue = CATEGORY_SYNONYMS[catMatch.raw] ?? CATEGORY_SYNONYMS[catMatch.norm];
       if (categoryValue) {
         andFilters.push({
@@ -455,7 +478,14 @@ export async function GET(req: Request) {
         Brand: { is: { name: { equals: detectedBrand.name, mode: Prisma.QueryMode.insensitive } } },
       });
     }
-    if (subForFilter) {
+    // Group synonyms: "кофта" -> match any of [hoodie, sweater, sweatshirt, cardigan]
+    if (groupSubs && groupSubs.length > 0) {
+      andFilters.push({
+        OR: groupSubs.map((sub) => ({
+          subcategory: { equals: sub, mode: Prisma.QueryMode.insensitive },
+        })),
+      });
+    } else if (subForFilter) {
       andFilters.push({ subcategory: { equals: subForFilter, mode: Prisma.QueryMode.insensitive } });
     }
 
