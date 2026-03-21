@@ -3,6 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+type BrandProduct = {
+  id: number;
+  name: string;
+  imageUrl: string | null;
+  price: number | null;
+};
+
 type Brand = {
   id: number;
   name: string;
@@ -11,7 +18,6 @@ type Brand = {
   description: string | null;
   aboutLong: string | null;
   isPremium: boolean;
-  isFeatured: boolean;
   _count: { Product: number };
 };
 
@@ -22,7 +28,6 @@ type BrandForm = {
   description: string;
   aboutLong: string;
   isPremium: boolean;
-  isFeatured: boolean;
 };
 
 const emptyForm = (): BrandForm => ({
@@ -32,7 +37,6 @@ const emptyForm = (): BrandForm => ({
   description: "",
   aboutLong: "",
   isPremium: false,
-  isFeatured: false,
 });
 
 function slugify(input: string): string {
@@ -57,6 +61,11 @@ export default function AdminBrandsPage() {
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<BrandForm>(emptyForm());
+
+  // Products panel
+  const [productsForBrand, setProductsForBrand] = useState<number | null>(null);
+  const [brandProducts, setBrandProducts] = useState<BrandProduct[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
 
   const authGuardOrData = useCallback(
     async (res: Response) => {
@@ -92,6 +101,64 @@ export default function AdminBrandsPage() {
     loadBrands();
   }, [loadBrands]);
 
+  const loadBrandProducts = useCallback(
+    async (brandId: number) => {
+      setLoadingProducts(true);
+      try {
+        const res = await fetch(`/api/admin/brands/products?brandId=${brandId}`, {
+          cache: "no-store",
+        });
+        const data = await authGuardOrData(res);
+        if (res.ok && data?.success) {
+          setBrandProducts(data.products || []);
+        }
+      } catch {
+        // ignore
+      } finally {
+        setLoadingProducts(false);
+      }
+    },
+    [authGuardOrData]
+  );
+
+  const toggleProducts = (brandId: number) => {
+    if (productsForBrand === brandId) {
+      setProductsForBrand(null);
+      setBrandProducts([]);
+      return;
+    }
+    setProductsForBrand(brandId);
+    loadBrandProducts(brandId);
+  };
+
+  const unlinkProduct = async (productId: number) => {
+    if (!window.confirm("Убрать товар из этого бренда?")) return;
+    setMsg(null);
+    try {
+      const res = await fetch("/api/admin/brands/products", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId }),
+      });
+      const data = await authGuardOrData(res);
+      if (!res.ok || !data?.success) {
+        setMsg(data?.message || "Ошибка удаления товара из бренда");
+        return;
+      }
+      setBrandProducts((prev) => prev.filter((p) => p.id !== productId));
+      // Update count in brands list
+      setBrands((prev) =>
+        prev.map((b) =>
+          b.id === productsForBrand
+            ? { ...b, _count: { Product: Math.max(0, b._count.Product - 1) } }
+            : b
+        )
+      );
+    } catch (e: any) {
+      setMsg(e?.message || "Ошибка");
+    }
+  };
+
   const handleAddNameChange = (name: string) => {
     setAddForm((prev) => ({
       ...prev,
@@ -122,7 +189,6 @@ export default function AdminBrandsPage() {
           description: addForm.description || null,
           aboutLong: addForm.aboutLong || null,
           isPremium: addForm.isPremium,
-          isFeatured: addForm.isFeatured,
         }),
       });
       const data = await authGuardOrData(res);
@@ -150,7 +216,6 @@ export default function AdminBrandsPage() {
       description: brand.description || "",
       aboutLong: brand.aboutLong || "",
       isPremium: brand.isPremium,
-      isFeatured: brand.isFeatured,
     });
     setShowAddForm(false);
   };
@@ -176,7 +241,6 @@ export default function AdminBrandsPage() {
           description: editForm.description || null,
           aboutLong: editForm.aboutLong || null,
           isPremium: editForm.isPremium,
-          isFeatured: editForm.isFeatured,
         }),
       });
       const data = await authGuardOrData(res);
@@ -196,7 +260,7 @@ export default function AdminBrandsPage() {
   };
 
   const deleteBrand = async (id: number, name: string) => {
-    if (!window.confirm(`Удалить бренд "${name}"? Это действие можно отменить.`)) return;
+    if (!window.confirm(`Удалить бренд "${name}"?`)) return;
     setMsg(null);
     try {
       const res = await fetch("/api/admin/brands", {
@@ -211,6 +275,10 @@ export default function AdminBrandsPage() {
       }
       setMsg("Бренд удалён");
       if (editingId === id) cancelEdit();
+      if (productsForBrand === id) {
+        setProductsForBrand(null);
+        setBrandProducts([]);
+      }
       await loadBrands();
     } catch (e: any) {
       setMsg(e?.message || "Ошибка удаления бренда");
@@ -274,15 +342,6 @@ export default function AdminBrandsPage() {
           />
           Премиум бренд
         </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="h-4 w-4"
-            checked={form.isFeatured}
-            onChange={(e) => setField("isFeatured", e.target.checked)}
-          />
-          Featured (избранный)
-        </label>
       </div>
       <div className="mt-4 flex items-center gap-3">
         <button onClick={onSubmit} disabled={saving} className={btnPrimaryCls}>
@@ -294,6 +353,12 @@ export default function AdminBrandsPage() {
       </div>
     </div>
   );
+
+  const pluralProducts = (n: number) => {
+    if (n % 10 === 1 && n % 100 !== 11) return "товар";
+    if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) return "товара";
+    return "товаров";
+  };
 
   return (
     <div className="grid gap-8">
@@ -360,15 +425,10 @@ export default function AdminBrandsPage() {
                             Premium
                           </span>
                         )}
-                        {brand.isFeatured && (
-                          <span className="rounded-full border border-black/20 px-2 py-0.5 text-[10px] font-semibold">
-                            Featured
-                          </span>
-                        )}
                       </div>
                       <div className="text-xs text-black/60">
                         /{brand.slug} &middot; {brand._count.Product}{" "}
-                        {brand._count.Product === 1 ? "товар" : "товаров"}
+                        {pluralProducts(brand._count.Product)}
                       </div>
                       {brand.description && (
                         <div className="mt-1 text-xs text-black/50 max-w-md truncate">
@@ -378,6 +438,14 @@ export default function AdminBrandsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
+                    {brand._count.Product > 0 && (
+                      <button
+                        onClick={() => toggleProducts(brand.id)}
+                        className="text-xs text-black/70 hover:text-black transition"
+                      >
+                        {productsForBrand === brand.id ? "Скрыть товары" : "Товары"}
+                      </button>
+                    )}
                     <button
                       onClick={() => startEdit(brand)}
                       className="text-xs text-black/70 hover:text-black transition"
@@ -392,6 +460,53 @@ export default function AdminBrandsPage() {
                     </button>
                   </div>
                 </div>
+
+                {/* Products list */}
+                {productsForBrand === brand.id && (
+                  <div className="mt-2 rounded-2xl border border-black/5 bg-black/[0.02] p-3">
+                    {loadingProducts ? (
+                      <div className="text-xs text-black/50">Загрузка товаров...</div>
+                    ) : brandProducts.length === 0 ? (
+                      <div className="text-xs text-black/50">Нет товаров</div>
+                    ) : (
+                      <div className="grid gap-2">
+                        {brandProducts.map((p) => (
+                          <div
+                            key={p.id}
+                            className="flex items-center justify-between gap-3 rounded-xl bg-white border border-black/5 px-3 py-2"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              {p.imageUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={p.imageUrl}
+                                  alt={p.name}
+                                  className="h-8 w-8 rounded object-cover flex-shrink-0"
+                                />
+                              ) : (
+                                <div className="h-8 w-8 rounded bg-black/5 flex-shrink-0" />
+                              )}
+                              <div className="min-w-0">
+                                <div className="text-xs font-medium truncate">{p.name}</div>
+                                {p.price != null && (
+                                  <div className="text-[10px] text-black/50">
+                                    {Number(p.price).toLocaleString("ru-RU")} ₽
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => unlinkProduct(p.id)}
+                              className="text-[10px] text-red-600 hover:text-red-800 transition flex-shrink-0"
+                            >
+                              Убрать
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {editingId === brand.id &&
                   renderForm(

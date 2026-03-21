@@ -20,7 +20,6 @@ export async function GET(req: Request) {
       description: true,
       aboutLong: true,
       isPremium: true,
-      isFeatured: true,
       _count: {
         select: {
           Product: { where: { deletedAt: null } },
@@ -128,14 +127,10 @@ export async function PATCH(req: Request) {
     data.isPremium = Boolean(body.isPremium);
   }
 
-  if (body?.isFeatured !== undefined) {
-    data.isFeatured = Boolean(body.isFeatured);
-  }
-
   const brand = await prisma.brand.update({
     where: { id },
     data,
-    select: { id: true, name: true, slug: true, logoUrl: true, description: true, aboutLong: true, isPremium: true, isFeatured: true },
+    select: { id: true, name: true, slug: true, logoUrl: true, description: true, aboutLong: true, isPremium: true },
   });
 
   return NextResponse.json({ success: true, brand });

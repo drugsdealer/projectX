@@ -92,7 +92,7 @@ const SizeSelector: React.FC<SizeSelectorProps> = ({
                 sizeRefs.current[toKey(size)] = el;
               }}
               onClick={() => (inStock ? onSelect(size) : null)}
-              className={`relative min-h-[30px] px-3 sm:px-4 py-1 text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-300 z-10 ${
+              className={`relative min-h-[30px] min-w-[40px] sm:min-w-[46px] px-3 sm:px-4 py-1 text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-300 z-10 ${
                 selectedSize === size
                   ? 'text-white'
                   : inStock
