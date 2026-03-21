@@ -48,8 +48,10 @@ export default function Admin2FAPage() {
       return;
     }
     setOk(true);
+    // Full page reload ensures middleware re-evaluates the fresh admin_2fa_ok cookie.
+    // router.replace() does soft navigation which can silently fail.
     setTimeout(() => {
-      router.replace("/admin");
+      window.location.href = "/admin";
     }, 500);
   };
 
