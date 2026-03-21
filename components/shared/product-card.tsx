@@ -372,11 +372,12 @@ export const ProductCard: React.FC<Props> = ({
               } catch {}
             }
 
-            // small timeout to avoid opening the product on the same gesture
+            // Reset swipe flag quickly — the onClick handler checks it synchronously,
+            // so we only need to survive the current event loop tick.
             if (didSwipeRef.current) {
               window.setTimeout(() => {
                 didSwipeRef.current = false;
-              }, 250);
+              }, 50);
             }
           }}
           onPointerCancel={(e) => {

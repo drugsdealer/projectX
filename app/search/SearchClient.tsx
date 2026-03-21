@@ -996,7 +996,10 @@ export default function SearchPage() {
                 {panelOpen && (
                   <div
                     className="absolute left-0 right-0 mt-2 rounded-2xl border border-black/10 bg-white shadow-[0_20px_70px_rgba(0,0,0,0.12)] overflow-hidden"
-                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseDown={(e) => {
+                      // Prevent input blur on desktop only; on touch devices this blocks taps
+                      if (window.matchMedia('(pointer: fine)').matches) e.preventDefault();
+                    }}
                   >
                     <div className="flex items-center justify-between px-4 py-3 bg-black/[0.02]">
                       <div className="text-xs font-semibold text-black/60">История поиска</div>

@@ -318,9 +318,8 @@ useEffect(() => {
           : 'bg-white border-b border-black/10 shadow-sm',
         className
       )}
-      style={{ pointerEvents: 'none' }} // чтобы картинка могла “поглощать” header визуально
     >
-      <div style={{ pointerEvents: curatorOpenRemote ? 'none' : 'auto' }}>
+      <div style={{ pointerEvents: curatorOpenRemote ? 'none' : undefined }}>
         {/* Burger drawer */}
         <AnimatePresence>
           {burgerOpen && (

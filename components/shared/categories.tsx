@@ -203,10 +203,7 @@ export function Categories({ mode = "inline", subcatsByCat, activeSub, onSelectS
         {tabs.map(({ key, label }) => {
           const isActive = key === active;
           return (
-            <motion.button
-              whileHover={{ y: -1 }}
-              whileTap={{ scale: 0.96 }}
-              transition={{ type: "spring", stiffness: 500, damping: 32 }}
+            <button
               key={key}
               role="tab"
               aria-selected={isActive}
@@ -217,7 +214,9 @@ export function Categories({ mode = "inline", subcatsByCat, activeSub, onSelectS
                 px-2.5 md:px-4 py-2
                 text-[13px] md:text-[15px] leading-none whitespace-nowrap
                 rounded-lg md:rounded-xl border
-                transition-colors duration-200
+                transition-all duration-200
+                active:scale-[0.96]
+                md:hover:-translate-y-px
                 ${isActive
                   ? "bg-black text-white border-black shadow-[0_8px_20px_rgba(0,0,0,0.12)]"
                   : "bg-white text-black/70 border-black/10 hover:border-black/30 hover:text-black"}
@@ -228,7 +227,7 @@ export function Categories({ mode = "inline", subcatsByCat, activeSub, onSelectS
                 <span className="pointer-events-none absolute inset-0 rounded-lg md:rounded-xl bg-black/[0.04] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
               ) : null}
               <span className="relative inline-block font-semibold">{label}</span>
-            </motion.button>
+            </button>
           );
         })}
       </div>
