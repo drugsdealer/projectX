@@ -47,6 +47,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/admin/products" className="rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold hover:bg-black hover:text-white transition">
             Товары
           </Link>
+          <Link href="/admin/brands" className="rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold hover:bg-black hover:text-white transition">
+            Бренды
+          </Link>
           <Link href="/liza/studio" className="rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold hover:bg-black hover:text-white transition">
             Admin Studio
           </Link>

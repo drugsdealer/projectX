@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getUserIdFromRequest } from "@/lib/session";
 import { cookies } from "next/headers";
 import { enforceSameOrigin } from "@/lib/security";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export type AdminUser = {
   id: number;
@@ -31,10 +32,27 @@ export async function requireAdminPage() {
 export async function requireAdminApi(
   opts?: { require2FA?: boolean; req?: Request }
 ) {
+  // CSRF check
   if (opts?.req) {
     const blocked = enforceSameOrigin(opts.req);
     if (blocked) return { ok: false, response: blocked };
   }
+
+  // Rate limiting: 60 requests per minute per IP for admin APIs
+  if (opts?.req) {
+    const ip = getClientIp(opts.req);
+    const rl = await rateLimit(`admin:${ip}`, 60, 60_000);
+    if (!rl.ok) {
+      return {
+        ok: false,
+        response: NextResponse.json(
+          { success: false, message: "Too many requests" },
+          { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+        ),
+      };
+    }
+  }
+
   const admin = await getAdminUser();
   if (!admin) {
     return {

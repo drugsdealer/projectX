@@ -231,9 +231,50 @@ export async function GET(
       })
       .filter((x: any) => x && Number.isFinite(Number(x.id)));
 
-    const availableSizes = (normalizedItems ?? [])
-      .map((it: any) => it?.sizeLabel)
-      .filter((v: any) => typeof v === "string" || typeof v === "number");
+    const availableSizes = (() => {
+      const CLOTHING_ORDER: Record<string, number> = {
+        XXXS: 1, XXS: 2, XS: 3, S: 4, M: 5, L: 6,
+        XL: 7, XXL: 8, XXXL: 9, "4XL": 10, "5XL": 11, "6XL": 12,
+      };
+
+      const raw = (normalizedItems ?? [])
+        .map((it: any) => it?.sizeLabel)
+        .filter((v: any) => typeof v === "string" || typeof v === "number");
+
+      // Deduplicate
+      const unique = Array.from(new Set(raw.map((v: any) => String(v))));
+
+      // Parse a numeric value from a size string (handles "50ml", "100 мл", plain numbers, etc.)
+      const extractNum = (s: string): number | null => {
+        const m = s.match(/^[\d]+([.,][\d]+)?/);
+        return m ? parseFloat(m[0].replace(",", ".")) : null;
+      };
+
+      return unique.sort((a: string, b: string) => {
+        const aUpper = a.toUpperCase();
+        const bUpper = b.toUpperCase();
+        const aCloth = CLOTHING_ORDER[aUpper];
+        const bCloth = CLOTHING_ORDER[bUpper];
+
+        // Both are known clothing sizes
+        if (aCloth && bCloth) return aCloth - bCloth;
+        // One is clothing, the other is not — clothing first
+        if (aCloth) return -1;
+        if (bCloth) return 1;
+
+        const aNum = extractNum(a);
+        const bNum = extractNum(b);
+
+        // Both are numeric (shoe sizes, volumes, etc.)
+        if (aNum !== null && bNum !== null) return aNum - bNum;
+        // One numeric, one not — numeric after clothing but before unknown
+        if (aNum !== null) return -1;
+        if (bNum !== null) return 1;
+
+        // Fallback: alphabetical
+        return a.localeCompare(b);
+      });
+    })();
 
     const sizes: any = { available: availableSizes };
     if (Object.keys(priceMap).length > 0) {
