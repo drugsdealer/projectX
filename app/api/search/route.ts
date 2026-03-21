@@ -479,14 +479,43 @@ export async function GET(req: Request) {
       });
     }
     // Group synonyms: "кофта" -> match any of [hoodie, sweater, sweatshirt, cardigan]
+    // Also match by product name, because subcategory in DB might differ from English slug.
+    // E.g. product "Свитер Acne Studios" may have subcategory=null but "свитер" is in its name.
     if (groupSubs && groupSubs.length > 0) {
-      andFilters.push({
-        OR: groupSubs.map((sub) => ({
-          subcategory: { equals: sub, mode: Prisma.QueryMode.insensitive },
-        })),
-      });
+      const groupKey = groupPhraseMatch?.raw ?? Object.keys(GROUP_SYNONYMS).find(k => GROUP_SYNONYMS[k] === groupSubs) ?? '';
+      const nameVariants: Prisma.ProductWhereInput[] = groupSubs.map((sub) => ({
+        subcategory: { equals: sub, mode: Prisma.QueryMode.insensitive },
+      }));
+      // Also search by the original Russian word in product name (e.g. "кофта" in name)
+      if (groupKey) {
+        nameVariants.push({ name: { contains: groupKey, mode: Prisma.QueryMode.insensitive } });
+      }
+      // Add all individual subcategory names as name searches too (e.g. "свитер", "худи" in name)
+      const reverseMap: Record<string, string[]> = {};
+      for (const [ru, en] of Object.entries(SUBCATEGORY_SYNONYMS)) {
+        if (groupSubs.includes(en)) {
+          if (!reverseMap[en]) reverseMap[en] = [];
+          // Only add Russian words (contain cyrillic)
+          if (/[а-яё]/i.test(ru)) reverseMap[en].push(ru);
+        }
+      }
+      for (const ruWords of Object.values(reverseMap)) {
+        for (const w of ruWords) {
+          nameVariants.push({ name: { contains: w, mode: Prisma.QueryMode.insensitive } });
+        }
+      }
+      andFilters.push({ OR: nameVariants });
     } else if (subForFilter) {
-      andFilters.push({ subcategory: { equals: subForFilter, mode: Prisma.QueryMode.insensitive } });
+      // Single subcategory: also search by name as fallback
+      const subRuWords: string[] = [];
+      for (const [ru, en] of Object.entries(SUBCATEGORY_SYNONYMS)) {
+        if (en === subForFilter && /[а-яё]/i.test(ru)) subRuWords.push(ru);
+      }
+      const subOrFilters: Prisma.ProductWhereInput[] = [
+        { subcategory: { equals: subForFilter, mode: Prisma.QueryMode.insensitive } },
+        ...subRuWords.map((w) => ({ name: { contains: w, mode: Prisma.QueryMode.insensitive } })),
+      ];
+      andFilters.push({ OR: subOrFilters });
     }
 
     const where: Prisma.ProductWhereInput = { deletedAt: null };
