@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { requireAdminPage } from "@/lib/admin";
 import AdminSessionGuard from "./AdminSessionGuard";
+import { AdminExitButton, AdminStopImpersonateButton } from "./AdminExitButton";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const admin = await requireAdminPage();
@@ -20,17 +21,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <p className="text-xs text-black/60">Вы вошли как {admin.email}</p>
           </div>
           <div className="flex items-center gap-3">
-            {isImpersonating && (
-              <a
-                href="/api/admin/stop-impersonate"
-                className="rounded-full border border-black/15 bg-white px-4 py-2 text-xs font-semibold hover:bg-black hover:text-white transition"
-              >
-                Вернуться в админ
-              </a>
-            )}
-            <Link prefetch={false} href="/api/admin/2fa/clear?next=/" className="rounded-full border border-black/15 bg-white px-4 py-2 text-xs font-semibold hover:bg-black hover:text-white transition">
-              На сайт
-            </Link>
+            {isImpersonating && <AdminStopImpersonateButton />}
+            <AdminExitButton />
           </div>
         </div>
 

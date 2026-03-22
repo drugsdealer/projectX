@@ -406,6 +406,9 @@ export async function GET(
       updatedAt: product.updatedAt,
       dimensions,
       fragranceNotes,
+      material: pAny?.material ?? null,
+      features: pAny?.features ?? null,
+      styleNotes: pAny?.styleNotes ?? null,
       materials,
       liningMaterial,
       // category fields for UI

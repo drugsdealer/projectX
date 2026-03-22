@@ -23,6 +23,9 @@ export async function POST(req: Request) {
     const genderRaw = typeof body?.gender === "string" ? body.gender.trim().toLowerCase() : "";
     const gender = genderRaw === "men" || genderRaw === "women" || genderRaw === "unisex" ? genderRaw : null;
     const description = body?.description ? String(body.description) : null;
+    const material = body?.material ? String(body.material).trim() : null;
+    const features = body?.features ? String(body.features).trim() : null;
+    const styleNotes = body?.styleNotes ? String(body.styleNotes).trim() : null;
     const badgeRaw = body?.badge == null ? "" : String(body.badge).trim();
     const badge = badgeRaw ? badgeRaw.slice(0, 80) : null;
     const premium = Boolean(body?.premium);
@@ -121,6 +124,9 @@ export async function POST(req: Request) {
         images,
         description,
         badge,
+        material,
+        features,
+        styleNotes,
         subcategory: subcategory?.slug ?? null,
         sizeType: sizeType as any,
         premium,
@@ -198,15 +204,28 @@ export async function GET(req: Request) {
       id: true,
       name: true,
       price: true,
+      oldPrice: true,
       imageUrl: true,
+      images: true,
+      description: true,
       available: true,
       premium: true,
       badge: true,
       gender: true,
       subcategory: true,
-      Category: { select: { name: true } },
-      Brand: { select: { name: true } },
-      Color: { select: { name: true } },
+      sizeType: true,
+      material: true,
+      features: true,
+      styleNotes: true,
+      widthCm: true,
+      heightCm: true,
+      depthCm: true,
+      categoryId: true,
+      brandId: true,
+      colorId: true,
+      Category: { select: { id: true, name: true } },
+      Brand: { select: { id: true, name: true } },
+      Color: { select: { id: true, name: true } },
     },
   });
 
