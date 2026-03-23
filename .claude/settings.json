@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(find /Users/papkamonterey/Downloads/java-micro-service-and-project-main -type f -name robots.ts -o -name robots.txt -o -name sitemap.ts -o -name sitemap.xml -o -name next.config.* -o -name middleware.ts)",
+      "Bash(grep -r \"NEXT_PUBLIC_SITE_URL\" /Users/papkamonterey/Downloads/java-micro-service-and-project-main/.env*)"
     ]
   }
 }

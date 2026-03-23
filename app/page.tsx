@@ -1,7 +1,9 @@
 import { Suspense } from "react";
 import HomeClient from "./HomeClient";
 
-export const dynamic = "force-dynamic";
+// Revalidate homepage every 60 seconds (ISR) instead of force-dynamic
+// This lets Google cache and index the page properly
+export const revalidate = 60;
 
 export default function Page() {
   return (

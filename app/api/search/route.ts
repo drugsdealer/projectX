@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { slugify } from '@/lib/slug';
 import { getClientIp, rateLimit } from '@/lib/rate-limit';
@@ -263,6 +263,7 @@ export async function GET(req: Request) {
     const loadBrandCandidates = async () => {
       if (brandCandidates) return brandCandidates;
       const brandRows = await prisma.brand.findMany({
+        where: { deletedAt: null },
         select: { name: true },
         take: 3000,
         orderBy: { createdAt: 'desc' },
@@ -355,7 +356,7 @@ export async function GET(req: Request) {
         .slice(0, 200);
 
       const brandRows = await prisma.product.findMany({
-        where: { deletedAt: null },
+        where: { deletedAt: null, Brand: { deletedAt: null } },
         select: {
           Brand: { select: { name: true } },
         },
@@ -595,7 +596,7 @@ export async function GET(req: Request) {
         .filter((x) => x.length > 0);
 
       const brandRows2 = await prisma.product.findMany({
-        where: { deletedAt: null },
+        where: { deletedAt: null, Brand: { deletedAt: null } },
         select: { Brand: { select: { name: true } } },
         take: 1500,
         orderBy: { createdAt: 'desc' },

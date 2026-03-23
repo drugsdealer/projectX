@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 
-import { prisma } from '../../../../prisma/prisma-client';
+import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { getClientIp, rateLimit } from '@/lib/rate-limit';
 import { isAdminEmail } from '@/lib/admin-emails';

@@ -4,6 +4,17 @@ import BrandClient from '@/components/ui/BrandClient';
 import type { Brand, Product } from '@prisma/client';
 import type { Metadata } from 'next';
 
+export const revalidate = 300; // ISR: revalidate every 5 minutes
+
+export async function generateStaticParams() {
+  const brands = await prisma.brand.findMany({
+    where: { deletedAt: null },
+    select: { slug: true },
+    take: 200,
+  });
+  return brands.map((b) => ({ slug: b.slug }));
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const brand = await prisma.brand.findFirst({
@@ -52,9 +63,19 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
   type BrandItemDTO = Omit<Product, 'images'> & { images: string[]; Brand: Brand | null };
 
   const brandItems: BrandItemDTO[] = productsRaw.map((p: any) => {
-    const fromField = Array.isArray((p as any).images) ? ((p as any).images as string[]) : [];
-    const fallback = p.imageUrl ? [p.imageUrl as string] : [];
-    const images = fromField.length ? fromField : fallback;
+    const mainUrl = typeof p.imageUrl === 'string' && p.imageUrl.trim() ? p.imageUrl.trim() : null;
+    const fromField = Array.isArray((p as any).images)
+      ? ((p as any).images as string[]).filter((s: string) => typeof s === 'string' && s.trim())
+      : [];
+
+    // imageUrl (главная фотка) всегда первая, остальные после неё без дублей
+    const images: string[] = [];
+    if (mainUrl) images.push(mainUrl);
+    for (const src of fromField) {
+      if (!images.includes(src)) images.push(src);
+    }
+    if (!images.length && mainUrl) images.push(mainUrl);
+
     return { ...p, images } as BrandItemDTO;
   });
 

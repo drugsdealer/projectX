@@ -1,7 +1,15 @@
 import { Suspense } from "react";
 import PremiumClient from "./PremiumClient";
+import type { Metadata } from "next";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 120;
+
+export const metadata: Metadata = {
+  title: "Premium коллекция",
+  description:
+    "Премиальная коллекция брендовой одежды и аксессуаров в Stage Store. Эксклюзивные товары от мировых брендов.",
+  robots: { index: true, follow: true },
+};
 
 export default function PremiumPage() {
   return (

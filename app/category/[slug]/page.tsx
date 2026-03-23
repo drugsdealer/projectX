@@ -5,6 +5,14 @@ import type { Metadata } from 'next';
 import prisma from '@/lib/prisma';
 import CategoryProductGrid from './CategoryProductGrid';
 
+export async function generateStaticParams() {
+  const categories = await prisma.category.findMany({
+    select: { slug: true },
+    take: 100,
+  });
+  return categories.map((c) => ({ slug: c.slug }));
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const decoded = decodeURIComponent(slug).trim();
@@ -23,7 +31,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 120; // revalidate every 2 minutes
 
 function capitalizeFirst(s: string) {
   if (!s) return s;

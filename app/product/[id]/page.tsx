@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import ProductPageClient from "./ProductPageClient";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.ru";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
 
 export async function generateMetadata({
   params,
@@ -56,6 +56,18 @@ export async function generateMetadata({
       canonical: `${SITE_URL}/product/${id}`,
     },
   };
+}
+
+export const revalidate = 300; // ISR: revalidate every 5 minutes
+
+export async function generateStaticParams() {
+  const products = await prisma.product.findMany({
+    where: { deletedAt: null },
+    select: { id: true },
+    orderBy: { updatedAt: "desc" },
+    take: 500,
+  });
+  return products.map((p) => ({ id: String(p.id) }));
 }
 
 export default function ProductPage() {

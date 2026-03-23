@@ -195,15 +195,10 @@ export async function GET(req: Request) {
       const baseImages = Array.isArray((item as any).images)
         ? ((item as any).images as string[])
         : [];
-      const mergedImages = Array.from(
-        new Set(
-          [
-            ...relImages,                 // приоритет — отсортированные связанные
-            ...(baseImages || []),        // затем массив из базы (как пришёл)
-            item.imageUrl,                // потом одиночное поле
-          ].filter(Boolean)
-        )
-      );
+      // imageUrl (главная фотка) всегда первая
+      const primary = item.imageUrl || baseImages[0] || relImages[0] || null;
+      const tail = [...relImages, ...baseImages].filter((u) => u && u !== primary);
+      const mergedImages = Array.from(new Set([primary, ...tail].filter(Boolean)));
 
       const imageUrl = mergedImages[0] || "/img/placeholder.png";
 
@@ -223,7 +218,7 @@ export async function GET(req: Request) {
         id: item.id,
         name: item.name,
         price: Number(item.price ?? 0),
-        oldPrice: null as number | null,
+        oldPrice: (item as any).oldPrice ? Number((item as any).oldPrice) : null,
         description: item.description ?? "",
         categoryId:
           item.categoryId ?? (item as any).category?.id ?? (item as any).Category?.id ?? null,
@@ -363,7 +358,7 @@ export async function GET(req: Request) {
         name: p.name,
         description: p.description ?? "",
         price: Number(p.price ?? 0),
-        oldPrice: null as number | null,
+        oldPrice: (p as any).oldPrice ? Number((p as any).oldPrice) : null,
         categoryId:
           p.categoryId ?? (p as any).category?.id ?? (p as any).Category?.id ?? null,
         categoryDbSlug: dbCategorySlug, // raw from DB (RU)

@@ -113,21 +113,20 @@ export function normalizeProduct(raw: any): NormalizedProduct {
   const pickImages = (raw: any): string[] => {
     const result: string[] = [];
 
-    if (Array.isArray(raw?.images)) {
-      for (const img of raw.images) {
-        const s = typeof img === "string" ? img.trim() : "";
-        if (s) result.push(s);
-      }
-    }
-
-    const one =
+    // imageUrl — главная фотка, всегда первая
+    const main =
       (typeof raw?.imageUrl === "string" && raw.imageUrl.trim()) ||
       (typeof raw?.image === "string" && raw.image.trim()) ||
       (typeof raw?.thumbnail === "string" && raw.thumbnail.trim()) ||
       "";
 
-    if (one && !result.includes(one)) {
-      result.push(one);
+    if (main) result.push(main);
+
+    if (Array.isArray(raw?.images)) {
+      for (const img of raw.images) {
+        const s = typeof img === "string" ? img.trim() : "";
+        if (s && !result.includes(s)) result.push(s);
+      }
     }
 
     return result.length ? result : ["/img/placeholder.png"];
