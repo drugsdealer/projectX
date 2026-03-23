@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import ProductPageClient from "./ProductPageClient";
 
@@ -71,5 +72,9 @@ export async function generateStaticParams() {
 }
 
 export default function ProductPage() {
-  return <ProductPageClient />;
+  return (
+    <Suspense>
+      <ProductPageClient />
+    </Suspense>
+  );
 }
