@@ -114,6 +114,12 @@ export default function RootLayout({
                   description:
                     "Интернет-магазин оригинальной брендовой одежды, обуви и аксессуаров. Доставка по Москве и России.",
                   sameAs: ["https://t.me/stagestore"],
+                  contactPoint: {
+                    "@type": "ContactPoint",
+                    contactType: "customer service",
+                    url: `${SITE_URL}/footer`,
+                    availableLanguage: "Russian",
+                  },
                 },
                 {
                   "@type": "WebSite",
@@ -129,6 +135,34 @@ export default function RootLayout({
                     },
                     "query-input": "required name=search_term_string",
                   },
+                },
+                {
+                  "@type": "SiteNavigationElement",
+                  "@id": `${SITE_URL}/#navigation`,
+                  name: "Основная навигация",
+                  hasPart: [
+                    { "@type": "SiteNavigationElement", name: "Обувь", url: `${SITE_URL}/category/footwear` },
+                    { "@type": "SiteNavigationElement", name: "Одежда", url: `${SITE_URL}/category/clothes` },
+                    { "@type": "SiteNavigationElement", name: "Сумки", url: `${SITE_URL}/category/bags` },
+                    { "@type": "SiteNavigationElement", name: "Аксессуары", url: `${SITE_URL}/category/accessories` },
+                    { "@type": "SiteNavigationElement", name: "Парфюмерия", url: `${SITE_URL}/category/fragrance` },
+                    { "@type": "SiteNavigationElement", name: "Головные уборы", url: `${SITE_URL}/category/headwear` },
+                    { "@type": "SiteNavigationElement", name: "Каталог", url: `${SITE_URL}/search` },
+                    { "@type": "SiteNavigationElement", name: "Premium", url: `${SITE_URL}/premium` },
+                  ],
+                },
+                {
+                  "@type": "ItemList",
+                  "@id": `${SITE_URL}/#categories`,
+                  name: "Категории товаров",
+                  itemListElement: [
+                    { "@type": "ListItem", position: 1, name: "Обувь", url: `${SITE_URL}/category/footwear` },
+                    { "@type": "ListItem", position: 2, name: "Одежда", url: `${SITE_URL}/category/clothes` },
+                    { "@type": "ListItem", position: 3, name: "Сумки", url: `${SITE_URL}/category/bags` },
+                    { "@type": "ListItem", position: 4, name: "Аксессуары", url: `${SITE_URL}/category/accessories` },
+                    { "@type": "ListItem", position: 5, name: "Парфюмерия", url: `${SITE_URL}/category/fragrance` },
+                    { "@type": "ListItem", position: 6, name: "Головные уборы", url: `${SITE_URL}/category/headwear` },
+                  ],
                 },
               ],
             }),

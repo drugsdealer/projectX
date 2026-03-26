@@ -6,10 +6,20 @@ export const revalidate = 3600; // regenerate sitemap every hour
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
 
-  const staticPages: MetadataRoute.Sitemap = [
+  // Main navigation pages — high priority for sitelinks
+  const mainSections: MetadataRoute.Sitemap = [
     { url: siteUrl, lastModified: new Date(), changeFrequency: "daily", priority: 1.0 },
+    { url: `${siteUrl}/category/footwear`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
+    { url: `${siteUrl}/category/clothes`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
+    { url: `${siteUrl}/category/bags`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
+    { url: `${siteUrl}/category/accessories`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
+    { url: `${siteUrl}/category/fragrance`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
+    { url: `${siteUrl}/category/headwear`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
     { url: `${siteUrl}/search`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
-    { url: `${siteUrl}/premium`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
+    { url: `${siteUrl}/premium`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
+  ];
+
+  const staticPages: MetadataRoute.Sitemap = [
     { url: `${siteUrl}/premium/why`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
     { url: `${siteUrl}/favorites_item`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.4 },
     { url: `${siteUrl}/login`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.3 },
@@ -52,7 +62,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }));
   } catch {}
 
-  // Categories
+  // Categories (exclude ones already in mainSections)
+  const mainCategorySlugs = new Set(["footwear", "clothes", "bags", "accessories", "fragrance", "headwear"]);
   let categoryPages: MetadataRoute.Sitemap = [];
   try {
     const categories = await prisma.category.findMany({
@@ -60,13 +71,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       orderBy: { updatedAt: "desc" },
       take: 200,
     });
-    categoryPages = categories.map((c) => ({
-      url: `${siteUrl}/category/${c.slug}`,
-      lastModified: c.updatedAt,
-      changeFrequency: "weekly" as const,
-      priority: 0.6,
-    }));
+    categoryPages = categories
+      .filter((c) => !mainCategorySlugs.has(c.slug))
+      .map((c) => ({
+        url: `${siteUrl}/category/${c.slug}`,
+        lastModified: c.updatedAt,
+        changeFrequency: "weekly" as const,
+        priority: 0.6,
+      }));
   } catch {}
 
-  return [...staticPages, ...productPages, ...brandPages, ...categoryPages];
+  return [...mainSections, ...staticPages, ...productPages, ...brandPages, ...categoryPages];
 }

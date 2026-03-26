@@ -21,12 +21,17 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     select: { name: true },
   });
   const name = category?.name || decoded.replace(/[-_]+/g, ' ');
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://stagestore.app';
   return {
     title: name,
     description: `${name} — купить в Stage Store. Оригинальная брендовая одежда и аксессуары с доставкой по России.`,
     openGraph: {
       title: `${name} — Stage Store`,
       description: `Каталог ${name.toLowerCase()} в интернет-магазине Stage Store.`,
+      url: `${siteUrl}/category/${slug}`,
+    },
+    alternates: {
+      canonical: `${siteUrl}/category/${slug}`,
     },
   };
 }
@@ -206,8 +211,35 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     };
   });
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://stagestore.app';
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Главная", item: siteUrl },
+          { "@type": "ListItem", position: 2, name: displayLabel, item: `${siteUrl}/category/${slug}` },
+        ],
+      },
+      {
+        "@type": "CollectionPage",
+        name: displayLabel,
+        url: `${siteUrl}/category/${slug}`,
+        description: `${displayLabel} — купить в Stage Store. Оригинальная брендовая одежда и аксессуары.`,
+        isPartOf: { "@id": `${siteUrl}/#website` },
+        numberOfItems: products.length,
+      },
+    ],
+  };
+
   return (
     <main className="bg-white text-black">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10">
         <section className="relative overflow-hidden rounded-[32px] border border-black/10 bg-white/80 p-6 sm:p-8 shadow-[0_30px_80px_rgba(0,0,0,0.08)] backdrop-blur">
           <div className="absolute inset-0 bg-gradient-to-r from-[#ff6b2c]/10 via-transparent to-[#ffd66d]/25" />
