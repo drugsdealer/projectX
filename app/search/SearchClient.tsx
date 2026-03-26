@@ -39,12 +39,12 @@ type FacetCategory = { name: string; slug?: string; count: number };
 
 type Category = { title: string; subtitle: string; href: string; key?: string };
 const CATEGORIES: Category[] = [
-  { title: 'Обувь', subtitle: 'Sneakers · Boots · Loafers', href: `/category/${encodeURIComponent('обувь')}` },
-  { title: 'Одежда', subtitle: 'Outerwear · Knit · Denim', href: `/category/${encodeURIComponent('одежда')}` },
-  { title: 'Сумки', subtitle: 'Totes · Crossbody · Clutches', href: `/category/${encodeURIComponent('сумки')}` },
-  { title: 'Аксессуары', subtitle: 'Jewelry · Belts · Glasses', href: `/category/${encodeURIComponent('аксессуары')}` },
-  { title: 'Парфюм', subtitle: 'EDP · EDT · Niche', href: `/category/${encodeURIComponent('парфюм')}` },
-  { title: 'Головные уборы', subtitle: 'Caps · Beanies · Hats', href: `/category/${encodeURIComponent('головные уборы')}` },
+  { title: 'Обувь', subtitle: 'Sneakers · Boots · Loafers', href: '/category/footwear' },
+  { title: 'Одежда', subtitle: 'Outerwear · Knit · Denim', href: '/category/clothes' },
+  { title: 'Сумки', subtitle: 'Totes · Crossbody · Clutches', href: '/category/bags' },
+  { title: 'Аксессуары', subtitle: 'Jewelry · Belts · Glasses', href: '/category/accessories' },
+  { title: 'Парфюм', subtitle: 'EDP · EDT · Niche', href: '/category/fragrance' },
+  { title: 'Головные уборы', subtitle: 'Caps · Beanies · Hats', href: '/category/headwear' },
 ];
 
 const GHOST_QUERIES = [
