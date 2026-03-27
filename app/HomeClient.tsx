@@ -61,68 +61,8 @@ type HomePromocodeSpacePayload = {
   }>;
 };
 
-type HomeCampaignItem = NonNullable<HomePromocodeSpacePayload["campaigns"]>[number];
 
-const hashText = (value: string): number => {
-  let h = 2166136261;
-  for (let i = 0; i < value.length; i += 1) {
-    h ^= value.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-};
 
-const seededRandom = (seed: number) => {
-  let t = seed >>> 0;
-  return () => {
-    t += 0x6d2b79f5;
-    let r = Math.imul(t ^ (t >>> 15), t | 1);
-    r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
-    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
-  };
-};
-
-function buildCampaignIndexMap(
-  count: number,
-  campaigns: HomeCampaignItem[],
-  seedSource: string
-): Map<number, HomeCampaignItem> {
-  const out = new Map<number, HomeCampaignItem>();
-  if (count < 4 || campaigns.length === 0) return out;
-
-  const tilesCount = Math.min(campaigns.length, Math.max(1, Math.floor(count / 10)));
-  const rnd = seededRandom(hashText(seedSource));
-
-  const indexes = Array.from({ length: count }, (_, i) => i);
-  for (let i = indexes.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rnd() * (i + 1));
-    [indexes[i], indexes[j]] = [indexes[j], indexes[i]];
-  }
-
-  const shuffledCampaigns = [...campaigns];
-  for (let i = shuffledCampaigns.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rnd() * (i + 1));
-    [shuffledCampaigns[i], shuffledCampaigns[j]] = [shuffledCampaigns[j], shuffledCampaigns[i]];
-  }
-
-  const pickedIndexes = indexes.slice(0, tilesCount);
-  for (let i = 0; i < pickedIndexes.length; i += 1) {
-    out.set(pickedIndexes[i], shuffledCampaigns[i % shuffledCampaigns.length]);
-  }
-
-  return out;
-}
-
-function pickSeeded<T>(source: T[], count: number, seedSource: string): T[] {
-  if (!Array.isArray(source) || source.length === 0 || count <= 0) return [];
-  const rnd = seededRandom(hashText(seedSource));
-  const pool = [...source];
-  for (let i = pool.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rnd() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-  return pool.slice(0, Math.min(count, pool.length));
-}
 
 
 // Desktop: clipPath reveal (GPU-accelerated on desktop browsers).
@@ -443,166 +383,8 @@ const ProductCardImage = memo(function ProductCardImage({
   );
 });
 
-const DiscountCampaignBrick = memo(function DiscountCampaignBrick({
-  campaign,
-  products,
-  motionLevel,
-  isMotionPaused,
-}: {
-  campaign: HomeCampaignItem;
-  products: any[];
-  motionLevel: MotionLevel;
-  isMotionPaused: boolean;
-}) {
-  const reduceMotion = motionLevel === "reduced";
-  const balancedMotion = motionLevel === "balanced";
-  const safeProducts = Array.isArray(products) ? products : [];
-  const [activeIdx, setActiveIdx] = useState(0);
-  const cardRef = useRef<HTMLDivElement | null>(null);
-  const [isVisible, setIsVisible] = useState(true);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const node = cardRef.current;
-    if (!node) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setIsVisible(Boolean(entry?.isIntersecting)),
-      { root: null, threshold: 0.25 }
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    setActiveIdx(0);
-  }, [safeProducts.length]);
-
-  useEffect(() => {
-    if (safeProducts.length <= 1 || reduceMotion || isMotionPaused || !isVisible) return;
-    const timer = window.setInterval(() => {
-      setActiveIdx((prev) => (prev + 1) % safeProducts.length);
-    }, balancedMotion ? 4200 : 3200);
-    return () => window.clearInterval(timer);
-  }, [balancedMotion, isMotionPaused, isVisible, safeProducts.length, reduceMotion]);
-
-  const activeProduct = safeProducts[activeIdx] || null;
-  const activeImage =
-    (Array.isArray(activeProduct?.images) && activeProduct.images[0]) ||
-    activeProduct?.imageUrl ||
-    "/img/placeholder.png";
-  const activePrice = Number(activeProduct?.price ?? 0);
-  const activeOldPrice = Number(activeProduct?.oldPrice ?? 0);
-  const hasOldPrice = Number.isFinite(activeOldPrice) && activeOldPrice > activePrice && activePrice > 0;
-
-  return (
-    <motion.div
-      ref={cardRef}
-      layoutId={`discount-campaign-${campaign.id}`}
-      initial={reduceMotion ? false : { opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
-      transition={
-        reduceMotion
-          ? { duration: 0.14, ease: "easeOut" }
-          : balancedMotion
-          ? { duration: 0.16, ease: "easeOut" }
-          : { duration: 0.2, type: "spring", stiffness: 500, damping: 50 }
-      }
-      className="group relative rounded-2xl overflow-hidden bg-white shadow-sm ring-1 ring-black/5 hover:ring-black/10 hover:shadow-md transition-transform hover:-translate-y-0.5 will-change-transform [contain:content]"
-    >
-      <Link
-        href={activeProduct ? `/product/${activeProduct.id}` : campaign.href}
-        className="absolute inset-0 z-20"
-        aria-label={activeProduct ? `Открыть ${activeProduct.name}` : `Открыть ${campaign.title}`}
-      />
-
-      <div className="relative w-full aspect-[1/1] sm:aspect-[4/3] bg-white overflow-hidden">
-        <AnimatePresence mode="wait" initial={false}>
-          {activeProduct ? (
-            <motion.div
-              key={`sale-img-${activeProduct?.id ?? activeIdx}`}
-              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 18, scale: 0.98 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: -18, scale: 0.98 }}
-              transition={{ duration: reduceMotion ? 0.16 : balancedMotion ? 0.24 : 0.42, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute inset-0"
-            >
-              <Image
-                src={activeImage}
-                alt={activeProduct?.name || "Товар со скидкой"}
-                fill
-                className="object-contain p-2"
-                sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
-              />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="sale-empty"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 flex items-center justify-center text-xs text-black/45"
-            >
-              Скоро появятся товары со скидкой
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="pointer-events-none absolute left-2 top-2 inline-flex rounded-full border border-[#c2410c]/20 bg-[#fff3e6]/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a3412]">
-          {campaign.badge || "SALE"}
-        </div>
-      </div>
-
-      <div className="p-3">
-        <div className="text-[11px] uppercase tracking-wide text-black/50 leading-none mb-1 pointer-events-none">
-          Акция
-        </div>
-        <h3 className="text-sm font-semibold leading-snug line-clamp-1 pointer-events-none">
-          {campaign.title}
-        </h3>
-
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={`sale-text-${activeProduct?.id ?? activeIdx}`}
-            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
-            transition={{ duration: reduceMotion ? 0.14 : balancedMotion ? 0.2 : 0.34, ease: [0.22, 1, 0.36, 1] }}
-            className="pointer-events-none"
-          >
-            {activeProduct ? (
-              <>
-                <div className="mt-1 text-[12px] font-semibold text-black line-clamp-1">
-                  {activeProduct?.name}
-                </div>
-                <p className="text-xs text-gray-500 mt-1 line-clamp-1">
-                  {campaign.subtitle}
-                </p>
-              </>
-            ) : (
-              <p className="text-xs text-gray-500 mt-1 line-clamp-1">{campaign.subtitle}</p>
-            )}
-
-            <div className="mt-2 flex items-baseline gap-2">
-              {hasOldPrice ? (
-                <span className="text-[11px] text-gray-400 line-through">
-                  {activeOldPrice.toLocaleString("ru-RU")} ₽
-                </span>
-              ) : null}
-              <span className="text-sm font-semibold">
-                {activePrice > 0 ? `${activePrice.toLocaleString("ru-RU")} ₽` : "Смотреть"}
-              </span>
-            </div>
-          </motion.div>
-        </AnimatePresence>
-      </div>
-    </motion.div>
-  );
-});
-
-
 export default function Home() {
-  const { reduceMotion, motionLevel, isMotionPaused } = useMotionBudget();
+  const { reduceMotion, motionLevel } = useMotionBudget();
   const balancedMotion = motionLevel === "balanced";
   const [isHydrated, setIsHydrated] = useState(false);
   useEffect(() => {
@@ -809,8 +591,6 @@ export default function Home() {
   const [publicPromoCodes, setPublicPromoCodes] = useState<any[]>([]);
   const [promocodeSpace, setPromocodeSpace] = useState<HomePromocodeSpacePayload | null>(null);
   const [restoredHomeProductId, setRestoredHomeProductId] = useState<string | null>(null);
-  const [homePromoSeed, setHomePromoSeed] = useState(0);
-  useEffect(() => { setHomePromoSeed(Math.floor(Math.random() * 1_000_000_000)); }, []);
   const [isHomeRecsLoading, setIsHomeRecsLoading] = useState(false);
   const homeSeenRecommendationIdsRef = useRef<Set<number>>(new Set());
 
@@ -1049,19 +829,6 @@ export default function Home() {
       cancelled = true;
     };
   }, []);
-
-  const isDiscountProduct = useCallback((product: any) => {
-    const badge = String(product?.badge || "").toUpperCase();
-    const price = Number(product?.price ?? product?.minPrice ?? 0);
-    const oldPrice = Number(product?.oldPrice ?? 0);
-    const hasPriceDrop = Number.isFinite(oldPrice) && oldPrice > 0 && oldPrice > price;
-    return hasPriceDrop || badge.includes("SALE");
-  }, []);
-
-  const discountedProducts = useMemo(
-    () => products.filter((product) => isDiscountProduct(product)),
-    [isDiscountProduct, products]
-  );
 
   const editorialCollections = useMemo(() => {
     const SYSTEM_BADGES = new Set(["NEW", "HIT", "SALE", "EXCLUSIVE", "PREMIUM"]);
@@ -2107,27 +1874,6 @@ useEffect(() => {
                   const hasMore = items.length > displayList.length;
                   const cmsPromosAtSection = cmsPromosByPosition[sectionIndex] || [];
                   const authorPromoNode = renderAuthorHomePromo(sectionIndex, authorPromoItems);
-                  const campaignPool = Array.isArray(promocodeSpace?.campaigns)
-                    ? promocodeSpace.campaigns
-                    : [];
-                  const campaignByIndex = buildCampaignIndexMap(
-                    displayList.length,
-                    campaignPool,
-                    `${homePromoSeed}-${main}-${sectionIndex}-${displayLimit}`
-                  );
-                  const sectionDiscounted = items.filter((product) => isDiscountProduct(product));
-                  const campaignProductsById = new Map<string, any[]>(
-                    campaignPool.map((campaign) => {
-                      const preferredPool = sectionDiscounted.length ? sectionDiscounted : discountedProducts;
-                      const fallbackPool = preferredPool.length ? preferredPool : items;
-                      const picked = pickSeeded(
-                        fallbackPool,
-                        6,
-                        `${homePromoSeed}-${main}-${sectionIndex}-${campaign.id}`
-                      );
-                      return [campaign.id, picked];
-                    })
-                  );
 
                   return (
                     <Fragment key={`sec-wrap-${main}`}>
@@ -2214,19 +1960,7 @@ useEffect(() => {
                         layout={motionLevel === "full"}
                         className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-5 sm:gap-4"
                       >
-                        {displayList.map((product: any, productIndex: number) => {
-                            const campaignSlot = campaignByIndex.get(productIndex);
-                            if (campaignSlot) {
-                              return (
-                                <DiscountCampaignBrick
-                                  key={`campaign-slot-${main}-${productIndex}-${campaignSlot.id}`}
-                                  campaign={campaignSlot}
-                                  products={campaignProductsById.get(campaignSlot.id) || []}
-                                  motionLevel={motionLevel}
-                                  isMotionPaused={isMotionPaused}
-                                />
-                              );
-                            }
+                        {displayList.map((product: any) => {
                             const imgSrc =
                               (Array.isArray(product?.images) && product.images[0]) ||
                               product?.imageUrl ||
