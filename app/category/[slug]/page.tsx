@@ -215,7 +215,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   const labelLow = label.toLowerCase();
   const synonyms = SUBCATEGORY_SYNONYMS[slugLow] || SUBCATEGORY_SYNONYMS[labelLow] || [];
   // All variants to match against subcategory field
-  const subcatVariants = [...new Set([label, slug, ...synonyms])];
+  const subcatVariants = Array.from(new Set([label, slug, ...synonyms]));
 
   const where: any = {
     deletedAt: null,
