@@ -162,13 +162,65 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   const label = humanizeSlug(slug);
   const displayLabel = prettyCategoryTitle(label);
 
-  // MVP: treat [slug] as subcategory (we already have `subcategory` in DB and in /api/search)
-  // Using `as any` keeps this file resilient even if your Prisma model evolves.
+  // Build all possible synonyms for the slug so we match both singular/plural
+  // e.g. "tshirts" also matches "tshirt", "tee", "tees", "t-shirt"
+  const SUBCATEGORY_SYNONYMS: Record<string, string[]> = {
+    sneakers: ['sneaker', 'sneakers'],
+    boots: ['boot', 'boots'],
+    loafers: ['loafer', 'loafers'],
+    sandals: ['sandal', 'sandals'],
+    hoodies: ['hoodie', 'hoodies'],
+    sweaters: ['sweater', 'sweaters'],
+    sweatshirts: ['sweatshirt', 'sweatshirts'],
+    jackets: ['jacket', 'jackets'],
+    coats: ['coat', 'coats'],
+    shirts: ['shirt', 'shirts'],
+    suits: ['suit', 'suits'],
+    vests: ['vest', 'vests'],
+    dresses: ['dress', 'dresses'],
+    skirts: ['skirt', 'skirts'],
+    shorts: ['short', 'shorts'],
+    jeans: ['jean', 'jeans'],
+    cardigans: ['cardigan', 'cardigans'],
+    tshirts: ['tshirt', 'tshirts', 'tee', 'tees', 't-shirt'],
+    tops: ['top', 'tops'],
+    pants: ['pant', 'pants', 'sweatpants', 'trackpants'],
+    trousers: ['trouser', 'trousers'],
+    bags: ['bag', 'bags'],
+    backpacks: ['backpack', 'backpacks'],
+    totes: ['tote', 'totes'],
+    waistbags: ['waistbag', 'waistbags'],
+    travelbags: ['travelbag', 'travelbags'],
+    cardholders: ['cardholder', 'cardholders'],
+    wallets: ['wallet', 'wallets'],
+    belts: ['belt', 'belts'],
+    caps: ['cap', 'caps'],
+    beanies: ['beanie', 'beanies'],
+    hats: ['hat', 'hats'],
+    gloves: ['glove', 'gloves'],
+    socks: ['sock', 'socks'],
+    scarves: ['scarf', 'scarves'],
+    rings: ['ring', 'rings'],
+    earrings: ['earring', 'earrings'],
+    bracelets: ['bracelet', 'bracelets'],
+    keychains: ['keychain', 'keychains'],
+    watches: ['watch', 'watches'],
+    fragrances: ['fragrance', 'fragrances', 'perfume'],
+    glasses: ['glass', 'glasses'],
+    tracksuits: ['tracksuit', 'tracksuits'],
+    polo: ['polo'],
+  };
+
+  const slugLow = slug.toLowerCase();
+  const labelLow = label.toLowerCase();
+  const synonyms = SUBCATEGORY_SYNONYMS[slugLow] || SUBCATEGORY_SYNONYMS[labelLow] || [];
+  // All variants to match against subcategory field
+  const subcatVariants = [...new Set([label, slug, ...synonyms])];
+
   const where: any = {
     deletedAt: null,
     OR: [
-      { subcategory: { equals: label, mode: 'insensitive' } },
-      { subcategory: { equals: slug, mode: 'insensitive' } },
+      ...subcatVariants.map((v) => ({ subcategory: { equals: v, mode: 'insensitive' } })),
       { Category: { is: { name: { equals: label, mode: 'insensitive' } } } },
       { Category: { is: { slug: { equals: label, mode: 'insensitive' } } } },
       { Category: { is: { name: { equals: slug, mode: 'insensitive' } } } },
@@ -187,7 +239,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       PerfumeVariant: { select: { price: true } },
     },
     orderBy: { createdAt: 'desc' },
-    take: 60,
+    take: 200,
   });
 
   if (!products || products.length === 0) {

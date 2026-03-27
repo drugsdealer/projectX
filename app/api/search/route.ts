@@ -346,12 +346,47 @@ export async function GET(req: Request) {
         _count: { _all: true },
       });
 
-      const subcategories = subcategoryGroups
-        .map((g: any) => ({
-          name: String(g.subcategory ?? '').trim(),
-          count: Number(g._count?._all ?? 0),
-        }))
-        .filter((x) => x.name.length > 0)
+      // Normalize subcategory names to merge duplicates (e.g. "sweater"+"sweaters" → "sweaters")
+      const SUBCATEGORY_CANONICAL: Record<string, string> = {
+        sneaker: 'sneakers', boot: 'boots', loafer: 'loafers', sandal: 'sandals',
+        hoodie: 'hoodies', sweater: 'sweaters', sweatshirt: 'sweatshirts',
+        jacket: 'jackets', coat: 'coats', shirt: 'shirts', suit: 'suits',
+        vest: 'vests', dress: 'dresses', skirt: 'skirts', jean: 'jeans',
+        cardigan: 'cardigans', parka: 'parkas', anorak: 'anoraks',
+        tshirt: 'tshirts', tee: 'tshirts', 't-shirt': 'tshirts',
+        top: 'tops', polo: 'polo',
+        pant: 'pants', trouser: 'trousers', sweatpant: 'sweatpants',
+        trackpant: 'trackpants', tracksuit: 'tracksuits', short: 'shorts',
+        bag: 'bags', backpack: 'backpacks', tote: 'totes',
+        waistbag: 'waistbags', travelbag: 'travelbags',
+        cardholder: 'cardholders', wallet: 'wallets',
+        belt: 'belts', cap: 'caps', beanie: 'beanies', hat: 'hats',
+        glove: 'gloves', sock: 'socks', scarf: 'scarves',
+        ring: 'rings', earring: 'earrings', bracelet: 'bracelets',
+        necklace: 'necklaces', keychain: 'keychains', watch: 'watches',
+        fragrance: 'fragrances', perfume: 'fragrances',
+        glass: 'glasses', glasses: 'glasses',
+      };
+      const normalizeSubcategory = (raw: string) => {
+        const low = raw.toLowerCase().trim();
+        return SUBCATEGORY_CANONICAL[low] ?? low;
+      };
+
+      const mergedSubMap = new Map<string, { name: string; count: number }>();
+      for (const g of subcategoryGroups) {
+        const rawName = String((g as any).subcategory ?? '').trim();
+        if (!rawName) continue;
+        const canonical = normalizeSubcategory(rawName);
+        const existing = mergedSubMap.get(canonical);
+        if (existing) {
+          existing.count += Number((g as any)._count?._all ?? 0);
+        } else {
+          mergedSubMap.set(canonical, { name: canonical, count: Number((g as any)._count?._all ?? 0) });
+        }
+      }
+
+      const subcategories = Array.from(mergedSubMap.values())
+        .filter((x) => x.count > 0)
         .sort((a, b) => b.count - a.count)
         .slice(0, 200);
 

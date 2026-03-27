@@ -806,25 +806,38 @@ export default function SearchPage() {
 
   // -------------------- Computed categories/cards (DB facets first, fallback to hardcoded) --------------------
 
-  const facetSubsTop = useMemo(() => facetSubs.slice(0, 24), [facetSubs]);
+  // Deduplicate facets that map to the same pretty name (e.g. "sweater" + "sweaters" → one entry)
+  const facetSubsDeduped = useMemo(() => {
+    const seen = new Map<string, FacetSubcategory>();
+    for (const s of facetSubs) {
+      const pretty = prettySubcategory(s.name).toLowerCase();
+      const existing = seen.get(pretty);
+      if (existing) {
+        existing.count += s.count;
+      } else {
+        seen.set(pretty, { ...s });
+      }
+    }
+    return Array.from(seen.values()).sort((a, b) => b.count - a.count);
+  }, [facetSubs]);
 
   const categoryCards: Category[] = useMemo(() => {
-    if (facetSubsTop.length) {
-      return facetSubsTop.map((s) => ({
-        key: s.name, // raw DB value
-        title: prettySubcategory(s.name), // pretty display
+    if (facetSubsDeduped.length) {
+      return facetSubsDeduped.map((s) => ({
+        key: s.name,
+        title: prettySubcategory(s.name),
         subtitle: '',
         href: `/category/${encodeURIComponent(s.name)}`,
       }));
     }
     return CATEGORIES;
-  }, [facetSubsTop]);
+  }, [facetSubsDeduped]);
 
   const categoryMetaByTitle = useMemo(() => {
     const m = new Map<string, string>();
-    for (const s of facetSubsTop) m.set(s.name, `${s.count} товаров`);
+    for (const s of facetSubsDeduped) m.set(s.name, `${s.count} товаров`);
     return m;
-  }, [facetSubsTop]);
+  }, [facetSubsDeduped]);
 
   const mainCategoryMeta = useMemo(() => {
     const m = new Map<string, string>();
@@ -1255,14 +1268,14 @@ export default function SearchPage() {
                     ))}
                   </div>
 
-                  {facetLoading || facetSubs.length ? (
+                  {facetLoading || facetSubsDeduped.length ? (
                     <div className="mt-3 sm:hidden">
                       <button
                         type="button"
                         onClick={() => setSubsOpen((v) => !v)}
                         className="w-full h-11 rounded-full border border-black/10 text-sm font-semibold hover:bg-black/[0.03] transition"
                       >
-                        {subsOpen ? 'Скрыть подкатегории' : `Показать подкатегории${facetSubs.length ? ` (${facetSubs.length})` : ''}`}
+                        {subsOpen ? 'Скрыть подкатегории' : `Показать подкатегории${facetSubsDeduped.length ? ` (${facetSubsDeduped.length})` : ''}`}
                       </button>
 
                       {subsOpen ? (
@@ -1271,7 +1284,7 @@ export default function SearchPage() {
                             ? Array.from({ length: 6 }).map((_, i) => (
                                 <div key={i} className="rounded-2xl border border-black/10 bg-black/[0.03] h-[74px] animate-pulse" />
                               ))
-                            : facetSubs.map((s) => <SubcategoryTile key={s.name} name={s.name} count={s.count} />)}
+                            : facetSubsDeduped.map((s) => <SubcategoryTile key={s.name} name={s.name} count={s.count} />)}
                         </div>
                       ) : null}
                     </div>
@@ -1310,14 +1323,14 @@ export default function SearchPage() {
                   ))}
                 </div>
 
-                {facetLoading || facetSubs.length ? (
+                {facetLoading || facetSubsDeduped.length ? (
                   <div className="mt-3 sm:hidden">
                     <button
                       type="button"
                       onClick={() => setSubsOpen((v) => !v)}
                       className="w-full h-11 rounded-full border border-black/10 text-sm font-semibold hover:bg-black/[0.03] transition"
                     >
-                      {subsOpen ? 'Скрыть подкатегории' : `Показать подкатегории${facetSubs.length ? ` (${facetSubs.length})` : ''}`}
+                      {subsOpen ? 'Скрыть подкатегории' : `Показать подкатегории${facetSubsDeduped.length ? ` (${facetSubsDeduped.length})` : ''}`}
                     </button>
 
                     {subsOpen ? (
@@ -1326,7 +1339,7 @@ export default function SearchPage() {
                           ? Array.from({ length: 6 }).map((_, i) => (
                               <div key={i} className="rounded-2xl border border-black/10 bg-black/[0.03] h-[74px] animate-pulse" />
                             ))
-                          : facetSubs.map((s) => <SubcategoryTile key={s.name} name={s.name} count={s.count} />)}
+                          : facetSubsDeduped.map((s) => <SubcategoryTile key={s.name} name={s.name} count={s.count} />)}
                       </div>
                     ) : null}
                   </div>
