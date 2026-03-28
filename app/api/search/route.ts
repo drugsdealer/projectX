@@ -620,8 +620,23 @@ export async function GET(req: Request) {
       where,
       orderBy: { createdAt: 'desc' },
       take,
-      include: {
-        Brand: true,
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        oldPrice: true,
+        imageUrl: true,
+        images: true,
+        description: true,
+        available: true,
+        premium: true,
+        badge: true,
+        gender: true,
+        subcategory: true,
+        categoryId: true,
+        brandId: true,
+        createdAt: true,
+        Brand: { select: { id: true, name: true, slug: true, logoUrl: true } },
       },
     });
 

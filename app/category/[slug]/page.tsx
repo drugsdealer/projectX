@@ -281,7 +281,20 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
 
   const products = await (prisma as any).product.findMany({
     where,
-    include: {
+    select: {
+      id: true,
+      name: true,
+      price: true,
+      oldPrice: true,
+      imageUrl: true,
+      images: true,
+      description: true,
+      available: true,
+      premium: true,
+      badge: true,
+      categoryId: true,
+      brandId: true,
+      createdAt: true,
       ProductItem: { select: { price: true } },
       PerfumeVariant: { select: { price: true } },
     },

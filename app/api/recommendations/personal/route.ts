@@ -67,10 +67,12 @@ async function fallbackProducts(limit: number, categoryId: number | null, exclud
       id: { notIn: exclude.length ? exclude : undefined },
       ...(categoryId ? { categoryId } : {}),
     },
-    include: {
-      Brand: {
-        select: { id: true, name: true, slug: true, logoUrl: true },
-      },
+    select: {
+      id: true, name: true, price: true, oldPrice: true, imageUrl: true,
+      images: true, description: true, available: true, premium: true,
+      badge: true, gender: true, subcategory: true, categoryId: true,
+      brandId: true, createdAt: true, popularity: true,
+      Brand: { select: { id: true, name: true, slug: true, logoUrl: true } },
     },
     orderBy: [{ popularity: "desc" }, { createdAt: "desc" }],
     take: limit,
@@ -159,10 +161,12 @@ export async function GET(req: Request) {
             id: { in: ids },
             ...(categoryId ? { categoryId } : {}),
           },
-          include: {
-            Brand: {
-              select: { id: true, name: true, slug: true, logoUrl: true },
-            },
+          select: {
+            id: true, name: true, price: true, oldPrice: true, imageUrl: true,
+            images: true, description: true, available: true, premium: true,
+            badge: true, gender: true, subcategory: true, categoryId: true,
+            brandId: true, createdAt: true, popularity: true,
+            Brand: { select: { id: true, name: true, slug: true, logoUrl: true } },
           },
         })
       : [];

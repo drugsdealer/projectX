@@ -86,23 +86,23 @@ export async function GET(req: NextRequest) {
       where,
       orderBy: { createdAt: "desc" },
       take: take + 1,
-      include: {
-        Brand: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-          },
-        },
-        Category: true,
+      select: {
+        id: true, name: true, price: true, oldPrice: true, imageUrl: true,
+        images: true, description: true, available: true, premium: true,
+        badge: true, gender: true, subcategory: true, sizeType: true,
+        material: true, features: true, styleNotes: true,
+        categoryId: true, brandId: true, colorId: true,
+        createdAt: true, updatedAt: true,
+        Brand: { select: { id: true, name: true, slug: true } },
+        Category: { select: { id: true, name: true, slug: true } },
         ProductItem: {
           include: {
-            Size: true,
-            SizeCl: true,
-            OneSize: true,
+            Size: { select: { id: true, name: true } },
+            SizeCl: { select: { id: true, name: true } },
+            OneSize: { select: { id: true, name: true } },
           },
         },
-        PerfumeVariant: true,
+        PerfumeVariant: { select: { id: true, volumeMl: true, price: true } },
       },
     };
 

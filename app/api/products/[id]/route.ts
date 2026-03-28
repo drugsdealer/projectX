@@ -95,35 +95,27 @@ export async function GET(
     // Базовый товар (минимальный набор полей — без жёстких связей, чтобы не падать, если какие-то relation'ы отсутствуют)
     const product = await (prisma as any).product.findFirst({
       where: { id: productId, deletedAt: null },
-      include: {
-        Brand: true,
-        Category: true,
-        Color: true,
-        Size: true,
-        SizeCl: true,
+      select: {
+        id: true, name: true, price: true, oldPrice: true, imageUrl: true,
+        images: true, description: true, available: true, premium: true,
+        badge: true, gender: true, subcategory: true, sizeType: true,
+        material: true, features: true, styleNotes: true,
+        widthCm: true, heightCm: true, depthCm: true,
+        categoryId: true, brandId: true, colorId: true,
+        createdAt: true, updatedAt: true,
+        Brand: { select: { id: true, name: true, slug: true, logoUrl: true } },
+        Category: { select: { id: true, name: true, slug: true } },
+        Color: { select: { id: true, name: true } },
+        Size: { select: { id: true, name: true } },
+        SizeCl: { select: { id: true, name: true } },
         ProductItem: {
           include: {
-            Size: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-            SizeCl: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-            OneSize: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
+            Size: { select: { id: true, name: true } },
+            SizeCl: { select: { id: true, name: true } },
+            OneSize: { select: { id: true, name: true } },
           },
         },
-        PerfumeVariant: true,
+        PerfumeVariant: { select: { id: true, volumeMl: true, price: true } },
       },
     });
 
