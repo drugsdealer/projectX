@@ -216,78 +216,63 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   const synonyms = SUBCATEGORY_SYNONYMS[slugLow] || SUBCATEGORY_SYNONYMS[labelLow] || [];
   const subcatVariants = Array.from(new Set([label, slug, ...synonyms]));
 
-  // Keywords to search in product name AND description for each subcategory
-  // Must match the same patterns as INFER_RULES regex in search/products routes
-  const NAME_KEYWORDS: Record<string, string[]> = {
-    sneakers: ['кроссовк', 'sneak', 'yeezy', 'dunk', 'air force', 'jordan'],
-    boots: ['ботинк', 'сапог', 'челси', 'chelsea', 'boot'],
-    loafers: ['лофер', 'мокасин', 'loafer'],
-    sandals: ['сандал', 'сланц', 'шлеп', 'sandal'],
-    tshirts: ['футболк', 't-shirt', 'tee '],
-    hoodies: ['худи', 'толстовк', 'hoodie', 'hood'],
-    sweatshirts: ['свитшот', 'sweatshirt'],
-    sweaters: ['свитер', 'свитр', 'джемпер', 'пуловер', 'sweater', 'jumper', 'pullover'],
-    cardigans: ['кардиган', 'cardigan'],
-    shirts: ['рубашк', 'рубах', 'shirt'],
-    polo: ['поло', 'polo'],
-    jackets: ['куртк', 'бомбер', 'ветровк', 'jacket', 'bomber'],
-    coats: ['пальто', 'тренч', 'coat', 'trench'],
-    parkas: ['парка', 'пухов', 'parka', 'down jacket'],
-    vests: ['жилет', 'безрукавк', 'vest'],
-    jeans: ['джинс', 'jeans', 'denim'],
-    pants: ['брюк', 'штан', 'чинос', 'джоггер', 'карго', 'pants', 'trousers', 'jogger', 'cargo'],
-    shorts: ['шорт', 'shorts'],
-    tracksuits: ['спортивн', 'tracksuit'],
-    dresses: ['платье', 'платья', 'dress'],
-    skirts: ['юбк', 'skirt'],
-    suits: ['костюм', 'suit'],
-    bags: ['сумк', 'сумоч', 'тоут', 'клатч', 'шопер', 'bag', 'tote', 'clutch', 'shopper'],
-    backpacks: ['рюкзак', 'backpack'],
-    waistbags: ['поясн', 'waist bag', 'belt bag', 'бананк'],
-    cardholders: ['кардхолдер', 'визитниц', 'card holder'],
-    wallets: ['кошел', 'бумажник', 'wallet'],
-    belts: ['ремен', 'ремн', 'belt'],
-    glasses: ['очк', 'солнцезащитн', 'glasses', 'sunglasses'],
-    watches: ['час', 'watch'],
-    rings: ['кольц', 'ring'],
-    earrings: ['серьг', 'серёг', 'earring'],
-    bracelets: ['браслет', 'bracelet'],
-    necklaces: ['колье', 'цеп', 'подвеск', 'necklace', 'chain', 'pendant'],
-    keychains: ['брелок', 'брелк', 'keychain'],
-    scarves: ['шарф', 'палантин', 'scarf'],
-    gloves: ['перчатк', 'glove'],
-    socks: ['носк', 'sock'],
-    caps: ['кепк', 'бейсболк', 'cap'],
-    beanies: ['шапк', 'beanie'],
-    hats: ['панам', 'шляп', 'bucket'],
-    fragrances: ['парфюм', 'духи', 'туалетн', 'аромат', 'perfume', 'fragrance', 'eau de'],
+  // Same INFER_RULES as in search and products routes — single source of truth
+  const INFER_RULES: Array<{ slug: string; rx: RegExp }> = [
+    { slug: 'sneakers',    rx: /(кроссов|sneak|yeezy|dunk|air\s*force|jordan)/i },
+    { slug: 'boots',       rx: /(ботинк|сапог|челси|chelsea|boot)/i },
+    { slug: 'loafers',     rx: /(лофер|loafer|мокасин)/i },
+    { slug: 'sandals',     rx: /(сандал|сланц|шлеп|sandal)/i },
+    { slug: 'tshirts',     rx: /(футболк|t[\s-]?shirt|tee\b)/i },
+    { slug: 'hoodies',     rx: /(худи|hood|толстовк)/i },
+    { slug: 'sweatshirts', rx: /(свитшот|sweatshirt)/i },
+    { slug: 'sweaters',    rx: /(свитер|свитр|sweater|джемпер|jumper|пуловер|pullover)/i },
+    { slug: 'cardigans',   rx: /(кардиган|cardigan)/i },
+    { slug: 'shirts',      rx: /(рубашк|рубах|shirt(?!.*t-shirt))/i },
+    { slug: 'polo',        rx: /(поло\b|polo\b)/i },
+    { slug: 'jackets',     rx: /(куртк|бомбер|bomber|ветровк|jacket)/i },
+    { slug: 'coats',       rx: /(пальто|coat|тренч|trench)/i },
+    { slug: 'parkas',      rx: /(парка|parka|пухов|down\s*jacket)/i },
+    { slug: 'vests',       rx: /(жилет|vest|безрукавк)/i },
+    { slug: 'jeans',       rx: /(джинс|jeans|denim)/i },
+    { slug: 'pants',       rx: /(брюк|штан|pants|trousers|чинос|chinos|джоггер|jogger|карго|cargo)/i },
+    { slug: 'shorts',      rx: /(шорт|shorts)/i },
+    { slug: 'tracksuits',  rx: /(спортивн.*костюм|tracksuit)/i },
+    { slug: 'dresses',     rx: /(платье|dress)/i },
+    { slug: 'skirts',      rx: /(юбк|skirt)/i },
+    { slug: 'suits',       rx: /(костюм(?!.*спорт)|suit(?!.*track))/i },
+    { slug: 'bags',        rx: /(сумк|сумоч|bag(?!.*back)|тоут|tote|клатч|clutch|шопер|shopper)/i },
+    { slug: 'backpacks',   rx: /(рюкзак|backpack)/i },
+    { slug: 'waistbags',   rx: /(поясн.*сумк|waist\s*bag|belt\s*bag|бананк)/i },
+    { slug: 'cardholders', rx: /(кардхолдер|card\s*holder|визитниц)/i },
+    { slug: 'wallets',     rx: /(кошел[её]к|бумажник|wallet)/i },
+    { slug: 'belts',       rx: /(ремен|ремн|belt)/i },
+    { slug: 'glasses',     rx: /(очк|glasses|sunglasses|солнцезащитн)/i },
+    { slug: 'watches',     rx: /(час[ыов]|watch)/i },
+    { slug: 'rings',       rx: /(кольц|ring)/i },
+    { slug: 'earrings',    rx: /(серьг|серёг|earring)/i },
+    { slug: 'bracelets',   rx: /(браслет|bracelet)/i },
+    { slug: 'necklaces',   rx: /(колье|цеп[оч]|necklace|chain|подвеск|pendant)/i },
+    { slug: 'keychains',   rx: /(брелок|брелк|keychain)/i },
+    { slug: 'scarves',     rx: /(шарф|scarf|scarves|палантин)/i },
+    { slug: 'gloves',      rx: /(перчатк|glove)/i },
+    { slug: 'socks',       rx: /(носк|sock)/i },
+    { slug: 'caps',        rx: /(кепк|бейсболк|cap\b)/i },
+    { slug: 'beanies',     rx: /(шапк|beanie)/i },
+    { slug: 'hats',        rx: /(панам|шляп|hat\b|bucket)/i },
+    { slug: 'fragrances',  rx: /(парфюм|духи|туалетн.*вод|eau\s*de|edp|edt|perfume|fragrance|аромат)/i },
+  ];
+
+  const inferSub = (name: string, description: string | null): string | null => {
+    const text = [name, description].filter(Boolean).join(' ');
+    for (const rule of INFER_RULES) {
+      if (rule.rx.test(text)) return rule.slug;
+    }
+    return null;
   };
 
-  const nameKeywords = NAME_KEYWORDS[slugLow] || NAME_KEYWORDS[labelLow] || [];
-
-  // Build keyword matchers for both name and description
-  const keywordFilters = nameKeywords.flatMap((kw) => [
-    { name: { contains: kw, mode: 'insensitive' } },
-    { description: { contains: kw, mode: 'insensitive' } },
-  ]);
-
-  const where: any = {
-    deletedAt: null,
-    OR: [
-      // Match by subcategory field in DB
-      ...subcatVariants.map((v) => ({ subcategory: { equals: v, mode: 'insensitive' } })),
-      // Match by Category relation
-      { Category: { is: { name: { equals: label, mode: 'insensitive' } } } },
-      { Category: { is: { slug: { equals: label, mode: 'insensitive' } } } },
-      { Category: { is: { name: { equals: slug, mode: 'insensitive' } } } },
-      { Category: { is: { slug: { equals: slug, mode: 'insensitive' } } } },
-      // Match by product name or description containing keywords
-      ...keywordFilters,
-    ],
-  };
-
-  const products = await (prisma as any).product.findMany({
-    where,
+  // Load all products, then filter using the same regex inference as search facets
+  const allProducts = await (prisma as any).product.findMany({
+    where: { deletedAt: null },
     select: {
       id: true,
       name: true,
@@ -302,11 +287,19 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       categoryId: true,
       brandId: true,
       createdAt: true,
+      subcategory: true,
       ProductItem: { select: { price: true } },
       PerfumeVariant: { select: { price: true } },
     },
     orderBy: { createdAt: 'desc' },
-    take: 200,
+  });
+
+  // Filter: product belongs to this category if its inferred/DB subcategory matches the slug
+  const products = (allProducts as any[]).filter((p) => {
+    const dbSub = (p.subcategory ?? '').trim().toLowerCase();
+    const inferred = inferSub(p.name ?? '', p.description ?? null);
+    const effectiveSub = dbSub || inferred;
+    return effectiveSub === slugLow;
   });
 
   if (!products || products.length === 0) {
