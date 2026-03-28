@@ -57,7 +57,33 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
   // 2) Подтягиваем товары бренда (может быть пусто — это ок)
   const productsRaw = await prisma.product.findMany({
     where: { brandId: brand.id, deletedAt: null },
-    include: { Brand: true },
+    select: {
+      id: true,
+      name: true,
+      price: true,
+      oldPrice: true,
+      imageUrl: true,
+      images: true,
+      description: true,
+      available: true,
+      premium: true,
+      badge: true,
+      gender: true,
+      subcategory: true,
+      sizeType: true,
+      material: true,
+      features: true,
+      styleNotes: true,
+      widthCm: true,
+      heightCm: true,
+      depthCm: true,
+      categoryId: true,
+      brandId: true,
+      colorId: true,
+      createdAt: true,
+      updatedAt: true,
+      Brand: true,
+    },
   });
 
   type BrandItemDTO = Omit<Product, 'images'> & { images: string[]; Brand: Brand | null };
