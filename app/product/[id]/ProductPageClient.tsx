@@ -1760,6 +1760,12 @@ const handleCancel = () => {
                     );
                   })()}
 
+                  {product.article && (
+                    <p className="mt-2">
+                      <strong>• Артикул:</strong> {product.article}
+                    </p>
+                  )}
+
                   {product.description && (
                     <p className="mt-2">
                       {product.description}

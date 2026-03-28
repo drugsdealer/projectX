@@ -26,6 +26,7 @@ export async function POST(req: Request) {
     const material = body?.material ? String(body.material).trim() : null;
     const features = body?.features ? String(body.features).trim() : null;
     const styleNotes = body?.styleNotes ? String(body.styleNotes).trim() : null;
+    const article = body?.article ? String(body.article).trim() : null;
     const badgeRaw = body?.badge == null ? "" : String(body.badge).trim();
     const badge = badgeRaw ? badgeRaw.slice(0, 80) : null;
     const premium = Boolean(body?.premium);
@@ -127,6 +128,7 @@ export async function POST(req: Request) {
         material,
         features,
         styleNotes,
+        article,
         subcategory: subcategory?.slug ?? null,
         sizeType: sizeType as any,
         premium,
@@ -214,6 +216,7 @@ export async function GET(req: Request) {
       gender: true,
       subcategory: true,
       sizeType: true,
+      article: true,
       material: true,
       features: true,
       styleNotes: true,

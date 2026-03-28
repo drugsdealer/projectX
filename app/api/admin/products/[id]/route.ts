@@ -44,6 +44,7 @@ const PRODUCT_SELECT = {
   gender: true,
   subcategory: true,
   sizeType: true,
+  article: true,
   material: true,
   features: true,
   styleNotes: true,
@@ -236,6 +237,9 @@ export async function PATCH(
   }
   if (body?.styleNotes !== undefined) {
     data.styleNotes = body.styleNotes ? String(body.styleNotes).trim() : null;
+  }
+  if (body?.article !== undefined) {
+    data.article = body.article ? String(body.article).trim() : null;
   }
 
   if (Object.keys(data).length === 0) {

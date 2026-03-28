@@ -206,6 +206,7 @@ model Product {
   modelKey    String?       @db.VarChar(100) // общий ключ модели для цветовых вариантов (одинаковый у всех цветов одной модели)
   price       Float?
   dewuSpuId   String?
+  article     String?       // артикул производителя
   sizeType    SizeType      @default(NONE)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt

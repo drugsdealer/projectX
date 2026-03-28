@@ -79,33 +79,61 @@ function inferMainCategorySlug(p: any, sub: string | null): string | null {
   return null;
 }
 
-// --- Subcategory inference helpers (temporary until DB gets real subcategory table)
-// Keys below are top-level Category slugs from DB (ru slugs per your seed: "обувь", "одежда", "головные-уборы", ...)
-const SUB_DICT: Record<string, Array<{ slug: string; label: string; rx: RegExp }>> = {
-  "обувь": [
-    { slug: "boots", label: "Ботинки", rx: /(ботинк|сапог|челси|chelsea|boot)/i },
-    { slug: "sneakers", label: "Кроссовки", rx: /(кроссов|sneak|yeezy|dunk|air|force|jordan|adidas|nike)/i },
-    { slug: "sandals", label: "Сандалии", rx: /(сандал|сланц|шлеп)/i },
-  ],
-  "одежда": [
-    { slug: "hoodies", label: "Худи и толстовки", rx: /(hood|толстовк|худи)/i },
-    { slug: "tshirts", label: "Футболки", rx: /(футболк|t-?shirt|tee)/i },
-    { slug: "outerwear", label: "Верхняя одежда", rx: /(куртк|парка|пухов|ветровк|бомбер|coat|jacket)/i },
-    { slug: "pants", label: "Брюки и джинсы", rx: /(брюк|штан|джинс)/i },
-  ],
-  "головные-уборы": [
-    { slug: "caps", label: "Кепки", rx: /(кепк|cap)/i },
-    { slug: "beanies", label: "Шапки", rx: /(шапк|beanie)/i },
-    { slug: "bandanas", label: "Банданы", rx: /(бандан|bandan)/i },
-  ],
-};
+// --- Subcategory inference: match product name/description to subcategory slug
+const INFER_RULES: Array<{ slug: string; rx: RegExp }> = [
+  // Обувь
+  { slug: 'sneakers',    rx: /(кроссов|sneak|yeezy|dunk|air\s*force|jordan)/i },
+  { slug: 'boots',       rx: /(ботинк|сапог|челси|chelsea|boot)/i },
+  { slug: 'loafers',     rx: /(лофер|loafer|мокасин)/i },
+  { slug: 'sandals',     rx: /(сандал|сланц|шлеп|sandal)/i },
+  // Одежда
+  { slug: 'tshirts',     rx: /(футболк|t[\s-]?shirt|tee\b)/i },
+  { slug: 'hoodies',     rx: /(худи|hood|толстовк)/i },
+  { slug: 'sweatshirts', rx: /(свитшот|sweatshirt)/i },
+  { slug: 'sweaters',    rx: /(свитер|свитр|sweater|джемпер|jumper|пуловер|pullover)/i },
+  { slug: 'cardigans',   rx: /(кардиган|cardigan)/i },
+  { slug: 'shirts',      rx: /(рубашк|рубах|shirt(?!.*t-shirt))/i },
+  { slug: 'polo',        rx: /(поло\b|polo\b)/i },
+  { slug: 'jackets',     rx: /(куртк|бомбер|bomber|ветровк|jacket)/i },
+  { slug: 'coats',       rx: /(пальто|coat|тренч|trench)/i },
+  { slug: 'parkas',      rx: /(парка|parka|пухов|down\s*jacket)/i },
+  { slug: 'vests',       rx: /(жилет|vest|безрукавк)/i },
+  { slug: 'jeans',       rx: /(джинс|jeans|denim)/i },
+  { slug: 'pants',       rx: /(брюк|штан|pants|trousers|чинос|chinos|джоггер|jogger|карго|cargo)/i },
+  { slug: 'shorts',      rx: /(шорт|shorts)/i },
+  { slug: 'tracksuits',  rx: /(спортивн.*костюм|tracksuit)/i },
+  { slug: 'dresses',     rx: /(платье|dress)/i },
+  { slug: 'skirts',      rx: /(юбк|skirt)/i },
+  { slug: 'suits',       rx: /(костюм(?!.*спорт)|suit(?!.*track))/i },
+  // Сумки
+  { slug: 'bags',        rx: /(сумк|сумоч|bag(?!.*back)|тоут|tote|клатч|clutch|шопер|shopper)/i },
+  { slug: 'backpacks',   rx: /(рюкзак|backpack)/i },
+  { slug: 'waistbags',   rx: /(поясн.*сумк|waist\s*bag|belt\s*bag|бананк)/i },
+  { slug: 'cardholders', rx: /(кардхолдер|card\s*holder|визитниц)/i },
+  { slug: 'wallets',     rx: /(кошел[её]к|бумажник|wallet)/i },
+  // Аксессуары
+  { slug: 'belts',       rx: /(ремен|ремн|belt)/i },
+  { slug: 'glasses',     rx: /(очк|glasses|sunglasses|солнцезащитн)/i },
+  { slug: 'watches',     rx: /(час[ыов]|watch)/i },
+  { slug: 'rings',       rx: /(кольц|ring)/i },
+  { slug: 'earrings',    rx: /(серьг|серёг|earring)/i },
+  { slug: 'bracelets',   rx: /(браслет|bracelet)/i },
+  { slug: 'necklaces',   rx: /(колье|цеп[оч]|necklace|chain|подвеск|pendant)/i },
+  { slug: 'keychains',   rx: /(брелок|брелк|keychain)/i },
+  { slug: 'scarves',     rx: /(шарф|scarf|scarves|палантин)/i },
+  { slug: 'gloves',      rx: /(перчатк|glove)/i },
+  { slug: 'socks',       rx: /(носк|sock)/i },
+  // Головные уборы
+  { slug: 'caps',        rx: /(кепк|бейсболк|cap\b)/i },
+  { slug: 'beanies',     rx: /(шапк|beanie)/i },
+  { slug: 'hats',        rx: /(панам|шляп|hat\b|bucket)/i },
+  // Парфюм
+  { slug: 'fragrances',  rx: /(парфюм|духи|туалетн.*вод|eau\s*de|edp|edt|perfume|fragrance|аромат)/i },
+];
 
 function inferSubcategorySlug(p: any): string | null {
-  const slug = (p?.category?.slug ?? p?.Category?.slug ?? p?.categorySlug ?? "").toString();
-  const dict = SUB_DICT[slug];
-  if (!dict) return null;
-  const text = [p?.name, p?.description].filter(Boolean).join(" ").toLowerCase();
-  for (const rule of dict) {
+  const text = [p?.name, p?.description].filter(Boolean).join(' ');
+  for (const rule of INFER_RULES) {
     if (rule.rx.test(text)) return rule.slug;
   }
   return null;
@@ -248,6 +276,7 @@ export async function GET(req: Request) {
         gender: (item as any)?.gender ?? null,
         premium: Boolean((item as any)?.premium),
         badge: (item as any)?.badge ?? null,
+        article: (item as any)?.article ?? null,
         sizes: buildSizesFromProductItem((item as any).ProductItem),
       };
 
@@ -380,6 +409,7 @@ export async function GET(req: Request) {
         brandLogo: (p as any)?.brandLogo ?? null,
         gender: (p as any)?.gender ?? null,
         badge: (p as any)?.badge ?? null,
+        article: (p as any)?.article ?? null,
         sizes: buildSizesFromProductItem((p as any).ProductItem),
       };
     });

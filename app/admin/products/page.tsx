@@ -37,6 +37,7 @@ type EditForm = {
   widthCm: string;
   heightCm: string;
   depthCm: string;
+  article: string;
 };
 
 const emptyEditForm = (): EditForm => ({
@@ -59,6 +60,7 @@ const emptyEditForm = (): EditForm => ({
   widthCm: "",
   heightCm: "",
   depthCm: "",
+  article: "",
 });
 
 const newGroup = (): SizeGroup => ({
@@ -110,6 +112,7 @@ export default function AdminProductsPage() {
   const [widthCm, setWidthCm] = useState("");
   const [heightCm, setHeightCm] = useState("");
   const [depthCm, setDepthCm] = useState("");
+  const [article, setArticle] = useState("");
 
   const [newBrand, setNewBrand] = useState("");
   const [newBrandLogo, setNewBrandLogo] = useState("");
@@ -294,6 +297,7 @@ export default function AdminProductsPage() {
           widthCm: widthCm ? Number(widthCm) : null,
           heightCm: heightCm ? Number(heightCm) : null,
           depthCm: depthCm ? Number(depthCm) : null,
+          article: article || null,
         }),
       });
       const data = await authGuardOrData(res);
@@ -304,7 +308,7 @@ export default function AdminProductsPage() {
       setShoeGroups([newGroup()]); setClothGroups([newGroup()]);
       setPremium(false); setBadge(""); setGalleryText("");
       setMaterial(""); setFeatures(""); setStyleNotes("");
-      setWidthCm(""); setHeightCm(""); setDepthCm("");
+      setWidthCm(""); setHeightCm(""); setDepthCm(""); setArticle("");
       await loadCatalog();
     } catch (e: any) { setMsg(e?.message || "Ошибка добавления"); }
   };
@@ -333,6 +337,7 @@ export default function AdminProductsPage() {
       widthCm: p.widthCm ? String(p.widthCm) : "",
       heightCm: p.heightCm ? String(p.heightCm) : "",
       depthCm: p.depthCm ? String(p.depthCm) : "",
+      article: p.article || "",
     });
   };
 
@@ -379,6 +384,7 @@ export default function AdminProductsPage() {
           widthCm: editForm.widthCm ? Number(editForm.widthCm) : null,
           heightCm: editForm.heightCm ? Number(editForm.heightCm) : null,
           depthCm: editForm.depthCm ? Number(editForm.depthCm) : null,
+          article: editForm.article || null,
         }),
       });
       const data = await authGuardOrData(res);
@@ -490,6 +496,7 @@ export default function AdminProductsPage() {
               <div className="text-sm font-semibold">Характеристики товара</div>
               <div className="mt-2 text-xs text-black/60">Если оставить пустым — будут значения по умолчанию.</div>
               <div className="mt-3 grid gap-3">
+                <input className={inputCls} placeholder="Артикул производителя" value={article} onChange={(e) => setArticle(e.target.value)} />
                 <input className={inputCls} placeholder="Материалы" value={material} onChange={(e) => setMaterial(e.target.value)} />
                 <input className={inputCls} placeholder="Комфорт" value={features} onChange={(e) => setFeatures(e.target.value)} />
                 <input className={inputCls} placeholder="Дизайн" value={styleNotes} onChange={(e) => setStyleNotes(e.target.value)} />
@@ -687,6 +694,7 @@ export default function AdminProductsPage() {
                       <div className="sm:col-span-2 mt-2">
                         <div className="text-xs font-semibold text-black/70 mb-2">Характеристики</div>
                       </div>
+                      <input className={inputCls + " sm:col-span-2"} placeholder="Артикул производителя" value={editForm.article} onChange={(e) => setEditField("article", e.target.value)} />
                       <input className={inputCls} placeholder="Материалы" value={editForm.material} onChange={(e) => setEditField("material", e.target.value)} />
                       <input className={inputCls} placeholder="Комфорт" value={editForm.features} onChange={(e) => setEditField("features", e.target.value)} />
                       <input className={inputCls + " sm:col-span-2"} placeholder="Дизайн" value={editForm.styleNotes} onChange={(e) => setEditField("styleNotes", e.target.value)} />

@@ -7,6 +7,7 @@ export type NormalizedProduct = {
   imageUrl?: string | null;
   category: 'clothing' | 'shoes' | 'bags' | 'jewelry' | 'perfume' | 'fragrance' | string;
   description?: string | null;
+  article?: string | null;
   material?: string | null;
   features?: string | null;
   styleNotes?: string | null;
@@ -298,6 +299,10 @@ export function normalizeProduct(raw: any): NormalizedProduct {
   const fragranceNotes = normalizeFragrance(raw?.fragranceNotes ?? raw?.notes);
   const jewelryType = normalizeJewelryType(raw);
 
+  // Артикул производителя
+  const article =
+    safeString(raw?.article || raw?.sku || raw?.manufacturerArticle) || null;
+
   // Дополнительные описательные поля
   const material =
     safeString(raw?.material || raw?.materials) || null;
@@ -364,6 +369,7 @@ export function normalizeProduct(raw: any): NormalizedProduct {
     imageUrl,
     category,
     description,
+    article,
     material,
     features,
     styleNotes,

@@ -335,57 +335,81 @@ export async function GET(req: Request) {
     // Facets (active categories/subcategories/brands) for UI
     // GET /api/search?facets=1
     if (facetsMode) {
-      const subcategoryGroups = await prisma.product.groupBy({
-        by: ['subcategory'],
-        where: {
-          subcategory: {
-            not: null,
-          },
-          deletedAt: null,
-        },
-        _count: { _all: true },
+      // Inference rules: match product name/description to determine subcategory
+      const INFER_RULES: Array<{ slug: string; rx: RegExp }> = [
+        // Обувь
+        { slug: 'sneakers',    rx: /(кроссов|sneak|yeezy|dunk|air\s*force|jordan)/i },
+        { slug: 'boots',       rx: /(ботинк|сапог|челси|chelsea|boot)/i },
+        { slug: 'loafers',     rx: /(лофер|loafer|мокасин)/i },
+        { slug: 'sandals',     rx: /(сандал|сланц|шлеп|sandal)/i },
+        // Одежда
+        { slug: 'tshirts',     rx: /(футболк|t[\s-]?shirt|tee\b)/i },
+        { slug: 'hoodies',     rx: /(худи|hood|толстовк)/i },
+        { slug: 'sweatshirts', rx: /(свитшот|sweatshirt)/i },
+        { slug: 'sweaters',    rx: /(свитер|свитр|sweater|джемпер|jumper|пуловер|pullover)/i },
+        { slug: 'cardigans',   rx: /(кардиган|cardigan)/i },
+        { slug: 'shirts',      rx: /(рубашк|рубах|shirt(?!.*t-shirt))/i },
+        { slug: 'polo',        rx: /(поло\b|polo\b)/i },
+        { slug: 'jackets',     rx: /(куртк|бомбер|bomber|ветровк|jacket)/i },
+        { slug: 'coats',       rx: /(пальто|coat|тренч|trench)/i },
+        { slug: 'parkas',      rx: /(парка|parka|пухов|down\s*jacket)/i },
+        { slug: 'vests',       rx: /(жилет|vest|безрукавк)/i },
+        { slug: 'jeans',       rx: /(джинс|jeans|denim)/i },
+        { slug: 'pants',       rx: /(брюк|штан|pants|trousers|чинос|chinos|джоггер|jogger|карго|cargo)/i },
+        { slug: 'shorts',      rx: /(шорт|shorts)/i },
+        { slug: 'tracksuits',  rx: /(спортивн.*костюм|tracksuit)/i },
+        { slug: 'dresses',     rx: /(платье|dress)/i },
+        { slug: 'skirts',      rx: /(юбк|skirt)/i },
+        { slug: 'suits',       rx: /(костюм(?!.*спорт)|suit(?!.*track))/i },
+        // Сумки
+        { slug: 'bags',        rx: /(сумк|сумоч|bag(?!.*back)|тоут|tote|клатч|clutch|шопер|shopper)/i },
+        { slug: 'backpacks',   rx: /(рюкзак|backpack)/i },
+        { slug: 'waistbags',   rx: /(поясн.*сумк|waist\s*bag|belt\s*bag|бананк)/i },
+        { slug: 'cardholders', rx: /(кардхолдер|card\s*holder|визитниц)/i },
+        { slug: 'wallets',     rx: /(кошел[её]к|бумажник|wallet)/i },
+        // Аксессуары
+        { slug: 'belts',       rx: /(ремен|ремн|belt)/i },
+        { slug: 'glasses',     rx: /(очк|glasses|sunglasses|солнцезащитн)/i },
+        { slug: 'watches',     rx: /(час[ыов]|watch)/i },
+        { slug: 'rings',       rx: /(кольц|ring)/i },
+        { slug: 'earrings',    rx: /(серьг|серёг|earring)/i },
+        { slug: 'bracelets',   rx: /(браслет|bracelet)/i },
+        { slug: 'necklaces',   rx: /(колье|цеп[оч]|necklace|chain|подвеск|pendant)/i },
+        { slug: 'keychains',   rx: /(брелок|брелк|keychain)/i },
+        { slug: 'scarves',     rx: /(шарф|scarf|scarves|палантин)/i },
+        { slug: 'gloves',      rx: /(перчатк|glove)/i },
+        { slug: 'socks',       rx: /(носк|sock)/i },
+        // Головные уборы
+        { slug: 'caps',        rx: /(кепк|бейсболк|cap\b)/i },
+        { slug: 'beanies',     rx: /(шапк|beanie)/i },
+        { slug: 'hats',        rx: /(панам|шляп|hat\b|bucket)/i },
+        // Парфюм
+        { slug: 'fragrances',  rx: /(парфюм|духи|туалетн.*вод|eau\s*de|edp|edt|perfume|fragrance|аромат)/i },
+      ];
+
+      const inferSub = (name: string, description: string | null): string | null => {
+        const text = [name, description].filter(Boolean).join(' ');
+        for (const rule of INFER_RULES) {
+          if (rule.rx.test(text)) return rule.slug;
+        }
+        return null;
+      };
+
+      // Load all products with name + existing subcategory to infer missing ones
+      const allProducts = await prisma.product.findMany({
+        where: { deletedAt: null },
+        select: { id: true, name: true, description: true, subcategory: true },
       });
 
-      // Normalize subcategory names to merge duplicates (e.g. "sweater"+"sweaters" → "sweaters")
-      const SUBCATEGORY_CANONICAL: Record<string, string> = {
-        sneaker: 'sneakers', boot: 'boots', loafer: 'loafers', sandal: 'sandals',
-        hoodie: 'hoodies', sweater: 'sweaters', sweatshirt: 'sweatshirts',
-        jacket: 'jackets', coat: 'coats', shirt: 'shirts', suit: 'suits',
-        vest: 'vests', dress: 'dresses', skirt: 'skirts', jean: 'jeans',
-        cardigan: 'cardigans', parka: 'parkas', anorak: 'anoraks',
-        tshirt: 'tshirts', tee: 'tshirts', 't-shirt': 'tshirts',
-        top: 'tops', polo: 'polo',
-        pant: 'pants', trouser: 'trousers', sweatpant: 'sweatpants',
-        trackpant: 'trackpants', tracksuit: 'tracksuits', short: 'shorts',
-        bag: 'bags', backpack: 'backpacks', tote: 'totes',
-        waistbag: 'waistbags', travelbag: 'travelbags',
-        cardholder: 'cardholders', wallet: 'wallets',
-        belt: 'belts', cap: 'caps', beanie: 'beanies', hat: 'hats',
-        glove: 'gloves', sock: 'socks', scarf: 'scarves',
-        ring: 'rings', earring: 'earrings', bracelet: 'bracelets',
-        necklace: 'necklaces', keychain: 'keychains', watch: 'watches',
-        fragrance: 'fragrances', perfume: 'fragrances',
-        glass: 'glasses', glasses: 'glasses',
-      };
-      const normalizeSubcategory = (raw: string) => {
-        const low = raw.toLowerCase().trim();
-        return SUBCATEGORY_CANONICAL[low] ?? low;
-      };
-
-      const mergedSubMap = new Map<string, { name: string; count: number }>();
-      for (const g of subcategoryGroups) {
-        const rawName = String((g as any).subcategory ?? '').trim();
-        if (!rawName) continue;
-        const canonical = normalizeSubcategory(rawName);
-        const existing = mergedSubMap.get(canonical);
-        if (existing) {
-          existing.count += Number((g as any)._count?._all ?? 0);
-        } else {
-          mergedSubMap.set(canonical, { name: canonical, count: Number((g as any)._count?._all ?? 0) });
-        }
+      const subCountMap = new Map<string, number>();
+      for (const p of allProducts) {
+        const sub = (p.subcategory?.trim().toLowerCase()) || inferSub(p.name, p.description) || null;
+        if (!sub) continue;
+        subCountMap.set(sub, (subCountMap.get(sub) ?? 0) + 1);
       }
 
-      const subcategories = Array.from(mergedSubMap.values())
+      const subcategories = Array.from(subCountMap.entries())
+        .map(([name, count]) => ({ name, count }))
         .filter((x) => x.count > 0)
         .sort((a, b) => b.count - a.count)
         .slice(0, 200);

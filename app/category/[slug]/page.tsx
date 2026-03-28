@@ -214,23 +214,70 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   const slugLow = slug.toLowerCase();
   const labelLow = label.toLowerCase();
   const synonyms = SUBCATEGORY_SYNONYMS[slugLow] || SUBCATEGORY_SYNONYMS[labelLow] || [];
-  // All variants to match against subcategory field
   const subcatVariants = Array.from(new Set([label, slug, ...synonyms]));
+
+  // Russian keywords to search in product name/description for each subcategory
+  const NAME_KEYWORDS: Record<string, string[]> = {
+    sneakers: ['кроссовк'],
+    boots: ['ботинк', 'сапог', 'челси'],
+    loafers: ['лофер', 'мокасин'],
+    sandals: ['сандал', 'сланц', 'шлеп'],
+    tshirts: ['футболк'],
+    hoodies: ['худи', 'толстовк'],
+    sweatshirts: ['свитшот'],
+    sweaters: ['свитер', 'свитр', 'джемпер', 'пуловер'],
+    cardigans: ['кардиган'],
+    shirts: ['рубашк', 'рубах'],
+    polo: ['поло'],
+    jackets: ['куртк', 'бомбер', 'ветровк'],
+    coats: ['пальто', 'тренч'],
+    parkas: ['парка', 'пухов'],
+    vests: ['жилет', 'безрукавк'],
+    jeans: ['джинс'],
+    pants: ['брюк', 'штан', 'чинос', 'джоггер', 'карго'],
+    shorts: ['шорт'],
+    tracksuits: ['спортивн'],
+    dresses: ['платье', 'платья'],
+    skirts: ['юбк'],
+    suits: ['костюм'],
+    bags: ['сумк', 'сумоч', 'тоут', 'клатч', 'шопер'],
+    backpacks: ['рюкзак'],
+    waistbags: ['поясн'],
+    cardholders: ['кардхолдер', 'визитниц'],
+    wallets: ['кошел', 'бумажник'],
+    belts: ['ремен', 'ремн'],
+    glasses: ['очк', 'солнцезащитн'],
+    watches: ['час'],
+    rings: ['кольц'],
+    earrings: ['серьг', 'серёг'],
+    bracelets: ['браслет'],
+    necklaces: ['колье', 'цеп', 'подвеск'],
+    keychains: ['брелок', 'брелк'],
+    scarves: ['шарф', 'палантин'],
+    gloves: ['перчатк'],
+    socks: ['носк'],
+    caps: ['кепк', 'бейсболк'],
+    beanies: ['шапк'],
+    hats: ['панам', 'шляп'],
+    fragrances: ['парфюм', 'духи', 'туалетн', 'аромат'],
+  };
+
+  const nameKeywords = NAME_KEYWORDS[slugLow] || NAME_KEYWORDS[labelLow] || [];
 
   const where: any = {
     deletedAt: null,
     OR: [
+      // Match by subcategory field in DB
       ...subcatVariants.map((v) => ({ subcategory: { equals: v, mode: 'insensitive' } })),
+      // Match by Category relation
       { Category: { is: { name: { equals: label, mode: 'insensitive' } } } },
       { Category: { is: { slug: { equals: label, mode: 'insensitive' } } } },
       { Category: { is: { name: { equals: slug, mode: 'insensitive' } } } },
       { Category: { is: { slug: { equals: slug, mode: 'insensitive' } } } },
+      // Match by product name containing keywords (covers products with subcategory=null)
+      ...nameKeywords.map((kw) => ({ name: { contains: kw, mode: 'insensitive' } })),
     ],
   };
-
-  // If your schema has an `isPremium` or `premium` flag, we can enforce non-premium here.
-  // (kept optional to avoid TS errors when the field doesn't exist)
-  // where.isPremium = false;
 
   const products = await (prisma as any).product.findMany({
     where,
