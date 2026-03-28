@@ -99,6 +99,10 @@ export default async function ProductPage({
       const categoryName = p.Category?.name;
       const categorySlug = p.Category?.slug;
 
+      const productDescription = p.description
+        ? p.description.slice(0, 5000)
+        : `${p.name}${brandName ? ` от ${brandName}` : ""} — купить в интернет-магазине Stage Store. Оригинал с гарантией подлинности.`;
+
       jsonLd = {
         "@context": "https://schema.org",
         "@graph": [
@@ -116,17 +120,61 @@ export default async function ProductPage({
             "@type": "Product",
             name: p.name,
             url: `${SITE_URL}/product/${id}`,
-            ...(p.imageUrl ? { image: p.imageUrl } : {}),
-            ...(p.description ? { description: p.description.slice(0, 300) } : {}),
-            ...(brandName ? { brand: { "@type": "Brand", name: brandName } } : {}),
+            image: p.imageUrl || `${SITE_URL}/img/placeholder.png`,
+            description: productDescription,
+            brand: {
+              "@type": "Brand",
+              name: brandName || "Stage Store",
+            },
             ...(p.price
               ? {
                   offers: {
                     "@type": "Offer",
                     price: Number(p.price),
                     priceCurrency: "RUB",
+                    url: `${SITE_URL}/product/${id}`,
                     availability: "https://schema.org/InStock",
-                    seller: { "@type": "Organization", name: "Stage Store" },
+                    itemCondition: "https://schema.org/NewCondition",
+                    seller: {
+                      "@type": "Organization",
+                      name: "Stage Store",
+                      url: SITE_URL,
+                    },
+                    shippingDetails: {
+                      "@type": "OfferShippingDetails",
+                      shippingDestination: {
+                        "@type": "DefinedRegion",
+                        addressCountry: "RU",
+                      },
+                      shippingRate: {
+                        "@type": "MonetaryAmount",
+                        value: "0",
+                        currency: "RUB",
+                      },
+                      deliveryTime: {
+                        "@type": "ShippingDeliveryTime",
+                        handlingTime: {
+                          "@type": "QuantitativeValue",
+                          minValue: 1,
+                          maxValue: 3,
+                          unitCode: "DAY",
+                        },
+                        transitTime: {
+                          "@type": "QuantitativeValue",
+                          minValue: 1,
+                          maxValue: 7,
+                          unitCode: "DAY",
+                        },
+                      },
+                    },
+                    hasMerchantReturnPolicy: {
+                      "@type": "MerchantReturnPolicy",
+                      applicableCountry: "RU",
+                      returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+                      merchantReturnDays: 14,
+                      returnMethod: "https://schema.org/ReturnByMail",
+                      returnFees: "https://schema.org/FreeReturn",
+                    },
                   },
                 }
               : {}),
