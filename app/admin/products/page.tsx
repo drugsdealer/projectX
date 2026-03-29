@@ -26,6 +26,7 @@ type EditForm = {
   galleryText: string;
   description: string;
   categoryId: string;
+  subcategory: string;
   brandId: string;
   colorId: string;
   gender: string;
@@ -40,6 +41,51 @@ type EditForm = {
   article: string;
 };
 
+const SUBCATEGORY_OPTIONS: { slug: string; label: string }[] = [
+  { slug: 'sneakers', label: 'Кроссовки' },
+  { slug: 'boots', label: 'Ботинки' },
+  { slug: 'loafers', label: 'Лоферы' },
+  { slug: 'sandals', label: 'Сандалии' },
+  { slug: 'tshirts', label: 'Футболки' },
+  { slug: 'hoodies', label: 'Худи' },
+  { slug: 'sweatshirts', label: 'Свитшоты' },
+  { slug: 'sweaters', label: 'Свитеры' },
+  { slug: 'cardigans', label: 'Кардиганы' },
+  { slug: 'shirts', label: 'Рубашки' },
+  { slug: 'polo', label: 'Поло' },
+  { slug: 'jackets', label: 'Куртки' },
+  { slug: 'coats', label: 'Пальто' },
+  { slug: 'parkas', label: 'Парки' },
+  { slug: 'vests', label: 'Жилеты' },
+  { slug: 'jeans', label: 'Джинсы' },
+  { slug: 'pants', label: 'Брюки' },
+  { slug: 'shorts', label: 'Шорты' },
+  { slug: 'tracksuits', label: 'Спортивные костюмы' },
+  { slug: 'dresses', label: 'Платья' },
+  { slug: 'skirts', label: 'Юбки' },
+  { slug: 'suits', label: 'Костюмы' },
+  { slug: 'bags', label: 'Сумки' },
+  { slug: 'backpacks', label: 'Рюкзаки' },
+  { slug: 'waistbags', label: 'Поясные сумки' },
+  { slug: 'cardholders', label: 'Кардхолдеры' },
+  { slug: 'wallets', label: 'Кошельки' },
+  { slug: 'belts', label: 'Ремни' },
+  { slug: 'glasses', label: 'Очки' },
+  { slug: 'watches', label: 'Часы' },
+  { slug: 'rings', label: 'Кольца' },
+  { slug: 'earrings', label: 'Серьги' },
+  { slug: 'bracelets', label: 'Браслеты' },
+  { slug: 'necklaces', label: 'Колье/Цепочки' },
+  { slug: 'keychains', label: 'Брелоки' },
+  { slug: 'scarves', label: 'Шарфы' },
+  { slug: 'gloves', label: 'Перчатки' },
+  { slug: 'socks', label: 'Носки' },
+  { slug: 'caps', label: 'Кепки' },
+  { slug: 'beanies', label: 'Шапки' },
+  { slug: 'hats', label: 'Панамы/Шляпы' },
+  { slug: 'fragrances', label: 'Парфюмерия' },
+];
+
 const emptyEditForm = (): EditForm => ({
   name: "",
   price: "",
@@ -49,6 +95,7 @@ const emptyEditForm = (): EditForm => ({
   galleryText: "",
   description: "",
   categoryId: "",
+  subcategory: "",
   brandId: "",
   colorId: "",
   gender: "",
@@ -96,6 +143,7 @@ export default function AdminProductsPage() {
   const [imageUrl, setImageUrl] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [subcategoryId, setSubcategoryId] = useState("");
+  const [subcategorySlug, setSubcategorySlug] = useState("");
   const [brandId, setBrandId] = useState("");
   const [colorId, setColorId] = useState("");
   const [gender, setGender] = useState("");
@@ -286,6 +334,7 @@ export default function AdminProductsPage() {
           images: galleryText.split("\n").map((l) => l.trim()).filter(Boolean),
           categoryId: catId,
           subcategoryId: subcategoryId ? Number(subcategoryId) : null,
+          subcategory: subcategorySlug || null,
           brandId: brandId ? Number(brandId) : null,
           colorId: colorId ? Number(colorId) : null,
           gender: gender || null,
@@ -304,7 +353,7 @@ export default function AdminProductsPage() {
       if (!res.ok || !data?.success) { setMsg(data?.message || "Ошибка добавления"); return; }
       setMsg("Товар добавлен");
       setName(""); setPrice(""); setImageUrl(""); setBrandId(""); setColorId("");
-      setGender(""); setDescription(""); setSubcategoryId(""); setSizeType("NONE");
+      setGender(""); setDescription(""); setSubcategoryId(""); setSubcategorySlug(""); setSizeType("NONE");
       setShoeGroups([newGroup()]); setClothGroups([newGroup()]);
       setPremium(false); setBadge(""); setGalleryText("");
       setMaterial(""); setFeatures(""); setStyleNotes("");
@@ -326,6 +375,7 @@ export default function AdminProductsPage() {
       galleryText: Array.isArray(p.images) ? p.images.join("\n") : "",
       description: p.description || "",
       categoryId: p.categoryId ? String(p.categoryId) : "",
+      subcategory: p.subcategory || "",
       brandId: p.brandId ? String(p.brandId) : "",
       colorId: p.colorId ? String(p.colorId) : "",
       gender: p.gender || "",
@@ -373,6 +423,7 @@ export default function AdminProductsPage() {
           imageUrl: editForm.imageUrl || null,
           images: editForm.galleryText.split("\n").map((l) => l.trim()).filter(Boolean),
           categoryId: editForm.categoryId ? Number(editForm.categoryId) : undefined,
+          subcategory: editForm.subcategory || null,
           brandId: editForm.brandId ? Number(editForm.brandId) : null,
           colorId: editForm.colorId ? Number(editForm.colorId) : null,
           gender: editForm.gender || null,
@@ -466,9 +517,9 @@ export default function AdminProductsPage() {
               <option value="">Категория</option>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <select className={inputCls} value={subcategoryId} onChange={(e) => setSubcategoryId(e.target.value)}>
-              <option value="">Подкатегория (необязательно)</option>
-              {filteredSubcategories.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            <select className={inputCls} value={subcategorySlug} onChange={(e) => setSubcategorySlug(e.target.value)}>
+              <option value="">Подкатегория</option>
+              {SUBCATEGORY_OPTIONS.map((s) => <option key={s.slug} value={s.slug}>{s.label}</option>)}
             </select>
             {!subcategoriesEnabled && <div className="sm:col-span-2 text-xs text-red-600">Подкатегории недоступны. Выполни `npx prisma db push` и `npx prisma generate`, затем перезапусти сервер.</div>}
             <select className={inputCls} value={brandId} onChange={(e) => setBrandId(e.target.value)}>
@@ -670,6 +721,10 @@ export default function AdminProductsPage() {
                       <select className={inputCls} value={editForm.categoryId} onChange={(e) => setEditField("categoryId", e.target.value)}>
                         <option value="">Категория</option>
                         {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                      <select className={inputCls} value={editForm.subcategory} onChange={(e) => setEditField("subcategory", e.target.value)}>
+                        <option value="">Подкатегория</option>
+                        {SUBCATEGORY_OPTIONS.map((s) => <option key={s.slug} value={s.slug}>{s.label}</option>)}
                       </select>
                       <select className={inputCls} value={editForm.brandId} onChange={(e) => setEditField("brandId", e.target.value)}>
                         <option value="">Бренд</option>

@@ -241,6 +241,9 @@ export async function PATCH(
   if (body?.article !== undefined) {
     data.article = body.article ? String(body.article).trim() : null;
   }
+  if (body?.subcategory !== undefined) {
+    data.subcategory = body.subcategory ? String(body.subcategory).trim().toLowerCase() : null;
+  }
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ success: false, message: "Нет данных для обновления" }, { status: 400 });

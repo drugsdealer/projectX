@@ -129,7 +129,7 @@ export async function POST(req: Request) {
         features,
         styleNotes,
         article,
-        subcategory: subcategory?.slug ?? null,
+        subcategory: (body?.subcategory ? String(body.subcategory).trim().toLowerCase() : null) || subcategory?.slug || null,
         sizeType: sizeType as any,
         premium,
         widthCm: Number.isFinite(widthCm) && widthCm > 0 ? widthCm : null,
