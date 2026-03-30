@@ -5,6 +5,7 @@ import { getSessionUserId } from '../_utils/session';
 import { cookies, headers } from 'next/headers';
 import { sendOrderNotificationToTelegram } from '@/lib/telegram';
 import { redeemPromoForOrder } from '@/lib/promos';
+import { sendOrderReceipt } from '@/lib/receipt-email';
 
 // аккуратный парсер числа
 function toInt(v: unknown): number | null {
@@ -218,20 +219,32 @@ export async function POST(req: Request) {
     }
 
     if (shouldNotify) {
-      try {
-        const orderForNotify = await prisma.order.findUnique({
-          where: { id: targetOrderId },
-          select: {
-            id: true,
-            token: true,
-            totalAmount: true,
-            fullName: true,
-            phone: true,
-            email: true,
-            publicNumber: true,
+      const orderForNotify = await prisma.order.findUnique({
+        where: { id: targetOrderId },
+        select: {
+          id: true,
+          token: true,
+          totalAmount: true,
+          fullName: true,
+          phone: true,
+          email: true,
+          address: true,
+          publicNumber: true,
+          paidAt: true,
+          OrderItem: {
+            select: {
+              quantity: true,
+              price: true,
+              size: true,
+              Product: { select: { name: true } },
+            },
           },
-        });
-        if (orderForNotify) {
+        },
+      });
+
+      if (orderForNotify) {
+        // Telegram
+        try {
           await sendOrderNotificationToTelegram({
             orderId: orderForNotify.publicNumber || orderForNotify.id,
             token: orderForNotify.token,
@@ -240,9 +253,30 @@ export async function POST(req: Request) {
             phone: orderForNotify.phone || undefined,
             email: orderForNotify.email || undefined,
           });
+        } catch (err) {
+          console.error('[api.confirm-payment] failed to send telegram notification');
         }
-      } catch (err) {
-        console.error('[api.confirm-payment] failed to send telegram notification');
+
+        // Чек на email
+        if (orderForNotify.email) {
+          void sendOrderReceipt({
+            to: orderForNotify.email,
+            orderNumber: orderForNotify.publicNumber || publicNumber,
+            fullName: orderForNotify.fullName || 'Покупатель',
+            address: orderForNotify.address || '',
+            phone: orderForNotify.phone || null,
+            totalAmount: Number(orderForNotify.totalAmount || 0),
+            paidAt: orderForNotify.paidAt || new Date(),
+            items: (orderForNotify.OrderItem || []).map((it: any) => ({
+              name: it.Product?.name || 'Товар',
+              quantity: it.quantity ?? 1,
+              price: Number(it.price ?? 0),
+              size: it.size || null,
+            })),
+          }).catch((err) => {
+            console.error('[api.confirm-payment] receipt email failed');
+          });
+        }
       }
     }
 
