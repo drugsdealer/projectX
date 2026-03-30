@@ -7,7 +7,11 @@ import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY);
+  return _resend;
+}
 
 function generateCode() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -50,7 +54,7 @@ export async function POST(req: Request) {
     });
 
     const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
-    const { error } = await resend.emails.send({
+    const { error } = await getResend().emails.send({
       from: `Stage Store <${fromEmail}>`,
       to: user.email,
       subject: "Код для смены пароля — Stage Store",

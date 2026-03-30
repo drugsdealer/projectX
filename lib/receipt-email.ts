@@ -1,6 +1,10 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY);
+  return _resend;
+}
 
 type OrderItem = {
   name: string;
@@ -153,7 +157,7 @@ export async function sendOrderReceipt(params: ReceiptParams): Promise<boolean> 
   try {
     const html = buildReceiptHtml(params);
 
-    const { error } = await resend.emails.send({
+    const { error } = await getResend().emails.send({
       from: `Stage Store <${fromEmail}>`,
       to: params.to,
       subject: `Чек по заказу ${params.orderNumber} — Stage Store`,

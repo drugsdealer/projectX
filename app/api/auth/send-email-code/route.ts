@@ -8,7 +8,11 @@ import { Resend } from 'resend';
 
 export const runtime = 'nodejs';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY);
+  return _resend;
+}
 
 function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
@@ -93,7 +97,7 @@ export async function POST(req: Request) {
     // Отправляем код на email через Resend
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
     try {
-      await resend.emails.send({
+      await getResend().emails.send({
         from: `Stage Store <${fromEmail}>`,
         to: normalizedEmail,
         subject: 'Код подтверждения — Stage Store',
