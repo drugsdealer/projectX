@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
-import { requireAdminApi } from "@/lib/admin";
+import { requireAdminApi, sign2FACookie } from "@/lib/admin";
 import { decryptSecret } from "@/lib/totp";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
@@ -67,11 +67,12 @@ export async function POST(req: Request) {
   });
 
   const res = NextResponse.json({ success: true });
-  res.cookies.set("admin_2fa_ok", String(user.id), {
+  res.cookies.set("admin_2fa_ok", sign2FACookie(user.id), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
+    maxAge: 4 * 60 * 60, // 4 hours
   });
   return res;
 }

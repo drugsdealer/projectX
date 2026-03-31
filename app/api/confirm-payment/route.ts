@@ -6,6 +6,7 @@ import { cookies, headers } from 'next/headers';
 import { sendOrderNotificationToTelegram } from '@/lib/telegram';
 import { redeemPromoForOrder } from '@/lib/promos';
 import { sendOrderReceipt } from '@/lib/receipt-email';
+import { getClientIp, rateLimit } from '@/lib/rate-limit';
 
 // аккуратный парсер числа
 function toInt(v: unknown): number | null {
@@ -31,6 +32,16 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
+    /* 0. Rate limiting */
+    const ip = getClientIp(req);
+    const rl = await rateLimit(`confirm-pay:${ip}`, 15, 60_000);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { success: false, message: 'Too many requests' },
+        { status: 429 },
+      );
+    }
+
     /* 1. Авторизация */
     const rawUid = await getSessionUserId().catch(() => null);
     const userId = toInt(rawUid);
@@ -198,10 +209,9 @@ export async function POST(req: Request) {
       `STG-${String(targetOrderId).padStart(6, '0')}`;
 
     const shouldNotify = existing.status !== 'SUCCEEDED';
-    let confirmed = existing;
 
     if (existing.status !== 'SUCCEEDED') {
-      confirmed = await prisma.order.update({
+      await prisma.order.update({
         where: { id: targetOrderId },
         data: {
           status: 'SUCCEEDED',
@@ -259,23 +269,25 @@ export async function POST(req: Request) {
 
         // Чек на email
         if (orderForNotify.email) {
-          void sendOrderReceipt({
-            to: orderForNotify.email,
-            orderNumber: orderForNotify.publicNumber || publicNumber,
-            fullName: orderForNotify.fullName || 'Покупатель',
-            address: orderForNotify.address || '',
-            phone: orderForNotify.phone || null,
-            totalAmount: Number(orderForNotify.totalAmount || 0),
-            paidAt: orderForNotify.paidAt || new Date(),
-            items: (orderForNotify.OrderItem || []).map((it: any) => ({
-              name: it.Product?.name || 'Товар',
-              quantity: it.quantity ?? 1,
-              price: Number(it.price ?? 0),
-              size: it.size || null,
-            })),
-          }).catch((err) => {
-            console.error('[api.confirm-payment] receipt email failed');
-          });
+          try {
+            await sendOrderReceipt({
+              to: orderForNotify.email,
+              orderNumber: orderForNotify.publicNumber || publicNumber,
+              fullName: orderForNotify.fullName || 'Покупатель',
+              address: orderForNotify.address || '',
+              phone: orderForNotify.phone || null,
+              totalAmount: Number(orderForNotify.totalAmount || 0),
+              paidAt: orderForNotify.paidAt || new Date(),
+              items: (orderForNotify.OrderItem || []).map((it: any) => ({
+                name: it.Product?.name || 'Товар',
+                quantity: it.quantity ?? 1,
+                price: Number(it.price ?? 0),
+                size: it.size || null,
+              })),
+            });
+          } catch (err) {
+            console.error('[api.confirm-payment] receipt email failed:', err);
+          }
         }
       }
     }

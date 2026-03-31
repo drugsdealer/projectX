@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { clearSessionTokenOnResponse, setSessionOnResponse, setSessionTokenOnResponse } from "../../_utils/session";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { isAdminEmail } from "@/lib/admin-emails";
-import { randomBytes } from "crypto";
+import { randomBytes, timingSafeEqual } from "crypto";
 
 const parseUserAgentInfo = (
   uaRaw: string | null,
@@ -220,7 +220,10 @@ export async function POST(req: Request) {
     const verification = await prisma.verificationCode.findUnique({
       where: { userId: existingUser.id },
     });
-    if (!verification || verification.code !== code) {
+    if (
+      !verification ||
+      !timingSafeEqual(Buffer.from(verification.code), Buffer.from(code))
+    ) {
       return bad("Код не найден или неверен");
     }
 

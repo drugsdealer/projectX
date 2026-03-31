@@ -15,7 +15,8 @@ function getResend(): Resend {
 }
 
 function generateCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
+  const { randomInt } = require("crypto");
+  return String(randomInt(100000, 1000000)); // 6 digits, cryptographically secure
 }
 
 export async function POST(req: Request) {
@@ -136,7 +137,7 @@ export async function POST(req: Request) {
     const res = NextResponse.json({ success: true });
     res.cookies.set('vfy', '1', {
       path: '/',
-      httpOnly: false,
+      httpOnly: true,
       sameSite: 'lax',
       maxAge: 10 * 60, // 10 минут на ввод кода
       secure: process.env.NODE_ENV === 'production',

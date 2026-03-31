@@ -14,7 +14,8 @@ function getResend(): Resend {
 }
 
 function generateCode() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  const { randomInt } = require("crypto");
+  return String(randomInt(100000, 1000000)); // cryptographically secure
 }
 
 export async function POST(req: Request) {

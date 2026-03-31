@@ -119,13 +119,14 @@ export default function PaymentResultClient() {
     <div className="min-h-[80vh] flex items-center justify-center px-6 py-16">
       <div className="relative w-full max-w-2xl rounded-3xl border border-black/10 bg-white shadow-[0_30px_80px_rgba(0,0,0,0.12)] p-8 text-center overflow-hidden">
         {isSuccess && (
-          <div className="pointer-events-none absolute inset-0">
+          <div className="pointer-events-none fixed inset-0 z-50">
             {Array.from({ length: 90 }).map((_, i) => {
               const left = Math.random() * 100;
-              const delay = Math.random() * 1.4;
-              const duration = 2.3 + Math.random() * 2.2;
+              const delay = Math.random() * 1.2;
+              const duration = 1.0 + Math.random() * 1.2;
               const size = 6 + Math.random() * 6;
-              const colors = ["#10b981", "#f59e0b", "#3b82f6", "#ef4444", "#a855f7"];
+              const drift = (Math.random() - 0.5) * 120;
+              const colors = ["#10b981", "#f59e0b", "#3b82f6", "#ef4444", "#a855f7", "#ec4899", "#06b6d4"];
               const color = colors[i % colors.length];
               return (
                 <span
@@ -133,11 +134,13 @@ export default function PaymentResultClient() {
                   className="absolute rounded-sm"
                   style={{
                     left: `${left}%`,
+                    top: -20,
                     width: size,
                     height: size * 2,
                     background: color,
                     opacity: 0.9,
-                    animation: `confetti-fall ${duration}s linear ${delay}s forwards`,
+                    animation: `confetti-fall ${duration}s cubic-bezier(0.25, 0, 0.7, 1) ${delay}s forwards`,
+                    ["--drift" as string]: `${drift}px`,
                   }}
                 />
               );
@@ -200,10 +203,12 @@ export default function PaymentResultClient() {
       <style jsx global>{`
         @keyframes confetti-fall {
           from {
-            transform: translateY(-10%) rotate(0deg);
+            transform: translateY(0) translateX(0) rotate(0deg);
+            opacity: 1;
           }
           to {
-            transform: translateY(120%) rotate(220deg);
+            transform: translateY(100vh) translateX(var(--drift, 0px)) rotate(720deg);
+            opacity: 0.2;
           }
         }
       `}</style>

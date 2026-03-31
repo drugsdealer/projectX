@@ -177,47 +177,45 @@ export async function POST(req: Request) {
 
     // Отправляем чек на email
     if (updated.email) {
-      void (async () => {
-        try {
-          const orderWithItems = await prisma.order.findUnique({
-            where: { id: updated.id },
-            select: {
-              fullName: true,
-              phone: true,
-              address: true,
-              totalAmount: true,
-              paidAt: true,
-              OrderItem: {
-                select: {
-                  quantity: true,
-                  price: true,
-                  size: true,
-                  Product: { select: { name: true } },
-                },
+      try {
+        const orderWithItems = await prisma.order.findUnique({
+          where: { id: updated.id },
+          select: {
+            fullName: true,
+            phone: true,
+            address: true,
+            totalAmount: true,
+            paidAt: true,
+            OrderItem: {
+              select: {
+                quantity: true,
+                price: true,
+                size: true,
+                Product: { select: { name: true } },
               },
             },
+          },
+        });
+        if (orderWithItems) {
+          await sendOrderReceipt({
+            to: updated.email!,
+            orderNumber: updated.publicNumber || `STG-${String(updated.id).padStart(6, "0")}`,
+            fullName: orderWithItems.fullName || "Покупатель",
+            address: orderWithItems.address || "",
+            phone: orderWithItems.phone || null,
+            totalAmount: Number(orderWithItems.totalAmount || 0),
+            paidAt: orderWithItems.paidAt || new Date(),
+            items: (orderWithItems.OrderItem || []).map((it: any) => ({
+              name: it.Product?.name || "Товар",
+              quantity: it.quantity ?? 1,
+              price: Number(it.price ?? 0),
+              size: it.size || null,
+            })),
           });
-          if (orderWithItems) {
-            await sendOrderReceipt({
-              to: updated.email!,
-              orderNumber: updated.publicNumber || `STG-${String(updated.id).padStart(6, "0")}`,
-              fullName: orderWithItems.fullName || "Покупатель",
-              address: orderWithItems.address || "",
-              phone: orderWithItems.phone || null,
-              totalAmount: Number(orderWithItems.totalAmount || 0),
-              paidAt: orderWithItems.paidAt || new Date(),
-              items: (orderWithItems.OrderItem || []).map((it: any) => ({
-                name: it.Product?.name || "Товар",
-                quantity: it.quantity ?? 1,
-                price: Number(it.price ?? 0),
-                size: it.size || null,
-              })),
-            });
-          }
-        } catch (err) {
-          console.error("[order.complete] receipt email failed");
         }
-      })();
+      } catch (err) {
+        console.error("[order.complete] receipt email failed:", err);
+      }
     }
 
     // Промокод списываем только после успешной оплаты

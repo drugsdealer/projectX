@@ -5,6 +5,37 @@ import { getUserIdFromRequest } from "@/lib/session";
 import { cookies } from "next/headers";
 import { enforceSameOrigin } from "@/lib/security";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { createHmac, timingSafeEqual } from "crypto";
+
+const ADMIN_2FA_SECRET =
+  process.env.ADMIN_2FA_HMAC_SECRET ||
+  process.env.STAGE_VAULT_SECRET ||
+  (process.env.NODE_ENV !== "production" ? "dev_2fa_hmac_key" : "");
+
+export function sign2FACookie(userId: number): string {
+  const payload = `2fa:${userId}:${Math.floor(Date.now() / 1000)}`;
+  const sig = createHmac("sha256", ADMIN_2FA_SECRET).update(payload).digest("hex");
+  return `${payload}.${sig}`;
+}
+
+export function verify2FACookie(value: string, userId: number): boolean {
+  const dot = value.lastIndexOf(".");
+  if (dot < 0) return false;
+  const payload = value.slice(0, dot);
+  const sig = value.slice(dot + 1);
+  const parts = payload.split(":");
+  if (parts[0] !== "2fa" || parts[1] !== String(userId)) return false;
+  const ts = Number(parts[2]);
+  if (!Number.isFinite(ts)) return false;
+  // 2FA cookie expires after 4 hours
+  if (Math.floor(Date.now() / 1000) - ts > 4 * 60 * 60) return false;
+  const expected = createHmac("sha256", ADMIN_2FA_SECRET).update(payload).digest("hex");
+  try {
+    return timingSafeEqual(Buffer.from(sig, "hex"), Buffer.from(expected, "hex"));
+  } catch {
+    return false;
+  }
+}
 
 export type AdminUser = {
   id: number;
@@ -67,7 +98,7 @@ export async function requireAdminApi(
     const jar: any = cookies() as any;
     const c = typeof jar?.then === "function" ? await jar : jar;
     const ok = c.get("admin_2fa_ok")?.value;
-    if (!ok || ok !== String(admin.id)) {
+    if (!ok || !verify2FACookie(ok, admin.id)) {
       return {
         ok: false,
         response: NextResponse.json(

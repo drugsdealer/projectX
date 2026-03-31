@@ -6,12 +6,18 @@ import { getUserIdFromRequest } from "@/lib/session";
 import { cookies } from "next/headers";
 import { SESSION_TOKEN_COOKIE } from "../../../_utils/session";
 import { blockIfCsrf } from "@/lib/api-hardening";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 const HOURS_24 = 24 * 60 * 60 * 1000;
 
 export async function POST(req: Request) {
   const csrf = blockIfCsrf(req);
   if (csrf) return csrf;
+  const ip = getClientIp(req);
+  const rl = await rateLimit(`session:revoke:${ip}`, 10, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json({ success: false, message: "Too many requests" }, { status: 429 });
+  }
 
   try {
     const userId = await getUserIdFromRequest();

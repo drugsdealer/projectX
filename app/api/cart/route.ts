@@ -5,6 +5,7 @@ import { emitServerEvents } from "@/lib/events-server";
 import crypto from "crypto";
 import { getSessionUserId } from "../_utils/session";
 import { blockIfCsrf } from "@/lib/api-hardening";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -42,7 +43,7 @@ async function resolveCart(jar: any) {
     jar.set({
       name: CART_COOKIE,
       value: token,
-      httpOnly: false,
+      httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
       path: "/",
@@ -113,6 +114,11 @@ export async function GET() {
 export async function POST(req: Request) {
   const csrf = blockIfCsrf(req);
   if (csrf) return csrf;
+  const ip = getClientIp(req);
+  const rl = await rateLimit(`cart:post:${ip}`, 40, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json({ success: false, message: "Too many requests" }, { status: 429 });
+  }
   try {
     const jar = await cookies();
     const { cart, token, userId } = await resolveCart(jar);
@@ -223,6 +229,11 @@ export async function POST(req: Request) {
 export async function PATCH(req: Request) {
   const csrf = blockIfCsrf(req);
   if (csrf) return csrf;
+  const ip = getClientIp(req);
+  const rl = await rateLimit(`cart:patch:${ip}`, 40, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json({ success: false, message: "Too many requests" }, { status: 429 });
+  }
   try {
     const jar = await cookies();
     const { cart } = await resolveCart(jar);
@@ -258,6 +269,11 @@ export async function PATCH(req: Request) {
 export async function DELETE(req: Request) {
   const csrf = blockIfCsrf(req);
   if (csrf) return csrf;
+  const ip = getClientIp(req);
+  const rl = await rateLimit(`cart:del:${ip}`, 30, 60_000);
+  if (!rl.ok) {
+    return NextResponse.json({ success: false, message: "Too many requests" }, { status: 429 });
+  }
   try {
     const jar = await cookies();
     const { cart } = await resolveCart(jar);
