@@ -1,4 +1,5 @@
 import FstuStudiosSpotlight from '@/components/home/FstuStudiosSpotlight';
+import GentleMonsterSpotlight from '@/components/home/GentleMonsterSpotlight';
 import type { HomePromoProduct } from '@/components/home/promos/types';
 
 export const AUTHOR_PROMOS_HELP_PATH = 'components/home/promos/author-promos.tsx';
@@ -15,15 +16,21 @@ const FSTU_CLOUDINARY_ASSETS = {
  * Сложные дизайны лучше хранить именно в этом файле, а типовые — через CMS.
  */
 export function renderAuthorHomePromo(sectionIndex: number, items: HomePromoProduct[]) {
-  if (sectionIndex !== 2) return null;
+  if (sectionIndex === 2) {
+    return (
+      <FstuStudiosSpotlight
+        items={items}
+        badgeLabel="FSTU STUDIOS"
+        seasonLabel="acne SS 26"
+        assets={FSTU_CLOUDINARY_ASSETS}
+        emptyHint="Добавьте товары бренда FSTU/ACNE, чтобы заполнить авторский блок."
+      />
+    );
+  }
 
-  return (
-    <FstuStudiosSpotlight
-      items={items}
-      badgeLabel="FSTU STUDIOS"
-      seasonLabel="acne SS 26"
-      assets={FSTU_CLOUDINARY_ASSETS}
-      emptyHint="Добавьте товары бренда FSTU/ACNE, чтобы заполнить авторский блок."
-    />
-  );
+  if (sectionIndex === 3) {
+    return <GentleMonsterSpotlight items={items} />;
+  }
+
+  return null;
 }
