@@ -45,7 +45,7 @@ public class EventAggregationService {
         ChronoUnit.HOURS
     );
 
-    Instant from = lastProcessedAt.isBefore(lookbackStart) ? lastProcessedAt : lookbackStart;
+    Instant from = lastProcessedAt.isAfter(lookbackStart) ? lastProcessedAt : lookbackStart;
     from = from.truncatedTo(ChronoUnit.HOURS);
 
     if (!upperBound.isAfter(from)) {

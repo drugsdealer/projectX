@@ -71,8 +71,9 @@ export default function VerifyClient() {
       }
       setSuccess(true);
       try { window.dispatchEvent(new Event("auth:changed")); } catch {}
-      await refresh();
-      router.push("/user");
+      // Full page reload ensures middleware sees the fresh session cookie.
+      // router.push() does soft navigation which can race with cookie being set.
+      window.location.href = "/user";
     } catch (err: any) {
       setError(err.message || "Verification failed");
     } finally {

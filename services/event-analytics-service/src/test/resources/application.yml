@@ -1,0 +1,11 @@
+spring:
+  flyway:
+    enabled: false
+
+analytics:
+  security:
+    api-key: test-api-key
+  aggregation:
+    fixed-delay-ms: 999999999
+    lag-seconds: 0
+    lookback-hours: 6

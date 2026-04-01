@@ -166,7 +166,7 @@ export async function middleware(request: NextRequest) {
     }
     if (!pathname.startsWith("/admin/2fa") && !pathname.startsWith("/liza/2fa")) {
       const ok = request.cookies.get("admin_2fa_ok")?.value || null;
-      if (!ok || ok !== String(user.id)) {
+      if (!ok || !ok.startsWith(`2fa:${user.id}:`)) {
         const twofaUrl = new URL("/admin/2fa", request.url);
         return applySecurityHeaders(NextResponse.redirect(twofaUrl));
       }
