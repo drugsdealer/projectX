@@ -57,16 +57,9 @@ export default function LoginPage() {
       }
 
       try { window.dispatchEvent(new Event("auth:changed")); } catch {}
-      refresh().catch(() => {});
-      router.push("/user");
-      // Hard fallback in case client-side routing is blocked
-      setTimeout(() => {
-        try {
-          if (window.location.pathname === "/login") {
-            window.location.replace("/user");
-          }
-        } catch {}
-      }, 800);
+      // Full page reload ensures middleware sees the fresh session cookie.
+      // router.push() does soft navigation which races with cookie being set.
+      window.location.href = "/user";
     } catch {
       setErr("Не удалось выполнить вход (таймаут или ошибка сети). Попробуйте позже.");
     } finally {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { SESSION_COOKIE } from "../_session";
+import { SESSION_COOKIE } from "../../_utils/session";
 import { cookies as nextCookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { SESSION_TOKEN_COOKIE } from "../../_utils/session";
@@ -43,8 +43,10 @@ async function doLogout() {
 
   unsetCookie(res, AUTH_COOKIE, true);
   unsetCookie(res, SESSION_COOKIE, true);
+  unsetCookie(res, "sid", true); // legacy session cookie
   unsetCookie(res, SESSION_TOKEN_COOKIE, true);
   unsetCookie(res, "auth_user_id", true);
+  unsetCookie(res, "vfy", true); // verification flow cookie
   for (const k of ADMIN_COOKIES) unsetCookie(res, k, true);
 
   for (const k of UI_COOKIES) unsetCookie(res, k, false);
@@ -61,7 +63,7 @@ export async function POST(req: Request) {
     const jar = await nextCookies();
     const token = jar.get(SESSION_TOKEN_COOKIE)?.value;
     if (token) {
-      prisma.userSession.update({
+      await prisma.userSession.update({
         where: { token },
         data: { revokedAt: new Date() },
       }).catch(() => {});

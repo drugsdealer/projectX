@@ -5,9 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 const SESSION_TOKEN_COOKIE = "session_token";
 
-/**
- * Проверяет, существует ли пользователь и не soft-deleted ли он.
- */
+
 async function validateUserExists(userId: number | null) {
   if (!userId) return null;
   try {
@@ -16,7 +14,7 @@ async function validateUserExists(userId: number | null) {
       select: { id: true, deletedAt: true },
     });
 
-    // Если пользователя нет или он деактивирован — очищаем куки
+    
     const maybe = cookies() as any;
     const jar = typeof maybe?.then === "function" ? await maybe : maybe;
 

@@ -192,9 +192,9 @@ export default function VerifyClient() {
           localStorage.removeItem("email");
         } catch {}
         try { window.dispatchEvent(new Event("auth:changed")); } catch {}
-        try { await refresh(); } catch {}
+        // Full page reload ensures middleware sees the fresh session cookie.
         setTimeout(() => {
-          router.replace("/user");
+          window.location.href = "/user";
         }, 1200);
       } else {
         setError(data.message || "Неверный код. Попробуйте ещё раз.");
@@ -245,7 +245,7 @@ export default function VerifyClient() {
       localStorage.removeItem("email");
       sessionStorage.removeItem("reg_active");
     } catch {}
-    router.replace("/register");
+    window.location.href = "/register";
   }
 
   function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {

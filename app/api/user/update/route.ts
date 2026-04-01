@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { getUserIdFromRequest } from '@/lib/session';
+import { blockIfCsrf } from '@/lib/api-hardening';
 
 /**
  * Secure profile persistence via HttpOnly cookie (AES‑GCM, WebCrypto)
@@ -157,6 +158,8 @@ async function writeCookieProfile(p: Profile) {
 
 // ---------- routes ----------
 export async function POST(req: NextRequest) {
+  const csrfBlocked = blockIfCsrf(req);
+  if (csrfBlocked) return csrfBlocked;
   try {
     const payload = (await req.json()) as Record<string, unknown>;
 

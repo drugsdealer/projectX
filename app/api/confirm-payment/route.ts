@@ -7,6 +7,7 @@ import { sendOrderNotificationToTelegram } from '@/lib/telegram';
 import { redeemPromoForOrder } from '@/lib/promos';
 import { sendOrderReceipt } from '@/lib/receipt-email';
 import { getClientIp, rateLimit } from '@/lib/rate-limit';
+import { blockIfCsrf } from '@/lib/api-hardening';
 
 // аккуратный парсер числа
 function toInt(v: unknown): number | null {
@@ -31,6 +32,8 @@ function cleanToken(v: unknown): string | null {
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  const csrfBlocked = blockIfCsrf(req);
+  if (csrfBlocked) return csrfBlocked;
   try {
     /* 0. Rate limiting */
     const ip = getClientIp(req);

@@ -88,7 +88,7 @@ function normalizePayload(it: BodyItem) {
     price: Number(it.price ?? 0),
     image: it.image ?? null,
     sizeLabel: it.size != null ? String(it.size) : null,
-    quantity: Math.max(1, Number(it.quantity ?? 1)),
+    quantity: Math.min(99, Math.max(1, Number(it.quantity ?? 1))),
     postponed: typeof it.postponed === "boolean" ? it.postponed : undefined,
   };
 }

@@ -69,7 +69,7 @@ export async function POST(req: Request) {
       if (isAdminEmail(email) && existing.role !== 'ADMIN') {
         await prisma.user.update({ where: { id: existing.id }, data: { role: 'ADMIN' as any } }).catch(() => {});
       }
-      const isVerified = existing.verified && existing.verified > new Date();
+      const isVerified = existing.verified && existing.verified.getTime() > 0;
       // Если аккаунт уже есть, но не подтверждён — разрешаем продолжить, чтобы отправить код
       if (!isVerified) {
         return NextResponse.json(

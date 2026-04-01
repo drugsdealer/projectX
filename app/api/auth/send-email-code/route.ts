@@ -137,7 +137,7 @@ export async function POST(req: Request) {
     const res = NextResponse.json({ success: true });
     res.cookies.set('vfy', '1', {
       path: '/',
-      httpOnly: true,
+      httpOnly: false, // client needs to read/clear this for UX flow
       sameSite: 'lax',
       maxAge: 10 * 60, // 10 минут на ввод кода
       secure: process.env.NODE_ENV === 'production',
