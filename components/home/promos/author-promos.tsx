@@ -15,21 +15,25 @@ const FSTU_CLOUDINARY_ASSETS = {
  * Здесь можно создавать полностью кастомные авторские промо блоки для главной.
  * Сложные дизайны лучше хранить именно в этом файле, а типовые — через CMS.
  */
-export function renderAuthorHomePromo(sectionIndex: number, items: HomePromoProduct[]) {
+export function renderAuthorHomePromo(
+  sectionIndex: number,
+  acneItems: HomePromoProduct[],
+  gmItems: HomePromoProduct[] = [],
+) {
   if (sectionIndex === 2) {
+    return <GentleMonsterSpotlight items={gmItems} />;
+  }
+
+  if (sectionIndex === 3) {
     return (
       <FstuStudiosSpotlight
-        items={items}
+        items={acneItems}
         badgeLabel="FSTU STUDIOS"
         seasonLabel="acne SS 26"
         assets={FSTU_CLOUDINARY_ASSETS}
         emptyHint="Добавьте товары бренда FSTU/ACNE, чтобы заполнить авторский блок."
       />
     );
-  }
-
-  if (sectionIndex === 3) {
-    return <GentleMonsterSpotlight />;
   }
 
   return null;

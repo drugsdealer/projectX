@@ -10,37 +10,6 @@ const BANNER =
 const BANNER_MOBILE =
   'https://res.cloudinary.com/dc57mpiao/image/upload/v1774992864/story_1_campaign_imgs_pc_1600x1080_xkwj1s.avif';
 
-const STATIC_PRODUCTS = [
-  {
-    id: 132,
-    name: 'Furi 02',
-    cat: 'Солнцезащитные очки',
-    price: '15 725 ₽',
-    oldPrice: '18 500 ₽',
-    tag: '−15%',
-    tagType: 'скидка',
-    img: 'https://res.cloudinary.com/dc57mpiao/image/upload/v1774992850/11004936_D_45_ajjheo.avif',
-  },
-  {
-    id: 131,
-    name: 'Moody 02(BR)',
-    cat: 'Солнцезащитные очки',
-    price: '22 000 ₽',
-    tag: 'новинка',
-    tagType: 'новинка',
-    img: 'https://res.cloudinary.com/dc57mpiao/image/upload/v1774992851/11004932_D_45_m4jscx.avif',
-  },
-  {
-    id: 130,
-    name: 'ORORA 02',
-    cat: 'Солнцезащитные очки',
-    price: '47 000 ₽',
-    tag: 'новинка',
-    tagType: 'новинка',
-    img: 'https://res.cloudinary.com/dc57mpiao/image/upload/v1774992850/11004930_D_45_atvdka.avif',
-  },
-];
-
 const formatPrice = (price?: number | null) => {
   if (typeof price !== 'number' || Number.isNaN(price) || price <= 0) return 'Цена по запросу';
   return `${price.toLocaleString('ru-RU')} ₽`;
@@ -92,9 +61,10 @@ type Props = {
   items?: HomePromoProduct[];
 };
 
-export default function GentleMonsterSpotlight({ items }: Props) {
+export default function GentleMonsterSpotlight({ items = [] }: Props) {
   const isMobile = useIsMobile(768);
-  const hasDbItems = items && items.length > 0;
+
+  if (!items.length) return null;
 
   return (
     <div
@@ -134,13 +104,7 @@ export default function GentleMonsterSpotlight({ items }: Props) {
       </div>
 
       {/* Banner image */}
-      <div
-        style={{
-          display: 'block',
-          position: 'relative',
-          margin: isMobile ? '0 16px' : '0',
-        }}
-      >
+      <div style={{ display: 'block', position: 'relative', margin: isMobile ? '0 16px' : '0' }}>
         <picture>
           <source media="(max-width: 768px)" srcSet={BANNER_MOBILE} />
           <Image
@@ -169,67 +133,17 @@ export default function GentleMonsterSpotlight({ items }: Props) {
       </div>
 
       {/* Cards */}
-      {hasDbItems ? (
-        /* Карточки из БД */
-        isMobile ? (
-          <div
-            style={{
-              overflowX: 'auto',
-              WebkitOverflowScrolling: 'touch',
-              scrollbarWidth: 'none',
-              marginTop: -50,
-              paddingBottom: 8,
-            }}
-          >
-            <div style={{ display: 'flex', gap: 10, padding: '0 16px', width: 'max-content' }}>
-              {items.slice(0, 8).map((item) => (
-                <Link
-                  key={item.id}
-                  href={`/product/${item.id}`}
-                  style={{
-                    display: 'block',
-                    textDecoration: 'none',
-                    color: 'inherit',
-                    background: '#fff',
-                    cursor: 'pointer',
-                    minWidth: 148,
-                    maxWidth: 148,
-                  }}
-                >
-                  <div style={{ position: 'relative', background: '#f4f4f2', overflow: 'hidden', aspectRatio: '1/1' }}>
-                    {item.imageUrl ? (
-                      <Image src={item.imageUrl} alt={item.name} fill style={{ objectFit: 'cover' }} />
-                    ) : null}
-                  </div>
-                  <div style={{ padding: '8px 2px 10px' }}>
-                    {item.brandName ? (
-                      <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#999', marginBottom: 3 }}>
-                        {item.brandName}
-                      </div>
-                    ) : null}
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#111', lineHeight: 1.3, marginBottom: 5 }}>
-                      {item.name}
-                    </div>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#111' }}>
-                      {formatPrice(item.price)}
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
-              gap: 19,
-              paddingTop: 20,
-              marginTop: -80,
-              position: 'relative',
-              zIndex: 1,
-            }}
-          >
+      {isMobile ? (
+        <div
+          style={{
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            marginTop: -50,
+            paddingBottom: 8,
+          }}
+        >
+          <div style={{ display: 'flex', gap: 10, padding: '0 16px', width: 'max-content' }}>
             {items.slice(0, 8).map((item) => (
               <Link
                 key={item.id}
@@ -240,148 +154,76 @@ export default function GentleMonsterSpotlight({ items }: Props) {
                   color: 'inherit',
                   background: '#fff',
                   cursor: 'pointer',
+                  minWidth: 148,
+                  maxWidth: 148,
                 }}
               >
                 <div style={{ position: 'relative', background: '#f4f4f2', overflow: 'hidden', aspectRatio: '1/1' }}>
-                  {item.imageUrl ? (
-                    <Image src={item.imageUrl} alt={item.name} fill style={{ objectFit: 'cover' }} />
-                  ) : null}
+                  {item.imageUrl
+                    ? <Image src={item.imageUrl} alt={item.name} fill style={{ objectFit: 'cover' }} />
+                    : null}
+                  <HeartButton />
                 </div>
-                <div style={{ padding: '10px 4px 14px' }}>
-                  {item.brandName ? (
-                    <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#999', marginBottom: 3 }}>
-                      {item.brandName}
-                    </div>
-                  ) : null}
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#111', lineHeight: 1.3, marginBottom: 5 }}>
+                <div style={{ padding: '8px 2px 10px' }}>
+                  <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#999', marginBottom: 3 }}>
+                    Солнцезащитные очки
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#111', lineHeight: 1.3, marginBottom: 5 }}>
                     {item.name}
                   </div>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#111' }}>
                     {formatPrice(item.price)}
                   </span>
                 </div>
               </Link>
             ))}
           </div>
-        )
+        </div>
       ) : (
-        /* Статические карточки */
-        isMobile ? (
-          <div
-            style={{
-              overflowX: 'auto',
-              WebkitOverflowScrolling: 'touch',
-              scrollbarWidth: 'none',
-              marginTop: -50,
-              paddingBottom: 8,
-            }}
-          >
-            <div style={{ display: 'flex', gap: 10, padding: '0 16px', width: 'max-content' }}>
-              {STATIC_PRODUCTS.map((p) => (
-                <Link
-                  key={p.id}
-                  href={`/product/${p.id}`}
-                  style={{
-                    display: 'block',
-                    textDecoration: 'none',
-                    color: 'inherit',
-                    background: '#fff',
-                    cursor: 'pointer',
-                    minWidth: 148,
-                    maxWidth: 148,
-                  }}
-                >
-                  <div style={{ position: 'relative', background: '#f4f4f2', overflow: 'hidden', aspectRatio: '1/1' }}>
-                    <Image src={p.img} alt={p.name} fill style={{ objectFit: 'cover' }} />
-                    <div
-                      style={{
-                        position: 'absolute', top: 7, left: 7,
-                        fontSize: 8, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
-                        padding: '3px 6px', borderRadius: 2, lineHeight: 1,
-                        background: p.tagType === 'скидка' ? '#555' : '#f80606',
-                        color: '#fff',
-                      }}
-                    >
-                      {p.tag}
-                    </div>
-                    <HeartButton />
-                  </div>
-                  <div style={{ padding: '8px 2px 10px' }}>
-                    <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#999', marginBottom: 3 }}>
-                      {p.cat}
-                    </div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#111', lineHeight: 1.3, marginBottom: 5 }}>
-                      {p.name}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#111' }}>{p.price}</span>
-                      {p.oldPrice && (
-                        <span style={{ fontSize: 10, color: '#bbb', textDecoration: 'line-through' }}>{p.oldPrice}</span>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
-              gap: 19,
-              paddingTop: 20,
-              marginTop: -80,
-              position: 'relative',
-              zIndex: 1,
-            }}
-          >
-            {STATIC_PRODUCTS.map((p) => (
-              <Link
-                key={p.id}
-                href={`/product/${p.id}`}
-                style={{
-                  display: 'block',
-                  textDecoration: 'none',
-                  color: 'inherit',
-                  background: '#fff',
-                  cursor: 'pointer',
-                  transition: 'box-shadow 0.2s',
-                }}
-              >
-                <div style={{ position: 'relative', background: '#f4f4f2', overflow: 'hidden', aspectRatio: '1/1' }}>
-                  <Image src={p.img} alt={p.name} fill style={{ objectFit: 'cover' }} />
-                  <div
-                    style={{
-                      position: 'absolute', top: 7, left: 7,
-                      fontSize: 8, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
-                      padding: '3px 6px', borderRadius: 2, lineHeight: 1,
-                      background: p.tagType === 'скидка' ? '#555' : '#f80606',
-                      color: '#fff',
-                    }}
-                  >
-                    {p.tag}
-                  </div>
-                  <HeartButton />
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: 19,
+            paddingTop: 20,
+            marginTop: -80,
+            position: 'relative',
+            zIndex: 1,
+          }}
+        >
+          {items.slice(0, 8).map((item) => (
+            <Link
+              key={item.id}
+              href={`/product/${item.id}`}
+              style={{
+                display: 'block',
+                textDecoration: 'none',
+                color: 'inherit',
+                background: '#fff',
+                cursor: 'pointer',
+                transition: 'box-shadow 0.2s',
+              }}
+            >
+              <div style={{ position: 'relative', background: '#f4f4f2', overflow: 'hidden', aspectRatio: '1/1' }}>
+                {item.imageUrl
+                  ? <Image src={item.imageUrl} alt={item.name} fill style={{ objectFit: 'cover' }} />
+                  : null}
+                <HeartButton />
+              </div>
+              <div style={{ padding: '10px 4px 14px' }}>
+                <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#999', marginBottom: 3 }}>
+                  Солнцезащитные очки
                 </div>
-                <div style={{ padding: '10px 4px 14px' }}>
-                  <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#999', marginBottom: 3 }}>
-                    {p.cat}
-                  </div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#111', lineHeight: 1.3, marginBottom: 5 }}>
-                    {p.name}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>{p.price}</span>
-                    {p.oldPrice && (
-                      <span style={{ fontSize: 10, color: '#bbb', textDecoration: 'line-through' }}>{p.oldPrice}</span>
-                    )}
-                  </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#111', lineHeight: 1.3, marginBottom: 5 }}>
+                  {item.name}
                 </div>
-              </Link>
-            ))}
-          </div>
-        )
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>
+                  {formatPrice(item.price)}
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
       )}
     </div>
   );

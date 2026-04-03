@@ -932,6 +932,40 @@ export default function Home() {
     return rows;
   }, [promoSourceItems, extractBrand]);
 
+  const gentleMonsterPromoItems = useMemo<HomePromoProduct[]>(() => {
+    const key = (v: any) => String(v || "").toLowerCase();
+    const isGM = (p: any) => {
+      const brand = key(p?.brand || p?.brandName || extractBrand(p));
+      const name = key(p?.name);
+      return brand.includes("gentle monster") || name.includes("gentle monster");
+    };
+
+    const seen = new Set<number>();
+    const rows: HomePromoProduct[] = [];
+    for (const item of promoSourceItems.filter(isGM)) {
+      const id = Number(item?.id);
+      if (!Number.isFinite(id) || id <= 0 || seen.has(id)) continue;
+      seen.add(id);
+      rows.push({
+        id,
+        name: String(item?.name || "Товар"),
+        price:
+          Number(item?.price) > 0
+            ? Number(item?.price)
+            : Number(item?.minPrice) > 0
+            ? Number(item?.minPrice)
+            : null,
+        imageUrl:
+          (Array.isArray(item?.images) && item.images.length
+            ? String(item.images[0] || "")
+            : String(item?.imageUrl || "")) || null,
+        brandName: "Gentle Monster",
+      });
+      if (rows.length >= 8) break;
+    }
+    return rows;
+  }, [promoSourceItems, extractBrand]);
+
   const cmsPromoItemsById = useMemo<Record<string, HomePromoProduct[]>>(() => {
     const result: Record<string, HomePromoProduct[]> = {};
     const key = (v: any) => String(v || "").toLowerCase();
@@ -1873,7 +1907,7 @@ useEffect(() => {
                   const canShowLess = displayLimit > DEFAULT_COUNT;
                   const hasMore = items.length > displayList.length;
                   const cmsPromosAtSection = cmsPromosByPosition[sectionIndex] || [];
-                  const authorPromoNode = renderAuthorHomePromo(sectionIndex, authorPromoItems);
+                  const authorPromoNode = renderAuthorHomePromo(sectionIndex, authorPromoItems, gentleMonsterPromoItems);
 
                   return (
                     <Fragment key={`sec-wrap-${main}`}>
