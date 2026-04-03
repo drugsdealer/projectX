@@ -28,7 +28,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const products = await prisma.product.findMany({
       where: { deletedAt: null },
-      select: { id: true, updatedAt: true, isPremium: true },
+      select: { id: true, updatedAt: true, premium: true },
       orderBy: { updatedAt: "desc" },
       take: 5000,
     });
@@ -39,7 +39,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: "weekly" as const,
         priority: 0.8,
       };
-      if (p.isPremium) {
+      if (p.premium) {
         return [base, { ...base, url: `${siteUrl}/premium/product/${p.id}`, priority: 0.85 }];
       }
       return [base];
