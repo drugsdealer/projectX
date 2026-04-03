@@ -1037,14 +1037,14 @@ export default function CheckoutModal({
               <input
                 id="address"
                 type="text"
-                placeholder="Вы можете ввести адрес вручную или воспользоваться картой ---&gt;"
+                placeholder="Улица, дом, квартира"
                 value={address}
                 onChange={(e) => {
                   const value = e.target.value;
                   setAddress(value);
                   saveCheckoutStatePartial({ address: value });
                 }}
-                className={`w-full p-2 border rounded placeholder-gray-400 ${
+                className={`w-full p-2 pr-10 border rounded placeholder-gray-400 ${
                   addressError ? "border-red-500" : ""
                 }`}
               />
@@ -1053,15 +1053,15 @@ export default function CheckoutModal({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.4, ease: "easeInOut" }}
-                className="mt-3 px-6 py-4 border border-red-400 bg-red-100/70 text-red-900 rounded-2xl shadow-md flex items-center justify-between relative overflow-hidden"
+                className="mt-3 px-4 py-3 border border-red-400 bg-red-100/70 text-red-900 rounded-2xl shadow-md flex flex-wrap items-center justify-between gap-2 relative overflow-hidden"
               >
-                <div className="flex items-center gap-3 text-sm font-medium">
-                  <span className="text-lg">🚚</span>
-                  <span>Условия доставки по Москве и РФ.</span>
+                <div className="flex items-center gap-2 text-sm font-medium min-w-0">
+                  <span className="text-lg shrink-0">🚚</span>
+                  <span className="break-words">Условия доставки по Москве и РФ.</span>
                 </div>
                 <button
                   onClick={() => setShowRussiaInfo(true)}
-                  className="ml-4 relative text-sm font-semibold text-black hover:text-black transition group"
+                  className="relative text-sm font-semibold text-black hover:text-black transition group shrink-0"
                 >
                   Подробнее
                   <motion.span
