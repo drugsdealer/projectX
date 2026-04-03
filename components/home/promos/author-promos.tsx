@@ -29,7 +29,7 @@ export function renderAuthorHomePromo(sectionIndex: number, items: HomePromoProd
   }
 
   if (sectionIndex === 3) {
-    return <GentleMonsterSpotlight items={items} />;
+    return <GentleMonsterSpotlight />;
   }
 
   return null;
