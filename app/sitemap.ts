@@ -21,11 +21,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticPages: MetadataRoute.Sitemap = [
     { url: `${siteUrl}/premium/why`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
-    { url: `${siteUrl}/favorites_item`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.4 },
-    { url: `${siteUrl}/login`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.3 },
-    { url: `${siteUrl}/register`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.3 },
-    { url: `${siteUrl}/cart`, changeFrequency: "weekly", priority: 0.3 },
-    { url: `${siteUrl}/footer`, changeFrequency: "monthly", priority: 0.2 },
   ];
 
   // Products
@@ -33,16 +28,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const products = await prisma.product.findMany({
       where: { deletedAt: null },
-      select: { id: true, updatedAt: true },
+      select: { id: true, updatedAt: true, isPremium: true },
       orderBy: { updatedAt: "desc" },
       take: 5000,
     });
-    productPages = products.map((p) => ({
-      url: `${siteUrl}/product/${p.id}`,
-      lastModified: p.updatedAt,
-      changeFrequency: "weekly" as const,
-      priority: 0.8,
-    }));
+    productPages = products.flatMap((p) => {
+      const base = {
+        url: `${siteUrl}/product/${p.id}`,
+        lastModified: p.updatedAt,
+        changeFrequency: "weekly" as const,
+        priority: 0.8,
+      };
+      if (p.isPremium) {
+        return [base, { ...base, url: `${siteUrl}/premium/product/${p.id}`, priority: 0.85 }];
+      }
+      return [base];
+    });
   } catch {}
 
   // Brands

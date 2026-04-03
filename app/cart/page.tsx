@@ -10,6 +10,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
 import dynamic from "next/dynamic";
 import { useUser } from "@/user/UserContext";
+
+const CheckoutModal = dynamic(() => import("@/components/CheckoutModal"), { ssr: false });
 import { useRouter } from "next/navigation";
 
 // --- Local Product shape (API-backed) ---
@@ -186,8 +188,6 @@ export default function CartPage() {
     if (!ids.length) return;
     ensureProductMeta(ids);
   }, [cartItems]);
-
-  const CheckoutModal = dynamic(() => import("@/components/CheckoutModal"), { ssr: false });
 
   // Определение premium вынесено в isPremiumProduct(obj) выше
 

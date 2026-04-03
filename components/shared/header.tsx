@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { Container } from "./container";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import Image from "next/image";
 import { Button } from "../ui/button";
 import { ShoppingCart, UserRound, CircleChevronRight, DoorOpen, DoorClosed, Search, Heart, X, Menu } from "lucide-react";
@@ -125,7 +125,11 @@ export const Header: React.FC<Props> = ({ className }) => {
 
   const isHome = pathname === "/";
   const { user } = useUser();
-  const [isAtTop, setIsAtTop] = useState(true);
+  // Initialise synchronously on client to avoid white-flash before useEffect fires
+  const [isAtTop, setIsAtTop] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.scrollY < 10;
+  });
 
   // React to external UI signals (e.g. Premium curator open) to blur/put header to background
   const [curatorOpenRemote, setCuratorOpenRemote] = useState(false);
@@ -158,14 +162,13 @@ export const Header: React.FC<Props> = ({ className }) => {
     return () => window.removeEventListener("resize", setHeight);
   }, []);
 
-useEffect(() => {
+useLayoutEffect(() => {
   const handleScroll = () => {
     if (!isHome) return;
     const hero = document.getElementById("home-hero");
     if (hero) {
       const rect = hero.getBoundingClientRect();
       const h = headerRef.current?.offsetHeight ?? 80;
-      // если низ hero ушел за верх header — переключаем на белый
       setIsAtTop(rect.bottom > h + 1);
       return;
     }
@@ -173,7 +176,7 @@ useEffect(() => {
   };
 
   if (isHome) {
-    handleScroll(); // Прямо при монтировании
+    handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("resize", handleScroll);
   }

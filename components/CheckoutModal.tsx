@@ -1548,7 +1548,7 @@ export default function CheckoutModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[500] flex items-start justify-center bg-black/45 backdrop-blur-sm p-3 sm:p-6 pt-16 sm:pt-20"
+          className="fixed inset-0 z-[500] flex items-start justify-center bg-black/45 backdrop-blur-sm p-3 sm:p-6 pt-16 sm:pt-20 overflow-y-auto"
         >
           <motion.div
             key="checkout-card"
@@ -1556,7 +1556,7 @@ export default function CheckoutModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 20 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="relative w-full max-w-5xl bg-white rounded-[28px] shadow-2xl flex flex-col lg:flex-row overflow-hidden max-h-[90vh]"
+            className="relative w-full max-w-5xl bg-white rounded-[28px] shadow-2xl flex flex-col lg:flex-row overflow-hidden max-h-[90dvh] mb-safe"
           >
             <button
               onClick={handleUserClose}
@@ -1595,7 +1595,7 @@ export default function CheckoutModal({
                   </button>
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-4">
+              <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-4" style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom, 0px))' }}>
                 <AnimatePresence mode="wait">
                   {renderStepContent()}
                 </AnimatePresence>
