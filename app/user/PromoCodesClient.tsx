@@ -103,7 +103,7 @@ function Ticket({
         {/* Левая часть — основной контент */}
         <div className={classNames("relative flex-1 p-5 sm:p-6", !active && "pr-4")}>
 
-          {/* Небрежное зачёркивание — 3 пересекающиеся линии */}
+          {/* Зачёркивание как у старой цены */}
           {!active && (
             <svg
               aria-hidden
@@ -111,32 +111,13 @@ function Ticket({
               viewBox="0 0 200 80"
               preserveAspectRatio="none"
             >
-              {/* Основная диагональ — слева-сверху направо-вниз */}
-              <path
-                d="M6 18 Q70 28 130 48 Q165 60 196 65"
+              <line
+                x1="0" y1="40"
+                x2="200" y2="40"
                 stroke="#ef4444"
-                strokeWidth="2.8"
+                strokeWidth="2"
                 strokeLinecap="round"
-                fill="none"
-                opacity="0.8"
-              />
-              {/* Обратная диагональ — пересекает первую */}
-              <path
-                d="M8 62 Q55 50 110 38 Q155 26 194 16"
-                stroke="#ef4444"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                fill="none"
-                opacity="0.65"
-              />
-              {/* Небрежная волна поперёк */}
-              <path
-                d="M4 40 Q40 32 80 44 Q120 56 160 38 Q182 28 197 42"
-                stroke="#ef4444"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                fill="none"
-                opacity="0.5"
+                opacity="0.7"
               />
             </svg>
           )}
