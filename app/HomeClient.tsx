@@ -167,27 +167,31 @@ const ProductCardImage = memo(function ProductCardImage({
     intent: 'h' | 'v' | null;
   }>({ startX: 0, startY: 0, active: false, lastStepTs: 0, pointerId: null, intent: null });
 
+  // Stabilize array reference so useEffect doesn't fire on every parent render
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const stableImages = useMemo(() => imagesArr, [imagesArr.join('\0')]);
+
   // Clamp idx if images array changes, update ref when clamping
   useEffect(() => {
     setActiveIdx((prev) => {
-      const max = Math.max(0, (imagesArr?.length || 1) - 1);
+      const max = Math.max(0, (stableImages?.length || 1) - 1);
       const next = Math.min(Math.max(prev, 0), max);
       activeIdxRef.current = next;
       return next;
     });
-  }, [imagesArr]);
+  }, [stableImages]);
 
-  const activeSrc = imagesArr?.[activeIdx] || imagesArr?.[0] || "/img/placeholder.png";
+  const activeSrc = stableImages?.[activeIdx] || stableImages?.[0] || "/img/placeholder.png";
   const displaySrc = brokenSrcs.has(activeSrc) ? "/img/placeholder.png" : activeSrc;
 
   const prefetchAround = useCallback(
     (idx: number) => {
       try {
         if (typeof window === 'undefined') return;
-        if (!Array.isArray(imagesArr) || imagesArr.length <= 1) return;
+        if (!Array.isArray(stableImages) || stableImages.length <= 1) return;
         if (reduceMotion) return;
-        const nextSrc = imagesArr[Math.min(idx + 1, imagesArr.length - 1)];
-        const prevSrc = imagesArr[Math.max(idx - 1, 0)];
+        const nextSrc = stableImages[Math.min(idx + 1, stableImages.length - 1)];
+        const prevSrc = stableImages[Math.max(idx - 1, 0)];
         const pool = balancedMotion ? [nextSrc] : [nextSrc, prevSrc];
         pool.forEach((src) => {
           if (!src) return;
@@ -196,7 +200,7 @@ const ProductCardImage = memo(function ProductCardImage({
         });
       } catch {}
     },
-    [balancedMotion, imagesArr, reduceMotion]
+    [balancedMotion, stableImages, reduceMotion]
   );
 
   return (
@@ -205,20 +209,20 @@ const ProductCardImage = memo(function ProductCardImage({
       style={{ touchAction: isTouchDevice ? touchActionMode : undefined, WebkitUserSelect: 'none', userSelect: 'none' }}
       onMouseMove={(e) => {
         if (isTouchDevice) return;
-        if (!imagesArr?.length || imagesArr.length === 1) return;
+        if (!stableImages?.length || stableImages.length === 1) return;
         const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
         const x = e.clientX - rect.left;
         const ratio = rect.width > 0 ? x / rect.width : 0;
-        let idx = Math.floor(ratio * imagesArr.length);
+        let idx = Math.floor(ratio * stableImages.length);
         if (idx < 0) idx = 0;
-        if (idx >= imagesArr.length) idx = imagesArr.length - 1;
+        if (idx >= stableImages.length) idx = stableImages.length - 1;
         if (idx === activeIdx) return;
         setSwipeDir(idx > activeIdx ? 'left' : 'right');
         setActiveIdx(idx);
       }}
       onMouseLeave={() => {
         if (isTouchDevice) return;
-        if (!imagesArr?.length || imagesArr.length === 1) return;
+        if (!stableImages?.length || stableImages.length === 1) return;
         if (activeIdx === 0) return;
         setSwipeDir('right');
         setActiveIdx(0);
@@ -226,7 +230,7 @@ const ProductCardImage = memo(function ProductCardImage({
       onPointerDown={(e) => {
         if (!isTouchDevice) return;
         if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
-        if (!imagesArr?.length || imagesArr.length === 1) return;
+        if (!stableImages?.length || stableImages.length === 1) return;
         setTouchActionMode('pan-y');
         try {
           (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
@@ -247,7 +251,7 @@ const ProductCardImage = memo(function ProductCardImage({
         const st = swipeStateRef.current;
         if (!st.active) return;
         if (st.pointerId !== null && e.pointerId !== st.pointerId) return;
-        if (!imagesArr?.length || imagesArr.length === 1) return;
+        if (!stableImages?.length || stableImages.length === 1) return;
 
         const dx = e.clientX - st.startX;
         const dy = e.clientY - st.startY;
@@ -280,7 +284,7 @@ const ProductCardImage = memo(function ProductCardImage({
         const dir: 'left' | 'right' = dx < 0 ? 'left' : 'right';
         const delta = dir === 'left' ? 1 : -1;
 
-        const maxIdx = imagesArr.length - 1;
+        const maxIdx = stableImages.length - 1;
         let nextIdx = activeIdxRef.current + delta;
         if (nextIdx < 0) nextIdx = 0;
         if (nextIdx > maxIdx) nextIdx = maxIdx;
@@ -367,9 +371,9 @@ const ProductCardImage = memo(function ProductCardImage({
         </motion.div>
       </AnimatePresence>
 
-      {imagesArr.length > 1 && (
+      {stableImages.length > 1 && (
         <div className="absolute bottom-2 left-0 right-0 z-20 flex items-center justify-center gap-1.5 pointer-events-none">
-          {imagesArr.map((_: string, i: number) => (
+          {stableImages.map((_: string, i: number) => (
             <span
               key={i}
               className={`h-1.5 rounded-full transition-all ${reduceMotion ? "duration-150" : balancedMotion ? "duration-200" : "duration-300"} ease-out ${

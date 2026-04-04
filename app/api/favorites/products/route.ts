@@ -26,12 +26,12 @@ export async function GET(req: NextRequest) {
       productId: true,
       createdAt: true,
       Product: {
-        where: { deletedAt: null },
         select: {
           id: true,
           name: true,
           price: true,
           imageUrl: true,
+          deletedAt: true,
           Brand: { select: { name: true } },
         },
       },
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
   });
 
   const items = rows
-    .filter((r) => r.Product)
+    .filter((r) => r.Product && r.Product.deletedAt === null)
     .map((r) => ({
       id: r.Product!.id,
       name: r.Product!.name,
