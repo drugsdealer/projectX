@@ -50,6 +50,7 @@ export default function HomePromoRail({
   const [fallbackPromos, setFallbackPromos] = useState<PromoCodeItem[]>([]);
   const [showAmbientPlanes, setShowAmbientPlanes] = useState(false);
   const [ownedCodes, setOwnedCodes] = useState<Set<string>>(() => new Set());
+  const [usedCodes, setUsedCodes] = useState<Set<string>>(() => new Set());
   const [claimingCode, setClaimingCode] = useState<string | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
   const [flyingTicket, setFlyingTicket] = useState<{
@@ -114,12 +115,16 @@ export default function HomePromoRail({
         const data = await res.json().catch(() => ({} as any));
         if (cancelled) return;
         const next = new Set<string>();
+        const used = new Set<string>();
         const list = Array.isArray(data?.promoCodes) ? data.promoCodes : [];
         for (const item of list) {
           const code = String(item?.code || '').trim().toUpperCase();
-          if (code) next.add(code);
+          if (!code) continue;
+          next.add(code);
+          if (item?.usedAt) used.add(code);
         }
         setOwnedCodes(next);
+        setUsedCodes(used);
       } catch {
         if (!cancelled) setOwnedCodes(new Set());
       }
@@ -231,7 +236,9 @@ export default function HomePromoRail({
     }
   };
 
-  const visiblePromos = resolvedPromos.slice(0, 8);
+  const visiblePromos = resolvedPromos.filter(
+    (p) => !usedCodes.has(String(p?.code || '').trim().toUpperCase())
+  ).slice(0, 8);
   return (
     <section className="relative overflow-hidden rounded-[30px] border border-black/15 bg-gradient-to-br from-[#f6f8fb] via-[#fbfcff] to-[#f3f6fb] p-4 sm:p-5">
       <div aria-hidden className="pointer-events-none absolute inset-0 z-0">

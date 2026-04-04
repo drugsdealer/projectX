@@ -202,6 +202,7 @@ export async function POST(req: NextRequest) {
         if (merged.city) data.city = merged.city;
         if (merged.gender) data.gender = merged.gender;
         if (merged.avatarEmoji) data.avatarEmoji = merged.avatarEmoji;
+        if (merged.email) data.email = merged.email;
 
         if (Object.keys(data).length > 0) {
           dbUpdatedUser = await prisma.user.update({

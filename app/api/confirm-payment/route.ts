@@ -171,7 +171,7 @@ export async function POST(req: Request) {
         where: {
           userId,
           createdAt: { gte: oneHourAgo },
-          status: { not: 'SUCCEEDED' },
+          status: 'PENDING',
         },
         select: { id: true },
         orderBy: { createdAt: 'desc' },

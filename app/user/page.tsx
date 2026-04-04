@@ -32,7 +32,10 @@ export default function UserProfilePage() {
 
   function extractFullName(src: any): string | undefined {
     if (!src) return undefined;
-    // Only use first name and last name, not full name field.
+    // Prefer fullName field (set by server), fall back to firstName+lastName
+    if (src.fullName && typeof src.fullName === 'string' && src.fullName.trim()) {
+      return src.fullName.trim();
+    }
     const ln = src.lastName ?? src.surname ?? src.familyName;
     const fn = src.firstName ?? src.givenName ?? src.nameFirst;
     const parts = [fn, ln].map((v:any)=> (v??'').toString().trim()).filter(Boolean);

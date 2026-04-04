@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
       productId: true,
       createdAt: true,
       Product: {
+        where: { deletedAt: null },
         select: {
           id: true,
           name: true,

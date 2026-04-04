@@ -129,7 +129,7 @@ export async function GET(req: NextRequest) {
       // paidAt для старых заказов: если есть успешный статус, но нет paidAt — fallback на updatedAt
       paidAt:
         o.paidAt ??
-        ((o.status === "SUCCEEDED" || o.status === "PAID") ? o.updatedAt : null),
+        (o.status === "SUCCEEDED" ? o.updatedAt : null),
       publicNumber: o.publicNumber ?? null,
     }));
 

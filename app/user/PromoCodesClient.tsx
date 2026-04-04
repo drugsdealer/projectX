@@ -61,103 +61,110 @@ function Ticket({
   return (
     <div
       className={classNames(
-        "relative overflow-hidden rounded-2xl border border-black/10 bg-white p-5 sm:p-6 shadow-sm transition",
-        active ? "hover:shadow-md" : "opacity-80 grayscale"
+        "relative overflow-hidden rounded-2xl border bg-white shadow-sm transition",
+        active
+          ? "border-black/10 hover:shadow-md"
+          : "border-black/8 grayscale opacity-75"
       )}
     >
-      {/* Перфорация (дырочки) */}
-      <span
-        aria-hidden
-        className="absolute -left-3 top-1/2 -translate-y-1/2 h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-gray-100 border border-zinc-200"
-      />
-      <span
-        aria-hidden
-        className="absolute -right-3 top-1/2 -translate-y-1/2 h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-gray-100 border border-zinc-200"
-      />
+      {/* Горизонтальные дырочки перфорации по бокам */}
+      <span aria-hidden className="absolute -left-3 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full bg-gray-100 border border-zinc-200 z-10" />
+      <span aria-hidden className="absolute -right-3 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full bg-gray-100 border border-zinc-200 z-10" />
 
-      {/* «Оторванный край» у использованных */}
+      {/* Вертикальная линия отрыва — только для использованных, по центру правой части */}
       {!active && (
         <span
           aria-hidden
-          className="absolute right-0 top-0 h-full w-10 bg-gray-100"
+          className="absolute top-0 bottom-0 z-10"
           style={{
-            clipPath:
-              "polygon(100% 0, 0 8%, 100% 16%, 0 24%, 100% 32%, 0 40%, 100% 48%, 0 56%, 100% 64%, 0 72%, 100% 80%, 0 88%, 100% 100%)",
+            right: "28%",
+            width: 1,
+            backgroundImage: "repeating-linear-gradient(to bottom, #d1d5db 0px, #d1d5db 6px, transparent 6px, transparent 12px)",
           }}
         />
       )}
 
-      {/* Небрежное «ручное» зачеркивание кода — только для использованных */}
+      {/* Дырочки перфорации на линии отрыва */}
       {!active && (
-        <svg
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -rotate-2 opacity-70"
-          viewBox="0 0 100 40"
-          preserveAspectRatio="none"
-        >
-          <path d="M5 10 L95 14" stroke="#ef4444" strokeWidth="3.5" strokeLinecap="round" fill="none" />
-          <path d="M6 22 L94 26" stroke="#ef4444" strokeWidth="3.5" strokeLinecap="round" fill="none" />
-          <path d="M5 32 L95 28" stroke="#ef4444" strokeWidth="3.5" strokeLinecap="round" fill="none" />
-        </svg>
+        <>
+          <span aria-hidden className="absolute z-20 h-5 w-5 rounded-full bg-gray-100 border border-zinc-200" style={{ right: "calc(28% - 10px)", top: -10 }} />
+          <span aria-hidden className="absolute z-20 h-5 w-5 rounded-full bg-gray-100 border border-zinc-200" style={{ right: "calc(28% - 10px)", bottom: -10 }} />
+        </>
       )}
 
-      {/* Контент билета */}
-      <div className="relative">
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 sm:gap-4">
-          {/* Левая часть — крупный код + даты под ним */}
-          <div className="flex-1">
-            <div className="text-center md:text-left">
-              <div className="text-[11px] uppercase tracking-wider text-gray-500">Промокод</div>
-              <div className="font-extrabold leading-[0.95] text-[clamp(28px,8vw,48px)] tracking-[0.12em] break-words">
-                {ticket.code}
-              </div>
+      <div className="flex">
+        {/* Левая часть — основной контент */}
+        <div className={classNames("relative flex-1 p-5 sm:p-6", !active && "pr-4")}>
+
+          {/* Небрежное одиночное зачёркивание поверх кода */}
+          {!active && (
+            <svg
+              aria-hidden
+              className="pointer-events-none absolute inset-0 z-10"
+              style={{ transform: "rotate(-1.5deg)" }}
+              viewBox="0 0 200 80"
+              preserveAspectRatio="none"
+            >
+              <path
+                d="M8 38 Q60 30 100 42 Q140 54 192 36"
+                stroke="#ef4444"
+                strokeWidth="3"
+                strokeLinecap="round"
+                fill="none"
+                opacity="0.75"
+              />
+            </svg>
+          )}
+
+          <div className="relative">
+            <div className="text-[11px] uppercase tracking-wider text-gray-500">Промокод</div>
+            <div className="font-extrabold leading-[0.95] text-[clamp(24px,7vw,44px)] tracking-[0.12em] break-words">
+              {ticket.code}
             </div>
 
-            {/* Даты под кодом */}
-            <div className="mt-2 flex flex-wrap items-center justify-center md:justify-start gap-x-3 gap-y-1 text-[11px] text-gray-600 break-words">
-              {ticket.startsAt ? <span>Начало: {fmtDate(ticket.startsAt)}</span> : null}
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-600">
               {ticket.endsAt ? (
-                <span className="text-red-500 font-medium">
-                  Действует до: {fmtDate(ticket.endsAt)}
+                <span className={active ? "text-red-500 font-medium" : "text-gray-400"}>
+                  до {fmtDate(ticket.endsAt)}
                 </span>
               ) : (
-                <span>Без срока действия</span>
+                <span className="text-gray-400">Без срока</span>
               )}
               {ticket.claimedAt ? (
-                <span className="text-gray-700">Активирован: {fmtDate(ticket.claimedAt)}</span>
+                <span className="text-gray-400">Активирован: {fmtDate(ticket.claimedAt)}</span>
               ) : null}
               {!active && ticket.usedAt ? (
-                <span className="text-rose-600 font-semibold">Использован: {fmtDate(ticket.usedAt)}</span>
+                <span className="text-rose-500 font-semibold">Использован: {fmtDate(ticket.usedAt)}</span>
               ) : null}
               {!active && !ticket.usedAt && ticket.endsAt ? (
-                <span className="text-rose-600 font-semibold">
-                  Срок действия истёк: {fmtDate(ticket.endsAt)}
-                </span>
+                <span className="text-rose-500 font-semibold">Истёк: {fmtDate(ticket.endsAt)}</span>
               ) : null}
             </div>
           </div>
+        </div>
 
-          {/* Правая часть — фиксированная колонка со скидкой */}
-         {/* Правая часть — фиксированная колонка со скидкой */}
-          <div className="shrink-0 md:pl-4 md:ml-4 md:border-l md:border-black/5 flex flex-col items-end justify-center text-xs text-gray-600">
-            {/* Кружок со скидкой */}
-            <div className="inline-flex w-[82px] h-[32px] items-center justify-center rounded-full border border-black/10 font-semibold text-black bg-gray-50 select-none">
-              {ticket.value != null
-                ? ticket.type === "PERCENT"
-                  ? `−${ticket.value}%`
-                  : ticket.type === "AMOUNT"
-                  ? `−${ticket.value}₽`
-                  : `−${ticket.value}`
-                : "—"}
-            </div>
-
-            {/* Минимальная сумма под кружком */}
-            {ticket.minSubtotal ? (
-              <div className="mt-1 text-[11px] text-gray-500 text-center w-[82px] leading-tight">
-                от {ticket.minSubtotal}₽
-              </div>
-            ) : null}
+        {/* Правая часть — скидка (как «корешок» билета) */}
+        <div
+          className={classNames(
+            "shrink-0 flex flex-col items-center justify-center px-4 sm:px-5",
+            !active ? "w-[28%]" : "border-l border-dashed border-black/10 pl-4 sm:pl-5 pr-5 sm:pr-6"
+          )}
+          style={active ? {} : { width: "28%" }}
+        >
+          <div className="inline-flex w-[72px] h-[72px] items-center justify-center rounded-full border-2 border-black/10 font-extrabold text-[15px] text-black bg-gray-50 select-none text-center leading-tight">
+            {ticket.value != null
+              ? ticket.type === "PERCENT"
+                ? `−${ticket.value}%`
+                : ticket.type === "AMOUNT"
+                ? `−${ticket.value}₽`
+                : `−${ticket.value}`
+              : "—"}
           </div>
+          {ticket.minSubtotal ? (
+            <div className="mt-1.5 text-[10px] text-gray-400 text-center leading-tight">
+              от {ticket.minSubtotal}₽
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

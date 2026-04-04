@@ -21,6 +21,12 @@ const UI_COOKIES = [
   "ui_avatar",
   "stage_session",
   "uid",
+  "vault_profile",
+  "orderToken",
+  "order_id",
+  "orderId",
+  "pending_order_id",
+  "last_order_id",
 ];
 const ADMIN_COOKIES = ["admin_2fa_ok", "admin_impersonator"];
 

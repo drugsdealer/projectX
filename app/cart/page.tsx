@@ -588,7 +588,7 @@ useEffect(() => {
     const draft = {
       items: active.map((it: any) => ({
         cartItemId: getCartItemId(it),
-        productId: it.id,
+        productId: (it as any).productId || it.id,
         name: it.name,
         size: (it as any).size ?? null,
         quantity: (it as any).quantity ?? 1,
@@ -630,8 +630,8 @@ useEffect(() => {
         body: JSON.stringify({
           cartToken: cartTokenRaw || null,
           items: active.map((it: any) => ({
-            cartItemId: (it as any).id ?? null,
-            productId: it.id,
+            cartItemId: getCartItemId(it),
+            productId: (it as any).productId || it.id,
             name: it.name,
             price: getDiscountedUnitPrice(it),
             origPrice: getBaseUnitPrice(it),

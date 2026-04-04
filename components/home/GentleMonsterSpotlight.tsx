@@ -166,7 +166,7 @@ export default function GentleMonsterSpotlight({ items = [] }: Props) {
                 </div>
                 <div style={{ padding: '8px 2px 10px' }}>
                   <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#999', marginBottom: 3 }}>
-                    Солнцезащитные очки
+                    {item.brandName || 'Gentle Monster'}
                   </div>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#111', lineHeight: 1.3, marginBottom: 5 }}>
                     {item.name}
