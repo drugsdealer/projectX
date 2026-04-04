@@ -71,17 +71,24 @@ function Ticket({
       <span aria-hidden className="absolute -left-3 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full bg-gray-100 border border-zinc-200 z-10" />
       <span aria-hidden className="absolute -right-3 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full bg-gray-100 border border-zinc-200 z-10" />
 
-      {/* Вертикальная линия отрыва — только для использованных, по центру правой части */}
+      {/* Линия отрыва — SVG зигзаг как у настоящего билета */}
       {!active && (
-        <span
+        <svg
           aria-hidden
-          className="absolute top-0 bottom-0 z-10"
-          style={{
-            right: "28%",
-            width: 1,
-            backgroundImage: "repeating-linear-gradient(to bottom, #d1d5db 0px, #d1d5db 6px, transparent 6px, transparent 12px)",
-          }}
-        />
+          className="absolute top-0 bottom-0 z-10 pointer-events-none"
+          style={{ right: "calc(28% - 6px)", width: 12, height: "100%" }}
+          preserveAspectRatio="none"
+          viewBox="0 0 12 100"
+        >
+          <polyline
+            points="6,0 2,5 10,10 2,15 10,20 2,25 10,30 2,35 10,40 2,45 10,50 2,55 10,60 2,65 10,70 2,75 10,80 2,85 10,90 2,95 6,100"
+            fill="none"
+            stroke="#d1d5db"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
       )}
 
       {/* Дырочки перфорации на линии отрыва */}
@@ -96,22 +103,40 @@ function Ticket({
         {/* Левая часть — основной контент */}
         <div className={classNames("relative flex-1 p-5 sm:p-6", !active && "pr-4")}>
 
-          {/* Небрежное одиночное зачёркивание поверх кода */}
+          {/* Небрежное зачёркивание — 3 пересекающиеся линии */}
           {!active && (
             <svg
               aria-hidden
               className="pointer-events-none absolute inset-0 z-10"
-              style={{ transform: "rotate(-1.5deg)" }}
               viewBox="0 0 200 80"
               preserveAspectRatio="none"
             >
+              {/* Основная диагональ — слева-сверху направо-вниз */}
               <path
-                d="M8 38 Q60 30 100 42 Q140 54 192 36"
+                d="M6 18 Q70 28 130 48 Q165 60 196 65"
                 stroke="#ef4444"
-                strokeWidth="3"
+                strokeWidth="2.8"
                 strokeLinecap="round"
                 fill="none"
-                opacity="0.75"
+                opacity="0.8"
+              />
+              {/* Обратная диагональ — пересекает первую */}
+              <path
+                d="M8 62 Q55 50 110 38 Q155 26 194 16"
+                stroke="#ef4444"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                fill="none"
+                opacity="0.65"
+              />
+              {/* Небрежная волна поперёк */}
+              <path
+                d="M4 40 Q40 32 80 44 Q120 56 160 38 Q182 28 197 42"
+                stroke="#ef4444"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                fill="none"
+                opacity="0.5"
               />
             </svg>
           )}
