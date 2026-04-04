@@ -111,13 +111,23 @@ export async function redeemPromo(code: string, userId: number) {
   const promo = await (prisma as any).promoCode.findUnique({ where: { code: code.toUpperCase() } });
   if (!promo) throw new Error("Код не найден");
 
-  // повторно не даём
-  const dupe = await (prisma as any).promoRedemption.findFirst({ where: { promoCodeId: promo.id, userId } });
-  if (dupe) return dupe;
-
-  const redemption = await (prisma as any).promoRedemption.create({
-    data: { promoCodeId: promo.id, userId },
-  });
+  // Используем createMany с skipDuplicates чтобы атомарно защититься от race condition.
+  // Если запись уже есть — ничего не создаётся, возвращаем существующую.
+  let redemption: any;
+  try {
+    redemption = await (prisma as any).promoRedemption.create({
+      data: { promoCodeId: promo.id, userId },
+    });
+  } catch (e: any) {
+    // P2002 = unique constraint violation — уже использован
+    if (e?.code === 'P2002') {
+      const existing = await (prisma as any).promoRedemption.findFirst({
+        where: { promoCodeId: promo.id, userId },
+      });
+      return existing;
+    }
+    throw e;
+  }
 
   if (promo.maxRedemptions === 1 || promo.userId) {
     await (prisma as any).promoCode.update({
@@ -138,14 +148,19 @@ export async function redeemPromoForOrder(params: {
   const promo = await (prisma as any).promoCode.findUnique({ where: { code } });
   if (!promo || !promo.isActive) return null;
 
-  const dupe = await (prisma as any).promoRedemption.findFirst({
-    where: { promoCodeId: promo.id, userId: params.userId },
-  });
-  if (dupe) return dupe;
-
-  const redemption = await (prisma as any).promoRedemption.create({
-    data: { promoCodeId: promo.id, userId: params.userId, orderId: params.orderId },
-  });
+  let redemption: any;
+  try {
+    redemption = await (prisma as any).promoRedemption.create({
+      data: { promoCodeId: promo.id, userId: params.userId, orderId: params.orderId },
+    });
+  } catch (e: any) {
+    if (e?.code === 'P2002') {
+      return await (prisma as any).promoRedemption.findFirst({
+        where: { promoCodeId: promo.id, userId: params.userId },
+      });
+    }
+    throw e;
+  }
 
   if (promo.maxRedemptions === 1 || promo.userId) {
     await (prisma as any).promoCode.update({

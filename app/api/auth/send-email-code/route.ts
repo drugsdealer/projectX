@@ -54,10 +54,11 @@ export async function POST(req: Request) {
     }
 
     const now = new Date();
-    const user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-      select: { id: true },
-    });
+    // Фиксированная задержка защищает от timing-атаки (email enumeration)
+    const [user] = await Promise.all([
+      prisma.user.findUnique({ where: { email: normalizedEmail }, select: { id: true } }),
+      new Promise((r) => setTimeout(r, 300)),
+    ]);
     if (!user) {
       // Не раскрываем существование email (anti-enumeration)
       return NextResponse.json({ success: true });
@@ -137,9 +138,9 @@ export async function POST(req: Request) {
     const res = NextResponse.json({ success: true });
     res.cookies.set('vfy', '1', {
       path: '/',
-      httpOnly: false, // client needs to read/clear this for UX flow
+      httpOnly: true,
       sameSite: 'lax',
-      maxAge: 10 * 60, // 10 минут на ввод кода
+      maxAge: 10 * 60,
       secure: process.env.NODE_ENV === 'production',
     });
     return res;

@@ -850,11 +850,10 @@ useEffect(() => {
                           <button
                             onClick={(e) => {
                               e.preventDefault();
-                              const itemId = (item as any).productId || (item as any).id;
                               if (qty <= 1) {
                                 handleRemove(index);
                               } else {
-                                updateQuantity(itemId, (item as any).size, qty - 1);
+                                updateQuantity(item.id, (item as any).size, qty - 1);
                               }
                             }}
                             className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition text-lg leading-none"
@@ -866,8 +865,7 @@ useEffect(() => {
                           <button
                             onClick={(e) => {
                               e.preventDefault();
-                              const itemId = (item as any).productId || (item as any).id;
-                              updateQuantity(itemId, (item as any).size, qty + 1);
+                              updateQuantity(item.id, (item as any).size, qty + 1);
                             }}
                             className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition text-lg leading-none"
                             aria-label="Увеличить количество"
