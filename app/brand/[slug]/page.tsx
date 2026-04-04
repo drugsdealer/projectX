@@ -7,12 +7,17 @@ import type { Metadata } from 'next';
 export const revalidate = 300; // ISR: revalidate every 5 minutes
 
 export async function generateStaticParams() {
-  const brands = await prisma.brand.findMany({
-    where: { deletedAt: null },
-    select: { slug: true },
-    take: 200,
-  });
-  return brands.map((b) => ({ slug: b.slug }));
+  try {
+    const brands = await prisma.brand.findMany({
+      where: { deletedAt: null },
+      select: { slug: true },
+      take: 200,
+    });
+    return brands.map((b) => ({ slug: b.slug }));
+  } catch {
+    // DB unavailable at build time — pages will be generated on first request via ISR
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {

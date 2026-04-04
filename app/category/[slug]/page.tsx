@@ -6,11 +6,15 @@ import prisma from '@/lib/prisma';
 import CategoryProductGrid from './CategoryProductGrid';
 
 export async function generateStaticParams() {
-  const categories = await prisma.category.findMany({
-    select: { slug: true },
-    take: 100,
-  });
-  return categories.map((c) => ({ slug: c.slug }));
+  try {
+    const categories = await prisma.category.findMany({
+      select: { slug: true },
+      take: 100,
+    });
+    return categories.map((c) => ({ slug: c.slug }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {

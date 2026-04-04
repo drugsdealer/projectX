@@ -62,13 +62,17 @@ export async function generateMetadata({
 export const revalidate = 300; // ISR: revalidate every 5 minutes
 
 export async function generateStaticParams() {
-  const products = await prisma.product.findMany({
-    where: { deletedAt: null },
-    select: { id: true },
-    orderBy: { updatedAt: "desc" },
-    take: 500,
-  });
-  return products.map((p) => ({ id: String(p.id) }));
+  try {
+    const products = await prisma.product.findMany({
+      where: { deletedAt: null },
+      select: { id: true },
+      orderBy: { updatedAt: "desc" },
+      take: 500,
+    });
+    return products.map((p) => ({ id: String(p.id) }));
+  } catch {
+    return [];
+  }
 }
 
 export default async function ProductPage({
