@@ -26,18 +26,6 @@ const FOOTER_LINKS = {
 
 const SOCIAL_LINKS = [
   {
-    label: "Instagram",
-    href: "https://instagram.com/stagestore",
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5">
-        <path
-          d="M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zm0 2a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H7zm5 3.3a3.7 3.7 0 1 1 0 7.4 3.7 3.7 0 0 1 0-7.4zm0 2a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4zm4.9-.9a.9.9 0 1 1 0 1.8.9.9 0 0 1 0-1.8z"
-          fill="currentColor"
-        />
-      </svg>
-    ),
-  },
-  {
     label: "Telegram",
     href: "https://t.me/stagestore",
     icon: (

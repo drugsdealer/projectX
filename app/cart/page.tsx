@@ -96,7 +96,7 @@ function AuthGateModal({
 }
 
 export default function CartPage() {
-  const { cartItems, removeFromCart, postponedItems, setPostponedItems, togglePostponed, getPostponedKey } = useCart();
+  const { cartItems, removeFromCart, postponedItems, setPostponedItems, togglePostponed, getPostponedKey, updateQuantity } = useCart();
   const { discount, applyDiscount, resetDiscount } = useDiscount();
   const { showToast } = useToast();
 
@@ -278,8 +278,17 @@ useEffect(() => {
         }
         const data = await res.json().catch(() => ({} as any));
         const list = Array.isArray(data?.promoCodes) ? data.promoCodes : [];
+        const now = Date.now();
         const mapped = list
-          .filter((p: any) => p?.code)
+          .filter((p: any) => {
+            if (!p?.code) return false;
+            if (p.usedAt) return false;
+            if (p.endsAt) {
+              const d = new Date(p.endsAt);
+              if (!Number.isNaN(d.getTime()) && d.getTime() < now) return false;
+            }
+            return true;
+          })
           .map((p: any) => ({
             code: String(p.code),
             type: p.type === "AMOUNT" ? "AMOUNT" : "PERCENT",
@@ -832,15 +841,40 @@ useEffect(() => {
                         )}
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-                        {qty > 1 && (
-                          <span className="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-gray-100 font-medium">
-                            <span>Количество: {qty}</span>
-                            <span className="text-gray-400 text-xs">
-                              + {formatPrice(basePrice * (qty - 1))}₽
-                            </span>
-                          </span>
-                        )}
+                      <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500">
+                        {/* Quantity stepper */}
+                        <div
+                          className="inline-flex items-center rounded-xl border border-gray-200 overflow-hidden"
+                          onClick={(e) => e.preventDefault()}
+                        >
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              const itemId = (item as any).productId || (item as any).id;
+                              if (qty <= 1) {
+                                handleRemove(index);
+                              } else {
+                                updateQuantity(itemId, (item as any).size, qty - 1);
+                              }
+                            }}
+                            className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition text-lg leading-none"
+                            aria-label="Уменьшить количество"
+                          >
+                            {qty <= 1 ? <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-500" /> : '−'}
+                          </button>
+                          <span className="w-8 text-center text-sm font-semibold text-gray-900 select-none">{qty}</span>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              const itemId = (item as any).productId || (item as any).id;
+                              updateQuantity(itemId, (item as any).size, qty + 1);
+                            }}
+                            className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-100 transition text-lg leading-none"
+                            aria-label="Увеличить количество"
+                          >
+                            +
+                          </button>
+                        </div>
                         {item.badge && <span className="px-2 py-1 rounded-full bg-gray-100 font-medium">{item.badge}</span>}
                       </div>
 
@@ -887,16 +921,6 @@ useEffect(() => {
                           >
                             <span aria-hidden>📌</span>
                             {isPostponed ? 'Вернуть' : 'Отложить'}
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handleRemove(index);
-                            }}
-                            className="p-2 rounded-lg border border-transparent text-gray-400 hover:text-red-600 hover:border-red-100 transition"
-                            aria-label="Удалить"
-                          >
-                            <Trash2 className="w-5 h-5" />
                           </button>
                         </div>
                       </div>

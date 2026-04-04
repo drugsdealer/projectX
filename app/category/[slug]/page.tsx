@@ -215,6 +215,19 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     polo: ['polo'],
   };
 
+  const PARENT_CATEGORIES: Record<string, string[]> = {
+    footwear:     ['sneakers', 'boots', 'loafers', 'sandals'],
+    shoes:        ['sneakers', 'boots', 'loafers', 'sandals'],
+    clothing:     ['tshirts', 'hoodies', 'sweatshirts', 'sweaters', 'cardigans', 'shirts', 'polo', 'jackets', 'coats', 'parkas', 'vests', 'jeans', 'pants', 'trousers', 'shorts', 'dresses', 'skirts', 'suits', 'tracksuits', 'tops'],
+    clothes:      ['tshirts', 'hoodies', 'sweatshirts', 'sweaters', 'cardigans', 'shirts', 'polo', 'jackets', 'coats', 'parkas', 'vests', 'jeans', 'pants', 'trousers', 'shorts', 'dresses', 'skirts', 'suits', 'tracksuits', 'tops'],
+    bags:         ['bags', 'backpacks', 'waistbags', 'cardholders', 'wallets', 'totes', 'travelbags'],
+    accessories:  ['belts', 'glasses', 'watches', 'rings', 'earrings', 'bracelets', 'necklaces', 'keychains', 'scarves', 'gloves', 'socks', 'caps', 'beanies', 'hats'],
+    headwear:     ['caps', 'beanies', 'hats'],
+    jewelry:      ['rings', 'earrings', 'bracelets', 'necklaces', 'keychains'],
+    fragrances:   ['fragrances'],
+    perfume:      ['fragrances'],
+  };
+
   const slugLow = slug.toLowerCase();
   const labelLow = label.toLowerCase();
   const synonyms = SUBCATEGORY_SYNONYMS[slugLow] || SUBCATEGORY_SYNONYMS[labelLow] || [];
@@ -299,10 +312,13 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   });
 
   // Filter: product belongs to this category if its inferred/DB subcategory matches the slug
+  const parentChildren = PARENT_CATEGORIES[slugLow];
   const products = (allProducts as any[]).filter((p) => {
     const dbSub = (p.subcategory ?? '').trim().toLowerCase();
     const inferred = inferSub(p.name ?? '', p.description ?? null);
     const effectiveSub = dbSub || inferred;
+    if (!effectiveSub) return false;
+    if (parentChildren) return parentChildren.includes(effectiveSub);
     return effectiveSub === slugLow;
   });
 
