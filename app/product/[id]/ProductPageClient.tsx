@@ -1546,33 +1546,32 @@ const handleCancel = () => {
                 )}
               </div>
             </div>
-            {/* Переключатель "без коробки" — только если у товара есть такая цена */}
+            {/* Переключатель "без коробки" */}
             {noBoxPriceValue && (
-              <div className="flex items-center gap-2 mb-4">
-                <button
-                  onClick={() => setNoBox(false)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium border transition ${
-                    !noBox
-                      ? 'bg-black text-white border-black'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
-                  }`}
-                >
-                  С коробкой
-                </button>
-                <button
-                  onClick={() => setNoBox(true)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium border transition ${
-                    noBox
-                      ? 'bg-black text-white border-black'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
-                  }`}
-                >
-                  Без коробки
-                </button>
+              <div className="mb-5">
+                <div className="inline-flex rounded-xl bg-gray-100 p-1 gap-1">
+                  <button
+                    onClick={() => setNoBox(false)}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                      !noBox ? 'bg-white shadow-sm text-black' : 'text-gray-500 hover:text-black'
+                    }`}
+                  >
+                    С коробкой
+                  </button>
+                  <button
+                    onClick={() => setNoBox(true)}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 flex items-center gap-2 ${
+                      noBox ? 'bg-white shadow-sm text-black' : 'text-gray-500 hover:text-black'
+                    }`}
+                  >
+                    Без коробки
+                    <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md leading-none">
+                      −{Math.round(100 - (noBoxPriceValue / basePrice) * 100)}%
+                    </span>
+                  </button>
+                </div>
                 {noBox && (
-                  <span className="text-xs text-gray-400 ml-1">
-                    Скидка {Math.round(100 - (noBoxPriceValue / basePrice) * 100)}% · без упаковки производителя
-                  </span>
+                  <p className="mt-2 text-xs text-gray-400">Товар без оригинальной упаковки производителя</p>
                 )}
               </div>
             )}
