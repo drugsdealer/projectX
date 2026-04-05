@@ -96,7 +96,7 @@ export async function GET(
     const product = await (prisma as any).product.findFirst({
       where: { id: productId, deletedAt: null },
       select: {
-        id: true, name: true, price: true, oldPrice: true, imageUrl: true,
+        id: true, name: true, price: true, oldPrice: true, noBoxPrice: true, imageUrl: true,
         images: true, description: true, available: true, premium: true,
         badge: true, gender: true, subcategory: true, sizeType: true,
         material: true, features: true, styleNotes: true,
@@ -386,6 +386,7 @@ export async function GET(
       premium: Boolean((pAny as any)?.premium),
       price: pAny?.price ?? null,
       oldPrice: pAny?.oldPrice ?? null,
+      noBoxPrice: pAny?.noBoxPrice ?? null,
       description: pAny?.description ?? null,
       imageUrl: pAny?.imageUrl ?? null,
       brand: product.Brand?.name ?? null,
