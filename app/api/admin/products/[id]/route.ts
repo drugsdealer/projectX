@@ -149,6 +149,16 @@ export async function PATCH(
     }
   }
 
+  // No-box price
+  if (body?.noBoxPrice !== undefined) {
+    if (body.noBoxPrice === null || body.noBoxPrice === "") {
+      data.noBoxPrice = null;
+    } else {
+      const nbp = Number(body.noBoxPrice);
+      if (Number.isFinite(nbp) && nbp > 0) data.noBoxPrice = nbp;
+    }
+  }
+
   // Description
   if (body?.description !== undefined) {
     data.description = body.description ? String(body.description).trim() : null;

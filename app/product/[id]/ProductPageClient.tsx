@@ -424,6 +424,7 @@ export default function ProductPage() {
 const primaryBrand: string | null = React.useMemo(() => (productBrands[0] ?? null), [productBrands]);
 const brandLogoSrc: string | undefined = (product as any)?.brandLogo;
 const { addToCart } = useCart();
+const [noBox, setNoBox] = useState(false);
 const [selectedVariant, setSelectedVariant] = useState<any | null>(null);
 const [displayedImages, setDisplayedImages] = useState<string[]>([]);
 const [isFavProduct, setIsFavProduct] = useState(false);
@@ -891,7 +892,7 @@ const handleAddToCart = () => {
     addToCart({
       id: product.id,
       productId: product.id,
-      name: product.name,
+      name: noBox && noBoxPriceValue ? `${product.name} (без коробки)` : product.name,
       price: currentPrice,
       image: displayedImages?.[0] ?? product.images?.[0] ?? "/img/fallback.jpg",
       size: selectedSize != null ? String(selectedSize) : undefined,
@@ -1144,9 +1145,15 @@ const handleCancel = () => {
             }));
         })()
       : [];
-  const currentPrice = getPriceBySize();
+  const basePrice = getPriceBySize();
+  const noBoxPriceValue = product ? ((product as any).noBoxPrice as number | null | undefined) : null;
+  const currentPrice = noBox && noBoxPriceValue ? noBoxPriceValue : basePrice;
   const oldPriceValue = product ? ((product as any).oldPrice as number | undefined) : undefined;
-  const showOldPrice = typeof oldPriceValue === 'number' && oldPriceValue > currentPrice;
+  // При режиме "без коробки" старая цена — это цена с коробкой
+  const showOldPrice = noBox && noBoxPriceValue
+    ? basePrice > noBoxPriceValue
+    : typeof oldPriceValue === 'number' && oldPriceValue > currentPrice;
+  const effectiveOldPrice = noBox && noBoxPriceValue ? basePrice : oldPriceValue;
 
   // Объём флакона для духов (ml)
   const perfumeVolume = React.useMemo(() => {
@@ -1539,14 +1546,45 @@ const handleCancel = () => {
                 )}
               </div>
             </div>
+            {/* Переключатель "без коробки" — только если у товара есть такая цена */}
+            {noBoxPriceValue && (
+              <div className="flex items-center gap-2 mb-4">
+                <button
+                  onClick={() => setNoBox(false)}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium border transition ${
+                    !noBox
+                      ? 'bg-black text-white border-black'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                  }`}
+                >
+                  С коробкой
+                </button>
+                <button
+                  onClick={() => setNoBox(true)}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium border transition ${
+                    noBox
+                      ? 'bg-black text-white border-black'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                  }`}
+                >
+                  Без коробки
+                </button>
+                {noBox && (
+                  <span className="text-xs text-gray-400 ml-1">
+                    Скидка {Math.round(100 - (noBoxPriceValue / basePrice) * 100)}% · без упаковки производителя
+                  </span>
+                )}
+              </div>
+            )}
+
             <div className="flex items-center justify-between flex-wrap gap-6">
               <div className="flex items-center h-full">
                 {(() => {
                   return (
                     <div className="flex items-center gap-3">
-                      {showOldPrice && oldPriceValue && (
+                      {showOldPrice && effectiveOldPrice && (
                         <span className="relative inline-block text-gray-400 text-3xl lg:text-4xl old-price-strike">
-                          {oldPriceValue.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}₽
+                          {effectiveOldPrice.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}₽
                           <span className="strike-3"></span>
                         </span>
                       )}

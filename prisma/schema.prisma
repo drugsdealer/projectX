@@ -242,6 +242,7 @@ model Product {
   depthCm     Float?
   badge       String?
   oldPrice    Float?
+  noBoxPrice  Float?        // цена без коробки/комплекта (опционально)
   popularity  Int           @default(0)
   premium     Boolean       @default(false)
   stock       Int?

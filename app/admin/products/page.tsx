@@ -21,6 +21,7 @@ type EditForm = {
   name: string;
   price: string;
   oldPrice: string;
+  noBoxPrice: string;
   discountMode: boolean; // true = show old price as crossed out
   imageUrl: string;
   galleryText: string;
@@ -90,6 +91,7 @@ const emptyEditForm = (): EditForm => ({
   name: "",
   price: "",
   oldPrice: "",
+  noBoxPrice: "",
   discountMode: false,
   imageUrl: "",
   galleryText: "",
@@ -161,6 +163,7 @@ export default function AdminProductsPage() {
   const [heightCm, setHeightCm] = useState("");
   const [depthCm, setDepthCm] = useState("");
   const [article, setArticle] = useState("");
+  const [noBoxPrice, setNoBoxPrice] = useState("");
 
   const [newBrand, setNewBrand] = useState("");
   const [newBrandLogo, setNewBrandLogo] = useState("");
@@ -343,6 +346,7 @@ export default function AdminProductsPage() {
           features: features || null,
           styleNotes: styleNotes || null,
           sizeType, sizeGroups, premium,
+          noBoxPrice: noBoxPrice ? Number(noBoxPrice) : null,
           widthCm: widthCm ? Number(widthCm) : null,
           heightCm: heightCm ? Number(heightCm) : null,
           depthCm: depthCm ? Number(depthCm) : null,
@@ -357,7 +361,7 @@ export default function AdminProductsPage() {
       setShoeGroups([newGroup()]); setClothGroups([newGroup()]);
       setPremium(false); setBadge(""); setGalleryText("");
       setMaterial(""); setFeatures(""); setStyleNotes("");
-      setWidthCm(""); setHeightCm(""); setDepthCm(""); setArticle("");
+      setWidthCm(""); setHeightCm(""); setDepthCm(""); setArticle(""); setNoBoxPrice("");
       await loadCatalog();
     } catch (e: any) { setMsg(e?.message || "Ошибка добавления"); }
   };
@@ -370,6 +374,7 @@ export default function AdminProductsPage() {
       name: p.name || "",
       price: p.price != null ? String(p.price) : "",
       oldPrice: hasOldPrice ? String(p.oldPrice) : "",
+      noBoxPrice: p.noBoxPrice != null && p.noBoxPrice > 0 ? String(p.noBoxPrice) : "",
       discountMode: hasOldPrice,
       imageUrl: p.imageUrl || "",
       galleryText: Array.isArray(p.images) ? p.images.join("\n") : "",
@@ -435,6 +440,7 @@ export default function AdminProductsPage() {
           widthCm: editForm.widthCm ? Number(editForm.widthCm) : null,
           heightCm: editForm.heightCm ? Number(editForm.heightCm) : null,
           depthCm: editForm.depthCm ? Number(editForm.depthCm) : null,
+          noBoxPrice: editForm.noBoxPrice ? Number(editForm.noBoxPrice) : null,
           article: editForm.article || null,
         }),
       });
@@ -511,6 +517,13 @@ export default function AdminProductsPage() {
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <input className={inputCls} placeholder="Название" value={name} onChange={(e) => setName(e.target.value)} />
             <input className={inputCls + " disabled:bg-black/5"} placeholder="Цена (если без размеров)" value={price} onChange={(e) => setPrice(e.target.value)} disabled={sizeType !== "NONE"} />
+            <input className={inputCls} placeholder="Цена без коробки (опционально)" value={noBoxPrice} onChange={(e) => setNoBoxPrice(e.target.value)} />
+            {noBoxPrice && price && Number(noBoxPrice) > 0 && (
+              <div className="sm:col-span-2 text-xs text-black/60">
+                Скидка без коробки: <span className="text-green-600 font-semibold">{Math.round(100 - (Number(noBoxPrice) / Number(price)) * 100)}%</span>
+                {" · "}{Number(price).toLocaleString("ru-RU")} → {Number(noBoxPrice).toLocaleString("ru-RU")} ₽
+              </div>
+            )}
             <input className={inputCls + " sm:col-span-2"} placeholder="Ссылка на фото" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
             <textarea className={inputCls + " sm:col-span-2"} placeholder="Галерея фото (по одному URL на строку)" rows={4} value={galleryText} onChange={(e) => setGalleryText(e.target.value)} />
             <select className={inputCls} value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setSubcategoryId(""); }}>
@@ -712,6 +725,24 @@ export default function AdminProductsPage() {
                             )}
                           </div>
                         )}
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-sm font-medium mb-1">Цена без коробки / комплекта (опционально)</label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            className={inputCls + " max-w-xs"}
+                            placeholder="Например: 38000"
+                            value={editForm.noBoxPrice}
+                            onChange={(e) => setEditField("noBoxPrice", e.target.value)}
+                          />
+                          {editForm.noBoxPrice && editForm.price && Number(editForm.noBoxPrice) > 0 && (
+                            <span className="text-xs text-black/60">
+                              Скидка: <span className="text-green-600 font-semibold">
+                                {Math.round(100 - (Number(editForm.noBoxPrice) / Number(editForm.price)) * 100)}%
+                              </span> · {Number(editForm.price).toLocaleString("ru-RU")} → {Number(editForm.noBoxPrice).toLocaleString("ru-RU")} ₽
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <input className={inputCls + " sm:col-span-2"} placeholder="Ссылка на главное фото" value={editForm.imageUrl} onChange={(e) => setEditField("imageUrl", e.target.value)} />

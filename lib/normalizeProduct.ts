@@ -13,6 +13,7 @@ export type NormalizedProduct = {
   styleNotes?: string | null;
   premium?: boolean;
   badge?: string | null;
+  noBoxPrice?: number | null;
   brand?: string | string[] | null;
   brandLogo?: string | null;
   brandSlug?: string | null;
@@ -359,6 +360,10 @@ export function normalizeProduct(raw: any): NormalizedProduct {
 
   const premium = Boolean(raw?.premium ?? raw?.isPremium);
   const badge = safeString(raw?.badge) || null;
+  const noBoxPrice =
+    raw?.noBoxPrice != null && Number.isFinite(Number(raw.noBoxPrice)) && Number(raw.noBoxPrice) > 0
+      ? Number(raw.noBoxPrice)
+      : null;
 
   return {
     id,
@@ -394,5 +399,6 @@ export function normalizeProduct(raw: any): NormalizedProduct {
     innerMaterial,
     bagType,
     capacityDescription,
+    noBoxPrice,
   };
 }
