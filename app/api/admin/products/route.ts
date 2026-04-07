@@ -29,6 +29,7 @@ export async function POST(req: Request) {
     const article = body?.article ? String(body.article).trim() : null;
     const badgeRaw = body?.badge == null ? "" : String(body.badge).trim();
     const badge = badgeRaw ? badgeRaw.slice(0, 80) : null;
+    const modelKey = body?.modelKey ? String(body.modelKey).trim().slice(0, 100) || null : null;
     const noBoxPriceRaw = Number(body?.noBoxPrice);
     const noBoxPrice = Number.isFinite(noBoxPriceRaw) && noBoxPriceRaw > 0 ? Math.round(noBoxPriceRaw) : null;
     const premium = Boolean(body?.premium);
@@ -135,6 +136,7 @@ export async function POST(req: Request) {
         sizeType: sizeType as any,
         premium,
         noBoxPrice,
+        modelKey,
         widthCm: Number.isFinite(widthCm) && widthCm > 0 ? widthCm : null,
         heightCm: Number.isFinite(heightCm) && heightCm > 0 ? heightCm : null,
         depthCm: Number.isFinite(depthCm) && depthCm > 0 ? depthCm : null,

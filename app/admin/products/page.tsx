@@ -22,6 +22,7 @@ type EditForm = {
   price: string;
   oldPrice: string;
   noBoxPrice: string;
+  modelKey: string;
   discountMode: boolean; // true = show old price as crossed out
   imageUrl: string;
   galleryText: string;
@@ -92,6 +93,7 @@ const emptyEditForm = (): EditForm => ({
   price: "",
   oldPrice: "",
   noBoxPrice: "",
+  modelKey: "",
   discountMode: false,
   imageUrl: "",
   galleryText: "",
@@ -163,6 +165,7 @@ export default function AdminProductsPage() {
   const [heightCm, setHeightCm] = useState("");
   const [depthCm, setDepthCm] = useState("");
   const [article, setArticle] = useState("");
+  const [modelKey, setModelKey] = useState("");
   const [noBoxPrice, setNoBoxPrice] = useState("");
 
   const [newBrand, setNewBrand] = useState("");
@@ -347,6 +350,7 @@ export default function AdminProductsPage() {
           styleNotes: styleNotes || null,
           sizeType, sizeGroups, premium,
           noBoxPrice: noBoxPrice ? Number(noBoxPrice) : null,
+          modelKey: modelKey.trim() || null,
           widthCm: widthCm ? Number(widthCm) : null,
           heightCm: heightCm ? Number(heightCm) : null,
           depthCm: depthCm ? Number(depthCm) : null,
@@ -361,7 +365,7 @@ export default function AdminProductsPage() {
       setShoeGroups([newGroup()]); setClothGroups([newGroup()]);
       setPremium(false); setBadge(""); setGalleryText("");
       setMaterial(""); setFeatures(""); setStyleNotes("");
-      setWidthCm(""); setHeightCm(""); setDepthCm(""); setArticle(""); setNoBoxPrice("");
+      setWidthCm(""); setHeightCm(""); setDepthCm(""); setArticle(""); setNoBoxPrice(""); setModelKey("");
       await loadCatalog();
     } catch (e: any) { setMsg(e?.message || "Ошибка добавления"); }
   };
@@ -375,6 +379,7 @@ export default function AdminProductsPage() {
       price: p.price != null ? String(p.price) : "",
       oldPrice: hasOldPrice ? String(p.oldPrice) : "",
       noBoxPrice: p.noBoxPrice != null && p.noBoxPrice > 0 ? String(p.noBoxPrice) : "",
+      modelKey: p.modelKey || "",
       discountMode: hasOldPrice,
       imageUrl: p.imageUrl || "",
       galleryText: Array.isArray(p.images) ? p.images.join("\n") : "",
@@ -441,6 +446,7 @@ export default function AdminProductsPage() {
           heightCm: editForm.heightCm ? Number(editForm.heightCm) : null,
           depthCm: editForm.depthCm ? Number(editForm.depthCm) : null,
           noBoxPrice: editForm.noBoxPrice ? Number(editForm.noBoxPrice) : null,
+          modelKey: editForm.modelKey.trim() || null,
           article: editForm.article || null,
         }),
       });
@@ -561,6 +567,10 @@ export default function AdminProductsPage() {
               <div className="mt-2 text-xs text-black/60">Если оставить пустым — будут значения по умолчанию.</div>
               <div className="mt-3 grid gap-3">
                 <input className={inputCls} placeholder="Артикул производителя" value={article} onChange={(e) => setArticle(e.target.value)} />
+                <div>
+                  <input className={inputCls + " w-full"} placeholder="Ключ модели (modelKey) — напр. «nike-dunk-low-2024»" value={modelKey} onChange={(e) => setModelKey(e.target.value)} />
+                  <p className="mt-1 text-xs text-black/40">Одинаковый у всех цветов одной модели → появятся как «Другие цвета» на странице товара</p>
+                </div>
                 <input className={inputCls} placeholder="Материалы" value={material} onChange={(e) => setMaterial(e.target.value)} />
                 <input className={inputCls} placeholder="Комфорт" value={features} onChange={(e) => setFeatures(e.target.value)} />
                 <input className={inputCls} placeholder="Дизайн" value={styleNotes} onChange={(e) => setStyleNotes(e.target.value)} />
@@ -781,6 +791,15 @@ export default function AdminProductsPage() {
                         <div className="text-xs font-semibold text-black/70 mb-2">Характеристики</div>
                       </div>
                       <input className={inputCls + " sm:col-span-2"} placeholder="Артикул производителя" value={editForm.article} onChange={(e) => setEditField("article", e.target.value)} />
+                      <div className="sm:col-span-2">
+                        <input
+                          className={inputCls + " w-full"}
+                          placeholder="Ключ модели (modelKey) — одинаковый у всех цветов одной модели, напр. «nike-dunk-low-2024»"
+                          value={editForm.modelKey}
+                          onChange={(e) => setEditField("modelKey", e.target.value)}
+                        />
+                        <p className="mt-1 text-xs text-black/40">Заполни одинаково у всех цветовых вариантов — они появятся на странице товара как «Другие цвета»</p>
+                      </div>
                       <input className={inputCls} placeholder="Материалы" value={editForm.material} onChange={(e) => setEditField("material", e.target.value)} />
                       <input className={inputCls} placeholder="Комфорт" value={editForm.features} onChange={(e) => setEditField("features", e.target.value)} />
                       <input className={inputCls + " sm:col-span-2"} placeholder="Дизайн" value={editForm.styleNotes} onChange={(e) => setEditField("styleNotes", e.target.value)} />

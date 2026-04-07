@@ -214,6 +214,11 @@ export async function PATCH(
     }
   }
 
+  // ModelKey (для связи цветовых вариантов одной модели)
+  if (body?.modelKey !== undefined) {
+    data.modelKey = body.modelKey ? String(body.modelKey).trim().slice(0, 100) || null : null;
+  }
+
   // Color
   if (body?.colorId !== undefined) {
     if (body.colorId === null || body.colorId === "") {
