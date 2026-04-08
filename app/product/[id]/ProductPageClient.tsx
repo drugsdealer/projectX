@@ -1936,13 +1936,13 @@ const handleCancel = () => {
                       href={`/product/${colorProduct.id}`}
                       className="group flex items-center gap-2.5 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:border-black transition-colors duration-150"
                     >
-                      <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gray-50 shrink-0">
+                      <div className="relative w-24 h-24 rounded-lg overflow-hidden bg-gray-50 shrink-0">
                         <Image
                           src={colorProduct.images[0] || '/img/fallback.jpg'}
                           alt={colorProduct.name}
                           fill
-                          className="object-contain p-0.5"
-                          sizes="40px"
+                          className="object-contain p-1"
+                          sizes="96px"
                         />
                       </div>
                       <div className="min-w-0">
