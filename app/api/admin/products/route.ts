@@ -231,6 +231,8 @@ export async function GET(req: Request) {
       categoryId: true,
       brandId: true,
       colorId: true,
+      modelKey: true,
+      noBoxPrice: true,
       Category: { select: { id: true, name: true } },
       Brand: { select: { id: true, name: true } },
       Color: { select: { id: true, name: true } },

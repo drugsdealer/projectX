@@ -479,8 +479,19 @@ export default function AdminProductsPage() {
     } catch (e: any) { setMsg(e?.message || "Ошибка удаления"); }
   };
 
+  // Уникальные modelKey из всех товаров — для автокомплита
+  const modelKeySuggestions = Array.from(
+    new Set(products.map((p: any) => p.modelKey).filter(Boolean))
+  ) as string[];
+
   return (
     <div className="grid gap-10">
+      {/* datalist для автокомплита modelKey */}
+      <datalist id="modelkey-suggestions">
+        {modelKeySuggestions.map((k) => (
+          <option key={k} value={k} />
+        ))}
+      </datalist>
       {/* Catalog helpers */}
       <section>
         <h2 className="text-lg font-semibold">Каталог: бренды и категории</h2>
@@ -568,7 +579,7 @@ export default function AdminProductsPage() {
               <div className="mt-3 grid gap-3">
                 <input className={inputCls} placeholder="Артикул производителя" value={article} onChange={(e) => setArticle(e.target.value)} />
                 <div>
-                  <input className={inputCls + " w-full"} placeholder="Ключ модели (modelKey) — напр. «nike-dunk-low-2024»" value={modelKey} onChange={(e) => setModelKey(e.target.value)} />
+                  <input list="modelkey-suggestions" className={inputCls + " w-full"} placeholder="Ключ модели — напр. «nike-dunk-low-2024»" value={modelKey} onChange={(e) => setModelKey(e.target.value)} />
                   <p className="mt-1 text-xs text-black/40">Одинаковый у всех цветов одной модели → появятся как «Другие цвета» на странице товара</p>
                 </div>
                 <input className={inputCls} placeholder="Материалы" value={material} onChange={(e) => setMaterial(e.target.value)} />
@@ -793,12 +804,13 @@ export default function AdminProductsPage() {
                       <input className={inputCls + " sm:col-span-2"} placeholder="Артикул производителя" value={editForm.article} onChange={(e) => setEditField("article", e.target.value)} />
                       <div className="sm:col-span-2">
                         <input
+                          list="modelkey-suggestions"
                           className={inputCls + " w-full"}
-                          placeholder="Ключ модели (modelKey) — одинаковый у всех цветов одной модели, напр. «nike-dunk-low-2024»"
+                          placeholder="Ключ модели — напр. «nike-dunk-low-2024»"
                           value={editForm.modelKey}
                           onChange={(e) => setEditField("modelKey", e.target.value)}
                         />
-                        <p className="mt-1 text-xs text-black/40">Заполни одинаково у всех цветовых вариантов — они появятся на странице товара как «Другие цвета»</p>
+                        <p className="mt-1 text-xs text-black/40">Одинаковый у всех цветов одной модели → появятся как «Другие цвета»</p>
                       </div>
                       <input className={inputCls} placeholder="Материалы" value={editForm.material} onChange={(e) => setEditField("material", e.target.value)} />
                       <input className={inputCls} placeholder="Комфорт" value={editForm.features} onChange={(e) => setEditField("features", e.target.value)} />
