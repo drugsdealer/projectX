@@ -1927,31 +1927,27 @@ const handleCancel = () => {
               );
             })()}
             {relatedColorProducts.length > 0 && (
-              <div className="text-center my-6">
-                <p className="text-center mb-2 text-sm text-gray-600">
-                  <span className="font-semibold text-black">{product.name}</span> — другие расцветки:
-                </p>
-                <h3 className="text-lg font-semibold mb-4">Цвет</h3>
-                <div className="flex justify-center flex-wrap gap-4">
+              <div className="my-6">
+                <p className="text-xs uppercase tracking-widest text-gray-400 mb-3">Другие расцветки</p>
+                <div className="flex flex-wrap gap-3">
                   {relatedColorProducts.map((colorProduct) => (
                     <Link
                       key={colorProduct.id}
                       href={`/product/${colorProduct.id}`}
-                      className="group relative w-[140px] sm:w-[160px] aspect-square overflow-hidden rounded-xl shadow-lg"
+                      className="group flex items-center gap-2.5 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:border-black transition-colors duration-150"
                     >
-                      <Image
-                        src={colorProduct.images[0] || '/img/fallback.jpg'}
-                        alt={colorProduct.name}
-                        fill
-                        className="object-cover transition-transform duration-300 group-hover:scale-110"
-                        sizes="(max-width: 768px) 100vw, 25vw"
-                        priority
-                      />
-                      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-                        <p className="text-white text-sm font-semibold">{colorProduct.name}</p>
-                        <p className="text-white text-xs">
-                          {colorProduct.price.toLocaleString('ru-RU')}₽
-                        </p>
+                      <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-gray-50 shrink-0">
+                        <Image
+                          src={colorProduct.images[0] || '/img/fallback.jpg'}
+                          alt={colorProduct.name}
+                          fill
+                          className="object-contain p-0.5"
+                          sizes="40px"
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-gray-900 truncate max-w-[120px]">{colorProduct.name}</p>
+                        <p className="text-xs text-gray-400">{colorProduct.price.toLocaleString('ru-RU')}₽</p>
                       </div>
                     </Link>
                   ))}
