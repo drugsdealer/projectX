@@ -101,7 +101,7 @@ export async function GET(
         badge: true, gender: true, subcategory: true, sizeType: true,
         material: true, features: true, styleNotes: true,
         widthCm: true, heightCm: true, depthCm: true,
-        categoryId: true, brandId: true, colorId: true,
+        categoryId: true, brandId: true, colorId: true, modelKey: true,
         createdAt: true, updatedAt: true,
         Brand: { select: { id: true, name: true, slug: true, logoUrl: true } },
         Category: { select: { id: true, name: true, slug: true } },
