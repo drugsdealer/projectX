@@ -165,6 +165,7 @@ export async function GET(
             price: true,
             oldPrice: true,
             colorId: true,
+            sizeType: true,
             Color: {
               select: {
                 id: true,
