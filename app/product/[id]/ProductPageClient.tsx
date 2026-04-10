@@ -605,6 +605,9 @@ const { user } = useUser();
   // Brand logo tooltip state
   const [showBrandTooltip, setShowBrandTooltip] = useState(false);
 
+  // Color variants bottom sheet
+  const [colorSheetOpen, setColorSheetOpen] = useState(false);
+
   // Brand center overlay + slide-up panel
   const [brandPanelOpen, setBrandPanelOpen] = useState(false);
   const brandOverlayTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -1930,7 +1933,7 @@ const handleCancel = () => {
               <div className="my-6">
                 <p className="text-xs uppercase tracking-widest text-gray-400 mb-3">Другие расцветки</p>
                 <div className="flex flex-wrap gap-3">
-                  {relatedColorProducts.map((colorProduct) => (
+                  {relatedColorProducts.slice(0, 5).map((colorProduct) => (
                     <Link
                       key={colorProduct.id}
                       href={`/product/${colorProduct.id}`}
@@ -1952,8 +1955,87 @@ const handleCancel = () => {
                     </Link>
                   ))}
                 </div>
+                {relatedColorProducts.length > 5 && (
+                  <button
+                    onClick={() => setColorSheetOpen(true)}
+                    className="mt-3 text-sm text-gray-500 hover:text-black underline underline-offset-4 transition-colors"
+                  >
+                    Ещё расцветок ({relatedColorProducts.length - 5})
+                  </button>
+                )}
               </div>
             )}
+
+            {/* Color variants bottom sheet */}
+            <AnimatePresence>
+              {colorSheetOpen && (
+                <>
+                  {/* Backdrop */}
+                  <motion.div
+                    key="color-sheet-backdrop"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="fixed inset-0 z-40 bg-black/40"
+                    onClick={() => setColorSheetOpen(false)}
+                  />
+                  {/* Sheet */}
+                  <motion.div
+                    key="color-sheet"
+                    initial={{ y: "100%" }}
+                    animate={{ y: 0 }}
+                    exit={{ y: "100%" }}
+                    transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                    className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl"
+                    style={{ maxHeight: "78vh" }}
+                  >
+                    {/* Handle */}
+                    <div className="flex justify-center pt-3 pb-1">
+                      <div className="w-10 h-1 rounded-full bg-gray-200" />
+                    </div>
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+                      <p className="text-sm font-semibold text-gray-900 truncate pr-4">{product?.name}</p>
+                      <button
+                        onClick={() => setColorSheetOpen(false)}
+                        className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+                        aria-label="Закрыть"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                        </svg>
+                      </button>
+                    </div>
+                    {/* Scrollable grid */}
+                    <div className="overflow-y-auto px-4 py-4 pb-safe" style={{ maxHeight: "calc(78vh - 90px)" }}>
+                      <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+                        {relatedColorProducts.map((colorProduct) => (
+                          <Link
+                            key={colorProduct.id}
+                            href={`/product/${colorProduct.id}`}
+                            onClick={() => setColorSheetOpen(false)}
+                            className="flex flex-col items-center gap-1.5 p-2 rounded-xl border border-gray-100 bg-gray-50 hover:border-black transition-colors duration-150"
+                          >
+                            <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-white">
+                              <Image
+                                src={colorProduct.images[0] || '/img/fallback.jpg'}
+                                alt={colorProduct.name}
+                                fill
+                                className="object-contain p-1"
+                                sizes="(max-width: 640px) 30vw, 150px"
+                              />
+                            </div>
+                            <p className="text-[11px] font-medium text-gray-900 text-center line-clamp-2 leading-tight w-full">{colorProduct.name}</p>
+                            <p className="text-[11px] text-gray-500">{colorProduct.price.toLocaleString('ru-RU')}₽</p>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
             {(product.category === 'perfume' || product.category === 'fragrance') && (() => {
               const notes: any = (product as any)?.fragranceNotes ?? null;
               if (!notes) return null;
