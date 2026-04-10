@@ -70,8 +70,8 @@ function inferMainCategorySlug(p: any, sub: string | null): string | null {
   return fromDb ?? null;
 }
 
-// отключаем кэш
-export const revalidate = 0;
+// Кэш: Vercel CDN держит 2 минуты, stale-while-revalidate даёт ещё 5 мин
+export const revalidate = 120;
 
 /**
  * GET /api/products/[id]
@@ -126,63 +126,53 @@ export async function GET(
       );
     }
 
-    // Соберём изображения из возможных мест (imageUrl, массив images, таблица ProductImage)
-    const imgs: string[] = [];
+    // Параллельно запрашиваем productImage и colorVariants — не ждём их по очереди
     const pAny = product as any;
 
-    let colorVariants: any[] = [];
+    const [extraImages, colorVariantsRaw] = await Promise.all([
+      // productImage — опциональная таблица, может не существовать
+      (async () => {
+        try {
+          const anyPrisma = prisma as any;
+          if (anyPrisma?.productImage?.findMany) {
+            const rows = await anyPrisma.productImage.findMany({
+              where: { productId },
+              select: { url: true },
+            });
+            return Array.isArray(rows) ? rows.map((r: any) => r?.url).filter(Boolean) : [];
+          }
+        } catch { /* модели нет */ }
+        return [];
+      })(),
+      // colorVariants по modelKey
+      (async () => {
+        try {
+          if (pAny?.modelKey) {
+            const variants = await (prisma as any).product.findMany({
+              where: { modelKey: pAny.modelKey, id: { not: product.id }, deletedAt: null },
+              select: {
+                id: true, name: true, imageUrl: true, price: true, oldPrice: true,
+                colorId: true, sizeType: true, modelKey: true,
+                Color: { select: { id: true, name: true } },
+              },
+              orderBy: { id: "asc" },
+            });
+            return Array.isArray(variants) ? variants : [];
+          }
+        } catch {
+          console.error("[api.products.[id]] colorVariants error");
+        }
+        return [];
+      })(),
+    ]);
 
+    const colorVariants = colorVariantsRaw;
+
+    // Соберём изображения из возможных мест (imageUrl, массив images, таблица ProductImage)
+    const imgs: string[] = [];
     if (pAny?.imageUrl) imgs.push(pAny.imageUrl);
     if (Array.isArray(pAny?.images)) imgs.push(...pAny.images);
-
-    try {
-      const anyPrisma = prisma as any;
-      if (anyPrisma?.productImage?.findMany) {
-        const rows = await anyPrisma.productImage.findMany({
-          where: { productId },
-          select: { url: true },
-        });
-        if (Array.isArray(rows)) {
-          imgs.push(...rows.map((r: any) => r?.url).filter(Boolean));
-        }
-      }
-    } catch {
-      // игнорируем, если модели нет/упала
-    }
-
-    try {
-      if (pAny?.modelKey) {
-        const variants = await (prisma as any).product.findMany({
-          where: {
-            modelKey: pAny.modelKey,
-            id: { not: product.id },
-            deletedAt: null,
-          },
-          select: {
-            id: true,
-            name: true,
-            imageUrl: true,
-            price: true,
-            oldPrice: true,
-            colorId: true,
-            sizeType: true,
-            Color: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-            modelKey: true,
-          },
-          orderBy: {
-            id: "asc",
-          },
-        });
-        colorVariants = Array.isArray(variants) ? variants : [];
-      }
-    } catch (err) {
-      console.error("[api.products.[id]] colorVariants error");
-    }
+    imgs.push(...extraImages);
 
     const images = Array.from(new Set(imgs.filter(Boolean)));
 

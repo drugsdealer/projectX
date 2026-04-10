@@ -265,6 +265,9 @@ model Product {
   @@index([subcategory])
   @@index([modelKey])
   @@index([brandId, popularity], map: "idx_product_brand_popularity")
+  @@index([deletedAt, available], map: "idx_product_deleted_available")
+  @@index([categoryId, deletedAt, available], map: "idx_product_category_listing")
+  @@index([brandId, deletedAt, available], map: "idx_product_brand_listing")
 }
 
 model ProductItem {

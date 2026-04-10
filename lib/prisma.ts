@@ -101,32 +101,28 @@ if (
       }
     }
 
+    // AuditLog: fire-and-forget (не блокируем основной запрос)
     if (["create", "update", "delete"].includes(params.action) && params.model !== "AuditLog") {
-      try {
-        // Готовим payload для аудита с минимальным риском утечки чувствительных данных
+      const auditModel = (prismaInstance as any).auditLog;
+      if (auditModel && typeof auditModel.create === "function") {
         let auditPayload: any = result || {};
-
-        // Для User дополнительно убираем поле password из записываемых данных
         if (params.model === "User" && auditPayload) {
           auditPayload = Array.isArray(auditPayload)
             ? auditPayload.map((r) => redactUser({ ...r }))
             : redactUser({ ...auditPayload });
         }
-
-        const auditModel = (prismaInstance as any).auditLog;
-        if (auditModel && typeof auditModel.create === "function") {
-          await auditModel.create({
-            data: {
-              table: params.model || "unknown",
-              action: params.action.toUpperCase(),
-              recordId: (result && (result as any).id) || null,
-              data: auditPayload,
-              createdAt: new Date(),
-            },
-          });
-        }
-      } catch (err) {
-        console.error("Ошибка при записи AuditLog:", err);
+        // Не ждём — пишем в фоне, не добавляя задержку к ответу
+        auditModel.create({
+          data: {
+            table: params.model || "unknown",
+            action: params.action.toUpperCase(),
+            recordId: (result && (result as any).id) || null,
+            data: auditPayload,
+            createdAt: new Date(),
+          },
+        }).catch((err: unknown) => {
+          console.error("Ошибка при записи AuditLog:", err);
+        });
       }
     }
 
