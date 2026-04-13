@@ -98,30 +98,7 @@ if (
       }
     }
 
-    // AuditLog: fire-and-forget (не блокируем основной запрос)
-    if (["create", "update", "delete"].includes(params.action) && params.model !== "AuditLog") {
-      const auditModel = (prismaInstance as any).auditLog;
-      if (auditModel && typeof auditModel.create === "function") {
-        let auditPayload: any = result || {};
-        if (params.model === "User" && auditPayload) {
-          auditPayload = Array.isArray(auditPayload)
-            ? auditPayload.map((r) => redactUser({ ...r }))
-            : redactUser({ ...auditPayload });
-        }
-        // Не ждём — пишем в фоне, не добавляя задержку к ответу
-        auditModel.create({
-          data: {
-            table: params.model || "unknown",
-            action: params.action.toUpperCase(),
-            recordId: (result && (result as any).id) || null,
-            data: auditPayload,
-            createdAt: new Date(),
-          },
-        }).catch((err: unknown) => {
-          console.error("Ошибка при записи AuditLog:", err);
-        });
-      }
-    }
+    // AuditLog отключён — лишняя нагрузка на БД без практической пользы
 
     if (process.env.NODE_ENV === "development") {
       console.log(
