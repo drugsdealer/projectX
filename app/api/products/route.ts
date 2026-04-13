@@ -139,7 +139,7 @@ function inferSubcategorySlug(p: any): string | null {
   return null;
 }
 
-export const dynamic = "force-dynamic"; // оставляем динамику, но отвечаем кэширующими заголовками
+export const revalidate = 60; // ISR: Vercel кэширует на 60 сек, stale-while-revalidate ещё 5 мин
 
 const PUBLIC_CACHE_HEADERS = {
   "Cache-Control": "public, max-age=30, s-maxage=120, stale-while-revalidate=300",
@@ -350,15 +350,13 @@ export async function GET(req: Request) {
       console.warn("[api.products] no productImage relation (list)");
     }
 
-    // Build brand filter options based on loaded products
-    const brandIds = Array.from(new Set(rows.map((r: any) => r.brandId).filter(Boolean)));
-    const brandOptions = brandIds.length
-      ? await prisma.brand.findMany({
-          where: { id: { in: brandIds as number[] } },
-          select: { id: true, name: true, slug: true },
-          orderBy: { name: "asc" },
-        })
-      : [];
+    // Build brand filter options from already-loaded rows (no extra DB query)
+    const brandMap = new Map<number, { id: number; name: string; slug: string }>();
+    for (const r of rows as any[]) {
+      const b = r.Brand ?? r.brand;
+      if (b?.id && !brandMap.has(b.id)) brandMap.set(b.id, { id: b.id, name: b.name, slug: b.slug });
+    }
+    const brandOptions = Array.from(brandMap.values()).sort((a, b) => a.name.localeCompare(b.name));
 
     const products = rows.map((p: any) => {
       const baseImages = Array.isArray((p as any).images) ? ((p as any).images as string[]) : [];

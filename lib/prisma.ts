@@ -10,15 +10,12 @@ declare global {
  */
 function createPrismaClient() {
   return new PrismaClient({
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL || process.env.DIRECT_URL || "",
-      },
-    },
-    errorFormat: "pretty",
+    // Не переопределяем datasources — Prisma берёт DATABASE_URL и DIRECT_URL из env сама
+    // DATABASE_URL должен быть pgbouncer pooler, DIRECT_URL — прямое соединение для миграций
+    errorFormat: "minimal",
     log:
       process.env.NODE_ENV === "development"
-        ? ["query", "info", "warn", "error"]
+        ? ["warn", "error"]
         : ["error"],
   });
 }
