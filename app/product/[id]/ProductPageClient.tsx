@@ -39,7 +39,7 @@ import "swiper/css/mousewheel";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
 
-import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useTransform, useDragControls } from "framer-motion";
 import { Heart } from "lucide-react";
 import { normalizeProduct, type NormalizedProduct } from "@/lib/normalizeProduct";
 import { getOrCreateEventsSessionId, trackShopEvent } from "@/lib/events-client";
@@ -605,11 +605,21 @@ const { user } = useUser();
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   useEffect(() => {
     if (showDeliveryModal) {
-      document.body.style.overflow = 'hidden';
+      const y = window.scrollY;
+      document.body.style.cssText = `position:fixed;top:-${y}px;left:0;right:0;width:100%;overflow-y:scroll`;
+      document.body.dataset.slY = String(y);
     } else {
-      document.body.style.overflow = '';
+      const y = parseInt(document.body.dataset.slY || '0');
+      document.body.style.cssText = '';
+      delete document.body.dataset.slY;
+      window.scrollTo(0, y);
     }
-    return () => { document.body.style.overflow = ''; };
+    return () => {
+      const y = parseInt(document.body.dataset.slY || '0');
+      document.body.style.cssText = '';
+      delete document.body.dataset.slY;
+      if (y) window.scrollTo(0, y);
+    };
   }, [showDeliveryModal]);
   // Moscow availability modal state
   const [showMoscowModal, setShowMoscowModal] = useState(false);
@@ -619,15 +629,26 @@ const { user } = useUser();
   // Color variants bottom sheet
   const [colorSheetOpen, setColorSheetOpen] = useState(false);
   const [colorSheetExpanded, setColorSheetExpanded] = useState(false);
+  const colorSheetDragControls = useDragControls();
 
   useEffect(() => {
     if (colorSheetOpen) {
-      document.body.style.overflow = 'hidden';
+      const y = window.scrollY;
+      document.body.style.cssText = `position:fixed;top:-${y}px;left:0;right:0;width:100%;overflow-y:scroll`;
+      document.body.dataset.csY = String(y);
     } else {
-      document.body.style.overflow = '';
+      const y = parseInt(document.body.dataset.csY || '0');
+      document.body.style.cssText = '';
+      delete document.body.dataset.csY;
+      window.scrollTo(0, y);
       setColorSheetExpanded(false);
     }
-    return () => { document.body.style.overflow = ''; };
+    return () => {
+      const y = parseInt(document.body.dataset.csY || '0');
+      document.body.style.cssText = '';
+      delete document.body.dataset.csY;
+      if (y) window.scrollTo(0, y);
+    };
   }, [colorSheetOpen]);
 
   // Brand center overlay + slide-up panel
@@ -2011,26 +2032,31 @@ const handleCancel = () => {
                       key="color-sheet"
                       initial={{ y: "100%" }}
                       animate={{ y: 0 }}
-                      exit={{ y: "100%", transition: { duration: 0.2 } }}
+                      exit={{ y: "100%", transition: { type: "spring", damping: 30, stiffness: 300 } }}
                       transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                      drag="y"
+                      dragControls={colorSheetDragControls}
+                      dragListener={false}
+                      dragConstraints={{ top: 0, bottom: 0 }}
+                      dragElastic={{ top: 0, bottom: 0.4 }}
+                      onDragEnd={(_: any, info: any) => {
+                        if (info.offset.y > 80 || info.velocity.y > 400) {
+                          setColorSheetOpen(false);
+                        }
+                      }}
                       className="fixed bottom-0 left-0 right-0 z-[9999] bg-white rounded-t-2xl shadow-2xl"
                       style={{
                         maxHeight: colorSheetExpanded ? "90vh" : "58vh",
                         transition: "max-height 0.35s cubic-bezier(0.32,0.72,0,1)",
                       }}
                     >
-                      {/* Handle — drag zone для закрытия свайпом */}
-                      <motion.div
-                        className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none"
-                        drag="y"
-                        dragConstraints={{ top: 0, bottom: 0 }}
-                        dragElastic={{ top: 0, bottom: 0.5 }}
-                        onDragEnd={(_: any, info: any) => {
-                          if (info.offset.y > 60) setColorSheetOpen(false);
-                        }}
+                      {/* Handle — только эта зона инициирует drag */}
+                      <div
+                        className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none select-none"
+                        onPointerDown={(e) => colorSheetDragControls.start(e)}
                       >
                         <div className="w-10 h-1 rounded-full bg-gray-300" />
-                      </motion.div>
+                      </div>
                       {/* Header */}
                       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
                         <p className="text-sm font-semibold text-gray-900 truncate pr-4">{product?.name}</p>
