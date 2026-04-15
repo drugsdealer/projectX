@@ -102,7 +102,7 @@ function MapPicker({ center, marker, onPick, mapRef, invalidateKey }: MapPickerP
         clearTimeout(t3);
         clearTimeout(t4);
       };
-    }, [map, invalidateKey]);
+    }, [map]); // eslint-disable-line react-hooks/exhaustive-deps
     return null;
   };
 
@@ -237,16 +237,20 @@ export default function CheckoutModal({
 
   const cartCtx: any = useCart();
   const { discount } = useDiscount();
-  const cartItems = cartCtx?.cartItems ?? [];
-  const postponedItems = cartCtx?.postponedItems ?? [];
-  const getPostponedKey = cartCtx?.getPostponedKey ?? ((it: any) => `id:${it?.id ?? 0}`);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const cartItems = useMemo(() => cartCtx?.cartItems ?? [], [cartCtx?.cartItems]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const postponedItems = useMemo(() => cartCtx?.postponedItems ?? [], [cartCtx?.postponedItems]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const getPostponedKey = useMemo(() => cartCtx?.getPostponedKey ?? ((it: any) => `id:${it?.id ?? 0}`), [cartCtx?.getPostponedKey]);
   const { user, login } = useUser();
   const hasDiscount =
     discount.type === "AMOUNT" ? discount.value > 0 : discount.value > 0;
-  const getDiscountAmount = (subtotal: number) =>
+  const getDiscountAmount = useCallback((subtotal: number) =>
     discount.type === "AMOUNT"
       ? discount.value
-      : subtotal * discount.value;
+      : subtotal * discount.value,
+  [discount.type, discount.value]);
   const getCartItemId = (raw: any) => {
     const direct = Number(raw?.cartItemId);
     if (Number.isFinite(direct)) return direct;
@@ -362,7 +366,7 @@ export default function CheckoutModal({
     const subtotal = activeTotal;
     const discounted = subtotal - Math.max(0, getDiscountAmount(subtotal));
     return Math.max(0, +discounted.toFixed(2));
-  }, [activeTotal, discount, getDiscountAmount]);
+  }, [activeTotal, getDiscountAmount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Строим позиции из корзины (без сетевых запросов).
@@ -685,11 +689,11 @@ export default function CheckoutModal({
     []
   );
 
-  const fioExamples = [
+  const fioExamples = useMemo(() => [
     "Иванов Иван Иванович",
     "Сергеев Сергей Сергеевич",
     "Петров Пётр Петрович",
-  ];
+  ], []);
   const [fioPlaceholder, setFioPlaceholder] = useState("");
   const fioIndex = useRef(0);
   const charIndex = useRef(0);
@@ -714,7 +718,7 @@ export default function CheckoutModal({
       }
     }, 150);
     return () => clearInterval(interval);
-  }, []);
+  }, [fioExamples]);
 
   // Результат оплаты теперь показывается на отдельной странице
 

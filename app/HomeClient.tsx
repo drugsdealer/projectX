@@ -1640,10 +1640,9 @@ useEffect(() => {
       <motion.div
         id="home-hero"
         className="hero-bleed-top relative z-0 w-screen overflow-hidden bg-black transform-gpu will-change-transform"
-        style={{ height: '100svh', maxHeight: 820, minHeight: 560 }}
         style={{
+          height: '100svh', maxHeight: 820, minHeight: 560,
           opacity: 1 - heroFade * 0.92,
-          // Blur on large hero is expensive on weaker devices; keep it only in full motion mode.
           filter: reduceMotion || balancedMotion ? "none" : `blur(${heroFade * 4}px)`,
           transform: reduceMotion
             ? `translateY(${-heroFade * 16}px) scale(${1 - heroFade * 0.02})`

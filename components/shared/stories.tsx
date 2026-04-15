@@ -7,8 +7,7 @@ declare global {
   }
 }
 
-import { useState, useEffect } from "react";
-import { useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 type Story = {
   id: number;
@@ -73,7 +72,7 @@ export function Stories() {
   const [canHover, setCanHover] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const goNext = () => {
+  const goNext = useCallback(() => {
     if (!active) return;
     const index = testStories.findIndex(s => s.id === active.id);
     const next = testStories[index + 1];
@@ -85,9 +84,9 @@ export function Stories() {
       setActive(null);
       setActiveSlide(0);
     }
-  };
+  }, [active]);
 
-  const goPrev = () => {
+  const goPrev = useCallback(() => {
     if (!active) return;
     const index = testStories.findIndex(s => s.id === active.id);
     const prev = testStories[index - 1];
@@ -98,7 +97,7 @@ export function Stories() {
     if (prev) {
       setSeen((p) => (p.includes(prev.id) ? p : [...p, prev.id]));
     }
-  };
+  }, [active]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -108,7 +107,7 @@ export function Stories() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [active]);
+  }, [active, goNext, goPrev]);
 
   useEffect(() => {
     setSeen(loadSeen());
@@ -150,7 +149,7 @@ export function Stories() {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [active, activeSlide, isPaused]);
+  }, [active, activeSlide, isPaused, goNext]);
 
   return (
     <div className="flex justify-center gap-4 px-4 py-5">

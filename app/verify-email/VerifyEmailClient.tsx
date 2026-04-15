@@ -86,7 +86,7 @@ export default function VerifyClient() {
     ) {
       verifyCode();
     }
-  }, [code, email, isVerifying, success, isMerging]);
+  }, [code, email, isVerifying, success, isMerging]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (cooldown <= 0) return;
