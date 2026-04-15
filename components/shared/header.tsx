@@ -175,17 +175,29 @@ useLayoutEffect(() => {
     setIsAtTop(window.scrollY < 10);
   };
 
-  if (isHome) {
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", handleScroll);
+  if (!isHome) return;
+
+  handleScroll();
+  window.addEventListener("scroll", handleScroll, { passive: true });
+  window.addEventListener("resize", handleScroll);
+
+  // #home-hero монтируется позже (внутри Suspense) — ждём его появления
+  let observer: MutationObserver | null = null;
+  if (!document.getElementById("home-hero")) {
+    observer = new MutationObserver(() => {
+      if (document.getElementById("home-hero")) {
+        handleScroll();
+        observer?.disconnect();
+        observer = null;
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
   }
 
   return () => {
-    if (isHome) {
-      window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleScroll);
-    }
+    window.removeEventListener("scroll", handleScroll);
+    window.removeEventListener("resize", handleScroll);
+    observer?.disconnect();
   };
 }, [isHome]);
 

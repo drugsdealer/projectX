@@ -17,19 +17,19 @@ type Slide = {
 const SLIDES: Slide[] = [
   {
     src: '/img/MMbanner1.jpg',
-    alt: 'Stage Store',
-    eyebrow: 'NEW DROP — 2026',
-    headline: ['ONLY', 'REAL.'],
-    sub: 'Эксклюзивные модели. Доставка по всему миру.',
+    alt: 'Stage Store — Коллекция 2026',
+    eyebrow: 'НОВАЯ КОЛЛЕКЦИЯ — 2026',
+    headline: ['DROP', 'SS26'],
+    sub: 'Свежие дропы. Оригинальные модели. Мировая доставка.',
     cta: { label: 'СМОТРЕТЬ', href: '/category/footwear' },
     align: 'left',
   },
   {
     src: '/img/MMbanner2.jpg',
-    alt: 'Stage Store',
-    eyebrow: 'STAGE STORE',
-    headline: ['NO', 'FAKES.'],
-    sub: 'Одежда. Обувь. Аксессуары.',
+    alt: 'Stage Store — Коллекция 2026',
+    eyebrow: 'STAGE STORE — 2026',
+    headline: ['NEW', 'WAVE.'],
+    sub: 'Одежда. Обувь. Аксессуары. Только оригинал.',
     cta: { label: 'КАТАЛОГ', href: '/category/clothes' },
     align: 'right',
   },
@@ -42,7 +42,12 @@ export default function BannerMargiela() {
   const [index, setIndex] = useState(0);
   const [dir, setDir] = useState<1 | -1>(1);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Mobile touch swipe
   const touchRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Desktop: which arrow side is hovered
+  const [hoveredArrow, setHoveredArrow] = useState<'left' | 'right' | null>(null);
 
   const go = useCallback((nextIdx: number, d: 1 | -1) => {
     setDir(d);
@@ -66,10 +71,10 @@ export default function BannerMargiela() {
   const isRight = slide.align === 'right';
 
   return (
-    // h-full fills the parent #home-hero which controls the actual height
     <section
       className="relative w-full h-full overflow-hidden bg-black select-none"
       data-no-hero-tap
+      // ── Mobile: swipe or tap half ──
       onTouchStart={(e) => {
         touchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       }}
@@ -77,10 +82,34 @@ export default function BannerMargiela() {
         if (!touchRef.current) return;
         const dx = e.changedTouches[0].clientX - touchRef.current.x;
         const dy = Math.abs(e.changedTouches[0].clientY - touchRef.current.y);
+        const ex = e.changedTouches[0].clientX;
+        const startX = touchRef.current.x;
         touchRef.current = null;
-        if (Math.abs(dx) < 44 || dy > Math.abs(dx)) return;
-        if (dx < 0) { goNext(); resetTimer(); } else { goPrev(); resetTimer(); }
+
+        // Swipe gesture (fast / long drag)
+        if (Math.abs(dx) > 44 && dy < Math.abs(dx)) {
+          if (dx < 0) { goNext(); resetTimer(); }
+          else         { goPrev(); resetTimer(); }
+          return;
+        }
+
+        // Tap on left / right half (small movement)
+        if (Math.abs(dx) <= 10 && dy <= 10) {
+          const halfW = (e.currentTarget as HTMLElement).offsetWidth / 2;
+          if (ex < halfW) { goPrev(); resetTimer(); }
+          else             { goNext(); resetTimer(); }
+        }
       }}
+      // ── Desktop: track mouse position for arrow visibility ──
+      onMouseMove={(e) => {
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const third = rect.width / 3;
+        if (x < third)             setHoveredArrow('left');
+        else if (x > third * 2)    setHoveredArrow('right');
+        else                       setHoveredArrow(null);
+      }}
+      onMouseLeave={() => setHoveredArrow(null)}
     >
       {/* ── BACKGROUND PHOTO ── */}
       <AnimatePresence initial={false} custom={dir}>
@@ -101,7 +130,6 @@ export default function BannerMargiela() {
             opacity: { duration: 0.3 },
           }}
         >
-          {/* Photo with subtle Ken Burns */}
           <motion.img
             src={slide.src}
             alt={slide.alt ?? ''}
@@ -112,18 +140,16 @@ export default function BannerMargiela() {
             draggable={false}
           />
 
-          {/* Side gradient — darkens the side where text lives */}
+          {/* Side gradient */}
           <div
             className="absolute inset-0"
             style={{
               background: isRight
-                ? 'linear-gradient(to left,  rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.55) 38%, rgba(0,0,0,0.1) 65%, transparent 100%)'
-                : 'linear-gradient(to right, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.55) 38%, rgba(0,0,0,0.1) 65%, transparent 100%)',
+                ? 'linear-gradient(to left,  rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.08) 70%, transparent 100%)'
+                : 'linear-gradient(to right, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.08) 70%, transparent 100%)',
             }}
           />
-          {/* Bottom fade so progress bars are readable */}
           <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/70 to-transparent" />
-          {/* Top fade for header area */}
           <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/40 to-transparent" />
         </motion.div>
       </AnimatePresence>
@@ -157,25 +183,20 @@ export default function BannerMargiela() {
               </span>
             </div>
 
-            {/* Headline — each word on its own line, slides up from behind mask */}
+            {/* Headline */}
             <div>
               {slide.headline.map((word, i) => (
                 <div key={`${index}-w-${i}`} className="overflow-hidden">
                   <motion.span
-                    className="block text-white font-black uppercase leading-none"
+                    className="block text-white font-black uppercase"
                     style={{
-                      // clamp: минимум 70px (маленький телефон), 20vw (масштабируется), максимум 170px (большой экран)
                       fontSize: 'clamp(70px, 20vw, 170px)',
                       letterSpacing: '-0.02em',
                       lineHeight: 0.87,
                     }}
                     initial={{ y: '105%' }}
                     animate={{ y: 0 }}
-                    transition={{
-                      duration: 0.55,
-                      delay: 0.05 + i * 0.09,
-                      ease: [0.22, 1, 0.36, 1],
-                    }}
+                    transition={{ duration: 0.55, delay: 0.05 + i * 0.09, ease: [0.22, 1, 0.36, 1] }}
                   >
                     {word}
                   </motion.span>
@@ -194,7 +215,7 @@ export default function BannerMargiela() {
               {slide.sub}
             </motion.p>
 
-            {/* CTA button */}
+            {/* CTA */}
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -211,11 +232,7 @@ export default function BannerMargiela() {
                 className="group relative overflow-hidden px-8 py-3.5 bg-white text-black text-[11px] font-black tracking-[0.2em] uppercase active:scale-95 transition-transform"
                 style={{ borderRadius: 0 }}
               >
-                {/* Hover fill */}
-                <span
-                  aria-hidden
-                  className="absolute inset-0 bg-black translate-x-[-101%] group-hover:translate-x-0 transition-transform duration-300 ease-in-out"
-                />
+                <span aria-hidden className="absolute inset-0 bg-black translate-x-[-101%] group-hover:translate-x-0 transition-transform duration-300 ease-in-out" />
                 <span className="relative z-10 group-hover:text-white transition-colors duration-200 delay-75">
                   {slide.cta.label}
                 </span>
@@ -225,24 +242,41 @@ export default function BannerMargiela() {
         </AnimatePresence>
       </div>
 
-      {/* ── ARROWS (desktop) ── */}
-      <div className="hidden md:block">
-        {[
-          { fn: goPrev, side: 'left-5',  label: '←' },
-          { fn: goNext, side: 'right-5', label: '→' },
-        ].map(({ fn, side, label }) => (
-          <button
-            key={side}
+      {/* ── DESKTOP ARROWS — appear on hover near edge ── */}
+      <AnimatePresence>
+        {hoveredArrow === 'left' && (
+          <motion.button
+            key="arrow-left"
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -8 }}
+            transition={{ duration: 0.18 }}
             type="button"
-            onClick={(e) => { e.stopPropagation(); fn(); resetTimer(); }}
-            className={`absolute top-1/2 -translate-y-1/2 ${side} z-20 w-11 h-11 flex items-center justify-center border border-white/25 text-white/50 hover:border-white/70 hover:text-white transition-all duration-200 backdrop-blur-sm bg-black/10`}
+            onClick={(e) => { e.stopPropagation(); goPrev(); resetTimer(); }}
+            className="hidden md:flex absolute left-5 top-1/2 -translate-y-1/2 z-20 w-12 h-12 items-center justify-center border border-white/30 text-white/70 hover:border-white hover:text-white backdrop-blur-sm bg-black/15 text-xl"
             style={{ borderRadius: 0 }}
             data-no-hero-tap
           >
-            {label}
-          </button>
-        ))}
-      </div>
+            ←
+          </motion.button>
+        )}
+        {hoveredArrow === 'right' && (
+          <motion.button
+            key="arrow-right"
+            initial={{ opacity: 0, x: 8 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 8 }}
+            transition={{ duration: 0.18 }}
+            type="button"
+            onClick={(e) => { e.stopPropagation(); goNext(); resetTimer(); }}
+            className="hidden md:flex absolute right-5 top-1/2 -translate-y-1/2 z-20 w-12 h-12 items-center justify-center border border-white/30 text-white/70 hover:border-white hover:text-white backdrop-blur-sm bg-black/15 text-xl"
+            style={{ borderRadius: 0 }}
+            data-no-hero-tap
+          >
+            →
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* ── PROGRESS BARS ── */}
       <div
