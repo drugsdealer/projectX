@@ -20,7 +20,7 @@ const SLIDES: Slide[] = [
     src: '/img/MMbanner1.jpg',
     alt: 'Stage Store — новая коллекция',
     eyebrow: 'NEW DROP 2026',
-    headline: ['ТОЛЬКО', 'ОРИГИНАЛ'],
+    headline: ['ONLY', 'REAL.'],
     sub: 'Эксклюзивные модели. Мировая доставка.',
     cta: [
       { label: 'СМОТРЕТЬ', href: '/category/footwear' },
@@ -32,7 +32,7 @@ const SLIDES: Slide[] = [
     src: '/img/MMbanner2.jpg',
     alt: 'Stage Store — одежда и аксессуары',
     eyebrow: 'STAGE STORE',
-    headline: ['БЕЗ', 'КОМПРОМИССОВ'],
+    headline: ['NO', 'FAKES.'],
     sub: 'Одежда. Обувь. Аксессуары.',
     cta: [
       { label: 'КАТАЛОГ', href: '/category/clothes' },
@@ -80,7 +80,7 @@ export default function BannerMargiela() {
     <section
       ref={containerRef}
       className="relative w-full overflow-hidden bg-black select-none"
-      style={{ height: 'min(100svh, 700px)', minHeight: 320 }}
+      style={{ height: '100svh', maxHeight: 780, minHeight: 560 }}
       data-no-hero-tap
       onTouchStart={(e) => { touchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }}
       onTouchEnd={(e) => {
@@ -134,8 +134,8 @@ export default function BannerMargiela() {
 
       {/* === TEXT BLOCK === */}
       <div
-        className="absolute inset-0 z-10 flex flex-col justify-end pb-14 md:pb-0 md:justify-center px-6 sm:px-10 md:px-16 lg:px-24"
-        style={{ alignItems: slide.align === 'right' ? 'flex-end' : slide.align === 'center' ? 'center' : 'flex-start' }}
+        className="absolute inset-0 z-10 flex flex-col justify-center px-6 sm:px-10 md:px-16 lg:px-24"
+        style={{ alignItems: slide.align === 'right' ? 'flex-end' : slide.align === 'center' ? 'center' : 'flex-start', paddingBottom: 72 }}
       >
         <AnimatePresence mode="wait">
           <motion.div
@@ -144,7 +144,7 @@ export default function BannerMargiela() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -16 }}
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            className="max-w-xl"
+            className="w-full max-w-2xl"
             style={{ textAlign: slide.align ?? 'left' }}
           >
             {/* Eyebrow */}
@@ -155,7 +155,7 @@ export default function BannerMargiela() {
               </span>
             </div>
 
-            {/* Headline */}
+            {/* Headline — размер подбирается чтобы влезал на любой ширине */}
             <div className="overflow-hidden">
               {slide.headline.map((line, i) => (
                 <motion.h1
@@ -164,7 +164,7 @@ export default function BannerMargiela() {
                   animate={{ y: 0 }}
                   transition={{ duration: 0.5, delay: 0.08 + i * 0.08, ease: [0.22, 1, 0.36, 1] }}
                   className="block text-white font-black uppercase leading-none tracking-tight"
-                  style={{ fontSize: 'clamp(52px, 10vw, 120px)', lineHeight: 0.9 }}
+                  style={{ fontSize: 'clamp(72px, 18vw, 160px)', lineHeight: 0.88 }}
                 >
                   {line}
                 </motion.h1>
