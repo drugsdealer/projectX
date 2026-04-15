@@ -1639,7 +1639,8 @@ useEffect(() => {
 
       <motion.div
         id="home-hero"
-        className="hero-bleed-top relative z-0 w-screen overflow-hidden h-[380px] md:h-[520px] lg:h-[600px] bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#0b1224] transform-gpu will-change-transform"
+        className="hero-bleed-top relative z-0 w-screen overflow-hidden bg-black transform-gpu will-change-transform"
+        style={{ height: '100svh', maxHeight: 820, minHeight: 560 }}
         style={{
           opacity: 1 - heroFade * 0.92,
           // Blur on large hero is expensive on weaker devices; keep it only in full motion mode.
@@ -1686,40 +1687,7 @@ useEffect(() => {
           heroTapRef.current.active = false;
         }}
       >
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute -left-12 top-6 w-72 h-72 bg-emerald-400/20 blur-[90px] rounded-full" />
-          <div className="absolute right-[-60px] bottom-[-80px] w-80 h-80 bg-sky-500/20 blur-[100px] rounded-full" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-black/15 to-black/55" />
-          <div
-            className="absolute inset-0 opacity-[0.18] mix-blend-soft-light"
-            style={{
-              backgroundImage:
-                "radial-gradient(1200px 500px at 10% 10%, rgba(255,255,255,0.18), transparent 60%), radial-gradient(900px 400px at 90% 80%, rgba(255,255,255,0.12), transparent 60%)",
-            }}
-          />
-          <div
-            className="absolute inset-0 opacity-[0.12]"
-            style={{
-              backgroundImage:
-                "linear-gradient(0deg, rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px)",
-              backgroundSize: "120px 120px",
-            }}
-          />
-        </div>
-        {/*
-          HERO SLIDES DATA
-        */}
         <BannerMargiela />
-     
-       
-        <div
-          className="hero-pagination"
-          style={{
-            opacity: Math.max(0, Math.min(1, 1 - heroFade * 1.2)),
-            pointerEvents: heroFade > 0.9 ? "none" : "auto",
-            transition: reduceMotion ? "none" : balancedMotion ? "opacity 160ms ease" : "opacity 260ms ease",
-          }}
-        ></div>
         {/* HERO pagination bullets styling + animation */}
         <style jsx global>{`
           /* Hero slider pagination bullets */
