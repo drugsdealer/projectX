@@ -22,7 +22,7 @@ export default function VerifyClient() {
       return;
     }
     sendVerificationCode();
-  }, [email]);
+  }, [email]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let timer: NodeJS.Timeout;

@@ -71,9 +71,6 @@ function prettyCategoryTitle(raw: string) {
     clothes: 'Одежда',
     accessories: 'Аксессуары',
     headwear: 'Головные уборы',
-    jewelry: 'Украшения',
-    jewellery: 'Украшения',
-
     sneakers: 'Кроссовки',
     sneaker: 'Кроссовки',
     boots: 'Ботинки',
