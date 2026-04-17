@@ -112,6 +112,7 @@ function MapPicker({ center, marker, onPick, mapRef, invalidateKey }: MapPickerP
       zoom={10}
       style={{ width: "100%", height: "100%" }}
       scrollWheelZoom={true}
+      attributionControl={false}
       whenCreated={(map: any) => {
         if (mapRef) mapRef.current = map;
       }}
