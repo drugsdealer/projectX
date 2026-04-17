@@ -8,6 +8,8 @@ import bcrypt from "bcryptjs";
 import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
+const SESSION_TOKEN_COOKIE = "session_token";
+
 export async function POST(req: Request) {
   try {
     const csrfBlocked = blockIfCsrf(req);
@@ -20,6 +22,11 @@ export async function POST(req: Request) {
     if (!rl.ok) {
       return NextResponse.json({ success: false, message: "Слишком много попыток." }, { status: 429 });
     }
+
+    // Extract current session token BEFORE any DB changes — needed to preserve current session
+    const cookieHeader = req.headers.get("cookie") || "";
+    const currentTokenMatch = cookieHeader.match(new RegExp(`${SESSION_TOKEN_COOKIE}=([^;]+)`));
+    const currentToken = currentTokenMatch?.[1]?.trim() || null;
 
     const userId = await getUserIdFromRequest();
     if (!userId) {
@@ -49,12 +56,36 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Срок кода истёк." }, { status: 400 });
     }
 
+    // Change password + clean up reset code
     const hash = await bcrypt.hash(newPassword, 10);
     await prisma.user.update({
       where: { id: userId },
       data: { password: hash },
     });
     await prisma.passwordResetCode.delete({ where: { userId } }).catch(() => {});
+
+    // Revoke all OTHER active sessions — keeps only the device that performed the reset.
+    // This ensures a compromised account is fully kicked out across all other devices.
+    try {
+      const revokeWhere: any = {
+        userId,
+        revokedAt: null,
+      };
+      // If we know the current session token, exclude it from revocation
+      if (currentToken) {
+        revokeWhere.NOT = { token: currentToken };
+      }
+      const revoked = await prisma.userSession.updateMany({
+        where: revokeWhere,
+        data: { revokedAt: new Date() },
+      });
+      if (revoked.count > 0) {
+        console.log(`[password-reset/confirm] revoked ${revoked.count} other session(s) for userId=${userId}`);
+      }
+    } catch (e) {
+      // Non-critical: password is already changed; log but don't fail the request
+      console.error("[password-reset/confirm] session revocation failed:", e);
+    }
 
     return NextResponse.json({ success: true });
   } catch (e) {

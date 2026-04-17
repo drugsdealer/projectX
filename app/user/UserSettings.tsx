@@ -652,7 +652,7 @@ export default function UserSettings() {
                             <button
                               type="button"
                               onClick={() => setShowPwNew((v) => !v)}
-                              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-black/30 hover:text-black/60 transition"
+                              className="absolute right-3.5 inset-y-0 my-auto h-fit flex items-center text-black/30 hover:text-black/60 transition"
                             >
                               {showPwNew ? <EyeOff size={16} /> : <Eye size={16} />}
                             </button>
@@ -676,7 +676,7 @@ export default function UserSettings() {
                             <button
                               type="button"
                               onClick={() => setShowPwConfirm((v) => !v)}
-                              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-black/30 hover:text-black/60 transition"
+                              className="absolute right-3.5 inset-y-0 my-auto h-fit flex items-center text-black/30 hover:text-black/60 transition"
                             >
                               {showPwConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
                             </button>
@@ -684,7 +684,7 @@ export default function UserSettings() {
                               <motion.div
                                 initial={{ scale: 0 }}
                                 animate={{ scale: 1 }}
-                                className="absolute right-10 top-1/2 -translate-y-1/2"
+                                className="absolute right-10 inset-y-0 my-auto h-fit flex items-center"
                               >
                                 <Check size={14} className="text-green-500" strokeWidth={3} />
                               </motion.div>
