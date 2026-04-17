@@ -163,41 +163,38 @@ export const Header: React.FC<Props> = ({ className }) => {
   }, []);
 
 useLayoutEffect(() => {
+  if (!isHome) return;
+
   const handleScroll = () => {
-    if (!isHome) return;
     const hero = document.getElementById("home-hero");
     if (hero) {
       const rect = hero.getBoundingClientRect();
       const h = headerRef.current?.offsetHeight ?? 80;
-      setIsAtTop(rect.bottom > h + 1);
+      // rect может быть нулевым до первого layout — fallback на scrollY
+      if (rect.top === 0 && rect.bottom === 0) {
+        setIsAtTop(window.scrollY < 10);
+      } else {
+        setIsAtTop(rect.bottom > h + 1);
+      }
       return;
     }
     setIsAtTop(window.scrollY < 10);
   };
 
-  if (!isHome) return;
+  // При scrollY=0 мы точно наверху — не ждём layout, сразу прозрачны
+  if (window.scrollY === 0) {
+    setIsAtTop(true);
+  } else {
+    // Страница обновлена в середине — ждём layout перед проверкой
+    requestAnimationFrame(() => handleScroll());
+  }
 
-  handleScroll();
   window.addEventListener("scroll", handleScroll, { passive: true });
   window.addEventListener("resize", handleScroll);
-
-  // #home-hero монтируется позже (внутри Suspense) — ждём его появления
-  let observer: MutationObserver | null = null;
-  if (!document.getElementById("home-hero")) {
-    observer = new MutationObserver(() => {
-      if (document.getElementById("home-hero")) {
-        handleScroll();
-        observer?.disconnect();
-        observer = null;
-      }
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
-  }
 
   return () => {
     window.removeEventListener("scroll", handleScroll);
     window.removeEventListener("resize", handleScroll);
-    observer?.disconnect();
   };
 }, [isHome]);
 

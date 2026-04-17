@@ -243,40 +243,28 @@ export default function BannerMargiela() {
       </div>
 
       {/* ── DESKTOP ARROWS — appear on hover near edge ── */}
-      <AnimatePresence>
-        {hoveredArrow === 'left' && (
-          <motion.button
-            key="arrow-left"
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -8 }}
-            transition={{ duration: 0.18 }}
-            type="button"
-            onClick={(e) => { e.stopPropagation(); goPrev(); resetTimer(); }}
-            className="hidden md:flex absolute left-5 top-1/2 -translate-y-1/2 z-20 w-12 h-12 items-center justify-center border border-white/30 text-white/70 hover:border-white hover:text-white backdrop-blur-sm bg-black/15 text-xl"
-            style={{ borderRadius: 0 }}
-            data-no-hero-tap
-          >
-            ←
-          </motion.button>
-        )}
-        {hoveredArrow === 'right' && (
-          <motion.button
-            key="arrow-right"
-            initial={{ opacity: 0, x: 8 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 8 }}
-            transition={{ duration: 0.18 }}
-            type="button"
-            onClick={(e) => { e.stopPropagation(); goNext(); resetTimer(); }}
-            className="hidden md:flex absolute right-5 top-1/2 -translate-y-1/2 z-20 w-12 h-12 items-center justify-center border border-white/30 text-white/70 hover:border-white hover:text-white backdrop-blur-sm bg-black/15 text-xl"
-            style={{ borderRadius: 0 }}
-            data-no-hero-tap
-          >
-            →
-          </motion.button>
-        )}
-      </AnimatePresence>
+      <motion.button
+        animate={{ opacity: hoveredArrow === 'left' ? 1 : 0, x: hoveredArrow === 'left' ? 0 : -8 }}
+        transition={{ duration: 0.18 }}
+        type="button"
+        onClick={(e) => { e.stopPropagation(); goPrev(); resetTimer(); }}
+        className="hidden md:flex absolute left-5 top-1/2 -translate-y-1/2 z-20 w-12 h-12 items-center justify-center border border-white/30 text-white/70 hover:border-white hover:text-white backdrop-blur-sm bg-black/15 text-xl"
+        style={{ borderRadius: 0, pointerEvents: hoveredArrow === 'left' ? 'auto' : 'none' }}
+        data-no-hero-tap
+      >
+        ←
+      </motion.button>
+      <motion.button
+        animate={{ opacity: hoveredArrow === 'right' ? 1 : 0, x: hoveredArrow === 'right' ? 0 : 8 }}
+        transition={{ duration: 0.18 }}
+        type="button"
+        onClick={(e) => { e.stopPropagation(); goNext(); resetTimer(); }}
+        className="hidden md:flex absolute right-5 top-1/2 -translate-y-1/2 z-20 w-12 h-12 items-center justify-center border border-white/30 text-white/70 hover:border-white hover:text-white backdrop-blur-sm bg-black/15 text-xl"
+        style={{ borderRadius: 0, pointerEvents: hoveredArrow === 'right' ? 'auto' : 'none' }}
+        data-no-hero-tap
+      >
+        →
+      </motion.button>
 
       {/* ── PROGRESS BARS ── */}
       <div

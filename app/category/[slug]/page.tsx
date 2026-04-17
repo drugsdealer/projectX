@@ -65,6 +65,15 @@ function prettyCategoryTitle(raw: string) {
     парфюмерия: 'Парфюмерия',
     'головные уборы': 'Головные уборы',
 
+    footwear: 'Обувь',
+    shoes: 'Обувь',
+    clothing: 'Одежда',
+    clothes: 'Одежда',
+    accessories: 'Аксессуары',
+    headwear: 'Головные уборы',
+    jewelry: 'Украшения',
+    jewellery: 'Украшения',
+
     sneakers: 'Кроссовки',
     sneaker: 'Кроссовки',
     boots: 'Ботинки',
@@ -305,21 +314,49 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       brandId: true,
       createdAt: true,
       subcategory: true,
+      Category: { select: { slug: true } },
       ProductItem: { select: { price: true } },
       PerfumeVariant: { select: { price: true } },
     },
     orderBy: { createdAt: 'desc' },
   });
 
-  // Filter: product belongs to this category if its inferred/DB subcategory matches the slug
+  // Mapping from DB RU category slugs to EN app slugs
+  const DB_SLUG_TO_EN: Record<string, string> = {
+    'обувь': 'footwear',
+    'одежда': 'clothes',
+    'сумки-и-рюкзаки': 'bags',
+    'аксессуары': 'accessories',
+    'головные-уборы': 'headwear',
+    'парфюмерия': 'fragrance',
+  };
+
+  // Filter: product belongs to this category if its inferred/DB subcategory matches the slug,
+  // OR if its DB category maps to this parent slug (catches products without matching subcategory inference)
   const parentChildren = PARENT_CATEGORIES[slugLow];
   const products = (allProducts as any[]).filter((p) => {
     const dbSub = (p.subcategory ?? '').trim().toLowerCase();
     const inferred = inferSub(p.name ?? '', p.description ?? null);
     const effectiveSub = dbSub || inferred;
-    if (!effectiveSub) return false;
-    if (parentChildren) return parentChildren.includes(effectiveSub);
-    return effectiveSub === slugLow;
+
+    // Primary match: subcategory-based
+    if (effectiveSub) {
+      if (parentChildren) return parentChildren.includes(effectiveSub);
+      return effectiveSub === slugLow;
+    }
+
+    // Fallback: match by DB category slug (for products without subcategory inference)
+    const dbCatSlug = (p.Category?.slug ?? '').trim().toLowerCase();
+    if (dbCatSlug) {
+      const mappedEn = DB_SLUG_TO_EN[dbCatSlug] ?? dbCatSlug;
+      if (parentChildren) {
+        // For parent categories like footwear/clothes, check if DB category matches
+        return mappedEn === slugLow || dbCatSlug === slugLow;
+      }
+      return mappedEn === slugLow || dbCatSlug === slugLow;
+    }
+
+    return false;
   });
 
   if (!products || products.length === 0) {

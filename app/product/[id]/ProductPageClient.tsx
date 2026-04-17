@@ -603,23 +603,16 @@ const { user } = useUser();
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   // Delivery modal state
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const deliveryScrollY = useRef(0);
   useEffect(() => {
     if (showDeliveryModal) {
-      const y = window.scrollY;
-      document.body.style.cssText = `position:fixed;top:-${y}px;left:0;right:0;width:100%;overflow-y:scroll`;
-      document.body.dataset.slY = String(y);
-    } else {
-      const y = parseInt(document.body.dataset.slY || '0');
-      document.body.style.cssText = '';
-      delete document.body.dataset.slY;
-      window.scrollTo(0, y);
+      deliveryScrollY.current = window.scrollY;
+      document.body.style.cssText = `position:fixed;top:-${deliveryScrollY.current}px;left:0;right:0;width:100%;overflow-y:scroll`;
+      return () => {
+        document.body.style.cssText = '';
+        window.scrollTo(0, deliveryScrollY.current);
+      };
     }
-    return () => {
-      const y = parseInt(document.body.dataset.slY || '0');
-      document.body.style.cssText = '';
-      delete document.body.dataset.slY;
-      if (y) window.scrollTo(0, y);
-    };
   }, [showDeliveryModal]);
   // Moscow availability modal state
   const [showMoscowModal, setShowMoscowModal] = useState(false);
@@ -631,24 +624,17 @@ const { user } = useUser();
   const [colorSheetExpanded, setColorSheetExpanded] = useState(false);
   const colorSheetDragControls = useDragControls();
 
+  const colorSheetScrollY = useRef(0);
   useEffect(() => {
     if (colorSheetOpen) {
-      const y = window.scrollY;
-      document.body.style.cssText = `position:fixed;top:-${y}px;left:0;right:0;width:100%;overflow-y:scroll`;
-      document.body.dataset.csY = String(y);
-    } else {
-      const y = parseInt(document.body.dataset.csY || '0');
-      document.body.style.cssText = '';
-      delete document.body.dataset.csY;
-      window.scrollTo(0, y);
-      setColorSheetExpanded(false);
+      colorSheetScrollY.current = window.scrollY;
+      document.body.style.cssText = `position:fixed;top:-${colorSheetScrollY.current}px;left:0;right:0;width:100%;overflow-y:scroll`;
+      return () => {
+        document.body.style.cssText = '';
+        window.scrollTo(0, colorSheetScrollY.current);
+        setColorSheetExpanded(false);
+      };
     }
-    return () => {
-      const y = parseInt(document.body.dataset.csY || '0');
-      document.body.style.cssText = '';
-      delete document.body.dataset.csY;
-      if (y) window.scrollTo(0, y);
-    };
   }, [colorSheetOpen]);
 
   // Brand center overlay + slide-up panel
