@@ -13,7 +13,6 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import "swiper/css/pagination";
 import { Autoplay, Pagination } from "swiper/modules";
-import { ChevronLeft, ChevronRight } from "react-feather";
 import { useUser } from "@/user/UserContext";
 import BannerMargiela from "@/components/shared/BannerMargiela";
 import { getOrCreateEventsSessionId } from "@/lib/events-client";
@@ -1279,9 +1278,6 @@ export default function Home() {
   
 
   const [showAnimation, setShowAnimation] = useState(false);
-  const swiperRef = useRef<any>(null);
-  const heroTapRef = useRef<{ x: number; y: number; active: boolean }>({ x: 0, y: 0, active: false });
-  const [hoveredSide, setHoveredSide] = useState<"left" | "right" | null>(null);
   const [heroFade, setHeroFade] = useState(0); // 0..1 based on scrollY
   const heroFadeRef = useRef(0);
   const [isHeroInView, setIsHeroInView] = useState(true);
@@ -1519,9 +1515,6 @@ useEffect(() => {
 }, [isModalOpen, productPreviewOpen]);
 // Лочим скролл, пока открыт мобильный/планшетный Drawer фильтров
   
-  // --- HERO SLIDES DATA ---
-  <BannerMargiela />
-
   // Плавный скролл к элементу с учётом высоты шапки
   const smoothScrollToElement = useCallback((element: HTMLElement) => {
     setIsScrollingProgrammatically(true);
@@ -1651,40 +1644,6 @@ useEffect(() => {
             : `translateY(${-heroFade * 36}px) scale(${1 - heroFade * 0.06})`,
         }}
         aria-hidden={heroFade > 0.98}
-        onMouseLeave={() => setHoveredSide(null)}
-        onTouchStart={(e) => {
-          if (!isTouchDevice) return;
-          const t = e.target as HTMLElement | null;
-          if (t && t.closest('button, a, input, textarea, select, label, [role="button"], .hero-pagination, .swiper-pagination-bullet, [data-no-hero-tap]')) return;
-          const touch = e.touches?.[0];
-          if (!touch) return;
-          heroTapRef.current = { x: touch.clientX, y: touch.clientY, active: true };
-        }}
-        onTouchEnd={(e) => {
-          if (!isTouchDevice) return;
-          const t = e.target as HTMLElement | null;
-          if (t && t.closest('button, a, input, textarea, select, label, [role="button"], .hero-pagination, .swiper-pagination-bullet, [data-no-hero-tap]')) {
-            heroTapRef.current.active = false;
-            return;
-          }
-          const start = heroTapRef.current;
-          if (!start.active) return;
-          heroTapRef.current.active = false;
-          const touch = e.changedTouches?.[0];
-          if (!touch) return;
-          const dx = touch.clientX - start.x;
-          const dy = touch.clientY - start.y;
-          // If the finger moved, treat it as swipe/scroll, not a tap
-          if (Math.abs(dx) > 14 || Math.abs(dy) > 14) return;
-          const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-          const x = touch.clientX - rect.left;
-          const isRightHalf = x >= rect.width / 2;
-          if (isRightHalf) swiperRef.current?.slideNext();
-          else swiperRef.current?.slidePrev();
-        }}
-        onTouchCancel={() => {
-          heroTapRef.current.active = false;
-        }}
       >
         <BannerMargiela />
         {/* HERO pagination bullets styling + animation */}
@@ -1745,44 +1704,6 @@ useEffect(() => {
           }
         `}</style>
 
-        {!isTouchDevice && hoveredSide === "left" && (
-          <div
-            className="absolute left-4 top-1/2 transform -translate-y-1/2 z-30 cursor-pointer"
-            onClick={() => swiperRef.current?.slidePrev()}
-            onMouseEnter={() => setHoveredSide("left")}
-          >
-            <div className="text-white hover:scale-125 transition-transform duration-300">
-              <ChevronLeft size={36} />
-            </div>
-          </div>
-        )}
-
-        {!isTouchDevice && hoveredSide === "right" && (
-          <div
-            className="absolute right-4 top-1/2 transform -translate-y-1/2 z-30 cursor-pointer"
-            onClick={() => swiperRef.current?.slideNext()}
-            onMouseEnter={() => setHoveredSide("right")}
-          >
-            <div className="text-white hover:scale-125 transition-transform duration-300">
-              <ChevronRight size={36} />
-            </div>
-          </div>
-        )}
-
-        {!isTouchDevice && (
-          <>
-            <div 
-              className={`absolute left-0 top-0 h-full w-1/3 z-20 ${hoveredSide === "left" ? "cursor-arrow-left" : ""}`} 
-              onMouseEnter={() => setHoveredSide("left")}
-              onMouseLeave={() => setHoveredSide(null)}
-            />
-            <div 
-              className={`absolute right-0 top-0 h-full w-1/3 z-20 ${hoveredSide === "right" ? "cursor-arrow-right" : ""}`} 
-              onMouseEnter={() => setHoveredSide("right")}
-              onMouseLeave={() => setHoveredSide(null)}
-            />
-          </>
-        )}
 
       </motion.div>
 

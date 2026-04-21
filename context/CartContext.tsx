@@ -166,10 +166,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     return () => window.removeEventListener("cart:refresh", handler as EventListener);
   }, [refreshCart]);
 
-  useEffect(() => {
-    localStorage.setItem("postponedItems", JSON.stringify(postponedItems));
-  }, [postponedItems]);
-
+  // Read postponedItems from localStorage on mount (before any writes)
   useEffect(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("postponedItems");
@@ -187,6 +184,16 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  // Write postponedItems only after initial load to avoid overwriting on mount
+  const postponedMountedRef = React.useRef(false);
+  useEffect(() => {
+    if (!postponedMountedRef.current) {
+      postponedMountedRef.current = true;
+      return;
+    }
+    localStorage.setItem("postponedItems", JSON.stringify(postponedItems));
+  }, [postponedItems]);
+
   useEffect(() => {
     if (!loaded) return;
     const next = cartItems
@@ -195,9 +202,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setPostponedItems(next);
   }, [cartItems, loaded, getPostponedKey]);
 
+  // Only persist cart after it's been loaded to avoid overwriting localStorage data on mount
   useEffect(() => {
+    if (!loaded) return;
     persistCart(cartItems);
-  }, [cartItems]);
+  }, [cartItems, loaded]);
 
 
   const addToCart = async (item: CartItem) => {
