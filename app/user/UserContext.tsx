@@ -5,6 +5,8 @@ import React, {
   useContext,
   useEffect,
   useState,
+  useRef,
+  useCallback,
   ReactNode,
   Dispatch,
   SetStateAction,
@@ -115,9 +117,13 @@ export const useUser = () => {
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  // Keep a stable ref to the latest user so refresh() always merges against current state
+  const userRef = useRef<User | null>(null);
+  useEffect(() => { userRef.current = user; }, [user]);
 
   // Refresh function to fetch user profile from server
-  const refresh = async () => {
+  // Wrapped in useCallback with empty deps so event listeners always call the latest version via ref
+  const refresh = useCallback(async () => {
     try {
       const res = await fetch('/api/auth/me', { cache: 'no-store' });
       const data = await res.json().catch(() => ({}));
@@ -143,7 +149,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // берём базу из текущего стейта, затем из LS, затем из cookie
-      let base: User | null = user;
+      let base: User | null = userRef.current;
       if (!base) {
         try {
           const ls = localStorage.getItem('ui_user_data');
@@ -186,7 +192,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     }
-  };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

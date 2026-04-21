@@ -1469,7 +1469,7 @@ export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeSlide, setActiveSlide] = useState<number | null>(null);
   const openModal = (i: number) => { setActiveSlide(i); setIsModalOpen(true); };
-  const closeModal = () => { setIsModalOpen(false); setActiveSlide(null); document.body.style.overflow = ''; };
+  const closeModal = () => { setIsModalOpen(false); setActiveSlide(null); };
 
   // --- Modal state for product gallery preview ---
   const [productPreviewOpen, setProductPreviewOpen] = useState(false);
@@ -1501,18 +1501,24 @@ export default function Home() {
     return () => document.removeEventListener('keydown', onKey);
   }, [isModalOpen, productPreviewOpen]);
 
-  // Lock body scroll when modal is open
-useEffect(() => {
-  const originalStyle = window.getComputedStyle(document.body).overflow;
-  
-  if (isModalOpen || productPreviewOpen) {
-    document.body.style.overflow = 'hidden';
-  }
-  
-  return () => {
-    document.body.style.overflow = originalStyle;
-  };
-}, [isModalOpen, productPreviewOpen]);
+  // Lock body scroll when any modal is open.
+  // Use a counter ref so nested open/close doesn't leave scroll permanently locked.
+  const scrollLockCountRef = useRef(0);
+  useEffect(() => {
+    const shouldLock = isModalOpen || productPreviewOpen;
+    if (shouldLock) {
+      scrollLockCountRef.current += 1;
+      if (scrollLockCountRef.current === 1) {
+        document.body.style.overflow = 'hidden';
+      }
+      return () => {
+        scrollLockCountRef.current = Math.max(0, scrollLockCountRef.current - 1);
+        if (scrollLockCountRef.current === 0) {
+          document.body.style.overflow = '';
+        }
+      };
+    }
+  }, [isModalOpen, productPreviewOpen]);
 // Лочим скролл, пока открыт мобильный/планшетный Drawer фильтров
   
   // Плавный скролл к элементу с учётом высоты шапки
