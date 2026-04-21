@@ -105,6 +105,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Ошибка при создании оплаты" }, { status: 502 });
     }
 
+    // Store YooKassa paymentId in the order for later server-side verification
+    if (data.id) {
+      await prisma.order.update({
+        where: { id: orderId },
+        data: { paymentId: String(data.id) },
+      }).catch((e) => console.error("[yookassa] failed to save paymentId:", e));
+    }
+
     return NextResponse.json({
       confirmation_url: data.confirmation.confirmation_url,
       paymentId: data.id,

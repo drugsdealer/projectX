@@ -29,7 +29,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Mousewheel, Navigation, Pagination } from "swiper/modules";
+import { FreeMode, Mousewheel, Navigation, Pagination } from "swiper/modules";
 import SizeSelector from '@/components/shared/SizeSelector';
 import { useToast } from "@/context/ToastContext";
 import { useCart } from "@/context/CartContext";
@@ -2221,9 +2221,9 @@ const handleCancel = () => {
               Вам может понравиться
             </h2>
             <Swiper
-              modules={[Navigation]}
+              modules={[Navigation, FreeMode]}
               loop={false}
-              freeMode={true}
+              freeMode={{ enabled: true, momentum: true, momentumRatio: 0.8, momentumVelocityRatio: 0.8 }}
               breakpoints={{
                 320: { slidesPerView: 1.6, spaceBetween: 10 },
                 480: { slidesPerView: 2.1, spaceBetween: 12 },
@@ -2300,9 +2300,9 @@ const handleCancel = () => {
             Бестселлеры StageStore 🔥
           </h2>
           <Swiper
-            modules={[Navigation]}
+            modules={[Navigation, FreeMode]}
             loop={false}
-            freeMode={true}
+            freeMode={{ enabled: true, momentum: true, momentumRatio: 0.8, momentumVelocityRatio: 0.8 }}
             breakpoints={{
               320: { slidesPerView: 1.6, spaceBetween: 10 },
               480: { slidesPerView: 2.1, spaceBetween: 12 },
@@ -2356,9 +2356,9 @@ const handleCancel = () => {
               Недавно просмотренные
             </h2>
             <Swiper
-              modules={[Navigation, Pagination, Mousewheel]}
+              modules={[Navigation, Pagination, Mousewheel, FreeMode]}
               loop={false}
-              freeMode={true}
+              freeMode={{ enabled: true, momentum: true, momentumRatio: 0.8, momentumVelocityRatio: 0.8 }}
               spaceBetween={12}
               breakpoints={{
                 320: { slidesPerView: 1.4, spaceBetween: 10 },

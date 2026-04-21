@@ -299,7 +299,7 @@ export async function POST(req: Request) {
             productItemId: pi.id,
             cartItemId: null,
             quantity: qty,
-            price: priceIn ?? Number(pi.price ?? pi.Product?.price ?? 0),
+            price: Number(pi.price ?? pi.Product?.price ?? 0),
             name: givenName ?? pi.Product?.name ?? 'Товар',
             image: givenImage ?? (pi.Product as any)?.imageUrl ?? null,
             size: normalizeSize(
@@ -342,7 +342,7 @@ export async function POST(req: Request) {
                   productItemId: cartItem.productItemId ?? null,
                   cartItemId: cartItem.id,
                   quantity: qty || cartItem.quantity || 1,
-                  price: priceIn ?? Number(cartItem.price ?? (p as any).price ?? 0),
+                  price: Number((p as any).price ?? 0),
                   name: givenName ?? cartItem.name ?? p.name,
                   image:
                     givenImage ??
@@ -362,7 +362,7 @@ export async function POST(req: Request) {
             productItemId: null,
             cartItemId: null,
             quantity: qty,
-            price: priceIn ?? Number((p as any).price ?? 0),
+            price: Number((p as any).price ?? 0),
             name: givenName ?? p.name,
             image:
               givenImage ??
@@ -565,31 +565,42 @@ export async function POST(req: Request) {
     });
 
     // Проставляем несколько куков с id заказа и токеном
+    const isProdCheckout = process.env.NODE_ENV === 'production';
     try {
       res.cookies.set('order_id', String(order.id), {
+        httpOnly: true,
         path: '/',
         maxAge: 1800,
         sameSite: 'lax',
+        secure: isProdCheckout,
       });
       res.cookies.set('orderId', String(order.id), {
+        httpOnly: true,
         path: '/',
         maxAge: 1800,
         sameSite: 'lax',
+        secure: isProdCheckout,
       });
       res.cookies.set('pending_order_id', String(order.id), {
+        httpOnly: true,
         path: '/',
         maxAge: 1800,
         sameSite: 'lax',
+        secure: isProdCheckout,
       });
       res.cookies.set('last_order_id', String(order.id), {
+        httpOnly: true,
         path: '/',
         maxAge: 1800,
         sameSite: 'lax',
+        secure: isProdCheckout,
       });
       res.cookies.set('order_token', token, {
+        httpOnly: true,
         path: '/',
         maxAge: 60 * 60 * 24 * 30,
         sameSite: 'lax',
+        secure: isProdCheckout,
       });
     } catch {}
 

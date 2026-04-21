@@ -196,6 +196,8 @@ export async function POST(req: Request) {
         status: true,
         userId: true,
         publicNumber: true,
+        paymentId: true,
+        totalAmount: true,
       },
     });
 
@@ -205,6 +207,56 @@ export async function POST(req: Request) {
         { success: false, message: 'Order not found' },
         { status: 403 },
       );
+    }
+
+    /* 4a. Verify payment status with YooKassa (skip only if already SUCCEEDED or no credentials) */
+    if (existing.status !== 'SUCCEEDED') {
+      const shopId = process.env.YOOKASSA_SHOP_ID;
+      const apiKey = process.env.YOOKASSA_API_KEY;
+      if (shopId && apiKey) {
+        const paymentId = existing.paymentId;
+        if (!paymentId) {
+          console.warn('[api.confirm-payment] no paymentId on order, refusing to confirm');
+          return NextResponse.json(
+            { success: false, message: 'Платёж ещё не инициирован' },
+            { status: 402 },
+          );
+        }
+        try {
+          const ykRes = await fetch(`https://api.yookassa.ru/v3/payments/${encodeURIComponent(paymentId)}`, {
+            headers: {
+              Authorization: 'Basic ' + Buffer.from(`${shopId}:${apiKey}`).toString('base64'),
+            },
+          });
+          if (!ykRes.ok) {
+            console.error('[api.confirm-payment] YooKassa verification failed, status:', ykRes.status);
+            return NextResponse.json(
+              { success: false, message: 'Не удалось проверить статус оплаты' },
+              { status: 402 },
+            );
+          }
+          const payment = await ykRes.json().catch(() => null);
+          const metaOrderId = String(payment?.metadata?.orderId ?? '');
+          const paymentStatus = payment?.status;
+          if (paymentStatus !== 'succeeded' || metaOrderId !== String(targetOrderId)) {
+            console.warn('[api.confirm-payment] payment not succeeded or orderId mismatch', {
+              paymentStatus,
+              metaOrderId,
+              targetOrderId,
+            });
+            return NextResponse.json(
+              { success: false, message: 'Оплата не завершена' },
+              { status: 402 },
+            );
+          }
+        } catch (e) {
+          console.error('[api.confirm-payment] YooKassa network error:', e);
+          return NextResponse.json(
+            { success: false, message: 'Ошибка проверки оплаты' },
+            { status: 502 },
+          );
+        }
+      }
     }
 
     const publicNumber =

@@ -85,12 +85,31 @@ function normalizePayload(it: BodyItem) {
     productId: it.productId ?? null,
     productItemId: it.productItemId ?? null,
     name: it.name?.toString() ?? "",
-    price: Number(it.price ?? 0),
+    price: Number(it.price ?? 0), // overridden by resolveProductPrice below
     image: it.image ?? null,
     sizeLabel: it.size != null ? String(it.size) : null,
     quantity: Math.min(99, Math.max(1, Number(it.quantity ?? 1))),
     postponed: typeof it.postponed === "boolean" ? it.postponed : undefined,
   };
+}
+
+/** Always fetch canonical price from DB — never trust client-supplied price */
+async function resolveProductPrice(productItemId: number | null, productId: number | null): Promise<number | null> {
+  if (productItemId) {
+    const pi = await prisma.productItem.findUnique({
+      where: { id: productItemId },
+      select: { price: true },
+    });
+    if (pi) return pi.price;
+  }
+  if (productId) {
+    const p = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { price: true },
+    });
+    if (p?.price != null) return p.price;
+  }
+  return null;
 }
 
 export async function GET() {
@@ -128,6 +147,10 @@ export async function POST(req: Request) {
     const created: any[] = [];
     for (const raw of items) {
       const data = normalizePayload(raw);
+      // Resolve canonical price from DB — never trust client-supplied price
+      const dbPrice = await resolveProductPrice(data.productItemId, data.productId);
+      const safePrice = dbPrice !== null ? dbPrice : data.price;
+
       // try merge existing by productId + sizeLabel or productItemId
       const orConditions: any[] = [];
       if (data.productItemId != null) {
@@ -152,7 +175,7 @@ export async function POST(req: Request) {
           data: {
             quantity: (existing.quantity ?? 1) + data.quantity,
             name: data.name || existing.name,
-            price: data.price || existing.price,
+            price: safePrice || existing.price,
             image: data.image ?? existing.image,
             sizeLabel: data.sizeLabel ?? existing.sizeLabel,
             productId: data.productId ?? existing.productId,
@@ -167,6 +190,7 @@ export async function POST(req: Request) {
           data: {
             cartId: cart.id,
             ...data,
+            price: safePrice,
             ...(typeof data.postponed === "boolean" ? { postponed: data.postponed } : {}),
             updatedAt: new Date(),
           },

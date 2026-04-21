@@ -150,12 +150,12 @@ export default function HomeFeedInsert({
             ) : null}
           </div>
 
-          <div className="-mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-1 sm:gap-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-1 sm:gap-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {items.slice(0, 8).map((item, index) => (
               <Link
                 key={item.id}
                 href={`/product/${item.id}`}
-                className={`group relative w-[168px] shrink-0 snap-start overflow-hidden rounded-2xl border bg-gradient-to-b transition hover:-translate-y-1 hover:shadow-[0_14px_28px_rgba(0,0,0,0.12)] sm:w-[190px] ${theme.cardRing} ${theme.cardBg} ${index % 2 ? 'sm:mt-3' : ''}`}
+                className={`group relative w-[168px] shrink-0 overflow-hidden rounded-2xl border bg-gradient-to-b transition hover:-translate-y-1 hover:shadow-[0_14px_28px_rgba(0,0,0,0.12)] sm:w-[190px] ${theme.cardRing} ${theme.cardBg} ${index % 2 ? 'sm:mt-3' : ''}`}
               >
                 <div className={`absolute left-2 top-2 z-10 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] ${theme.badgeBg} ${theme.badgeText}`}>
                   {variant === 'bestseller' ? `#${index + 1}` : 'pick'}

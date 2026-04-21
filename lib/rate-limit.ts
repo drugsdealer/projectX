@@ -43,12 +43,16 @@ async function getUpstash() {
 
 export function getClientIp(req: Request): string {
   const h = req.headers;
-  // cf-connecting-ip устанавливается Cloudflare — нельзя подделать
+  // cf-connecting-ip — Cloudflare, нельзя подделать
   const cf = h.get("cf-connecting-ip");
   if (cf) return cf.trim();
+  // x-vercel-forwarded-for — Vercel edge, устанавливается инфраструктурой
+  const vercel = h.get("x-vercel-forwarded-for");
+  if (vercel) return vercel.split(",")[0].trim();
+  // x-real-ip — обычно nginx, доверяем если нет вышестоящего прокси
   const real = h.get("x-real-ip");
   if (real) return real.trim();
-  // x-forwarded-for последним — клиент может подделать
+  // x-forwarded-for — последним, может быть подделан клиентом без trusted proxy
   const fwd = h.get("x-forwarded-for");
   if (fwd) {
     const first = fwd.split(",")[0]?.trim();
