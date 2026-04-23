@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { buildEventsServiceUrl, getEventsServiceApiKey } from "@/lib/events-upstream";
+import { buildEventsServiceUrl, fetchEventsServiceJson, getEventsServiceApiKey } from "@/lib/events-upstream";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -76,26 +76,21 @@ export async function GET(req: Request) {
   }
 
   try {
-    const upstream = await fetch(upstreamUrl.toString(), {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Events-Api-Key": apiKey,
-      },
-      cache: "no-store",
+    const result = await fetchEventsServiceJson(upstreamUrl, {
+      apiKey,
+      timeoutMs: 5000,
+      retries: 1,
     });
 
-    if (!upstream.ok) {
+    if (!result.ok) {
       const items = await fallbackBestsellers(limit, categoryId);
       return NextResponse.json({ success: true, source: "fallback", items });
     }
 
-    const rows = await upstream.json().catch(() => [] as any[]);
-    const rankedIds = Array.isArray(rows)
-      ? rows
-          .map((item: any) => Number(item?.productId))
-          .filter((id: number) => Number.isFinite(id) && id > 0)
-      : [];
+    const rows: any[] = Array.isArray(result.data) ? result.data : [];
+    const rankedIds = rows
+      .map((item: any) => Number(item?.productId))
+      .filter((id: number) => Number.isFinite(id) && id > 0);
 
     const dbRows = rankedIds.length
       ? await prisma.product.findMany({

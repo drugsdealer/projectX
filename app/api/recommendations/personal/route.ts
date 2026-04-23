@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { buildEventsServiceUrl, getEventsServiceApiKey } from "@/lib/events-upstream";
+import { buildEventsServiceUrl, fetchEventsServiceJson, getEventsServiceApiKey } from "@/lib/events-upstream";
 import { getViewerIdentity } from "@/lib/session";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
@@ -121,16 +121,13 @@ export async function GET(req: Request) {
   }
 
   try {
-    const upstream = await fetch(upstreamUrl.toString(), {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Events-Api-Key": apiKey,
-      },
-      cache: "no-store",
+    const result = await fetchEventsServiceJson(upstreamUrl, {
+      apiKey,
+      timeoutMs: 5000,
+      retries: 1,
     });
 
-    if (!upstream.ok) {
+    if (!result.ok) {
       const items = await fallbackProducts(limit, categoryId, exclude);
       return NextResponse.json({
         success: true,
@@ -141,7 +138,7 @@ export async function GET(req: Request) {
       });
     }
 
-    const data = await upstream.json().catch(() => ({} as any));
+    const data = result.data ?? {};
     const recItemsRaw = Array.isArray(data?.items) ? data.items : [];
     const recommendationMeta: RecommendationMeta[] = (recItemsRaw as any[])
       .map((item: any): RecommendationMeta => ({

@@ -4,10 +4,21 @@ import type { Metadata } from "next";
 
 export const revalidate = 60;
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
+
 export const metadata: Metadata = {
-  title: "Поиск",
+  title: "Каталог — Весь ассортимент",
   description:
-    "Поиск брендовой одежды, обуви и аксессуаров в Stage Store. Найдите то, что ищете.",
+    "Полный каталог брендовой одежды, обуви и аксессуаров в Stage Store. Кроссовки, куртки, сумки, парфюм от мировых брендов. Доставка по России.",
+  alternates: {
+    canonical: `${SITE_URL}/search`,
+  },
+  openGraph: {
+    type: "website",
+    url: `${SITE_URL}/search`,
+    title: "Каталог — Stage Store",
+    description: "Полный каталог брендовой одежды, обуви и аксессуаров.",
+  },
   robots: { index: true, follow: true },
 };
 

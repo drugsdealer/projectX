@@ -20,20 +20,29 @@ export async function generateStaticParams() {
   }
 }
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const brand = await prisma.brand.findFirst({
     where: { slug: { equals: slug.trim().toLowerCase(), mode: 'insensitive' } },
-    select: { name: true, description: true },
+    select: { name: true, description: true, logoUrl: true },
   });
   if (!brand) return {};
-  const description = brand.description || `Коллекция бренда ${brand.name} в Stage Store. Оригинальная брендовая одежда и аксессуары.`;
+  const description = brand.description || `Коллекция бренда ${brand.name} в Stage Store. Оригинальная брендовая одежда и аксессуары с доставкой по России.`;
+  const images = brand.logoUrl ? [{ url: brand.logoUrl, width: 400, height: 400, alt: brand.name }] : [];
   return {
     title: brand.name,
     description,
+    alternates: {
+      canonical: `${SITE_URL}/brand/${slug}`,
+    },
     openGraph: {
+      type: "website",
+      url: `${SITE_URL}/brand/${slug}`,
       title: `${brand.name} — Stage Store`,
       description,
+      images,
     },
   };
 }
@@ -121,12 +130,49 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
   const brandName = brand.name;
   const brandSlug = brand.slug ?? norm;
 
+  const brandJsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Главная", item: SITE_URL },
+          { "@type": "ListItem", position: 2, name: "Весь каталог", item: `${SITE_URL}/search` },
+          { "@type": "ListItem", position: 3, name: brandName, item: `${SITE_URL}/brand/${brandSlug}` },
+        ],
+      },
+      {
+        "@type": "Brand",
+        "@id": `${SITE_URL}/brand/${brandSlug}/#brand`,
+        name: brandName,
+        url: `${SITE_URL}/brand/${brandSlug}`,
+        ...(brand.logoUrl ? { logo: { "@type": "ImageObject", url: brand.logoUrl } } : {}),
+        ...(brand.description ? { description: brand.description } : {}),
+      },
+      {
+        "@type": "CollectionPage",
+        name: `${brandName} — Stage Store`,
+        url: `${SITE_URL}/brand/${brandSlug}`,
+        description: brand.description || `Коллекция бренда ${brandName} в Stage Store.`,
+        isPartOf: { "@id": `${SITE_URL}/#website` },
+        about: { "@id": `${SITE_URL}/brand/${brandSlug}/#brand` },
+        numberOfItems: brandItems.length,
+      },
+    ],
+  };
+
   return (
-    <BrandClient
-      items={brandItems}
-      brandName={brandName}
-      meta={meta}
-      slug={brandSlug}
-    />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(brandJsonLd) }}
+      />
+      <BrandClient
+        items={brandItems}
+        brandName={brandName}
+        meta={meta}
+        slug={brandSlug}
+      />
+    </>
   );
 }
