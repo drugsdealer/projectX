@@ -1,5 +1,6 @@
 import { Nunito } from "next/font/google";
 import "./globals.css";
+import { Suspense } from "react";
 import { Header } from "@/components/shared/header";
 import { TitleProvider } from "@/context/TitleContext";
 import { CartProvider } from "@/context/CartContext";
@@ -10,6 +11,7 @@ import { UserProvider } from "@/user/UserContext";
 import ClientLayout from "@/components/ClientLayout";
 import RouteTransitions from "@/components/RouteTransitions";
 import MotionBudgetProvider from "@/components/MotionBudgetProvider";
+import YandexMetrika from "@/components/YandexMetrika";
 import type { Metadata } from "next";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
@@ -236,8 +238,9 @@ export default function RootLayout({
       <body
         className={`${nunito.className} min-h-screen bg-white text-black`}
       >
-        {/* Общий контейнер, который учитывает safe-area сверху/снизу
-            (чтобы “чёлка” / фронтальная камера не съедала контент) */}
+        <Suspense fallback={null}>
+          <YandexMetrika />
+        </Suspense>
         <div className="safe-top safe-bottom bg-white min-h-screen">
           <DiscountProvider>
             <CartProvider>
