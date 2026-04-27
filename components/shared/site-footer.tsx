@@ -9,7 +9,7 @@ const FOOTER_LINKS = {
     { label: "Поиск и категории", href: "/search" },
     { label: "Premium", href: "/premium" },
     { label: "Новинки", href: "/search?tag=new" },
-    { label: "Sale", href: "/search?tag=sale" },
+    { label: "Sale", href: "/sale" },
   ],
   help: [
     { label: "Доставка", href: "/shipping" },

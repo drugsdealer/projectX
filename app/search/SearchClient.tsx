@@ -69,7 +69,7 @@ const GHOST_QUERIES = [
 
 type Promo = { title: string; desc: string; href: string; tag: string };
 const PROMOS: Promo[] = [
-  { title: 'Sale до -30%', desc: 'Подборка недели — успей забрать размер.', href: '/search?tag=sale', tag: 'SALE' },
+  { title: 'Sale до -30%', desc: 'Подборка недели — успей забрать размер.', href: '/sale', tag: 'SALE' },
   { title: 'Premium selection', desc: 'Капсульные вещи и редкие позиции.', href: '/premium', tag: 'PREMIUM' },
   { title: 'Новинки', desc: 'Только что добавили — свежие релизы.', href: '/search?tag=new', tag: 'NEW' },
   { title: 'Топ недели', desc: 'Самое популярное — по просмотрам и покупкам.', href: '/search?tag=top', tag: 'TOP' },
@@ -370,7 +370,7 @@ const PromoTile = ({ promo, className = '' }: { promo: Promo; className?: string
 
 const DiscountTile = ({ className = '' }: { className?: string }) => (
   <Link
-    href="/search?tag=sale"
+    href="/sale"
     className={`group rounded-2xl border border-black/10 bg-gradient-to-br from-black/[0.06] to-black/[0.02] hover:from-black/[0.08] hover:to-black/[0.03] transition p-3 sm:p-4 flex flex-col justify-between ${className}`}
   >
     <div className="flex items-center justify-between">
@@ -1103,7 +1103,7 @@ export default function SearchPage() {
               <div className={`mt-3${panelOpen ? ' hidden sm:block' : ''}`}>
                 <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-1 sm:pb-2 -mx-1 px-1 [-webkit-overflow-scrolling:touch]">
                   <Link
-                    href="/search?tag=sale"
+                    href="/sale"
                     className={
                       "shrink-0 h-10 sm:h-11 px-4 sm:px-6 inline-flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold border transition " +
                       (activeTag === 'sale'
@@ -1217,7 +1217,7 @@ export default function SearchPage() {
                 <div className="mt-2 text-xs sm:text-sm text-black/55">Попробуй другой запрос или открой категорию ниже.</div>
                 <div className="mt-4 flex gap-2 flex-wrap">
                   <Link href="/search?tag=new" className="px-3 py-2 rounded-full border border-black/10 hover:bg-black/[0.03] transition text-xs sm:text-sm">Новинки</Link>
-                  <Link href="/search?tag=sale" className="px-3 py-2 rounded-full border border-black/10 hover:bg-black/[0.03] transition text-xs sm:text-sm">Sale</Link>
+                  <Link href="/sale" className="px-3 py-2 rounded-full border border-black/10 hover:bg-black/[0.03] transition text-xs sm:text-sm">Sale</Link>
                   <Link href="/premium" className="px-3 py-2 rounded-full border border-black/10 hover:bg-black/[0.03] transition text-xs sm:text-sm">Premium</Link>
                 </div>
               </div>

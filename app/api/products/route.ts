@@ -293,6 +293,8 @@ export async function GET(req: Request) {
       take = Number.isFinite(t) && t > 0 ? Math.min(t, 200) : 120;
     }
 
+    const saleOnly = (url.searchParams.get("sale") ?? "") === "1";
+
     const where: any = { deletedAt: null };
 
     // По умолчанию из общего списка убираем премиальные товары.
@@ -305,6 +307,13 @@ export async function GET(req: Request) {
 
     if (dbCategoryFilter && dbCategoryFilter !== "premium") {
       where[rel.categoryKey] = { slug: dbCategoryFilter };
+    }
+
+    if (saleOnly) {
+      where.OR = [
+        { badge: { equals: "sale", mode: "insensitive" } },
+        { oldPrice: { not: null } },
+      ];
     }
 
     const rows = await prisma.product.findMany({
