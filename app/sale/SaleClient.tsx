@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 
 type SaleProduct = {
   id: string | number;
@@ -16,8 +16,16 @@ type SaleProduct = {
   images: string[];
   brandName: string | null;
   category: string | null;
+  gender: string | null;
   available: boolean;
 };
+
+type GenderKey = '' | 'men' | 'women';
+const GENDER_OPTIONS: { value: GenderKey; label: string }[] = [
+  { value: '', label: 'Все' },
+  { value: 'men', label: 'Мужское' },
+  { value: 'women', label: 'Женское' },
+];
 
 type SortKey = "discount" | "price_asc" | "price_desc" | "newest";
 
@@ -107,6 +115,7 @@ export default function SaleClient() {
   const [products, setProducts] = useState<SaleProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [activeGender, setActiveGender] = useState<GenderKey>('');
   const [sort, setSort] = useState<SortKey>("discount");
 
   useEffect(() => {
@@ -134,6 +143,7 @@ export default function SaleClient() {
           images: Array.isArray(p.images) ? p.images : [],
           brandName: p.brand?.name ?? p.Brand?.name ?? p.brandName ?? null,
           category: p.category?.name ?? p.Category?.name ?? p.categoryName ?? null,
+          gender: p.gender ?? null,
           available: p.available !== false,
         }));
 
@@ -170,9 +180,14 @@ export default function SaleClient() {
 
   // Filtered + sorted
   const visible = useMemo(() => {
-    let list = activeCategory
-      ? products.filter((p) => p.category === activeCategory)
-      : products;
+    let list = products;
+    if (activeCategory) list = list.filter((p) => p.category === activeCategory);
+    if (activeGender) {
+      list = list.filter((p) => {
+        const g = (p.gender ?? '').toLowerCase();
+        return g === activeGender || g === 'unisex';
+      });
+    }
 
     switch (sort) {
       case "discount":
@@ -192,7 +207,7 @@ export default function SaleClient() {
         break;
     }
     return list;
-  }, [products, activeCategory, sort]);
+  }, [products, activeCategory, activeGender, sort]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -282,21 +297,50 @@ export default function SaleClient() {
             ))}
           </div>
 
-          {/* Sort */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            {SORT_OPTIONS.map((opt) => (
-              <button
-                key={opt.key}
-                onClick={() => setSort(opt.key)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition border ${
-                  sort === opt.key
-                    ? "bg-black text-white border-black"
-                    : "border-black/12 text-black/60 hover:border-black/25"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
+          {/* Gender + Sort */}
+          <div className="flex items-center gap-3 shrink-0">
+            {/* Gender pills */}
+            <LayoutGroup id="sale-gender">
+              <div className="relative flex items-center bg-black/[0.05] rounded-full p-1">
+                {GENDER_OPTIONS.map((opt) => {
+                  const isActive = activeGender === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => setActiveGender(opt.value)}
+                      className="relative px-3 py-1 text-xs font-medium rounded-full z-10 transition-colors duration-200"
+                      style={{ color: isActive ? '#fff' : 'rgba(0,0,0,0.55)' }}
+                    >
+                      {isActive && (
+                        <motion.span
+                          layoutId="sale-gender-pill"
+                          className="absolute inset-0 bg-black rounded-full"
+                          transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+                        />
+                      )}
+                      <span className="relative z-10">{opt.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </LayoutGroup>
+
+            {/* Sort */}
+            <div className="flex items-center gap-1.5">
+              {SORT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => setSort(opt.key)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition border ${
+                    sort === opt.key
+                      ? "bg-black text-white border-black"
+                      : "border-black/12 text-black/60 hover:border-black/25"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -338,7 +382,7 @@ export default function SaleClient() {
               {activeCategory && ` · ${activeCategory}`}
             </div>
             <motion.div
-              key={`${activeCategory}-${sort}`}
+              key={`${activeCategory}-${activeGender}-${sort}`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.2 }}

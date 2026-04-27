@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import { getOrCreateEventsSessionId, trackShopEvent } from '@/lib/events-client';
 
 // -------------------- Data models --------------------
@@ -554,17 +555,24 @@ export default function SearchPage() {
   const categoryFromUrl = sp.get('category') || '';
   const activeCategory = normalizeQuery(categoryFromUrl);
   const activeCategoryParam = categoryFromUrl || '';
+  const genderFromUrl = sp.get('gender') || '';
 
-  const buildSearchUrl = (params: { q?: string; category?: string; tag?: string }) => {
+  const buildSearchUrl = (params: { q?: string; category?: string; tag?: string; gender?: string }) => {
     const next = new URLSearchParams();
     if (params.q) next.set('q', params.q);
     if (params.category) next.set('category', params.category);
     if (params.tag) next.set('tag', params.tag);
+    if (params.gender) next.set('gender', params.gender);
     const qs = next.toString();
     return qs ? `/search?${qs}` : '/search';
   };
 
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const [activeGender, setActiveGender] = useState(genderFromUrl);
+
+  // keep gender in sync when user navigates back/forward
+  useEffect(() => { setActiveGender(genderFromUrl); }, [genderFromUrl]);
 
   // input state (what user is typing)
   const [q, setQ] = useState(activeQuery);
@@ -934,9 +942,10 @@ export default function SearchPage() {
       setLoading(true);
       setErrorMsg(null);
       try {
+        const genderSuffix = activeGender ? `&gender=${encodeURIComponent(activeGender)}` : '';
         const url = hasQuery
-          ? `/api/search?q=${encodeURIComponent(liveQuery)}`
-          : `/api/search?category=${encodeURIComponent(activeCategory)}`;
+          ? `/api/search?q=${encodeURIComponent(liveQuery)}${genderSuffix}`
+          : `/api/search?category=${encodeURIComponent(activeCategory)}${genderSuffix}`;
         const res = await fetch(url, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
@@ -962,7 +971,7 @@ export default function SearchPage() {
       window.clearTimeout(t);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liveQuery, activeCategory, hasQuery, hasCategory]);
+  }, [liveQuery, activeCategory, hasQuery, hasCategory, activeGender]);
 
   return (
     <div className="min-h-screen bg-white text-black">
@@ -1176,23 +1185,57 @@ export default function SearchPage() {
         {showResults ? (
           <section>
             <div className="mb-4 sm:mb-6 rounded-3xl border border-black/10 bg-black/[0.02] p-4 sm:p-5">
-              <div className="flex items-center justify-between gap-4">
-                <div>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
                   <div className="text-xs uppercase tracking-[0.18em] text-black/50">Результаты</div>
-                  <div className="mt-1 text-lg sm:text-xl font-extrabold tracking-tight">
+                  <div className="mt-1 text-lg sm:text-xl font-extrabold tracking-tight truncate">
                     {hasQuery ? `Поиск: «${liveQuery}»` : `Категория: «${prettySubcategory(activeCategory)}»`}
                   </div>
                   <div className="mt-1 text-sm text-black/55">{loading ? 'Загрузка…' : `Найдено: ${results.length}`}</div>
                 </div>
-                <button
-                  onClick={() => {
-                    setPanelOpen(true);
-                    inputRef.current?.focus();
-                  }}
-                  className="hidden md:inline-flex h-10 px-4 rounded-full border border-black/10 hover:bg-black/[0.03] transition text-sm font-semibold"
-                >
-                  Уточнить
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* Gender filter */}
+                  <div className="relative flex items-center bg-black/[0.05] rounded-full p-1">
+                    {(['', 'men', 'women'] as const).map((g) => {
+                      const label = g === '' ? 'Все' : g === 'men' ? 'Мужское' : 'Женское';
+                      const isActive = activeGender === g;
+                      return (
+                        <button
+                          key={g}
+                          onClick={() => {
+                            setActiveGender(g);
+                            router.replace(buildSearchUrl({
+                              q: liveQuery || undefined,
+                              category: activeCategoryParam || undefined,
+                              tag: activeTag || undefined,
+                              gender: g || undefined,
+                            }));
+                          }}
+                          className="relative px-3 py-1.5 text-xs font-medium rounded-full z-10 transition-colors duration-200"
+                          style={{ color: isActive ? '#fff' : 'rgba(0,0,0,0.55)' }}
+                        >
+                          {isActive && (
+                            <motion.span
+                              layoutId="search-gender-pill"
+                              className="absolute inset-0 bg-black rounded-full"
+                              transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+                            />
+                          )}
+                          <span className="relative z-10">{label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setPanelOpen(true);
+                      inputRef.current?.focus();
+                    }}
+                    className="hidden md:inline-flex h-10 px-4 rounded-full border border-black/10 hover:bg-black/[0.03] transition text-sm font-semibold"
+                  >
+                    Уточнить
+                  </button>
+                </div>
               </div>
             </div>
 

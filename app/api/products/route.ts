@@ -316,6 +316,20 @@ export async function GET(req: Request) {
       ];
     }
 
+    const genderFilter = (url.searchParams.get("gender") ?? "").trim().toLowerCase();
+    if (genderFilter) {
+      const existingOr = where.OR ?? [];
+      where.AND = [
+        ...(where.AND ?? []),
+        {
+          OR: [
+            { gender: { equals: genderFilter, mode: "insensitive" } },
+            { gender: { equals: "unisex", mode: "insensitive" } },
+          ],
+        },
+      ];
+    }
+
     const rows = await prisma.product.findMany({
       where,
       orderBy: { createdAt: "desc" },

@@ -255,6 +255,7 @@ export async function GET(req: Request) {
     const qMatch = normalizeMatchText(qRaw);
     const categoryRaw = searchParams.get('category') ?? '';
     const category = categoryRaw.trim();
+    const genderParam = (searchParams.get('gender') ?? '').trim().toLowerCase();
 
     // --- fuzzy text for brands / names (peezy -> yeezy, etc.) ---
     let fuzzyText: string | null = null;
@@ -576,6 +577,15 @@ export async function GET(req: Request) {
         ...subRuWords.map((w) => ({ name: { contains: w, mode: Prisma.QueryMode.insensitive } })),
       ];
       andFilters.push({ OR: subOrFilters });
+    }
+
+    if (genderParam) {
+      andFilters.push({
+        OR: [
+          { gender: { equals: genderParam, mode: Prisma.QueryMode.insensitive } },
+          { gender: { equals: 'unisex', mode: Prisma.QueryMode.insensitive } },
+        ],
+      });
     }
 
     const where: Prisma.ProductWhereInput = { deletedAt: null };
