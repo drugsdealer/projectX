@@ -26,7 +26,8 @@
   "@/store/*": ["./store/*"],
   "@/context/*": ["./context/*"],
   "@/user/*": ["./app/user/*"],
-  "@/types*": ["./types/*"]
+  "@/types*": ["./types/*"],
+  "@/hooks/*": ["./hooks/*"]
 },
     "plugins": [
       {

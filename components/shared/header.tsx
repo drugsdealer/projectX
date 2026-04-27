@@ -5,7 +5,7 @@ import { Container } from "./container";
 import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import Image from "next/image";
 import { Button } from "../ui/button";
-import { ShoppingCart, UserRound, CircleChevronRight, DoorOpen, DoorClosed, Search, Heart, X, Menu } from "lucide-react";
+import { ShoppingCart, UserRound, CircleChevronRight, DoorOpen, DoorClosed, Search, Heart, X, Menu, TrendingUp } from "lucide-react";
 import { useTitle } from "@/context/TitleContext";
 import { useCart } from "@/context/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,6 +13,8 @@ import Link from "next/link";
 import { useDiscount } from "@/context/DiscountContext";
 import { usePathname, useRouter } from "next/navigation";
 import { useUser } from "@/user/UserContext";
+import { useAutocomplete } from "@/hooks/useAutocomplete";
+import { SearchBar } from "./SearchBar";
 
 type ProductLite = {
   id: number | string;
@@ -227,6 +229,10 @@ useLayoutEffect(() => {
   // Search suggestions: persistent history + random products
   const [history, setHistory] = useState<string[]>([]);
   const [randomProducts, setRandomProducts] = useState<ProductLite[]>([]);
+
+  // Live mobile autocomplete via lightweight /api/autocomplete
+  const { products: acProducts, brands: acBrands, loading: acLoading, active: acActive } =
+    useAutocomplete(mSearchValue);
 
   const openMobileSearch = () => {
     setMSearchOpen(true);
@@ -579,71 +585,133 @@ useLayoutEffect(() => {
                   </div>
                 </motion.div>
 
-                {/* Suggestions panel: History → Stage suggestions → Random products */}
+                {/* Suggestions panel */}
                 <div
                   className={cn(
                     "mt-2 rounded-xl ring-1 overflow-hidden",
-                    isStageMode ? "bg-[rgba(26,26,26,0.92)] ring-white/10 text-white" : "bg-white ring-black/10 text-black"
+                    isStageMode
+                      ? "bg-[rgba(26,26,26,0.92)] ring-white/10 text-white"
+                      : "bg-white ring-black/10 text-black"
                   )}
                 >
-                  {/* History */}
-                  {history.length > 0 && (
-                    <div className="px-3 py-2 border-b border-black/5">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs opacity-60">История поиска</span>
-                        <button onClick={clearHistory} className="text-xs opacity-60 hover:opacity-100">Очистить</button>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {history.map((h) => (
-                          <button
-                            key={`h-${h}`}
-                            onClick={() => { addToHistory(h); router.push(`/search?q=${encodeURIComponent(h)}`); closeMobileSearch(); }}
-                            className={cn("px-2.5 py-1 rounded-md text-sm ring-1",
-                              isStageMode ? "ring-white/15 hover:bg-white/5" : "ring-black/10 hover:bg-black/5")}
-                          >
-                            {h}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Stage Store suggestions (5) */}
-                  <div className="px-3 py-2 border-b border-black/5">
-                    <div className="text-xs opacity-60 mb-1.5">Подсказки Stage Store</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {STAGE_SUGGESTIONS.map((s) => (
+                  {acActive ? (
+                    /* ── Typing: live results only ── */
+                    <div className="px-3 py-2">
+                      {acLoading && (
+                        <div className="text-xs opacity-50 py-1">Ищем…</div>
+                      )}
+                      {!acLoading && acBrands.length === 0 && acProducts.length === 0 && (
+                        <div className="text-xs opacity-50 py-2">Ничего не найдено</div>
+                      )}
+                      {acBrands.map((b) => (
                         <button
-                          key={`s-${s}`}
-                          onClick={() => { addToHistory(s); router.push(`/search?q=${encodeURIComponent(s)}`); closeMobileSearch(); }}
-                          className={cn("px-2.5 py-1 rounded-md text-sm ring-1",
-                            isStageMode ? "ring-white/15 hover:bg-white/5" : "ring-black/10 hover:bg-black/5")}
+                          key={b.slug}
+                          onClick={() => { router.push(`/brand/${b.slug}`); closeMobileSearch(); }}
+                          className={cn(
+                            "w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-left",
+                            isStageMode ? "hover:bg-white/5" : "hover:bg-black/5"
+                          )}
                         >
-                          {s}
+                          <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-[10px] font-bold",
+                            isStageMode ? "bg-white/10 text-white/40" : "bg-black/6 text-black/30")}>B</div>
+                          <div>
+                            <div className="text-sm font-semibold">{b.name}</div>
+                            <div className="text-xs opacity-40">Бренд</div>
+                          </div>
                         </button>
                       ))}
-                    </div>
-                  </div>
-
-                  {/* Random products */}
-                  <div className="px-3 py-2">
-                    <div className="text-xs opacity-60 mb-2">Предложенные товары</div>
-                    <div className="grid grid-cols-3 gap-3">
-                      {randomProducts.map((p) => (
-                        <button key={String(p.id)} onClick={() => { router.push(`/product/${p.id}`); closeMobileSearch(); }} className="text-left">
-                          <div className="aspect-square w-full overflow-hidden rounded-md bg-black/5">
-                            {p.imageUrl ? (
-                              <Image src={p.imageUrl} alt={p.name} width={200} height={200} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-xs opacity-60">no image</div>
+                      {acProducts.map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => { addToHistory(mSearchValue.trim()); router.push(`/product/${p.id}`); closeMobileSearch(); }}
+                          className={cn(
+                            "w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-left",
+                            isStageMode ? "hover:bg-white/5" : "hover:bg-black/5"
+                          )}
+                        >
+                          <div className="w-9 h-9 rounded-lg overflow-hidden bg-black/5 shrink-0">
+                            {p.imageUrl
+                              ? <Image src={p.imageUrl} alt={p.name} width={36} height={36} className="w-full h-full object-cover" />
+                              : <div className="w-full h-full" />
+                            }
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm line-clamp-1">{p.name}</div>
+                            {p.price != null && (
+                              <div className="text-xs opacity-50">{Number(p.price).toLocaleString("ru-RU")} ₽</div>
                             )}
                           </div>
-                          <div className="mt-1 text-xs line-clamp-1">{p.name}</div>
-                          {p.price != null && <div className="text-xs opacity-70">{Number(p.price).toLocaleString('ru-RU')} ₽</div>}
                         </button>
                       ))}
+                      {(acProducts.length > 0 || acBrands.length > 0) && (
+                        <button
+                          onClick={() => { addToHistory(mSearchValue.trim()); router.push(`/search?q=${encodeURIComponent(mSearchValue.trim())}`); closeMobileSearch(); }}
+                          className="mt-1 w-full text-left px-2 py-1.5 text-xs opacity-50 hover:opacity-100 transition flex items-center gap-1"
+                        >
+                          <Search size={11} />
+                          Все результаты для «{mSearchValue.trim()}»
+                        </button>
+                      )}
                     </div>
-                  </div>
+                  ) : (
+                    /* ── Empty: history + suggestions + random ── */
+                    <>
+                      {history.length > 0 && (
+                        <div className="px-3 py-2 border-b border-black/5">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs opacity-60">История поиска</span>
+                            <button onClick={clearHistory} className="text-xs opacity-60 hover:opacity-100">Очистить</button>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {history.map((h) => (
+                              <button
+                                key={`h-${h}`}
+                                onClick={() => { addToHistory(h); router.push(`/search?q=${encodeURIComponent(h)}`); closeMobileSearch(); }}
+                                className={cn("px-2.5 py-1 rounded-md text-sm ring-1",
+                                  isStageMode ? "ring-white/15 hover:bg-white/5" : "ring-black/10 hover:bg-black/5")}
+                              >
+                                {h}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="px-3 py-2 border-b border-black/5">
+                        <div className="text-xs opacity-60 mb-1.5">Подсказки Stage Store</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {STAGE_SUGGESTIONS.map((s) => (
+                            <button
+                              key={`s-${s}`}
+                              onClick={() => { addToHistory(s); router.push(`/search?q=${encodeURIComponent(s)}`); closeMobileSearch(); }}
+                              className={cn("px-2.5 py-1 rounded-md text-sm ring-1",
+                                isStageMode ? "ring-white/15 hover:bg-white/5" : "ring-black/10 hover:bg-black/5")}
+                            >
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="px-3 py-2">
+                        <div className="text-xs opacity-60 mb-2">Предложенные товары</div>
+                        <div className="grid grid-cols-3 gap-3">
+                          {randomProducts.map((p) => (
+                            <button key={String(p.id)} onClick={() => { router.push(`/product/${p.id}`); closeMobileSearch(); }} className="text-left">
+                              <div className="aspect-square w-full overflow-hidden rounded-md bg-black/5">
+                                {p.imageUrl
+                                  ? <Image src={p.imageUrl} alt={p.name} width={200} height={200} className="w-full h-full object-cover" />
+                                  : <div className="w-full h-full flex items-center justify-center text-xs opacity-60">no image</div>
+                                }
+                              </div>
+                              <div className="mt-1 text-xs line-clamp-1">{p.name}</div>
+                              {p.price != null && <div className="text-xs opacity-70">{Number(p.price).toLocaleString("ru-RU")} ₽</div>}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -651,18 +719,7 @@ useLayoutEffect(() => {
         </div>
         <Container className="hidden md:flex items-center justify-between py-4 relative">
           <div className="flex items-center gap-3">
-            <Link href="/search" aria-label="Меню и поиск">
-              <Button variant="outline" className="flex items-center gap-1.5">
-                <Image
-                  src="https://res.cloudinary.com/dhufbfxcy/image/upload/v1768669741/free-icon-search-1828057_l8up8k.png"
-                  alt="Меню и поиск"
-                  width={16}
-                  height={16}
-                  className="opacity-90"
-                />
-                <span className="hidden md:inline">Меню & поиск</span>
-              </Button>
-            </Link>
+            <SearchBar isTransparent={isHome && isAtTop} />
             <Link href="/favorites_item">
               <Button variant="outline" className="flex items-center gap-1.5">
                 <Heart size={16} />
