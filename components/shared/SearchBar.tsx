@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, Clock, TrendingUp } from "lucide-react";
 import { useAutocomplete } from "@/hooks/useAutocomplete";
@@ -279,6 +280,16 @@ export function SearchBar({ isTransparent = false }: Props) {
                     {s}
                   </button>
                 ))}
+
+                <div className="my-1.5 mx-2 border-t border-black/6" />
+                <Link
+                  href="/search"
+                  onClick={() => setOpen(false)}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-black/5 transition group"
+                >
+                  <span>Весь каталог</span>
+                  <span className="text-black/30 group-hover:text-black/60 transition text-xs">→</span>
+                </Link>
               </div>
             )}
           </motion.div>

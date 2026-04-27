@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { ShareButton } from "@/components/shared/ShareButton";
 // Fisher-Yates shuffle utility
 function shuffle<T>(array: T[]): T[] {
   const result = [...array];
@@ -2160,6 +2161,9 @@ const handleCancel = () => {
                   />
                 )}
               </button>
+            </div>
+            <div className="mt-3">
+              <ShareButton title={product.name} path={`/product/${product.id}`} />
             </div>
           </motion.div>
         </div>

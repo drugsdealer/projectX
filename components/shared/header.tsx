@@ -720,6 +720,12 @@ useLayoutEffect(() => {
         <Container className="hidden md:flex items-center justify-between py-4 relative">
           <div className="flex items-center gap-3">
             <SearchBar isTransparent={isHome && isAtTop} />
+            <Link href="/search">
+              <Button variant="outline" className="flex items-center gap-1.5">
+                <Menu size={16} />
+                <span className="hidden md:inline">Каталог</span>
+              </Button>
+            </Link>
             <Link href="/favorites_item">
               <Button variant="outline" className="flex items-center gap-1.5">
                 <Heart size={16} />
