@@ -467,6 +467,18 @@ model UserSession {
   @@index([lastSeen])
 }
 
+model NewsletterSubscriber {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  consentData  Boolean  @default(false)
+  consentMail  Boolean  @default(false)
+  source       String?  @db.VarChar(32)
+  subscribedAt DateTime @default(now())
+
+  @@index([email])
+  @@index([subscribedAt])
+}
+
 enum DiscountType {
   PERCENT
   AMOUNT

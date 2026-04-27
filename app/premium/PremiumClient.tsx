@@ -7,6 +7,7 @@ import { useTitle } from "@/context/TitleContext"; // Импортируем к�
 import { useMotionBudget } from "@/components/MotionBudgetProvider";
 import Link from "next/link";
 import { PremiumConcierge } from "@/components/PremiumConcierge";
+import { NewsletterForm } from "@/components/shared/NewsletterForm";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { ChevronDown, Search, Filter, X, Menu, Crown } from "lucide-react";
 
@@ -4194,38 +4195,22 @@ export default function PremiumPage() {
         </AnimatePresence>
 
         {/* Newsletter */}
-        <section className="mt-16 max-w-[700px] mx-auto text-center px-6">
-          <h3 className="text-2xl md:text-4xl font-extrabold mb-4">Будьте первыми в курсе новых дропов</h3>
-          <p className="text-gray-600 mb-6">Подпишитесь на рассылку и получайте уведомления о свежих релизах и акциях.</p>
-          <form className="flex flex-col items-center gap-3 justify-center max-w-[560px] mx-auto">
-            <div className="w-full flex items-center gap-3 justify-center">
-              <input
-                type="email"
-                placeholder="Ваш email"
-                className="flex-1 max-w-[320px] rounded-full border border-black/20 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-                required
-              />
-              <button
-                type="submit"
-                className="px-6 py-3 rounded-full bg-black text-white font-semibold shadow hover:shadow-lg transition relative overflow-hidden"
-              >
-                <span className="relative z-10">Подписаться</span>
-                <span className="absolute inset-0 bg-gradient-to-r from-black via-gray-800 to-black animate-pulse opacity-40" />
-              </button>
-            </div>
-            <label className="text-xs text-gray-600 flex items-start gap-2 leading-snug">
-              <input type="checkbox" required className="mt-[2px]" />
-              <span>
-                Я соглашаюсь с
-                {" "}
-                <Link href="/privacy" className="underline">политикой конфиденциальности</Link>
-                {" "}и
-                {" "}
-                <Link href="/personal-data" className="underline">обработкой персональных данных</Link>.
-              </span>
-            </label>
-          </form>
-        </section>
+        <motion.section
+          initial={{ opacity: 0, y: 32 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="mt-16 max-w-[640px] mx-auto px-4"
+        >
+          <div className="rounded-3xl border border-black/10 bg-[#f7f7f5] px-6 py-8 sm:px-10 sm:py-10">
+            <NewsletterForm
+              source="premium"
+              variant="light"
+              title="Дропы — первыми"
+              subtitle="Подпишитесь и получайте уведомления о Premium-новинках и закрытых акциях раньше всех."
+            />
+          </div>
+        </motion.section>
 
         {/* Quick View Modal */}
         <AnimatePresence>

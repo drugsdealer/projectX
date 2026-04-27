@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { NewsletterForm } from "./NewsletterForm";
 
 const FOOTER_LINKS = {
   catalog: [
@@ -67,6 +68,21 @@ export function SiteFooter() {
         </div>
 
         <div className="relative max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+          {/* Newsletter strip */}
+          <div className="mb-12 rounded-2xl border border-white/10 bg-white/5 px-6 py-8 sm:px-10 sm:py-10 grid sm:grid-cols-[1fr_auto] gap-8 items-center">
+            <NewsletterForm
+              source="footer"
+              variant="dark"
+              title="Новинки первыми"
+              subtitle="Подпишитесь и узнавайте о новых дропах, акциях и эксклюзивных предложениях раньше всех."
+            />
+            <div className="hidden sm:flex flex-col gap-3 text-white/30 text-xs">
+              <span className="whitespace-nowrap">✦ Только важное</span>
+              <span className="whitespace-nowrap">✦ Без спама</span>
+              <span className="whitespace-nowrap">✦ Отписка в один клик</span>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr] gap-8">
             <div>
               <div className="flex items-center gap-3">
