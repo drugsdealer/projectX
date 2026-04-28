@@ -700,10 +700,11 @@ export default function SearchPage() {
   };
 
   // -------------------- FACETS (active categories/subcategories from DB) --------------------
-  const fetchFacets = async () => {
+  const fetchFacets = useCallback(async (gender?: string) => {
     setFacetLoading(true);
     try {
-      const res = await fetch('/api/search?facets=1', {
+      const qs = gender ? `?facets=1&gender=${encodeURIComponent(gender)}` : '?facets=1';
+      const res = await fetch(`/api/search${qs}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -733,12 +734,12 @@ export default function SearchPage() {
     } finally {
       setFacetLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchFacets();
+    fetchFacets(activeGender || undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activeGender]);
 
   // -------------------- RANDOM PICKS (кирпичики) --------------------
   const fetchPicks = useCallback(async () => {

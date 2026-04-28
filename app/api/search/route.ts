@@ -396,9 +396,19 @@ export async function GET(req: Request) {
         return null;
       };
 
+      // Build gender filter for facets
+      const facetsWhere: any = { deletedAt: null };
+      if (genderParam) {
+        facetsWhere.OR = [
+          { gender: { equals: genderParam, mode: 'insensitive' } },
+          { gender: { equals: 'unisex', mode: 'insensitive' } },
+          { gender: null },
+        ];
+      }
+
       // Load all products with name + existing subcategory to infer missing ones
       const allProducts = await prisma.product.findMany({
-        where: { deletedAt: null },
+        where: facetsWhere,
         select: { id: true, name: true, description: true, subcategory: true },
       });
 
@@ -416,7 +426,7 @@ export async function GET(req: Request) {
         .slice(0, 200);
 
       const brandRows = await prisma.product.findMany({
-        where: { deletedAt: null, Brand: { deletedAt: null } },
+        where: { ...facetsWhere, Brand: { deletedAt: null } },
         select: {
           Brand: { select: { name: true } },
         },
@@ -437,7 +447,7 @@ export async function GET(req: Request) {
 
       const categoryGroups = await prisma.product.groupBy({
         by: ['categoryId'],
-        where: { deletedAt: null },
+        where: facetsWhere,
         _count: { _all: true },
       });
 
@@ -468,9 +478,13 @@ export async function GET(req: Request) {
         .sort((a, b) => b.count - a.count)
         .slice(0, 50);
 
+      const facetHeaders = genderParam
+        ? { 'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600' }
+        : PUBLIC_CACHE_HEADERS;
+
       return NextResponse.json(
         { subcategories, brands, categories },
-        { status: 200, headers: PUBLIC_CACHE_HEADERS }
+        { status: 200, headers: facetHeaders }
       );
     }
 
