@@ -155,14 +155,20 @@ export function NewsletterForm({
             transition={{ duration: 0.35 }}
             className="flex flex-col gap-4"
           >
-            <div>
-              <p className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${textPrimary}`}>
-                {title}
-              </p>
-              <p className={`mt-2 text-sm leading-relaxed ${textMuted}`}>{subtitle}</p>
-            </div>
+            {(title || subtitle) && (
+              <div>
+                {title && (
+                  <p className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${textPrimary}`}>
+                    {title}
+                  </p>
+                )}
+                {subtitle && (
+                  <p className={`mt-2 text-sm leading-relaxed ${textMuted}`}>{subtitle}</p>
+                )}
+              </div>
+            )}
 
-            <div className="flex gap-2 items-stretch">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="email"
                 value={email}
@@ -174,10 +180,10 @@ export function NewsletterForm({
               <button
                 type="submit"
                 disabled={status === "loading"}
-                className={`shrink-0 rounded-full px-5 py-3 text-sm font-semibold transition disabled:opacity-60 ${btnCls}`}
+                className={`w-full sm:w-auto shrink-0 rounded-full px-6 py-3 text-sm font-semibold transition disabled:opacity-60 ${btnCls}`}
               >
                 {status === "loading" ? (
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center justify-center gap-2">
                     <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
                       <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="40 20" />
                     </svg>

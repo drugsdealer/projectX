@@ -4196,19 +4196,78 @@ export default function PremiumPage() {
 
         {/* Newsletter */}
         <motion.section
-          initial={{ opacity: 0, y: 32 }}
+          initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="mt-16 max-w-[640px] mx-auto px-4"
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          className="mt-20 relative overflow-hidden rounded-3xl bg-[#0b0b0b] px-6 py-12 sm:px-12 sm:py-16 mx-4 sm:mx-0"
         >
-          <div className="rounded-3xl border border-black/10 bg-[#f7f7f5] px-6 py-8 sm:px-10 sm:py-10">
-            <NewsletterForm
-              source="premium"
-              variant="light"
-              title="Дропы — первыми"
-              subtitle="Подпишитесь и получайте уведомления о Premium-новинках и закрытых акциях раньше всех."
-            />
+          {/* Decorative blobs */}
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute -left-20 -top-20 h-72 w-72 rounded-full bg-violet-600/20 blur-3xl" />
+            <div className="absolute right-[-60px] bottom-[-60px] h-64 w-64 rounded-full bg-amber-500/15 blur-[80px]" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_60%_0%,rgba(255,255,255,0.04),transparent_70%)]" />
+          </div>
+
+          <div className="relative max-w-[560px] mx-auto">
+            {/* Floating badges */}
+            <motion.div
+              className="flex flex-wrap gap-2 mb-6"
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={{ visible: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } } }}
+            >
+              {["✦ Только дропы", "✦ Без спама", "✦ Закрытые акции", "✦ Отписка в клик"].map((badge) => (
+                <motion.span
+                  key={badge}
+                  variants={{
+                    hidden: { opacity: 0, y: 10, scale: 0.9 },
+                    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, ease: "easeOut" } },
+                  }}
+                  className="inline-flex items-center px-3 py-1 rounded-full border border-white/10 bg-white/6 text-[11px] text-white/50 font-medium"
+                >
+                  {badge}
+                </motion.span>
+              ))}
+            </motion.div>
+
+            {/* Headline */}
+            <motion.h2
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+              className="text-3xl sm:text-4xl font-black tracking-tight text-white leading-tight"
+            >
+              Дропы —<br />
+              <span className="text-white/40">первыми</span>
+            </motion.h2>
+
+            <motion.p
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3, duration: 0.5 }}
+              className="mt-3 text-sm text-white/50 leading-relaxed"
+            >
+              Подпишитесь и получайте уведомления о Premium-новинках и&nbsp;закрытых акциях раньше всех.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.4, duration: 0.5 }}
+              className="mt-8"
+            >
+              <NewsletterForm
+                source="premium"
+                variant="dark"
+                title=""
+                subtitle=""
+              />
+            </motion.div>
           </div>
         </motion.section>
 

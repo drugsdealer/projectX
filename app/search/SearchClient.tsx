@@ -978,23 +978,6 @@ export default function SearchPage() {
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-black/10">
         <div className="mx-auto max-w-[1400px] px-4 sm:px-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 py-4">
-            <div className="flex items-center justify-between gap-3 sm:gap-3">
-              <button
-                onClick={() => router.back()}
-                className="h-10 px-3 sm:px-4 rounded-full border border-black/10 hover:bg-black/[0.03] transition text-xs sm:text-sm font-medium"
-                aria-label="Назад"
-              >
-                <span className="sm:hidden">←</span>
-                <span className="hidden sm:inline">← Назад</span>
-              </button>
-              <Link
-                href="/"
-                className="sm:hidden h-10 px-4 rounded-full bg-black text-white inline-flex items-center justify-center text-xs font-semibold hover:opacity-90 transition"
-              >
-                На главную
-              </Link>
-            </div>
-
             <div className="flex-1 w-full" id="menu-search-root">
               <div className="relative">
                 <input
@@ -1108,13 +1091,13 @@ export default function SearchPage() {
                   Искать
                 </button>
               )}
-              {/* Quick actions (primary) — hidden when search panel is open to avoid overlap */}
+              {/* Quick actions — hidden when search panel is open */}
               <div className={`mt-3${panelOpen ? ' hidden sm:block' : ''}`}>
-                <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-1 sm:pb-2 -mx-1 px-1 [-webkit-overflow-scrolling:touch]">
+                <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-1 sm:pb-2 -mx-1 px-1 [-webkit-overflow-scrolling:touch]">
                   <Link
                     href="/sale"
                     className={
-                      "shrink-0 h-10 sm:h-11 px-4 sm:px-6 inline-flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold border transition " +
+                      "shrink-0 h-9 px-4 sm:px-5 inline-flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold border transition " +
                       (activeTag === 'sale'
                         ? 'bg-black text-white border-black'
                         : 'border-black/15 bg-black/5 text-black hover:bg-black hover:text-white hover:border-black')
@@ -1122,11 +1105,10 @@ export default function SearchPage() {
                   >
                     Sale
                   </Link>
-
                   <Link
                     href="/search?tag=new"
                     className={
-                      "shrink-0 h-10 sm:h-11 px-4 sm:px-6 inline-flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold border transition " +
+                      "shrink-0 h-9 px-4 sm:px-5 inline-flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold border transition " +
                       (activeTag === 'new'
                         ? 'bg-black text-white border-black'
                         : 'border-black/15 bg-black/5 text-black hover:bg-black hover:text-white hover:border-black')
@@ -1134,11 +1116,10 @@ export default function SearchPage() {
                   >
                     Новинки
                   </Link>
-
                   <Link
                     href="/search?tag=top"
                     className={
-                      "shrink-0 h-10 sm:h-11 px-4 sm:px-6 inline-flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold border transition " +
+                      "shrink-0 h-9 px-4 sm:px-5 inline-flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold border transition " +
                       (activeTag === 'top'
                         ? 'bg-black text-white border-black'
                         : 'border-black/15 bg-black/5 text-black hover:bg-black hover:text-white hover:border-black')
@@ -1146,11 +1127,10 @@ export default function SearchPage() {
                   >
                     Топ бренды
                   </Link>
-
                   <Link
                     href="/search?tag=gifts"
                     className={
-                      "shrink-0 h-10 sm:h-11 px-4 sm:px-6 inline-flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold border transition " +
+                      "shrink-0 h-9 px-4 sm:px-5 inline-flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold border transition " +
                       (activeTag === 'gifts'
                         ? 'bg-black text-white border-black'
                         : 'border-black/15 bg-black/5 text-black hover:bg-black hover:text-white hover:border-black')
@@ -1158,44 +1138,20 @@ export default function SearchPage() {
                   >
                     Подарки
                   </Link>
-
-                  {activeTag ? (
+                  {activeTag && (
                     <Link
                       href="/search"
-                      className="shrink-0 h-10 sm:h-11 px-4 sm:px-6 inline-flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold border border-black/15 bg-white text-black hover:bg-black hover:text-white hover:border-black transition"
+                      className="shrink-0 h-9 px-4 sm:px-5 inline-flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold border border-black/15 bg-white text-black hover:bg-black hover:text-white hover:border-black transition"
                     >
                       Сбросить
                     </Link>
-                  ) : null}
-                </div>
-              </div>
-            </div>
+                  )}
 
-            <Link
-              href="/"
-              className="hidden sm:inline-flex h-10 px-4 rounded-full bg-black text-white items-center justify-center text-sm font-semibold hover:opacity-90 transition"
-            >
-              На главную
-            </Link>
-          </div>
-        </div>
-      </header>
+                  {/* Separator */}
+                  <div className="shrink-0 w-px h-5 bg-black/12 mx-1" />
 
-      <main className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 sm:py-8">
-        {showResults ? (
-          <section>
-            <div className="mb-4 sm:mb-6 rounded-3xl border border-black/10 bg-black/[0.02] p-4 sm:p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-xs uppercase tracking-[0.18em] text-black/50">Результаты</div>
-                  <div className="mt-1 text-lg sm:text-xl font-extrabold tracking-tight truncate">
-                    {hasQuery ? `Поиск: «${liveQuery}»` : `Категория: «${prettySubcategory(activeCategory)}»`}
-                  </div>
-                  <div className="mt-1 text-sm text-black/55">{loading ? 'Загрузка…' : `Найдено: ${results.length}`}</div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {/* Gender filter */}
-                  <div className="relative flex items-center bg-black/[0.05] rounded-full p-1">
+                  {/* Gender pills */}
+                  <div className="shrink-0 relative flex items-center bg-black/[0.05] rounded-full p-1">
                     {(['', 'men', 'women'] as const).map((g) => {
                       const label = g === '' ? 'Все' : g === 'men' ? 'Мужское' : 'Женское';
                       const isActive = activeGender === g;
@@ -1226,16 +1182,41 @@ export default function SearchPage() {
                       );
                     })}
                   </div>
-                  <button
-                    onClick={() => {
-                      setPanelOpen(true);
-                      inputRef.current?.focus();
-                    }}
-                    className="hidden md:inline-flex h-10 px-4 rounded-full border border-black/10 hover:bg-black/[0.03] transition text-sm font-semibold"
-                  >
-                    Уточнить
-                  </button>
                 </div>
+              </div>
+            </div>
+
+            <Link
+              href="/"
+              className="hidden sm:inline-flex h-10 px-4 rounded-full bg-black text-white items-center justify-center text-sm font-semibold hover:opacity-90 transition shrink-0"
+            >
+              На главную
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 sm:py-8">
+        {showResults ? (
+          <section>
+            <div className="mb-4 sm:mb-6 rounded-3xl border border-black/10 bg-black/[0.02] p-4 sm:p-5">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="text-xs uppercase tracking-[0.18em] text-black/50">Результаты</div>
+                  <div className="mt-1 text-lg sm:text-xl font-extrabold tracking-tight truncate">
+                    {hasQuery ? `Поиск: «${liveQuery}»` : `Категория: «${prettySubcategory(activeCategory)}»`}
+                  </div>
+                  <div className="mt-1 text-sm text-black/55">{loading ? 'Загрузка…' : `Найдено: ${results.length}`}</div>
+                </div>
+                <button
+                  onClick={() => {
+                    setPanelOpen(true);
+                    inputRef.current?.focus();
+                  }}
+                  className="hidden md:inline-flex h-10 px-4 rounded-full border border-black/10 hover:bg-black/[0.03] transition text-sm font-semibold shrink-0"
+                >
+                  Уточнить
+                </button>
               </div>
             </div>
 

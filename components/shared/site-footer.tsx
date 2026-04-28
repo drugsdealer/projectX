@@ -7,6 +7,7 @@ import { NewsletterForm } from "./NewsletterForm";
 const FOOTER_LINKS = {
   catalog: [
     { label: "Поиск и категории", href: "/search" },
+    { label: "Все бренды", href: "/brands" },
     { label: "Premium", href: "/premium" },
     { label: "Новинки", href: "/search?tag=new" },
     { label: "Sale", href: "/sale" },
