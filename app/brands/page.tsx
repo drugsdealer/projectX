@@ -21,25 +21,31 @@ export const metadata: Metadata = {
 };
 
 export default async function BrandsPage() {
-  const rows = await prisma.brand.findMany({
-    where: { deletedAt: null },
-    select: {
-      name: true,
-      slug: true,
-      logoUrl: true,
-      _count: { select: { Product: { where: { deletedAt: null } } } },
-    },
-    orderBy: { name: "asc" },
-  });
+  let brands: BrandItem[] = [];
 
-  const brands: BrandItem[] = rows
-    .map((b) => ({
-      name: b.name,
-      slug: b.slug,
-      logoUrl: b.logoUrl ?? null,
-      count: b._count.Product,
-    }))
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "ru"));
+  try {
+    const rows = await prisma.brand.findMany({
+      where: { deletedAt: null },
+      select: {
+        name: true,
+        slug: true,
+        logoUrl: true,
+        _count: { select: { Product: { where: { deletedAt: null } } } },
+      },
+      orderBy: { name: "asc" },
+    });
+
+    brands = rows
+      .map((b) => ({
+        name: b.name,
+        slug: b.slug,
+        logoUrl: b.logoUrl ?? null,
+        count: b._count.Product,
+      }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "ru"));
+  } catch {
+    // DB unavailable at build time — page will render on first request via ISR
+  }
 
   const jsonLd = {
     "@context": "https://schema.org",
