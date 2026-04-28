@@ -885,7 +885,8 @@ export default function SearchPage() {
   const liveQuery = normalizeQuery(q);
   const hasQuery = liveQuery.length > 0;
   const hasCategory = activeCategory.length > 0;
-  const showResults = hasQuery || hasCategory;
+  const hasGender = activeGender !== '';
+  const showResults = hasQuery || hasCategory || hasGender;
 
   const brandSuggestion = useMemo(() => {
     if (brandHit?.name && brandHit?.slug) {
@@ -932,7 +933,7 @@ export default function SearchPage() {
   }, [results, liveQuery, brandHit]);
 
   useEffect(() => {
-    if (!hasQuery && !hasCategory) {
+    if (!hasQuery && !hasCategory && !hasGender) {
       setResults([]);
       setBrandHit(null);
       setErrorMsg(null);
@@ -946,7 +947,7 @@ export default function SearchPage() {
         buildSearchUrl({
           q: liveQuery,
           category: activeCategoryParam || undefined,
-          tag: activeTag || undefined,
+          gender: activeGender || undefined,
         })
       );
     }
@@ -959,12 +960,10 @@ export default function SearchPage() {
         const genderSuffix = activeGender ? `&gender=${encodeURIComponent(activeGender)}` : '';
         const url = hasQuery
           ? `/api/search?q=${encodeURIComponent(liveQuery)}${genderSuffix}`
-          : `/api/search?category=${encodeURIComponent(activeCategory)}${genderSuffix}`;
-        const res = await fetch(url, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
-        });
+          : hasCategory
+            ? `/api/search?category=${encodeURIComponent(activeCategory)}${genderSuffix}`
+            : `/api/search?gender=${encodeURIComponent(activeGender)}`;
+        const res = await fetch(url, { signal: controller.signal });
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as { items?: ResultItem[]; brand?: BrandHit | null };
@@ -985,7 +984,7 @@ export default function SearchPage() {
       window.clearTimeout(t);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liveQuery, activeCategory, hasQuery, hasCategory, activeGender]);
+  }, [liveQuery, activeCategory, hasQuery, hasCategory, hasGender, activeGender]);
 
   return (
     <div className="min-h-screen bg-white text-black">
@@ -1108,7 +1107,7 @@ export default function SearchPage() {
               {/* Gender selector */}
               {!panelOpen && (
                 <div className="mt-3">
-                  <div className="relative flex items-center bg-black/[0.05] rounded-2xl p-1">
+                  <div className="relative inline-flex items-center bg-black/[0.05] rounded-xl p-1 gap-0.5">
                     {(['', 'men', 'women'] as const).map((g) => {
                       const label = g === '' ? 'Все' : g === 'men' ? 'Мужское' : 'Женское';
                       const isActive = activeGender === g;
@@ -1123,13 +1122,13 @@ export default function SearchPage() {
                               gender: g || undefined,
                             }));
                           }}
-                          className="relative flex-1 py-2.5 text-sm font-semibold rounded-xl z-10 transition-colors duration-150"
-                          style={{ color: isActive ? '#fff' : 'rgba(0,0,0,0.45)' }}
+                          className="relative px-5 py-2 text-sm font-medium rounded-lg z-10 transition-colors duration-150 whitespace-nowrap"
+                          style={{ color: isActive ? '#fff' : 'rgba(0,0,0,0.5)' }}
                         >
                           {isActive && (
                             <motion.span
                               layoutId="search-gender-bg"
-                              className="absolute inset-0 bg-black rounded-xl"
+                              className="absolute inset-0 bg-black rounded-lg"
                               transition={{ type: 'spring', stiffness: 500, damping: 40 }}
                             />
                           )}
@@ -1160,7 +1159,11 @@ export default function SearchPage() {
                 <div className="min-w-0">
                   <div className="text-xs uppercase tracking-[0.18em] text-black/50">Результаты</div>
                   <div className="mt-1 text-lg sm:text-xl font-extrabold tracking-tight truncate">
-                    {hasQuery ? `Поиск: «${liveQuery}»` : `Категория: «${prettySubcategory(activeCategory)}»`}
+                    {hasQuery
+                      ? `Поиск: «${liveQuery}»`
+                      : hasCategory
+                        ? `Категория: «${prettySubcategory(activeCategory)}»`
+                        : activeGender === 'men' ? 'Мужское' : 'Женское'}
                   </div>
                   <div className="mt-1 text-sm text-black/55">{loading ? 'Загрузка…' : `Найдено: ${results.length}`}</div>
                 </div>

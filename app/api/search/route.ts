@@ -474,7 +474,7 @@ export async function GET(req: Request) {
       );
     }
 
-    if (!q && !category) {
+    if (!q && !category && !genderParam) {
       return NextResponse.json({ items: [] }, { status: 200 });
     }
 
