@@ -475,7 +475,7 @@ const SidebarPromos = memo(function SidebarPromos({
 
 // -------------------- Stable category components (outside SearchPage to avoid remount on re-render) --------------------
 
-const CategoryCard = memo(function CategoryCard({ c, meta }: { c: Category; meta?: string }) {
+const CategoryCard = memo(function CategoryCard({ c, meta, genderSuffix = '' }: { c: Category; meta?: string; genderSuffix?: string }) {
   const chips = c.subtitle.includes('·')
     ? c.subtitle
         .split('·')
@@ -484,9 +484,13 @@ const CategoryCard = memo(function CategoryCard({ c, meta }: { c: Category; meta
         .slice(0, 3)
     : [];
 
+  const href = genderSuffix
+    ? `${c.href}${c.href.includes('?') ? '&' : '?'}gender=${encodeURIComponent(genderSuffix)}`
+    : c.href;
+
   return (
     <Link
-      href={c.href}
+      href={href}
       className="group relative overflow-hidden rounded-2xl sm:rounded-3xl border border-black/10 bg-white p-4 sm:p-5 transition-colors duration-200 md:hover:border-black/20 md:hover:bg-black/[0.02]"
     >
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white to-black/[0.02]" />
@@ -531,10 +535,13 @@ const CategoryCard = memo(function CategoryCard({ c, meta }: { c: Category; meta
   );
 });
 
-const SubcategoryTile = memo(function SubcategoryTile({ name, count }: { name: string; count?: number }) {
+const SubcategoryTile = memo(function SubcategoryTile({ name, count, genderSuffix = '' }: { name: string; count?: number; genderSuffix?: string }) {
+  const href = genderSuffix
+    ? `/category/${encodeURIComponent(name)}?gender=${encodeURIComponent(genderSuffix)}`
+    : `/category/${encodeURIComponent(name)}`;
   return (
     <Link
-      href={`/category/${encodeURIComponent(name)}`}
+      href={href}
       className="rounded-2xl border border-black/10 bg-white px-3 py-3 transition hover:border-black/20"
       title={name}
     >
@@ -886,7 +893,7 @@ export default function SearchPage() {
   const hasQuery = liveQuery.length > 0;
   const hasCategory = activeCategory.length > 0;
   const hasGender = activeGender !== '';
-  const showResults = hasQuery || hasCategory || hasGender;
+  const showResults = hasQuery || hasCategory;
 
   const brandSuggestion = useMemo(() => {
     if (brandHit?.name && brandHit?.slug) {
@@ -933,7 +940,7 @@ export default function SearchPage() {
   }, [results, liveQuery, brandHit]);
 
   useEffect(() => {
-    if (!hasQuery && !hasCategory && !hasGender) {
+    if (!hasQuery && !hasCategory) {
       setResults([]);
       setBrandHit(null);
       setErrorMsg(null);
@@ -960,9 +967,7 @@ export default function SearchPage() {
         const genderSuffix = activeGender ? `&gender=${encodeURIComponent(activeGender)}` : '';
         const url = hasQuery
           ? `/api/search?q=${encodeURIComponent(liveQuery)}${genderSuffix}`
-          : hasCategory
-            ? `/api/search?category=${encodeURIComponent(activeCategory)}${genderSuffix}`
-            : `/api/search?gender=${encodeURIComponent(activeGender)}`;
+          : `/api/search?category=${encodeURIComponent(activeCategory)}${genderSuffix}`;
         const res = await fetch(url, { signal: controller.signal });
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -984,7 +989,7 @@ export default function SearchPage() {
       window.clearTimeout(t);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liveQuery, activeCategory, hasQuery, hasCategory, hasGender, activeGender]);
+  }, [liveQuery, activeCategory, hasQuery, hasCategory, activeGender]);
 
   return (
     <div className="min-h-screen bg-white text-black">
@@ -1107,7 +1112,8 @@ export default function SearchPage() {
               {/* Gender selector */}
               {!panelOpen && (
                 <div className="mt-3">
-                  <div className="relative inline-flex items-center bg-black/[0.05] rounded-xl p-1 gap-0.5">
+                  {/* Mobile: full-width pill switcher */}
+                  <div className="sm:hidden relative flex items-center bg-black/[0.05] rounded-xl p-1 gap-0.5">
                     {(['', 'men', 'women'] as const).map((g) => {
                       const label = g === '' ? 'Все' : g === 'men' ? 'Мужское' : 'Женское';
                       const isActive = activeGender === g;
@@ -1122,17 +1128,49 @@ export default function SearchPage() {
                               gender: g || undefined,
                             }));
                           }}
-                          className="relative px-5 py-2 text-sm font-medium rounded-lg z-10 transition-colors duration-150 whitespace-nowrap"
+                          className="relative flex-1 py-2 text-sm font-medium rounded-lg z-10 transition-colors duration-150 whitespace-nowrap"
                           style={{ color: isActive ? '#fff' : 'rgba(0,0,0,0.5)' }}
                         >
                           {isActive && (
                             <motion.span
-                              layoutId="search-gender-bg"
+                              layoutId="search-gender-bg-mobile"
                               className="absolute inset-0 bg-black rounded-lg"
                               transition={{ type: 'spring', stiffness: 500, damping: 40 }}
                             />
                           )}
                           <span className="relative z-10">{label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Desktop: minimal tab underline */}
+                  <div className="hidden sm:flex items-center gap-0 border-b border-black/[0.08]">
+                    {(['', 'men', 'women'] as const).map((g) => {
+                      const label = g === '' ? 'Все' : g === 'men' ? 'Мужское' : 'Женское';
+                      const isActive = activeGender === g;
+                      return (
+                        <button
+                          key={g}
+                          onClick={() => {
+                            setActiveGender(g);
+                            router.replace(buildSearchUrl({
+                              q: liveQuery || undefined,
+                              category: activeCategoryParam || undefined,
+                              gender: g || undefined,
+                            }));
+                          }}
+                          className="relative pb-2.5 pt-1 px-4 text-sm font-medium transition-colors duration-150 whitespace-nowrap"
+                          style={{ color: isActive ? '#000' : 'rgba(0,0,0,0.38)' }}
+                        >
+                          {label}
+                          {isActive && (
+                            <motion.span
+                              layoutId="search-gender-underline"
+                              className="absolute bottom-0 left-0 right-0 h-[2px] bg-black rounded-full"
+                              transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+                            />
+                          )}
                         </button>
                       );
                     })}
@@ -1256,7 +1294,7 @@ export default function SearchPage() {
                 <div className="mt-2 sm:mt-3">
                   <div className="grid grid-cols-1 gap-3 sm:hidden">
                     {CATEGORIES.map((c) => (
-                      <CategoryCard key={c.href} c={c} meta={mainCategoryMeta.get(normalizeQuery(c.title).toLowerCase())} />
+                      <CategoryCard key={c.href} c={c} meta={mainCategoryMeta.get(normalizeQuery(c.title).toLowerCase())} genderSuffix={activeGender} />
                     ))}
                   </div>
 
@@ -1276,7 +1314,7 @@ export default function SearchPage() {
                             ? Array.from({ length: 6 }).map((_, i) => (
                                 <div key={i} className="rounded-2xl border border-black/10 bg-black/[0.03] h-[74px] animate-pulse" />
                               ))
-                            : facetSubsDeduped.map((s) => <SubcategoryTile key={s.name} name={s.name} count={s.count} />)}
+                            : facetSubsDeduped.map((s) => <SubcategoryTile key={s.name} name={s.name} count={s.count} genderSuffix={activeGender} />)}
                         </div>
                       ) : null}
                     </div>
@@ -1289,7 +1327,7 @@ export default function SearchPage() {
                       ))
                     ) : (
                       categoryCards.map((c) => (
-                        <CategoryCard key={c.href} c={c} meta={categoryMetaByTitle.get(c.key ?? c.title)} />
+                        <CategoryCard key={c.href} c={c} meta={categoryMetaByTitle.get(c.key ?? c.title)} genderSuffix={activeGender} />
                       ))
                     )}
                   </div>
@@ -1311,7 +1349,7 @@ export default function SearchPage() {
               <div className="mt-4 sm:mt-6">
                 <div className="grid grid-cols-1 gap-3 sm:hidden">
                   {CATEGORIES.map((c) => (
-                    <CategoryCard key={c.href} c={c} meta={mainCategoryMeta.get(normalizeQuery(c.title).toLowerCase())} />
+                    <CategoryCard key={c.href} c={c} meta={mainCategoryMeta.get(normalizeQuery(c.title).toLowerCase())} genderSuffix={activeGender} />
                   ))}
                 </div>
 
@@ -1331,7 +1369,7 @@ export default function SearchPage() {
                           ? Array.from({ length: 6 }).map((_, i) => (
                               <div key={i} className="rounded-2xl border border-black/10 bg-black/[0.03] h-[74px] animate-pulse" />
                             ))
-                          : facetSubsDeduped.map((s) => <SubcategoryTile key={s.name} name={s.name} count={s.count} />)}
+                          : facetSubsDeduped.map((s) => <SubcategoryTile key={s.name} name={s.name} count={s.count} genderSuffix={activeGender} />)}
                       </div>
                     ) : null}
                   </div>
@@ -1344,7 +1382,7 @@ export default function SearchPage() {
                     ))
                   ) : (
                     categoryCards.map((c) => (
-                      <CategoryCard key={c.href} c={c} meta={categoryMetaByTitle.get(c.key ?? c.title)} />
+                      <CategoryCard key={c.href} c={c} meta={categoryMetaByTitle.get(c.key ?? c.title)} genderSuffix={activeGender} />
                     ))
                   )}
                 </div>
