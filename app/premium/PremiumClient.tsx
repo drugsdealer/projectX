@@ -3,7 +3,8 @@
 
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { motion, AnimatePresence, useReducedMotion, Variants } from "framer-motion";
-import { useTitle } from "@/context/TitleContext"; // Импортируем контекст
+import { useTitle } from "@/context/TitleContext";
+import { useUser } from "@/user/UserContext";
 import { useMotionBudget } from "@/components/MotionBudgetProvider";
 import Link from "next/link";
 import { PremiumConcierge } from "@/components/PremiumConcierge";
@@ -1939,6 +1940,7 @@ const GridCard = React.memo(({
 
 export default function PremiumPage() {
   const { motionLevel, reduceMotion: adaptiveReduceMotion, isMotionPaused } = useMotionBudget();
+  const { user } = useUser();
   const [whyOpen, setWhyOpen] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -2256,16 +2258,23 @@ export default function PremiumPage() {
     if (["unisex", "унисекс", "уни", "u"].includes(raw)) return "unisex";
     return "unisex";
   }, []);
-  // Инициализация пола из URL (?gender=men|women|unisex) или из sessionStorage
+  // map user profile gender → product gender
+  const profileGender: Gender = useMemo(() => {
+    if (user?.gender === 'male') return 'men';
+    if (user?.gender === 'female') return 'women';
+    return null;
+  }, [user?.gender]);
+
+  // Инициализация пола из URL → sessionStorage → профиль пользователя
   useEffect(() => {
     const fromUrl = searchParams.get('gender');
     const fromStorage = typeof window !== 'undefined' ? sessionStorage.getItem('premium_gender') : null;
+    const fromProfile: Gender = profileGender;
     const initial = (fromUrl === 'men' || fromUrl === 'women' || fromUrl === 'unisex')
       ? (fromUrl as Gender)
-      : (fromStorage === 'men' || fromStorage === 'women' || fromStorage === 'unisex' ? (fromStorage as Gender) : null);
+      : (fromStorage === 'men' || fromStorage === 'women' || fromStorage === 'unisex' ? (fromStorage as Gender) : fromProfile);
     if (initial !== null) {
       setGender(initial);
-      // Если URL без gender — допишем его без перезагрузки
       if (!fromUrl) {
         const url = new URL(window.location.href);
         url.searchParams.set('gender', initial);
@@ -2273,7 +2282,7 @@ export default function PremiumPage() {
         window.history.replaceState({}, '', url.toString());
       }
     }
-  }, []);
+  }, [profileGender]);
 
   // Сохраняем выбор и обновляем URL при смене пола
   useEffect(() => {
@@ -4200,7 +4209,7 @@ export default function PremiumPage() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-60px" }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          className="mt-20 relative overflow-hidden rounded-3xl bg-[#0b0b0b] px-6 py-12 sm:px-12 sm:py-16 mx-4 sm:mx-0"
+          className="mt-20 relative overflow-hidden bg-[#0b0b0b] px-6 py-12 sm:px-12 sm:py-16"
         >
           {/* Decorative blobs */}
           <div className="pointer-events-none absolute inset-0">

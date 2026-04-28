@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useUser } from '@/user/UserContext';
 import { getOrCreateEventsSessionId, trackShopEvent } from '@/lib/events-client';
 
 // -------------------- Data models --------------------
@@ -569,10 +570,23 @@ export default function SearchPage() {
 
   const inputRef = useRef<HTMLInputElement | null>(null);
 
+  const { user } = useUser();
+
+  const profileGender = useMemo(() => {
+    if (user?.gender === 'male') return 'men';
+    if (user?.gender === 'female') return 'women';
+    return '';
+  }, [user?.gender]);
+
   const [activeGender, setActiveGender] = useState(genderFromUrl);
 
-  // keep gender in sync when user navigates back/forward
+  // keep gender in sync when URL changes (back/forward navigation)
   useEffect(() => { setActiveGender(genderFromUrl); }, [genderFromUrl]);
+
+  // apply profile gender as default when no URL param
+  useEffect(() => {
+    if (!genderFromUrl && profileGender) setActiveGender(profileGender);
+  }, [profileGender]);
 
   // input state (what user is typing)
   const [q, setQ] = useState(activeQuery);
@@ -1091,67 +1105,10 @@ export default function SearchPage() {
                   Искать
                 </button>
               )}
-              {/* Quick actions — hidden when search panel is open */}
-              <div className={`mt-3${panelOpen ? ' hidden sm:block' : ''}`}>
-                <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-1 sm:pb-2 -mx-1 px-1 [-webkit-overflow-scrolling:touch]">
-                  <Link
-                    href="/sale"
-                    className={
-                      "shrink-0 h-9 px-4 sm:px-5 inline-flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold border transition " +
-                      (activeTag === 'sale'
-                        ? 'bg-black text-white border-black'
-                        : 'border-black/15 bg-black/5 text-black hover:bg-black hover:text-white hover:border-black')
-                    }
-                  >
-                    Sale
-                  </Link>
-                  <Link
-                    href="/search?tag=new"
-                    className={
-                      "shrink-0 h-9 px-4 sm:px-5 inline-flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold border transition " +
-                      (activeTag === 'new'
-                        ? 'bg-black text-white border-black'
-                        : 'border-black/15 bg-black/5 text-black hover:bg-black hover:text-white hover:border-black')
-                    }
-                  >
-                    Новинки
-                  </Link>
-                  <Link
-                    href="/search?tag=top"
-                    className={
-                      "shrink-0 h-9 px-4 sm:px-5 inline-flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold border transition " +
-                      (activeTag === 'top'
-                        ? 'bg-black text-white border-black'
-                        : 'border-black/15 bg-black/5 text-black hover:bg-black hover:text-white hover:border-black')
-                    }
-                  >
-                    Топ бренды
-                  </Link>
-                  <Link
-                    href="/search?tag=gifts"
-                    className={
-                      "shrink-0 h-9 px-4 sm:px-5 inline-flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold border transition " +
-                      (activeTag === 'gifts'
-                        ? 'bg-black text-white border-black'
-                        : 'border-black/15 bg-black/5 text-black hover:bg-black hover:text-white hover:border-black')
-                    }
-                  >
-                    Подарки
-                  </Link>
-                  {activeTag && (
-                    <Link
-                      href="/search"
-                      className="shrink-0 h-9 px-4 sm:px-5 inline-flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold border border-black/15 bg-white text-black hover:bg-black hover:text-white hover:border-black transition"
-                    >
-                      Сбросить
-                    </Link>
-                  )}
-
-                  {/* Separator */}
-                  <div className="shrink-0 w-px h-5 bg-black/12 mx-1" />
-
-                  {/* Gender pills */}
-                  <div className="shrink-0 relative flex items-center bg-black/[0.05] rounded-full p-1">
+              {/* Gender selector */}
+              {!panelOpen && (
+                <div className="mt-3">
+                  <div className="relative flex items-center bg-black/[0.05] rounded-2xl p-1">
                     {(['', 'men', 'women'] as const).map((g) => {
                       const label = g === '' ? 'Все' : g === 'men' ? 'Мужское' : 'Женское';
                       const isActive = activeGender === g;
@@ -1163,17 +1120,16 @@ export default function SearchPage() {
                             router.replace(buildSearchUrl({
                               q: liveQuery || undefined,
                               category: activeCategoryParam || undefined,
-                              tag: activeTag || undefined,
                               gender: g || undefined,
                             }));
                           }}
-                          className="relative px-3 py-1.5 text-xs font-medium rounded-full z-10 transition-colors duration-200"
-                          style={{ color: isActive ? '#fff' : 'rgba(0,0,0,0.55)' }}
+                          className="relative flex-1 py-2.5 text-sm font-semibold rounded-xl z-10 transition-colors duration-150"
+                          style={{ color: isActive ? '#fff' : 'rgba(0,0,0,0.45)' }}
                         >
                           {isActive && (
                             <motion.span
-                              layoutId="search-gender-pill"
-                              className="absolute inset-0 bg-black rounded-full"
+                              layoutId="search-gender-bg"
+                              className="absolute inset-0 bg-black rounded-xl"
                               transition={{ type: 'spring', stiffness: 500, damping: 40 }}
                             />
                           )}
@@ -1183,7 +1139,7 @@ export default function SearchPage() {
                     })}
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <Link

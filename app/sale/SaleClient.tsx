@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
+import { useUser } from "@/user/UserContext";
 
 type SaleProduct = {
   id: string | number;
@@ -112,11 +113,19 @@ function SaleCard({ product }: { product: SaleProduct }) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function SaleClient() {
   const router = useRouter();
+  const { user } = useUser();
   const [products, setProducts] = useState<SaleProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activeGender, setActiveGender] = useState<GenderKey>('');
   const [sort, setSort] = useState<SortKey>("discount");
+
+  // apply profile gender as default
+  useEffect(() => {
+    if (activeGender) return; // user already chose manually
+    if (user?.gender === 'male') setActiveGender('men');
+    else if (user?.gender === 'female') setActiveGender('women');
+  }, [user?.gender]);
 
   useEffect(() => {
     let cancelled = false;
