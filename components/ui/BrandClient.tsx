@@ -133,7 +133,7 @@ const CARD_SWIPE_VARIANTS = {
 };
 
 function BrandCardPreview({ images, alt }: { images: string[]; alt: string }) {
-  const imagesArr = useMemo(() => images?.length ? images : ['/img/placeholder.png'], [images]);
+  const imagesArr = useMemo(() => images?.length ? images : ['/img/placeholder.svg'], [images]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [swipeDir, setSwipeDir] = useState<'left' | 'right'>('left');
   const [isTouch, setIsTouch] = useState(false);
@@ -680,7 +680,7 @@ export default function BrandClient({
               <BrandCardPreview
                 images={
                   (Array.isArray(item.images) ? item.images : undefined) ||
-                  (item.imageUrl ? [item.imageUrl] : ['/img/placeholder.png'])
+                  (item.imageUrl ? [item.imageUrl] : ['/img/placeholder.svg'])
                 }
                 alt={item.name}
               />

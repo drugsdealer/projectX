@@ -117,7 +117,7 @@ export async function POST(req: Request) {
       normalizedGroups.length > 0 ? Math.min(...normalizedGroups.map((g: any) => Number(g.price))) : null;
     const finalPrice = sizeType === "NONE" ? basePrice : minGroupPrice;
 
-    const primaryImage = imageUrlInput || gallery[0] || "/img/placeholder.png";
+    const primaryImage = imageUrlInput || gallery[0] || "/img/placeholder.svg";
     const images = gallery.filter((item: string) => item !== primaryImage);
 
     const product = await prisma.product.create({

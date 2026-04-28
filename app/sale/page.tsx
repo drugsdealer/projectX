@@ -7,9 +7,9 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "Sale — Распродажа",
+  title: "Sale — скидки на брендовую одежду и обувь",
   description:
-    "Скидки на брендовую одежду, обувь и аксессуары. Оригинальные товары по сниженным ценам с доставкой по России.",
+    "Sale Stage Store: скидки на оригинальную брендовую одежду, обувь, сумки, аксессуары и парфюм с доставкой по России.",
   alternates: { canonical: `${SITE_URL}/sale` },
   openGraph: {
     type: "website",
@@ -24,6 +24,12 @@ export const metadata: Metadata = {
         alt: "Sale — Stage Store",
       },
     ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Sale — Stage Store",
+    description: "Скидки на оригинальную брендовую одежду, обувь и аксессуары Stage Store.",
+    images: ["https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008429/IMG_0364_xcrp0m.jpg"],
   },
   robots: { index: true, follow: true },
 };

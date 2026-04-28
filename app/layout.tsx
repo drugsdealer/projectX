@@ -19,11 +19,11 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Stage Store — Брендовая одежда и аксессуары",
+    default: "Stage Store — брендовая одежда, обувь, Premium и Sale",
     template: "%s | Stage Store",
   },
   description:
-    "Интернет-магазин оригинальной брендовой одежды, обуви и аксессуаров. Доставка по Москве и России. Гарантия подлинности.",
+    "Интернет-магазин оригинальной брендовой одежды, обуви, сумок, аксессуаров и парфюма. Premium коллекция, Sale, доставка по России.",
   keywords: [
     "брендовая одежда",
     "оригинальная одежда",
@@ -45,9 +45,9 @@ export const metadata: Metadata = {
     locale: "ru_RU",
     url: SITE_URL,
     siteName: "Stage Store",
-    title: "Stage Store — Брендовая одежда и аксессуары",
+    title: "Stage Store — брендовая одежда, обувь, Premium и Sale",
     description:
-      "Интернет-магазин оригинальной брендовой одежды, обуви и аксессуаров. Гарантия подлинности.",
+      "Оригинальная брендовая одежда, обувь и аксессуары. Premium коллекция, Sale и доставка по России.",
     images: [
       {
         url: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008429/IMG_0364_xcrp0m.jpg",
@@ -59,9 +59,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Stage Store — Брендовая одежда и аксессуары",
+    title: "Stage Store — брендовая одежда, обувь, Premium и Sale",
     description:
-      "Интернет-магазин оригинальной брендовой одежды, обуви и аксессуаров.",
+      "Оригинальная брендовая одежда, обувь, аксессуары, Premium коллекция и Sale.",
     images: ["https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008429/IMG_0364_xcrp0m.jpg"],
   },
   robots: {
@@ -160,19 +160,9 @@ export default function RootLayout({
                   "@id": `${SITE_URL}/#website`,
                   url: SITE_URL,
                   name: "Stage Store",
-                  alternateName: "Stage Store — Брендовая одежда и аксессуары",
+                  alternateName: "Stage Store — брендовая одежда, обувь, Premium и Sale",
                   publisher: { "@id": `${SITE_URL}/#organization` },
                   inLanguage: "ru-RU",
-                  potentialAction: [
-                    {
-                      "@type": "SearchAction",
-                      target: {
-                        "@type": "EntryPoint",
-                        urlTemplate: `${SITE_URL}/search?q={search_term_string}`,
-                      },
-                      "query-input": "required name=search_term_string",
-                    },
-                  ],
                 },
                 {
                   "@type": "SiteNavigationElement",
@@ -182,51 +172,67 @@ export default function RootLayout({
                   hasPart: [
                     {
                       "@type": "SiteNavigationElement",
+                      "@id": `${SITE_URL}/premium#nav`,
+                      position: 1,
+                      name: "Premium",
+                      description: "Премиальная коллекция и редкие позиции",
+                      url: `${SITE_URL}/premium`,
+                    },
+                    {
+                      "@type": "SiteNavigationElement",
+                      "@id": `${SITE_URL}/sale#nav`,
+                      position: 2,
+                      name: "Sale",
+                      description: "Скидки на брендовую одежду, обувь и аксессуары",
+                      url: `${SITE_URL}/sale`,
+                    },
+                    {
+                      "@type": "SiteNavigationElement",
+                      "@id": `${SITE_URL}/category/footwear#nav`,
+                      position: 3,
                       name: "Обувь",
                       description: "Кроссовки, ботинки, лоферы и другая обувь",
                       url: `${SITE_URL}/category/footwear`,
                     },
                     {
                       "@type": "SiteNavigationElement",
+                      "@id": `${SITE_URL}/category/clothes#nav`,
+                      position: 4,
                       name: "Одежда",
                       description: "Худи, футболки, куртки, брюки и другая одежда",
                       url: `${SITE_URL}/category/clothes`,
                     },
                     {
                       "@type": "SiteNavigationElement",
+                      "@id": `${SITE_URL}/category/bags#nav`,
+                      position: 5,
                       name: "Сумки",
                       description: "Сумки, рюкзаки, поясные сумки",
                       url: `${SITE_URL}/category/bags`,
                     },
                     {
                       "@type": "SiteNavigationElement",
+                      "@id": `${SITE_URL}/category/accessories#nav`,
+                      position: 6,
                       name: "Аксессуары",
                       description: "Очки, ремни, украшения и аксессуары",
                       url: `${SITE_URL}/category/accessories`,
                     },
                     {
                       "@type": "SiteNavigationElement",
+                      "@id": `${SITE_URL}/category/fragrance#nav`,
+                      position: 7,
                       name: "Парфюмерия",
                       description: "Духи и парфюм от мировых брендов",
                       url: `${SITE_URL}/category/fragrance`,
                     },
                     {
                       "@type": "SiteNavigationElement",
+                      "@id": `${SITE_URL}/category/headwear#nav`,
+                      position: 8,
                       name: "Головные уборы",
                       description: "Кепки, шапки, панамы",
                       url: `${SITE_URL}/category/headwear`,
-                    },
-                    {
-                      "@type": "SiteNavigationElement",
-                      name: "Premium коллекция",
-                      description: "Эксклюзивные товары премиальных брендов",
-                      url: `${SITE_URL}/premium`,
-                    },
-                    {
-                      "@type": "SiteNavigationElement",
-                      name: "Весь каталог",
-                      description: "Полный каталог товаров Stage Store",
-                      url: `${SITE_URL}/search`,
                     },
                   ],
                 },

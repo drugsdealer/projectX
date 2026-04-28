@@ -35,7 +35,7 @@ export const ProductSlider: React.FC<ProductSliderProps> = ({ product, activeIma
     const unique = Array.from(new Set(filtered));
 
     if (!unique.length) {
-      return ["/img/fallback.jpg"];
+      return ["/img/placeholder.svg"];
     }
 
     return unique;

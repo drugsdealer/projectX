@@ -124,7 +124,7 @@ export default async function ProductPage({
             "@type": "Product",
             name: p.name,
             url: `${SITE_URL}/product/${id}`,
-            image: p.imageUrl || `${SITE_URL}/img/placeholder.png`,
+            image: p.imageUrl || `${SITE_URL}/img/placeholder.svg`,
             description: productDescription,
             brand: {
               "@type": "Brand",

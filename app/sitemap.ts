@@ -9,14 +9,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Main navigation pages — high priority for sitelinks
   const mainSections: MetadataRoute.Sitemap = [
     { url: siteUrl, lastModified: new Date(), changeFrequency: "daily", priority: 1.0 },
-    { url: `${siteUrl}/category/footwear`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-    { url: `${siteUrl}/category/clothes`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-    { url: `${siteUrl}/category/bags`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-    { url: `${siteUrl}/category/accessories`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-    { url: `${siteUrl}/category/fragrance`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-    { url: `${siteUrl}/category/headwear`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-    { url: `${siteUrl}/search`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
-    { url: `${siteUrl}/premium`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
+    { url: `${siteUrl}/premium`, lastModified: new Date(), changeFrequency: "daily", priority: 0.74 },
+    { url: `${siteUrl}/sale`, lastModified: new Date(), changeFrequency: "daily", priority: 0.73 },
+    { url: `${siteUrl}/category/footwear`, lastModified: new Date(), changeFrequency: "daily", priority: 0.72 },
+    { url: `${siteUrl}/category/clothes`, lastModified: new Date(), changeFrequency: "daily", priority: 0.72 },
+    { url: `${siteUrl}/category/bags`, lastModified: new Date(), changeFrequency: "daily", priority: 0.7 },
+    { url: `${siteUrl}/category/accessories`, lastModified: new Date(), changeFrequency: "daily", priority: 0.7 },
+    { url: `${siteUrl}/category/fragrance`, lastModified: new Date(), changeFrequency: "daily", priority: 0.68 },
+    { url: `${siteUrl}/category/headwear`, lastModified: new Date(), changeFrequency: "daily", priority: 0.66 },
   ];
 
   const staticPages: MetadataRoute.Sitemap = [
@@ -33,16 +33,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       take: 5000,
     });
     productPages = products.flatMap((p) => {
-      const base = {
+      return [{
         url: `${siteUrl}/product/${p.id}`,
         lastModified: p.updatedAt,
         changeFrequency: "weekly" as const,
-        priority: 0.8,
-      };
-      if (p.premium) {
-        return [base, { ...base, url: `${siteUrl}/premium/product/${p.id}`, priority: 0.85 }];
-      }
-      return [base];
+        priority: 0.55,
+      }];
     });
   } catch {}
 
@@ -59,7 +55,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${siteUrl}/brand/${b.slug}`,
       lastModified: b.updatedAt,
       changeFrequency: "weekly" as const,
-      priority: 0.7,
+      priority: 0.46,
     }));
   } catch {}
 
@@ -78,7 +74,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         url: `${siteUrl}/category/${c.slug}`,
         lastModified: c.updatedAt,
         changeFrequency: "weekly" as const,
-        priority: 0.6,
+        priority: 0.42,
       }));
   } catch {}
 

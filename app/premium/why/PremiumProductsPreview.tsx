@@ -47,7 +47,7 @@ const PremiumProductsPreview = () => {
       {randomProducts.map((product) => (
         <img
           key={product.id}
-          src={product.imageUrl ?? product.images?.[0] ?? "/img/placeholder.png"}
+          src={product.imageUrl ?? product.images?.[0] ?? "/img/placeholder.svg"}
           alt={product.name}
           className="w-40 h-52 object-cover rounded-lg shadow-lg transition-transform hover:scale-105"
         />

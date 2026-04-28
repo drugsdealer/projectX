@@ -5,6 +5,35 @@ import type { Metadata } from 'next';
 import prisma from '@/lib/prisma';
 import CategoryProductGrid from './CategoryProductGrid';
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://stagestore.app';
+
+const CATEGORY_SEO: Record<string, { name: string; description: string }> = {
+  footwear: {
+    name: 'Обувь',
+    description: 'Оригинальная брендовая обувь в Stage Store: кроссовки, ботинки, лоферы и редкие пары с доставкой по России.',
+  },
+  clothes: {
+    name: 'Одежда',
+    description: 'Брендовая одежда Stage Store: худи, футболки, куртки, брюки и сезонные подборки с гарантией подлинности.',
+  },
+  bags: {
+    name: 'Сумки',
+    description: 'Брендовые сумки и рюкзаки Stage Store: повседневные модели, premium-позиции и аксессуары с доставкой по России.',
+  },
+  accessories: {
+    name: 'Аксессуары',
+    description: 'Аксессуары Stage Store: очки, ремни, украшения, кошельки и акцентные детали от мировых брендов.',
+  },
+  fragrance: {
+    name: 'Парфюмерия',
+    description: 'Парфюм и нишевые ароматы Stage Store: оригинальная парфюмерия от мировых брендов.',
+  },
+  headwear: {
+    name: 'Головные уборы',
+    description: 'Кепки, шапки и головные уборы Stage Store: оригинальные позиции для повседневных образов.',
+  },
+};
+
 export async function generateStaticParams() {
   try {
     const categories = await prisma.category.findMany({
@@ -20,23 +49,36 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const decoded = decodeURIComponent(slug).trim();
-  const category = await prisma.category.findFirst({
-    where: { slug: { equals: decoded, mode: 'insensitive' } },
-    select: { name: true },
-  });
-  const name = category?.name || decoded.replace(/[-_]+/g, ' ');
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://stagestore.app';
+  const staticSeo = CATEGORY_SEO[decoded.toLowerCase()];
+  let dbName: string | null = null;
+
+  try {
+    const category = await prisma.category.findFirst({
+      where: { slug: { equals: decoded, mode: 'insensitive' } },
+      select: { name: true },
+    });
+    dbName = category?.name ?? null;
+  } catch {
+    dbName = null;
+  }
+
+  const name = staticSeo?.name || dbName || decoded.replace(/[-_]+/g, ' ');
+  const description =
+    staticSeo?.description ||
+    `${name} — купить в Stage Store. Оригинальная брендовая одежда, обувь и аксессуары с доставкой по России.`;
+
   return {
-    title: name,
-    description: `${name} — купить в Stage Store. Оригинальная брендовая одежда и аксессуары с доставкой по России.`,
+    title: `${name} — оригинальные бренды`,
+    description,
     openGraph: {
       title: `${name} — Stage Store`,
-      description: `Каталог ${name.toLowerCase()} в интернет-магазине Stage Store.`,
-      url: `${siteUrl}/category/${slug}`,
+      description,
+      url: `${SITE_URL}/category/${slug}`,
     },
     alternates: {
-      canonical: `${siteUrl}/category/${slug}`,
+      canonical: `${SITE_URL}/category/${slug}`,
     },
+    robots: { index: true, follow: true },
   };
 }
 

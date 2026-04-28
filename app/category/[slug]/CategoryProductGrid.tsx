@@ -74,7 +74,7 @@ const ProductCardImage = memo(function ProductCardImage({
     });
   }, [imagesArr]);
 
-  const activeSrc = imagesArr?.[activeIdx] || imagesArr?.[0] || '/img/placeholder.png';
+  const activeSrc = imagesArr?.[activeIdx] || imagesArr?.[0] || '/img/placeholder.svg';
 
   const prefetchAround = useCallback(
     (idx: number) => {

@@ -217,8 +217,8 @@ const SwipeablePreview = React.memo(function SwipeablePreviewComponent({
     );
   }
 
-  const activeSrc = images?.[activeIdx] || images?.[0] || "/img/placeholder.png";
-  const displaySrc = brokenSrcs.has(activeSrc) ? "/img/placeholder.png" : activeSrc;
+  const activeSrc = images?.[activeIdx] || images?.[0] || "/img/placeholder.svg";
+  const displaySrc = brokenSrcs.has(activeSrc) ? "/img/placeholder.svg" : activeSrc;
 
   return (
     <div
@@ -371,7 +371,7 @@ const SwipeablePreview = React.memo(function SwipeablePreviewComponent({
             alt={alt}
             className="absolute inset-0 w-full h-full object-contain"
             onError={() => {
-              if (!activeSrc || activeSrc === "/img/placeholder.png") return;
+              if (!activeSrc || activeSrc === "/img/placeholder.svg") return;
               setBrokenSrcs((prev) => {
                 if (prev.has(activeSrc)) return prev;
                 const next = new Set(prev);
@@ -1875,7 +1875,7 @@ const GridCard = React.memo(({
   isRestoreTarget,
 }: any) => {
   const imgs = Array.isArray(item.images) ? item.images.filter(Boolean) : [];
-  const primary = (item as any).imageUrl || imgs[0] || "/img/placeholder.png";
+  const primary = (item as any).imageUrl || imgs[0] || "/img/placeholder.svg";
   const secondary = imgs.find((u: any) => u && u !== primary);
   const gallery = getPreviewImages(item);
   const displayBadge = getDisplayBadge(item);
@@ -4303,7 +4303,7 @@ export default function PremiumPage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="relative w-full aspect-[4/3] bg-white rounded-xl border border-black/10 overflow-hidden">
-                    <img src={quickItem.images?.[0] || '/img/placeholder.png'} alt={quickItem.name} className="absolute inset-0 w-full h-full object-contain" />
+                    <img src={quickItem.images?.[0] || '/img/placeholder.svg'} alt={quickItem.name} className="absolute inset-0 w-full h-full object-contain" />
                     {quickItem.images?.[1] && (
                       <img src={quickItem.images?.[1]} alt={`${quickItem.name} preview`} className="absolute inset-0 w-full h-full object-contain opacity-0 hover:opacity-100 transition-opacity" />
                     )}

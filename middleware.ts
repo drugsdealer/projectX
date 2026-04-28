@@ -98,16 +98,23 @@ export async function middleware(request: NextRequest) {
     if (request.nextUrl.protocol === "https:") {
       res.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
     }
-    // CSP: unsafe-inline нужен для Next.js inline-скриптов гидрации
+    // CSP: unsafe-inline нужен для Next.js inline-скриптов гидрации.
+    // In development Next React Refresh uses eval; production keeps it blocked.
+    const scriptSrc = [
+      "script-src 'self' 'unsafe-inline'",
+      process.env.NODE_ENV === "development" ? "'unsafe-eval'" : "",
+      "https://mc.yandex.ru",
+      "https://mc.yandex.com",
+    ].filter(Boolean).join(" ");
     res.headers.set(
       "Content-Security-Policy",
       [
         "default-src 'self'",
         "img-src 'self' https: data: blob:",
-        "script-src 'self' 'unsafe-inline'",
+        scriptSrc,
         "style-src 'self' 'unsafe-inline'",
         "font-src 'self' https: data:",
-        "connect-src 'self' https://res.cloudinary.com https://*.upstash.io",
+        "connect-src 'self' https://res.cloudinary.com https://*.upstash.io https://mc.yandex.ru https://mc.yandex.com",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",

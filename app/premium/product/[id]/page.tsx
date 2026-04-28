@@ -1,1 +1,3 @@
-export { default, generateMetadata, generateStaticParams, revalidate } from '../../../product/[id]/page';
+export { default, generateMetadata, generateStaticParams } from "../../../product/[id]/page";
+
+export const revalidate = 300;

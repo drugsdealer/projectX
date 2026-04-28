@@ -926,7 +926,7 @@ const handleAddToCart = () => {
       productId: product.id,
       name: noBox && noBoxPriceValue ? `${product.name} (без коробки)` : product.name,
       price: currentPrice,
-      image: displayedImages?.[0] ?? product.images?.[0] ?? "/img/fallback.jpg",
+      image: displayedImages?.[0] ?? product.images?.[0] ?? "/img/placeholder.svg",
       size: selectedSize != null ? String(selectedSize) : undefined,
     });
     showToast({
@@ -1249,7 +1249,7 @@ const handleCancel = () => {
                 <div className="flex items-center gap-3">
                   <div className="relative w-10 h-10 rounded overflow-hidden">
                     <Image
-                      src={displayedImages[0] ?? "/img/fallback.jpg"}
+                      src={displayedImages[0] ?? "/img/placeholder.svg"}
                       alt={product.name}
                       fill
                       className="object-cover"
@@ -1972,7 +1972,7 @@ const handleCancel = () => {
                       >
                         <div className="relative w-16 h-16 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-50 shrink-0">
                           <Image
-                            src={colorProduct.images[0] || '/img/fallback.jpg'}
+                            src={colorProduct.images[0] || '/img/placeholder.svg'}
                             alt={colorProduct.name}
                             fill
                             className="object-contain p-1"
@@ -2078,7 +2078,7 @@ const handleCancel = () => {
                               >
                                 <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-white">
                                   <Image
-                                    src={colorProduct.images[0] || '/img/fallback.jpg'}
+                                    src={colorProduct.images[0] || '/img/placeholder.svg'}
                                     alt={colorProduct.name}
                                     fill
                                     className="object-contain p-1"
@@ -2244,7 +2244,7 @@ const handleCancel = () => {
                     <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
                       <div className="relative aspect-square w-full bg-gray-50">
                         <Image
-                          src={similarProduct.images[0] || "/img/fallback.jpg"}
+                          src={similarProduct.images[0] || "/img/placeholder.svg"}
                           alt={similarProduct.name}
                           fill
                           className="object-cover transition-transform group-hover:scale-105"
@@ -2323,7 +2323,7 @@ const handleCancel = () => {
                     <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
                       <div className="relative aspect-square w-full bg-gray-50">
                         <Image
-                          src={best.images[0] || "/img/fallback.jpg"}
+                          src={best.images[0] || "/img/placeholder.svg"}
                           alt={best.name}
                           fill
                           className="object-cover transition-transform group-hover:scale-105"
@@ -2376,7 +2376,7 @@ const handleCancel = () => {
                       <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
                         <div className="relative aspect-square w-full bg-gray-50 overflow-hidden">
                           <Image
-                            src={r.images[0] || "/img/fallback.jpg"}
+                            src={r.images[0] || "/img/placeholder.svg"}
                             alt={r.name}
                             fill
                             className="object-contain p-2 transition-transform group-hover:scale-105"

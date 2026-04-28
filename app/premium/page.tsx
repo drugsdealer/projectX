@@ -7,9 +7,9 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
 export const revalidate = 120;
 
 export const metadata: Metadata = {
-  title: "Premium коллекция",
+  title: "Premium коллекция — редкие бренды и эксклюзивы",
   description:
-    "Премиальная коллекция брендовой одежды и аксессуаров в Stage Store. Эксклюзивные товары от мировых брендов с доставкой по России.",
+    "Premium коллекция Stage Store: редкая брендовая одежда, обувь, сумки и аксессуары от мировых брендов с доставкой по России.",
   alternates: {
     canonical: `${SITE_URL}/premium`,
   },
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     url: `${SITE_URL}/premium`,
     title: "Premium коллекция — Stage Store",
     description:
-      "Эксклюзивные товары от мировых брендов. Одежда, обувь и аксессуары премиального сегмента.",
+      "Редкая брендовая одежда, обувь, сумки и аксессуары премиального сегмента.",
     images: [
       {
         url: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008429/IMG_0364_xcrp0m.jpg",
@@ -27,6 +27,12 @@ export const metadata: Metadata = {
         alt: "Premium коллекция Stage Store",
       },
     ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Premium коллекция — Stage Store",
+    description: "Редкие бренды, premium-позиции и эксклюзивные товары Stage Store.",
+    images: ["https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008429/IMG_0364_xcrp0m.jpg"],
   },
   robots: { index: true, follow: true },
 };

@@ -454,7 +454,7 @@ function OrderDetailsModal({ open, onClose, order }: ModalProps) {
                 {items.map((it) => {
                   const pid = it.productId ?? it.product?.id ?? null;
                   const href = pid ? `/product/${pid}` : undefined;
-                  const img = it.image || it.product?.imageUrl || '/img/placeholder.png';
+                  const img = it.image || it.product?.imageUrl || '/img/placeholder.svg';
                   const title = it.name || it.product?.name || 'Товар';
                   const rawSize =
                     it.size ??
@@ -778,7 +778,7 @@ export default function UserOrders() {
                     {items.map((it) => {
                       const pid = it.productId ?? it.product?.id ?? null;
                       const href = pid ? `/product/${pid}` : undefined;
-                      const img = it.image || it.product?.imageUrl || '/img/placeholder.png';
+                      const img = it.image || it.product?.imageUrl || '/img/placeholder.svg';
                       const title = it.name || it.product?.name || 'Товар';
                       const size = it.size ? `Размер: ${it.size}` : '';
                       const qty = Number(it.quantity) || 0;

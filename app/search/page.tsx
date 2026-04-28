@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     title: "Каталог — Stage Store",
     description: "Полный каталог брендовой одежды, обуви и аксессуаров.",
   },
-  robots: { index: true, follow: true },
+  robots: { index: false, follow: true },
 };
 
 export default function SearchPage() {

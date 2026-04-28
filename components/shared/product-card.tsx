@@ -86,7 +86,7 @@ export const ProductCard: React.FC<Props> = ({
       primaryImage ||
       (images && images.length > 0 ? images[0] : null) ||
       (selectedVariant?.images?.length ? selectedVariant.images[0] : null) ||
-      "/img/fallback.jpg";
+      "/img/placeholder.svg";
 
     // 1) обложка первой
     pushUnique(cover);
@@ -105,7 +105,7 @@ export const ProductCard: React.FC<Props> = ({
     }
 
     // 5) абсолютный fallback
-    if (merged.length === 0) pushUnique("/img/fallback.jpg");
+    if (merged.length === 0) pushUnique("/img/placeholder.svg");
 
     return merged;
   }, [primaryImage, images, selectedVariant]);

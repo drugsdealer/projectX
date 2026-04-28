@@ -180,8 +180,8 @@ const ProductCardImage = memo(function ProductCardImage({
     });
   }, [stableImages]);
 
-  const activeSrc = stableImages?.[activeIdx] || stableImages?.[0] || "/img/placeholder.png";
-  const displaySrc = brokenSrcs.has(activeSrc) ? "/img/placeholder.png" : activeSrc;
+  const activeSrc = stableImages?.[activeIdx] || stableImages?.[0] || "/img/placeholder.svg";
+  const displaySrc = brokenSrcs.has(activeSrc) ? "/img/placeholder.svg" : activeSrc;
 
   const prefetchAround = useCallback(
     (idx: number) => {
@@ -358,7 +358,7 @@ const ProductCardImage = memo(function ProductCardImage({
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
             priority={false}
             onError={() => {
-              if (!activeSrc || activeSrc === "/img/placeholder.png") return;
+              if (!activeSrc || activeSrc === "/img/placeholder.svg") return;
               setBrokenSrcs((prev) => {
                 if (prev.has(activeSrc)) return prev;
                 const next = new Set(prev);
@@ -1896,7 +1896,7 @@ export default function Home() {
                             const imgSrc =
                               (Array.isArray(product?.images) && product.images[0]) ||
                               product?.imageUrl ||
-                              "/img/placeholder.png";
+                              "/img/placeholder.svg";
                           const imagesArr =
                             Array.isArray(product?.images) && product.images.length
                               ? product.images

@@ -305,7 +305,9 @@ useLayoutEffect(() => {
       try {
         const res = await fetch(`/api/products?take=32`);
         const data = await res.json();
-        const list: ProductLite[] = Array.isArray(data) ? data : (data.items || data.rows || []);
+        const list: ProductLite[] = Array.isArray(data)
+          ? data
+          : (data.products || data.items || data.rows || []);
         const shuffled = list.sort(() => Math.random() - 0.5).slice(0, 8);
         if (!aborted) setRandomProducts(shuffled);
       } catch {}

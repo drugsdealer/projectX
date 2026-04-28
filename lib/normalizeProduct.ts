@@ -131,7 +131,7 @@ export function normalizeProduct(raw: any): NormalizedProduct {
       }
     }
 
-    return result.length ? result : ["/img/placeholder.png"];
+    return result.length ? result : ["/img/placeholder.svg"];
   };
 
   const normalizeSizes = (rawSizes: any): NormalizedProduct["sizes"] => {

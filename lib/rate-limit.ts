@@ -78,15 +78,24 @@ export async function rateLimit(
       });
       limiterCache.set(cacheKey, rl);
     }
-    const result = await rl.limit(key);
-    const resetAt = typeof result.reset === "number" ? result.reset : Date.now() + windowMs;
-    const retryAfter = result.success ? 0 : Math.max(1, Math.ceil((resetAt - Date.now()) / 1000));
-    return {
-      ok: result.success,
-      remaining: result.remaining ?? Math.max(0, limit - (result?.limit ?? limit)),
-      resetAt,
-      retryAfter,
-    };
+    try {
+      const result = await rl.limit(key);
+      const resetAt = typeof result.reset === "number" ? result.reset : Date.now() + windowMs;
+      const retryAfter = result.success ? 0 : Math.max(1, Math.ceil((resetAt - Date.now()) / 1000));
+      return {
+        ok: result.success,
+        remaining: result.remaining ?? Math.max(0, limit - (result?.limit ?? limit)),
+        resetAt,
+        retryAfter,
+      };
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[rate-limit] Upstash unavailable, using in-memory fallback");
+      }
+      upstashReady = false;
+      upstashRedis = null;
+      limiterCache.clear();
+    }
   }
 
   const now = Date.now();

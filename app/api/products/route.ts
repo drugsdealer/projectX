@@ -145,6 +145,199 @@ const PUBLIC_CACHE_HEADERS = {
   "Cache-Control": "public, max-age=30, s-maxage=120, stale-while-revalidate=300",
 };
 
+const FALLBACK_PRODUCTS = [
+  {
+    id: 900001,
+    name: "Nike Dunk Low Retro",
+    description: "Базовая пара для ежедневной носки.",
+    price: 18900,
+    oldPrice: null,
+    categoryId: null,
+    categoryDbSlug: "footwear",
+    categorySlug: "footwear",
+    categoryName: "Обувь",
+    subCategorySlug: "sneakers",
+    subcategory: "sneakers",
+    images: ["/img/dunk.jpg", "/img/dunk2.jpg", "/img/dunk3.jpg"],
+    imageUrl: "/img/dunk.jpg",
+    premium: false,
+    brandId: null,
+    brandName: "Nike",
+    brandSlug: "nike",
+    brandLogo: "/img/найк.webp",
+    gender: "unisex",
+    badge: null,
+    article: "FALLBACK-DUNK",
+    sizes: { available: [39, 40, 41, 42, 43], prices: { "39": 18900, "40": 18900, "41": 18900, "42": 18900, "43": 18900 }, inStockMoscow: { "39": true, "40": true, "41": true, "42": true, "43": true } },
+  },
+  {
+    id: 900002,
+    name: "Acne Studios Hoodie",
+    description: "Плотное худи с расслабленной посадкой.",
+    price: 24900,
+    oldPrice: null,
+    categoryId: null,
+    categoryDbSlug: "clothes",
+    categorySlug: "clothes",
+    categoryName: "Одежда",
+    subCategorySlug: "hoodies",
+    subcategory: "hoodies",
+    images: ["/img/acne_hoodie.webp", "/img/acne x kappa.webp"],
+    imageUrl: "/img/acne_hoodie.webp",
+    premium: false,
+    brandId: null,
+    brandName: "Acne Studios",
+    brandSlug: "acne-studios",
+    brandLogo: "/img/acne.png",
+    gender: "unisex",
+    badge: null,
+    article: "FALLBACK-ACNE-HOODIE",
+    sizes: { available: ["S", "M", "L"], prices: { S: 24900, M: 24900, L: 24900 }, inStockMoscow: { S: true, M: true, L: true } },
+  },
+  {
+    id: 900003,
+    name: "Goyard Saigon Mini Bag",
+    description: "Компактная сумка с акцентной фактурой.",
+    price: 139000,
+    oldPrice: null,
+    categoryId: null,
+    categoryDbSlug: "bags",
+    categorySlug: "bags",
+    categoryName: "Сумки",
+    subCategorySlug: "bags",
+    subcategory: "bags",
+    images: ["/img/goyard_saigon1.webp", "/img/goyard saigon2.webp", "/img/goyard saigon3.webp"],
+    imageUrl: "/img/goyard_saigon1.webp",
+    premium: false,
+    brandId: null,
+    brandName: "Goyard",
+    brandSlug: "goyard",
+    brandLogo: "/img/Logo_Goyard.png",
+    gender: "women",
+    badge: null,
+    article: "FALLBACK-GOYARD-SAIGON",
+    sizes: { available: ["ONE SIZE"], prices: { "ONE SIZE": 139000 }, inStockMoscow: { "ONE SIZE": true } },
+  },
+  {
+    id: 900004,
+    name: "Maison Margiela Replica Paint",
+    description: "Аромат с чистым древесным профилем.",
+    price: 16900,
+    oldPrice: 19900,
+    categoryId: null,
+    categoryDbSlug: "fragrance",
+    categorySlug: "fragrance",
+    categoryName: "Парфюмерия",
+    subCategorySlug: "fragrances",
+    subcategory: "fragrances",
+    images: ["/img/реплика пеинт.jpg", "/img/margiela.jpg"],
+    imageUrl: "/img/реплика пеинт.jpg",
+    premium: false,
+    brandId: null,
+    brandName: "Maison Margiela",
+    brandSlug: "maison-margiela",
+    brandLogo: "/img/mm-logo.svg",
+    gender: "unisex",
+    badge: "sale",
+    article: "FALLBACK-REPLICA",
+    sizes: { available: ["100 ml"], prices: { "100 ml": 16900 }, inStockMoscow: { "100 ml": true } },
+  },
+  {
+    id: 900005,
+    name: "Chrome Hearts Ring",
+    description: "Серебряное кольцо с фирменной графикой.",
+    price: 52900,
+    oldPrice: null,
+    categoryId: null,
+    categoryDbSlug: "accessories",
+    categorySlug: "accessories",
+    categoryName: "Аксессуары",
+    subCategorySlug: "rings",
+    subcategory: "rings",
+    images: ["/img/tiffany ring.webp", "/img/chrome-hearts.svg"],
+    imageUrl: "/img/tiffany ring.webp",
+    premium: false,
+    brandId: null,
+    brandName: "Chrome Hearts",
+    brandSlug: "chrome-hearts",
+    brandLogo: "/img/chrome-hearts.svg",
+    gender: "unisex",
+    badge: null,
+    article: "FALLBACK-CH-RING",
+    sizes: { available: [17, 18, 19], prices: { "17": 52900, "18": 52900, "19": 52900 }, inStockMoscow: { "17": true, "18": true, "19": true } },
+  },
+  {
+    id: 900006,
+    name: "Supreme Box Logo Cap",
+    description: "Кепка для повседневной ротации.",
+    price: 12900,
+    oldPrice: null,
+    categoryId: null,
+    categoryDbSlug: "headwear",
+    categorySlug: "headwear",
+    categoryName: "Головные уборы",
+    subCategorySlug: "caps",
+    subcategory: "caps",
+    images: ["/img/supreme.png", "/img/vlone.png"],
+    imageUrl: "/img/supreme.png",
+    premium: false,
+    brandId: null,
+    brandName: "Supreme",
+    brandSlug: "supreme",
+    brandLogo: "/img/supreme.png",
+    gender: "unisex",
+    badge: null,
+    article: "FALLBACK-SUP-CAP",
+    sizes: { available: ["ONE SIZE"], prices: { "ONE SIZE": 12900 }, inStockMoscow: { "ONE SIZE": true } },
+  },
+];
+
+function getFallbackProducts(params: {
+  desiredUiCategory: string | null;
+  subParam: string | null;
+  includePremium: boolean;
+  dbCategoryFilter: string | null;
+  saleOnly: boolean;
+  genderFilter: string;
+}) {
+  const products = FALLBACK_PRODUCTS.filter((product) => {
+    if (params.dbCategoryFilter === "premium") return product.premium;
+    if (!params.includePremium && product.premium) return false;
+    if (params.desiredUiCategory && product.categorySlug !== params.desiredUiCategory) return false;
+    if (params.subParam && product.subCategorySlug !== params.subParam) return false;
+    if (params.saleOnly && product.badge !== "sale" && !product.oldPrice) return false;
+    if (
+      params.genderFilter &&
+      product.gender &&
+      product.gender !== "unisex" &&
+      product.gender !== params.genderFilter
+    ) {
+      return false;
+    }
+    return true;
+  });
+
+  const brandMap = new Map<string, { id: null; name: string; slug: string | null }>();
+  for (const product of products) {
+    if (product.brandName && !brandMap.has(product.brandName)) {
+      brandMap.set(product.brandName, {
+        id: null,
+        name: product.brandName,
+        slug: product.brandSlug,
+      });
+    }
+  }
+
+  return {
+    success: true,
+    fallback: true,
+    products,
+    filters: {
+      brands: Array.from(brandMap.values()),
+    },
+  };
+}
+
 export async function GET(req: Request) {
   try {
     const rel = await ensureRelationNames();
@@ -228,7 +421,7 @@ export async function GET(req: Request) {
       const tail = [...relImages, ...baseImages].filter((u) => u && u !== primary);
       const mergedImages = Array.from(new Set([primary, ...tail].filter(Boolean)));
 
-      const imageUrl = mergedImages[0] || "/img/placeholder.png";
+      const imageUrl = mergedImages[0] || "/img/placeholder.svg";
 
       const dbCategorySlug = (item as any)?.category?.slug ?? (item as any)?.Category?.slug ?? null;
       const subCategorySlug = inferSubcategorySlug({
@@ -388,7 +581,7 @@ export async function GET(req: Request) {
       const tailRel = rel.filter((u) => u && u !== primary);
       const tailBase = baseImages.filter((u) => u && u !== primary);
       const mergedImages = Array.from(new Set([primary, ...tailRel, ...tailBase].filter(Boolean)));
-      const images = mergedImages.length ? mergedImages : ["/img/placeholder.png"];
+      const images = mergedImages.length ? mergedImages : ["/img/placeholder.svg"];
 
       const dbCategorySlug = (p as any)?.category?.slug ?? (p as any)?.Category?.slug ?? null;
       const subCategorySlug =
@@ -455,8 +648,27 @@ export async function GET(req: Request) {
     );
   } catch (e) {
     console.error("[api.products] GET error");
-    // Отдаём 500 и простой ответ, чтобы фронт не падал на парсинге
-    return NextResponse.json({ success: false, message: "Server error", products: [] }, { status: 500 });
+    const url = new URL(req.url);
+    const categorySlugParam = url.searchParams.get("category");
+    const dbCategoryFilter = mapEnToDbCategorySlug(categorySlugParam);
+    const desiredUiCategory = dbCategoryFilter === "premium"
+      ? null
+      : (mapDbToEnCategorySlug(dbCategoryFilter ?? null)
+          ?? (categorySlugParam ? categorySlugParam.toLowerCase().trim() : null));
+    const subParamRaw = url.searchParams.get("sub") ?? url.searchParams.get("subcategory");
+    const includePremiumRaw = (url.searchParams.get("includePremium") || "").toLowerCase();
+
+    return NextResponse.json(
+      getFallbackProducts({
+        desiredUiCategory,
+        subParam: subParamRaw ? subParamRaw.toLowerCase().trim() : null,
+        includePremium: includePremiumRaw === "1" || includePremiumRaw === "true",
+        dbCategoryFilter,
+        saleOnly: (url.searchParams.get("sale") ?? "") === "1",
+        genderFilter: (url.searchParams.get("gender") ?? "").trim().toLowerCase(),
+      }),
+      { status: 200, headers: PUBLIC_CACHE_HEADERS }
+    );
   }
 }
 
