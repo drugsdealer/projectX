@@ -1112,40 +1112,8 @@ export default function SearchPage() {
               {/* Gender selector */}
               {!panelOpen && (
                 <div className="mt-3">
-                  {/* Mobile: full-width pill switcher */}
-                  <div className="sm:hidden relative flex items-center bg-black/[0.05] rounded-xl p-1 gap-0.5">
-                    {(['', 'men', 'women'] as const).map((g) => {
-                      const label = g === '' ? 'Все' : g === 'men' ? 'Мужское' : 'Женское';
-                      const isActive = activeGender === g;
-                      return (
-                        <button
-                          key={g}
-                          onClick={() => {
-                            setActiveGender(g);
-                            router.replace(buildSearchUrl({
-                              q: liveQuery || undefined,
-                              category: activeCategoryParam || undefined,
-                              gender: g || undefined,
-                            }));
-                          }}
-                          className="relative flex-1 py-2 text-sm font-medium rounded-lg z-10 transition-colors duration-150 whitespace-nowrap"
-                          style={{ color: isActive ? '#fff' : 'rgba(0,0,0,0.5)' }}
-                        >
-                          {isActive && (
-                            <motion.span
-                              layoutId="search-gender-bg-mobile"
-                              className="absolute inset-0 bg-black rounded-lg"
-                              transition={{ type: 'spring', stiffness: 500, damping: 40 }}
-                            />
-                          )}
-                          <span className="relative z-10">{label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Desktop: minimal tab underline */}
-                  <div className="hidden sm:flex items-center gap-0 border-b border-black/[0.08]">
+                  {/* Tab underline style — same on mobile and desktop */}
+                  <div className="flex items-center gap-0 border-b border-black/[0.08]">
                     {(['', 'men', 'women'] as const).map((g) => {
                       const label = g === '' ? 'Все' : g === 'men' ? 'Мужское' : 'Женское';
                       const isActive = activeGender === g;

@@ -166,9 +166,17 @@ function getMinPrice(p: any): number | null {
   return Math.min(...nums);
 }
 
-export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function CategoryPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const resolved = await params;
   const slug = resolved?.slug ?? '';
+  const sp = searchParams ? await searchParams : {};
+  const genderParam = typeof sp?.gender === 'string' ? sp.gender.toLowerCase() : '';
   const label = humanizeSlug(slug);
   const displayLabel = prettyCategoryTitle(label);
 
@@ -311,6 +319,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       brandId: true,
       createdAt: true,
       subcategory: true,
+      gender: true,
       Category: { select: { slug: true } },
       ProductItem: { select: { price: true } },
       PerfumeVariant: { select: { price: true } },
@@ -356,11 +365,18 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     return false;
   });
 
-  if (!products || products.length === 0) {
+  const genderFiltered = genderParam
+    ? products.filter((p: any) => {
+        const g = String(p.gender ?? '').toLowerCase();
+        return g === genderParam || g === 'unisex' || g === '';
+      })
+    : products;
+
+  if (!genderFiltered || genderFiltered.length === 0) {
     notFound();
   }
 
-  const cards = products.map((p: any) => {
+  const cards = genderFiltered.map((p: any) => {
     const imageUrl = pickMainImage(p);
     const images = [imageUrl, ...(Array.isArray(p.images) ? p.images : [])].filter(
       (x): x is string => typeof x === 'string' && x.length > 0
@@ -416,7 +432,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
                 Категория
               </div>
               <h1 className="mt-3 text-3xl sm:text-4xl font-extrabold tracking-tight">{displayLabel}</h1>
-              <div className="mt-2 text-sm text-black/60">{products.length} товаров</div>
+              <div className="mt-2 text-sm text-black/60">{genderFiltered.length} товаров</div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className="inline-flex items-center rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-semibold text-black/70">
                   Свежие поступления
