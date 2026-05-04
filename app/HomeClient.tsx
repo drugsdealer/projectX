@@ -67,6 +67,21 @@ const HOME_CATEGORY_LINKS = [
   { label: "Парфюм", href: "/category/fragrance", image: "/img/placeholder.svg" },
 ];
 
+const HOME_GENDER_SELECTIONS = [
+  {
+    label: "Men selection",
+    title: "Мужская селекция",
+    href: "/search?gender=men",
+    image: "/img/MMbanner1.jpg",
+  },
+  {
+    label: "Women selection",
+    title: "Женская селекция",
+    href: "/search?gender=women",
+    image: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008429/IMG_0364_xcrp0m.jpg",
+  },
+];
+
 type TopBrandSignal = {
   brandId: number;
   brandName: string;
@@ -1788,21 +1803,6 @@ export default function Home() {
       <div className="h-4 sm:h-6" />
       <Container className="mt-10 pb-14">
         <section className="mb-14 px-3 sm:px-0">
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-black/45">
-                Stage Store guide
-              </p>
-              <h2 className="mt-2 text-3xl font-black tracking-[-0.05em] text-black sm:text-5xl">
-                Не просто каталог. Витрина выбора.
-              </h2>
-            </div>
-            <p className="max-w-md text-sm leading-6 text-black/55">
-              Главные маршруты собраны в одном месте: Premium, Sale и категории.
-              Так страница выглядит цельно и для людей, и для поисковых систем.
-            </p>
-          </div>
-
           <div className="grid gap-3 md:grid-cols-4">
             {HOME_GATEWAYS.map((item) => (
               <Link
@@ -1826,6 +1826,36 @@ export default function Home() {
                 <span className="mt-8 inline-flex rounded-full border border-current px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] opacity-80 transition group-hover:opacity-100">
                   {item.cta}
                 </span>
+              </Link>
+            ))}
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {HOME_GENDER_SELECTIONS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="group relative min-h-[260px] overflow-hidden rounded-[34px] bg-black text-white shadow-sm transition duration-500 hover:-translate-y-1 hover:shadow-xl sm:min-h-[340px]"
+              >
+                <Image
+                  src={item.image}
+                  alt=""
+                  fill
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-cover opacity-62 grayscale transition duration-700 group-hover:scale-105 group-hover:opacity-78"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/25 to-transparent" />
+                <div className="absolute inset-0 flex flex-col justify-end p-6 sm:p-8">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-white/55">
+                    {item.label}
+                  </p>
+                  <h3 className="mt-3 max-w-xs text-4xl font-black uppercase leading-[0.9] tracking-[-0.07em] sm:text-6xl">
+                    {item.title}
+                  </h3>
+                  <span className="mt-6 w-fit rounded-full border border-white/45 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/85 transition group-hover:border-white group-hover:text-white">
+                    Смотреть
+                  </span>
+                </div>
               </Link>
             ))}
           </div>
