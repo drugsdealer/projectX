@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMotionBudget } from '@/components/MotionBudgetProvider';
@@ -19,7 +18,6 @@ type Props = {
   promoCodes: PromoCodeItem[];
   eyebrow?: string;
   title?: string;
-  subtitle?: string;
   telegramUrl?: string;
   telegramText?: string;
 };
@@ -64,10 +62,10 @@ function DiscountCounter({ label, reduceMotion }: { label: ReturnType<typeof pro
     return () => cancelAnimationFrame(raf);
   }, [label.value, reduceMotion]);
 
-  if (label.value === 0) return <span className="text-xl font-black tracking-tight">{label.text}</span>;
+  if (label.value === 0) return <span className="text-base font-black tracking-tight">{label.text}</span>;
 
   return (
-    <span className="text-xl font-black tabular-nums tracking-tight">
+    <span className="text-base font-black tabular-nums tracking-tight">
       -{displayed}{label.suffix}
     </span>
   );
@@ -119,37 +117,35 @@ function PromoCard({
         duration: 0.4,
         ease: [0.22, 1, 0.36, 1],
       }}
-      whileHover={reduceMotion || balancedMotion ? {} : { y: -3 }}
-      className="promo-card group relative min-h-[168px] w-[230px] shrink-0 snap-start overflow-hidden rounded-2xl border border-black/10 bg-white p-4 text-left shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-shadow hover:border-black/20 hover:shadow-[0_8px_32px_rgba(0,0,0,0.09)] disabled:cursor-wait disabled:opacity-60"
+      whileHover={reduceMotion || balancedMotion ? {} : { y: -2 }}
+      className="promo-card group relative min-h-[130px] w-[190px] shrink-0 snap-start overflow-hidden rounded-xl border border-black/10 bg-white p-3.5 text-left shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-shadow hover:border-black/20 hover:shadow-[0_6px_20px_rgba(0,0,0,0.09)] disabled:cursor-wait disabled:opacity-60"
       aria-label={`${isOwned ? 'Промокод уже в профиле' : 'Забрать промокод'} ${codeUpper}`}
     >
       {/* Ticket notch cutouts */}
-      <span className="pointer-events-none absolute -left-2.5 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-[#f5f5f5] ring-1 ring-black/8" />
-      <span className="pointer-events-none absolute -right-2.5 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-[#f5f5f5] ring-1 ring-black/8" />
+      <span className="pointer-events-none absolute -left-2 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-[#f5f5f5] ring-1 ring-black/8" />
+      <span className="pointer-events-none absolute -right-2 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-[#f5f5f5] ring-1 ring-black/8" />
 
       {/* Top row: code + discount */}
-      <div className="flex items-start justify-between gap-2 border-b border-dashed border-black/10 pb-3">
-        <span className="rounded-md bg-black px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-white">
+      <div className="flex items-start justify-between gap-2 border-b border-dashed border-black/10 pb-2.5">
+        <span className="rounded bg-black px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest text-white">
           {promo.code}
         </span>
         <DiscountCounter label={label} reduceMotion={reduceMotion} />
       </div>
 
       {/* Description + meta */}
-      <div className="mt-3 flex-1">
-        <div className="line-clamp-2 pr-1 text-sm font-semibold leading-snug text-black/75">
+      <div className="mt-2.5 flex-1">
+        <div className="line-clamp-2 pr-1 text-xs font-semibold leading-snug text-black/70">
           {promo.description || 'Скидка по промокоду'}
         </div>
-        <div className="mt-2 space-y-0.5">
+        <div className="mt-1.5 space-y-0.5">
           {promo.minSubtotal ? (
-            <div className="text-[11px] text-black/38">
+            <div className="text-[10px] text-black/35">
               от {Number(promo.minSubtotal).toLocaleString('ru-RU')} ₽
             </div>
-          ) : (
-            <div className="text-[11px] text-black/38">Без минимальной суммы</div>
-          )}
+          ) : null}
           {end && (
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-black/28">
+            <div className="text-[9px] font-semibold uppercase tracking-wider text-black/28">
               до {end}
             </div>
           )}
@@ -157,7 +153,7 @@ function PromoCard({
       </div>
 
       {/* Claim button */}
-      <div className="absolute bottom-3.5 right-3.5">
+      <div className="absolute bottom-3 right-3">
         <AnimatePresence mode="wait">
           {isOwned || justClaimed ? (
             <motion.span
@@ -166,9 +162,9 @@ function PromoCard({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.85 }}
               transition={{ duration: 0.18 }}
-              className="inline-flex items-center gap-1 rounded-full bg-black px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white"
+              className="inline-flex items-center gap-1 rounded-full bg-black px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white"
             >
-              ✓ В профиле
+              ✓ Забрал
             </motion.span>
           ) : (
             <motion.span
@@ -177,7 +173,7 @@ function PromoCard({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.85 }}
               transition={{ duration: 0.18 }}
-              className="inline-flex items-center gap-1 rounded-full border border-black/12 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-black/50 transition group-hover:border-black group-hover:text-black"
+              className="inline-flex items-center gap-1 rounded-full border border-black/12 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-black/45 transition group-hover:border-black group-hover:text-black"
             >
               {isClaiming ? '...' : 'Забрать'}
             </motion.span>
@@ -192,9 +188,8 @@ export default function HomePromoRail({
   promoCodes,
   eyebrow = 'Промокоды',
   title = 'Скидки по коду',
-  subtitle = 'Только общедоступные промокоды — без лимита использований.',
   telegramUrl = 'https://t.me/stagestore',
-  telegramText = 'Больше кодов и анонсов акций.',
+  telegramText = 'Больше кодов в канале.',
 }: Props) {
   const { reduceMotion, motionLevel, isMotionPaused } = useMotionBudget();
   const balancedMotion = motionLevel === 'balanced';
@@ -368,74 +363,45 @@ export default function HomePromoRail({
   ).slice(0, 8);
 
   return (
-    <section className="relative overflow-hidden rounded-3xl border border-black/10 bg-[#f5f5f5] p-5 sm:p-7">
+    <section className="relative overflow-hidden rounded-2xl border border-black/10 bg-[#f5f5f5] px-4 py-4 sm:px-5 sm:py-5">
       {/* Dot grid */}
       <div className="pointer-events-none absolute inset-0 opacity-[0.035] [background-image:radial-gradient(rgba(0,0,0,1)_1px,transparent_1px)] [background-size:20px_20px]" />
-      {/* Top accent line */}
-      <div className="pointer-events-none absolute left-0 right-0 top-0 h-px bg-gradient-to-r from-transparent via-black/15 to-transparent" />
 
       <div className="relative">
-        {/* Header */}
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <div>
-            <motion.div
-              initial={reduceMotion ? false : { opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35 }}
-              className="text-[10px] font-semibold uppercase tracking-[0.28em] text-black/35"
-            >
+        {/* Compact header */}
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.24em] text-black/35 shrink-0">
               {eyebrow}
-            </motion.div>
-            <motion.h4
-              initial={reduceMotion ? false : { opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.05 }}
-              className="mt-2 text-2xl font-black tracking-tight sm:text-3xl"
-            >
-              {title}
-            </motion.h4>
-            <motion.p
-              initial={reduceMotion ? false : { opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.12 }}
-              className="mt-1.5 max-w-sm text-sm text-black/45"
-            >
-              {subtitle}
-            </motion.p>
-            <AnimatePresence>
-              {claimError && (
-                <motion.p
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mt-1 text-xs text-rose-500"
-                >
-                  {claimError}
-                </motion.p>
-              )}
-            </AnimatePresence>
+            </span>
+            <span className="h-px flex-1 bg-black/10 hidden sm:block" />
+            <span className="text-sm font-bold tracking-tight text-black truncate">{title}</span>
           </div>
-
-          <div ref={profileTargetRef} className="shrink-0 pt-1">
-            <Link
-              href="/profile/promocodes"
-              className="inline-flex items-center gap-1.5 rounded-full border border-black/15 bg-white/70 px-4 py-2 text-[11px] font-semibold text-black/55 backdrop-blur transition hover:border-black hover:text-black"
-            >
-              Все <span className="opacity-50">→</span>
-            </Link>
-          </div>
+          <div ref={profileTargetRef} />
+          <AnimatePresence>
+            {claimError && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="shrink-0 text-[11px] text-rose-500"
+              >
+                {claimError}
+              </motion.p>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Cards scroll */}
-        <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="-mx-1 flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {uniqueVisiblePromos.length === 0 && (
             <motion.div
               initial={reduceMotion ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.4 }}
-              className="relative flex min-h-[168px] w-[230px] shrink-0 snap-start flex-col justify-center rounded-2xl border border-dashed border-black/15 bg-white/60 p-5"
+              className="relative flex min-h-[130px] w-[200px] shrink-0 snap-start flex-col justify-center rounded-xl border border-dashed border-black/15 bg-white/60 p-4"
             >
-              <p className="text-xs leading-6 text-black/40">
+              <p className="text-xs leading-5 text-black/40">
                 Сейчас нет активных промокодов. Следи за обновлениями в Telegram.
               </p>
             </motion.div>
@@ -462,28 +428,19 @@ export default function HomePromoRail({
             href={telegramUrl}
             target="_blank"
             rel="noreferrer"
-            initial={reduceMotion ? false : { opacity: 0, y: 20 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{
-              delay: uniqueVisiblePromos.length * 0.07 + 0.05,
-              duration: 0.4,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-            whileHover={reduceMotion || balancedMotion ? {} : { y: -3 }}
-            className="group relative min-h-[168px] w-[210px] shrink-0 snap-start overflow-hidden rounded-2xl border border-black bg-black p-4 text-white transition-shadow hover:shadow-[0_8px_32px_rgba(0,0,0,0.22)]"
+            transition={{ delay: uniqueVisiblePromos.length * 0.07 + 0.05, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            whileHover={reduceMotion || balancedMotion ? {} : { y: -2 }}
+            className="group relative min-h-[130px] w-[160px] shrink-0 snap-start overflow-hidden rounded-xl border border-black bg-black p-3.5 text-white transition-shadow hover:shadow-[0_6px_24px_rgba(0,0,0,0.22)]"
           >
-            {/* Decorative circles */}
-            <div className="pointer-events-none absolute right-[-18px] top-[-18px] h-20 w-20 rounded-full border border-white/10" />
-            <div className="pointer-events-none absolute right-[8px] top-[8px] h-10 w-10 rounded-full border border-white/[0.07]" />
-
-            <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-white/30">
-              Telegram
+            <div className="pointer-events-none absolute right-[-14px] top-[-14px] h-16 w-16 rounded-full border border-white/10" />
+            <div className="text-[9px] font-semibold uppercase tracking-[0.22em] text-white/30">TG</div>
+            <div className="mt-3 text-[13px] font-black leading-tight tracking-tight">
+              Больше<br />кодов
             </div>
-            <div className="mt-5 text-[17px] font-black leading-tight tracking-tight">
-              Больше кодов<br />в канале
-            </div>
-            <p className="mt-2 text-xs leading-5 text-white/45">{telegramText}</p>
-            <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-black transition group-hover:bg-white/90">
+            <p className="mt-1.5 text-[10px] leading-4 text-white/40">{telegramText}</p>
+            <div className="mt-3 inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-black transition group-hover:bg-white/90">
               Открыть →
             </div>
           </motion.a>

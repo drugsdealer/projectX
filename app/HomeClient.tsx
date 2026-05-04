@@ -1896,7 +1896,6 @@ export default function Home() {
                 promoCodes={publicPromoCodes}
                 eyebrow={promocodeSpace?.eyebrow}
                 title={promocodeSpace?.title}
-                subtitle={promocodeSpace?.subtitle}
                 telegramUrl={promocodeSpace?.telegramUrl}
                 telegramText={promocodeSpace?.telegramText}
               />
