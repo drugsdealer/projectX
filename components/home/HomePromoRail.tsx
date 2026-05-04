@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useMotionBudget } from '@/components/MotionBudgetProvider';
 
 type PromoCodeItem = {
@@ -30,25 +31,175 @@ const fmtDate = (v?: string | Date | null) => {
   return d.toLocaleDateString('ru-RU');
 };
 
-const promoLabel = (promo: PromoCodeItem) => {
+const promoLabel = (promo: PromoCodeItem): { text: string; value: number; suffix: string } => {
   const type = String(promo?.discountType || '').toUpperCase();
-  if (type === 'PERCENT' && Number(promo?.percentOff) > 0) return `-${Number(promo.percentOff)}%`;
-  if (type === 'AMOUNT' && Number(promo?.amountOff) > 0) return `-${Number(promo.amountOff).toLocaleString('ru-RU')} ₽`;
-  return 'Промо';
+  if (type === 'PERCENT' && Number(promo?.percentOff) > 0) {
+    return { text: `-${Number(promo.percentOff)}%`, value: Number(promo.percentOff), suffix: '%' };
+  }
+  if (type === 'AMOUNT' && Number(promo?.amountOff) > 0) {
+    return { text: `-${Number(promo.amountOff).toLocaleString('ru-RU')} ₽`, value: Number(promo.amountOff), suffix: ' ₽' };
+  }
+  return { text: 'Промо', value: 0, suffix: '' };
 };
+
+// Animated discount counter
+function DiscountCounter({ label, reduceMotion }: { label: ReturnType<typeof promoLabel>; reduceMotion: boolean }) {
+  const [displayed, setDisplayed] = useState(reduceMotion ? label.value : 0);
+
+  useEffect(() => {
+    if (reduceMotion || label.value === 0) {
+      setDisplayed(label.value);
+      return;
+    }
+    const duration = 600;
+    const start = performance.now();
+    const target = label.value;
+    const step = (now: number) => {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayed(Math.round(eased * target));
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    const raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [label.value, reduceMotion]);
+
+  if (label.value === 0) return <span className="text-xl font-black tracking-tight">{label.text}</span>;
+
+  return (
+    <span className="text-xl font-black tabular-nums tracking-tight">
+      -{displayed}{label.suffix}
+    </span>
+  );
+}
+
+// Single promo card
+function PromoCard({
+  promo,
+  index,
+  isOwned,
+  isClaiming,
+  reduceMotion,
+  balancedMotion,
+  onClaim,
+}: {
+  promo: PromoCodeItem;
+  index: number;
+  isOwned: boolean;
+  isClaiming: boolean;
+  reduceMotion: boolean;
+  balancedMotion: boolean;
+  onClaim: (code: string, el: HTMLElement | null) => void;
+}) {
+  const codeUpper = String(promo?.code || '').trim().toUpperCase();
+  const label = promoLabel(promo);
+  const end = fmtDate(promo?.endsAt);
+  const [justClaimed, setJustClaimed] = useState(false);
+
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!isOwned && !isClaiming) {
+      onClaim(codeUpper, e.currentTarget);
+      setJustClaimed(true);
+      setTimeout(() => setJustClaimed(false), 1800);
+    } else {
+      onClaim(codeUpper, e.currentTarget);
+    }
+  };
+
+  return (
+    <motion.button
+      key={`promo-${promo.code}`}
+      type="button"
+      disabled={isClaiming}
+      onClick={handleClick}
+      initial={reduceMotion ? false : { opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        delay: index * 0.07,
+        duration: 0.4,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+      whileHover={reduceMotion || balancedMotion ? {} : { y: -3 }}
+      className="promo-card group relative min-h-[168px] w-[230px] shrink-0 snap-start overflow-hidden rounded-2xl border border-black/10 bg-white p-4 text-left shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-shadow hover:border-black/20 hover:shadow-[0_8px_32px_rgba(0,0,0,0.09)] disabled:cursor-wait disabled:opacity-60"
+      aria-label={`${isOwned ? 'Промокод уже в профиле' : 'Забрать промокод'} ${codeUpper}`}
+    >
+      {/* Ticket notch cutouts */}
+      <span className="pointer-events-none absolute -left-2.5 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-[#f5f5f5] ring-1 ring-black/8" />
+      <span className="pointer-events-none absolute -right-2.5 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-[#f5f5f5] ring-1 ring-black/8" />
+
+      {/* Top row: code + discount */}
+      <div className="flex items-start justify-between gap-2 border-b border-dashed border-black/10 pb-3">
+        <span className="rounded-md bg-black px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-white">
+          {promo.code}
+        </span>
+        <DiscountCounter label={label} reduceMotion={reduceMotion} />
+      </div>
+
+      {/* Description + meta */}
+      <div className="mt-3 flex-1">
+        <div className="line-clamp-2 pr-1 text-sm font-semibold leading-snug text-black/75">
+          {promo.description || 'Скидка по промокоду'}
+        </div>
+        <div className="mt-2 space-y-0.5">
+          {promo.minSubtotal ? (
+            <div className="text-[11px] text-black/38">
+              от {Number(promo.minSubtotal).toLocaleString('ru-RU')} ₽
+            </div>
+          ) : (
+            <div className="text-[11px] text-black/38">Без минимальной суммы</div>
+          )}
+          {end && (
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-black/28">
+              до {end}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Claim button */}
+      <div className="absolute bottom-3.5 right-3.5">
+        <AnimatePresence mode="wait">
+          {isOwned || justClaimed ? (
+            <motion.span
+              key="owned"
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.85 }}
+              transition={{ duration: 0.18 }}
+              className="inline-flex items-center gap-1 rounded-full bg-black px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white"
+            >
+              ✓ В профиле
+            </motion.span>
+          ) : (
+            <motion.span
+              key="claim"
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.85 }}
+              transition={{ duration: 0.18 }}
+              className="inline-flex items-center gap-1 rounded-full border border-black/12 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-black/50 transition group-hover:border-black group-hover:text-black"
+            >
+              {isClaiming ? '...' : 'Забрать'}
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.button>
+  );
+}
 
 export default function HomePromoRail({
   promoCodes,
   eyebrow = 'Промокоды',
-  title = 'Билеты на скидку',
-  subtitle = 'Показываем только общедоступные промокоды без лимита использований.',
+  title = 'Скидки по коду',
+  subtitle = 'Только общедоступные промокоды — без лимита использований.',
   telegramUrl = 'https://t.me/stagestore',
-  telegramText = 'В Telegram ещё больше промокодов и быстрые анонсы акций.',
+  telegramText = 'Больше кодов и анонсов акций.',
 }: Props) {
   const { reduceMotion, motionLevel, isMotionPaused } = useMotionBudget();
-  const balancedMotion = motionLevel === "balanced";
+  const balancedMotion = motionLevel === 'balanced';
+
   const [fallbackPromos, setFallbackPromos] = useState<PromoCodeItem[]>([]);
-  const [showAmbientPlanes, setShowAmbientPlanes] = useState(false);
   const [ownedCodes, setOwnedCodes] = useState<Set<string>>(() => new Set());
   const [usedCodes, setUsedCodes] = useState<Set<string>>(() => new Set());
   const [claimingCode, setClaimingCode] = useState<string | null>(null);
@@ -63,6 +214,7 @@ export default function HomePromoRail({
   const [isFlightActive, setIsFlightActive] = useState(false);
   const profileTargetRef = useRef<HTMLDivElement | null>(null);
   const flightTimerRef = useRef<number | null>(null);
+
   const incomingPromos = useMemo(
     () => (Array.isArray(promoCodes) ? promoCodes : []),
     [promoCodes]
@@ -73,9 +225,8 @@ export default function HomePromoRail({
       setFallbackPromos([]);
       return;
     }
-
     let cancelled = false;
-    const loadFallbackPromos = async () => {
+    const load = async () => {
       try {
         const bust = `t=${encodeURIComponent(String(Date.now()))}`;
         const res = await fetch(`/api/home/promocode-space?${bust}`, {
@@ -84,7 +235,6 @@ export default function HomePromoRail({
         });
         const data = await res.json().catch(() => ({} as any));
         if (cancelled) return;
-
         const list = Array.isArray(data?.promoCodes)
           ? data.promoCodes
           : Array.isArray(data?.items)
@@ -97,11 +247,8 @@ export default function HomePromoRail({
         if (!cancelled) setFallbackPromos([]);
       }
     };
-
-    loadFallbackPromos();
-    return () => {
-      cancelled = true;
-    };
+    load();
+    return () => { cancelled = true; };
   }, [incomingPromos.length]);
 
   useEffect(() => {
@@ -129,36 +276,15 @@ export default function HomePromoRail({
         if (!cancelled) setOwnedCodes(new Set());
       }
     };
-
     loadOwned();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
     return () => {
-      if (flightTimerRef.current) {
-        window.clearTimeout(flightTimerRef.current);
-      }
+      if (flightTimerRef.current) window.clearTimeout(flightTimerRef.current);
     };
   }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const compute = () => {
-      if (reduceMotion) {
-        setShowAmbientPlanes(false);
-        return;
-      }
-      const small = window.matchMedia("(max-width: 1024px)").matches;
-      // In balanced mode keep ambient planes on desktop, but fewer CSS effects are already reduced globally.
-      setShowAmbientPlanes(!small);
-    };
-    compute();
-    window.addEventListener("resize", compute);
-    return () => window.removeEventListener("resize", compute);
-  }, [reduceMotion]);
 
   const resolvedPromos = useMemo(
     () => (incomingPromos.length > 0 ? incomingPromos : fallbackPromos),
@@ -173,7 +299,6 @@ export default function HomePromoRail({
     const startY = startRect.top + startRect.height * 0.45;
     const endX = targetRect ? targetRect.left + targetRect.width * 0.5 : window.innerWidth - 48;
     const endY = targetRect ? targetRect.top + targetRect.height * 0.5 : 44;
-
     if (flightTimerRef.current) window.clearTimeout(flightTimerRef.current);
     setIsFlightActive(false);
     setFlyingTicket({ code, startX, startY, endX, endY });
@@ -190,12 +315,10 @@ export default function HomePromoRail({
     const code = String(rawCode || '').trim().toUpperCase();
     if (!code) return;
     if (claimingCode === code) return;
-
     if (ownedCodes.has(code)) {
       startTicketFlight(code, sourceEl);
       return;
     }
-
     setClaimError(null);
     setClaimingCode(code);
     try {
@@ -206,23 +329,20 @@ export default function HomePromoRail({
         body: JSON.stringify({ code }),
       });
       const data = await res.json().catch(() => ({} as any));
-
       if (res.status === 401) {
         if (typeof window !== 'undefined') {
           window.location.href = '/login?next=%2Fprofile%2Fpromocodes';
         }
         return;
       }
-
       if (!res.ok || !data?.ok) {
         const errCode = String(data?.error || '');
         if (errCode === 'already_claimed') setClaimError('Этот промокод уже забрали.');
-        else if (errCode === 'expired') setClaimError('Срок действия промокода истек.');
-        else if (errCode === 'not_started') setClaimError('Промокод еще не активен.');
+        else if (errCode === 'expired') setClaimError('Срок действия истёк.');
+        else if (errCode === 'not_started') setClaimError('Промокод ещё не активен.');
         else setClaimError('Не удалось забрать промокод.');
         return;
       }
-
       setOwnedCodes((prev) => {
         const next = new Set(prev);
         next.add(code);
@@ -230,7 +350,7 @@ export default function HomePromoRail({
       });
       startTicketFlight(code, sourceEl);
     } catch {
-      setClaimError('Ошибка сети. Попробуй еще раз.');
+      setClaimError('Ошибка сети. Попробуй ещё раз.');
     } finally {
       setClaimingCode(null);
     }
@@ -248,180 +368,171 @@ export default function HomePromoRail({
   ).slice(0, 8);
 
   return (
-    <section className="relative overflow-hidden rounded-[34px] border border-black/10 bg-[#f4efe6] p-4 text-[#15130f] shadow-[0_24px_90px_rgba(0,0,0,0.08)] sm:p-6">
-      <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(255,255,255,0.92),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.72),rgba(255,255,255,0.1)_48%,rgba(0,0,0,0.045))]" />
-        <div className="absolute right-[-12%] top-[-42%] h-[360px] w-[360px] rounded-full border border-black/10" />
-        <div className="absolute bottom-[-46%] left-[42%] h-[340px] w-[340px] rounded-full bg-black/[0.035]" />
-        {showAmbientPlanes ? (
-          <div className={`ticket-scan ${isMotionPaused ? "paused" : ""}`} />
-        ) : null}
-      </div>
+    <section className="relative overflow-hidden rounded-3xl border border-black/10 bg-[#f5f5f5] p-5 sm:p-7">
+      {/* Dot grid */}
+      <div className="pointer-events-none absolute inset-0 opacity-[0.035] [background-image:radial-gradient(rgba(0,0,0,1)_1px,transparent_1px)] [background-size:20px_20px]" />
+      {/* Top accent line */}
+      <div className="pointer-events-none absolute left-0 right-0 top-0 h-px bg-gradient-to-r from-transparent via-black/15 to-transparent" />
 
-      <div className="relative z-10">
-        <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="relative">
+        {/* Header */}
+        <div className="mb-6 flex items-start justify-between gap-4">
           <div>
-            <div className="inline-flex rounded-full border border-black/10 bg-white/35 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-black/55 backdrop-blur">
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35 }}
+              className="text-[10px] font-semibold uppercase tracking-[0.28em] text-black/35"
+            >
               {eyebrow}
-            </div>
-            <h4 className="mt-3 text-2xl font-black tracking-[-0.05em] text-black sm:text-4xl">{title}</h4>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-black/55">{subtitle}</p>
-            {claimError ? <p className="mt-1 text-xs text-rose-600">{claimError}</p> : null}
+            </motion.div>
+            <motion.h4
+              initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.05 }}
+              className="mt-2 text-2xl font-black tracking-tight sm:text-3xl"
+            >
+              {title}
+            </motion.h4>
+            <motion.p
+              initial={reduceMotion ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4, delay: 0.12 }}
+              className="mt-1.5 max-w-sm text-sm text-black/45"
+            >
+              {subtitle}
+            </motion.p>
+            <AnimatePresence>
+              {claimError && (
+                <motion.p
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-1 text-xs text-rose-500"
+                >
+                  {claimError}
+                </motion.p>
+              )}
+            </AnimatePresence>
           </div>
-          <div ref={profileTargetRef} className="shrink-0 self-start lg:self-auto">
+
+          <div ref={profileTargetRef} className="shrink-0 pt-1">
             <Link
               href="/profile/promocodes"
-              className="inline-flex rounded-full border border-black/15 bg-white/60 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-black/65 backdrop-blur transition hover:bg-black hover:text-white"
+              className="inline-flex items-center gap-1.5 rounded-full border border-black/15 bg-white/70 px-4 py-2 text-[11px] font-semibold text-black/55 backdrop-blur transition hover:border-black hover:text-black"
             >
-              Все промокоды
+              Все <span className="opacity-50">→</span>
             </Link>
           </div>
         </div>
 
+        {/* Cards scroll */}
         <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {uniqueVisiblePromos.length === 0 ? (
-            <div className="ticket-empty relative min-h-[178px] w-[250px] shrink-0 snap-start overflow-hidden rounded-[24px] border border-dashed border-black/20 bg-white/45 p-5 text-sm leading-6 text-black/55 backdrop-blur">
-              <div className="mb-8 text-[10px] font-bold uppercase tracking-[0.22em] text-black/35">No active tickets</div>
-              Сейчас нет активных общедоступных промокодов. Следи за обновлениями в Telegram.
-            </div>
-          ) : null}
+          {uniqueVisiblePromos.length === 0 && (
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4 }}
+              className="relative flex min-h-[168px] w-[230px] shrink-0 snap-start flex-col justify-center rounded-2xl border border-dashed border-black/15 bg-white/60 p-5"
+            >
+              <p className="text-xs leading-6 text-black/40">
+                Сейчас нет активных промокодов. Следи за обновлениями в Telegram.
+              </p>
+            </motion.div>
+          )}
 
-          {uniqueVisiblePromos.map((promo) => {
+          {uniqueVisiblePromos.map((promo, i) => {
             const codeUpper = String(promo?.code || '').trim().toUpperCase();
-            const isOwned = ownedCodes.has(codeUpper);
-            const isClaiming = claimingCode === codeUpper;
-            const end = fmtDate(promo?.endsAt);
             return (
-              <button
+              <PromoCard
                 key={`promo-${promo.code}`}
-                type="button"
-                disabled={isClaiming}
-                onClick={(e) => claimPromo(codeUpper, e.currentTarget)}
-                className={`promo-ticket group relative min-h-[178px] w-[250px] shrink-0 snap-start overflow-hidden rounded-[24px] border border-black/12 bg-[#fffaf1] p-4 text-left shadow-[0_18px_42px_rgba(0,0,0,0.08)] transition ${reduceMotion || balancedMotion ? "" : "hover:-translate-y-1 hover:shadow-[0_24px_58px_rgba(0,0,0,0.12)]"} disabled:cursor-wait disabled:opacity-70`}
-                aria-label={`${isOwned ? 'Промокод уже в профиле' : 'Забрать промокод'} ${codeUpper}`}
-              >
-                <span className="pointer-events-none absolute -left-3 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-[#f4efe6]" />
-                <span className="pointer-events-none absolute -right-3 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-[#f4efe6]" />
-                <span className="pointer-events-none absolute inset-y-0 left-[72%] border-l border-dashed border-black/12" />
-
-                <div className="border-b border-dashed border-black/14 pb-3 pr-12">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="rounded-full bg-black px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white">
-                      {promo.code}
-                    </span>
-                    <span className="text-lg font-black tracking-[-0.04em] text-black">{promoLabel(promo)}</span>
-                  </div>
-                </div>
-
-                <div className="mt-3 line-clamp-2 pr-8 text-sm font-bold leading-5 text-black/78">
-                  {promo.description || 'Скидка по общедоступному промокоду'}
-                </div>
-                <div className="mt-3 text-[11px] font-semibold text-black/45">
-                  {promo.minSubtotal ? `от ${Number(promo.minSubtotal).toLocaleString('ru-RU')} ₽` : 'Без минимальной суммы'}
-                </div>
-                {end ? <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-black/38">до {end}</div> : null}
-
-                <div className="absolute bottom-4 right-4 inline-flex rounded-full border border-black/12 bg-black/[0.04] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-black/70 transition group-hover:bg-black group-hover:text-white">
-                  {isOwned ? 'В профиле' : isClaiming ? 'Сохраняем...' : 'Забрать билет'}
-                </div>
-              </button>
+                promo={promo}
+                index={i}
+                isOwned={ownedCodes.has(codeUpper)}
+                isClaiming={claimingCode === codeUpper}
+                reduceMotion={reduceMotion}
+                balancedMotion={balancedMotion}
+                onClaim={claimPromo}
+              />
             );
           })}
 
-          <a
+          {/* Telegram CTA */}
+          <motion.a
             href={telegramUrl}
             target="_blank"
             rel="noreferrer"
-            className={`relative min-h-[178px] w-[250px] shrink-0 snap-start overflow-hidden rounded-[24px] border border-black/12 bg-black p-4 text-white shadow-[0_18px_42px_rgba(0,0,0,0.12)] transition ${reduceMotion || balancedMotion ? "" : "hover:-translate-y-1 hover:shadow-[0_24px_58px_rgba(0,0,0,0.18)]"}`}
+            initial={reduceMotion ? false : { opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              delay: uniqueVisiblePromos.length * 0.07 + 0.05,
+              duration: 0.4,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+            whileHover={reduceMotion || balancedMotion ? {} : { y: -3 }}
+            className="group relative min-h-[168px] w-[210px] shrink-0 snap-start overflow-hidden rounded-2xl border border-black bg-black p-4 text-white transition-shadow hover:shadow-[0_8px_32px_rgba(0,0,0,0.22)]"
           >
-            <div className="absolute right-[-34px] top-[-34px] h-24 w-24 rounded-full border border-white/12" />
-            <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/45">Telegram</div>
-            <div className="mt-5 max-w-[170px] text-xl font-black leading-none tracking-[-0.05em] text-white">Больше промокодов в канале</div>
-            <div className="mt-3 text-xs leading-5 text-white/58">{telegramText}</div>
-            <div className="mt-5 inline-flex rounded-full bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-black">
-              Перейти
+            {/* Decorative circles */}
+            <div className="pointer-events-none absolute right-[-18px] top-[-18px] h-20 w-20 rounded-full border border-white/10" />
+            <div className="pointer-events-none absolute right-[8px] top-[8px] h-10 w-10 rounded-full border border-white/[0.07]" />
+
+            <div className="text-[10px] font-semibold uppercase tracking-[0.25em] text-white/30">
+              Telegram
             </div>
-          </a>
+            <div className="mt-5 text-[17px] font-black leading-tight tracking-tight">
+              Больше кодов<br />в канале
+            </div>
+            <p className="mt-2 text-xs leading-5 text-white/45">{telegramText}</p>
+            <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-black transition group-hover:bg-white/90">
+              Открыть →
+            </div>
+          </motion.a>
         </div>
       </div>
 
-      {flyingTicket ? (
+      {/* Flying ticket */}
+      {flyingTicket && (
         <div className="pointer-events-none fixed left-0 top-0 z-[80]">
           <div
-            className={`rounded-xl border border-black/15 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-black/80 shadow-lg transition-transform ${reduceMotion ? "duration-200" : balancedMotion ? "duration-500" : "duration-700"}`}
+            className={`rounded-lg bg-black px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-widest text-white shadow-[0_8px_24px_rgba(0,0,0,0.25)] transition-transform ${
+              reduceMotion ? 'duration-200' : balancedMotion ? 'duration-500' : 'duration-700'
+            }`}
             style={{
               transform: isFlightActive
-                ? `translate(${flyingTicket.endX - 56}px, ${flyingTicket.endY - 16}px) scale(0.5) rotate(-12deg)`
+                ? `translate(${flyingTicket.endX - 56}px, ${flyingTicket.endY - 16}px) scale(0.4) rotate(-10deg)`
                 : `translate(${flyingTicket.startX - 56}px, ${flyingTicket.startY - 16}px) scale(1) rotate(0deg)`,
-              transitionTimingFunction: reduceMotion || balancedMotion ? "ease-out" : "cubic-bezier(0.2, 0.8, 0.2, 1)",
+              transitionTimingFunction:
+                reduceMotion || balancedMotion ? 'ease-out' : 'cubic-bezier(0.2, 0.8, 0.2, 1)',
             }}
           >
             {flyingTicket.code}
           </div>
         </div>
-      ) : null}
+      )}
 
       <style jsx>{`
-        .ticket-scan {
-          position: absolute;
-          left: -25%;
-          top: 0;
-          height: 100%;
-          width: 28%;
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.38), transparent);
-          transform: skewX(-18deg);
-          animation: ticket-scan 8s ease-in-out infinite;
-          animation-play-state: ${isMotionPaused ? "paused" : "running"};
-          will-change: transform, opacity;
-        }
-        .ticket-scan.paused {
-          animation-play-state: paused;
-        }
-        .promo-ticket::after,
-        .ticket-empty::after {
-          content: "";
+        .promo-card::before {
+          content: '';
           position: absolute;
           inset: 0;
           pointer-events: none;
-          background:
-            radial-gradient(circle at 12px 12px, rgba(0, 0, 0, 0.045) 0 1px, transparent 1.5px) 0 0 / 22px 22px;
-          opacity: 0.28;
-          mix-blend-mode: multiply;
+          background: linear-gradient(
+            110deg,
+            transparent 0%,
+            transparent 38%,
+            rgba(255, 255, 255, 0.55) 50%,
+            transparent 62%,
+            transparent 100%
+          );
+          transform: translateX(-130%);
+          transition: transform 550ms cubic-bezier(0.2, 0.8, 0.2, 1);
         }
-        .promo-ticket::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          background: linear-gradient(115deg, transparent 0%, transparent 42%, rgba(255, 255, 255, 0.72) 50%, transparent 58%, transparent 100%);
-          transform: translateX(-120%);
-          transition: transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
-        }
-        .promo-ticket:hover::before {
-          transform: translateX(120%);
-        }
-        @keyframes ticket-scan {
-          0% {
-            opacity: 0;
-            transform: translateX(0) skewX(-18deg);
-          }
-          12% {
-            opacity: 0.7;
-          }
-          42% {
-            opacity: 0;
-            transform: translateX(520%) skewX(-18deg);
-          }
-          100% {
-            opacity: 0;
-            transform: translateX(520%) skewX(-18deg);
-          }
+        .promo-card:hover::before {
+          transform: translateX(130%);
         }
         @media (prefers-reduced-motion: reduce) {
-          .ticket-scan,
-          .promo-ticket::before {
-            animation: none !important;
-            transition: none !important;
+          .promo-card::before {
+            display: none;
           }
         }
       `}</style>
