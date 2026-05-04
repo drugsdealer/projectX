@@ -24,7 +24,7 @@ export async function generateMetadata({
       Brand: { select: { name: true } },
       Category: { select: { name: true } },
     },
-  });
+  }).catch(() => null);
 
   if (!product) return {};
 
@@ -96,7 +96,7 @@ export default async function ProductPage({
         Brand: { select: { name: true } },
         Category: { select: { name: true, slug: true } },
       },
-    });
+    }).catch(() => null);
 
     if (p) {
       const brandName = p.Brand?.name;

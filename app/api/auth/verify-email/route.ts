@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
-import { clearSessionTokenOnResponse, setSessionOnResponse, setSessionTokenOnResponse } from "../../_utils/session";
+import { clearSessionOnResponse, clearSessionTokenOnResponse, setSessionOnResponse, setSessionTokenOnResponse } from "../../_utils/session";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { isAdminEmail } from "@/lib/admin-emails";
 import { randomBytes, timingSafeEqual } from "crypto";
+import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
 
 const parseUserAgentInfo = (
   uaRaw: string | null,
@@ -116,6 +117,11 @@ function bad(message = "Bad Request", init = 400) {
 
 export async function POST(req: Request) {
   try {
+    const csrfBlocked = blockIfCsrf(req);
+    if (csrfBlocked) return csrfBlocked;
+    const jsonBlocked = requireJsonRequest(req);
+    if (jsonBlocked) return jsonBlocked;
+
     const { email, code } = await req.json().catch(() => ({}));
     if (!email || typeof email !== "string" || !email.includes("@")) {
       return bad("Некорректный email");
@@ -198,7 +204,11 @@ export async function POST(req: Request) {
         setSessionTokenOnResponse(res, sessionToken);
       } catch (e) {
         console.warn("[VERIFY] failed to create session:");
-        clearSessionTokenOnResponse(res);
+        if (process.env.NODE_ENV === "production") {
+          clearSessionOnResponse(res);
+        } else {
+          clearSessionTokenOnResponse(res);
+        }
       }
       res.cookies.set("vfy", "", {
         path: "/",
@@ -298,7 +308,11 @@ export async function POST(req: Request) {
       setSessionTokenOnResponse(res, sessionToken);
     } catch (e) {
       console.warn("[VERIFY] failed to create session:");
-      clearSessionTokenOnResponse(res);
+      if (process.env.NODE_ENV === "production") {
+        clearSessionOnResponse(res);
+      } else {
+        clearSessionTokenOnResponse(res);
+      }
     }
     res.cookies.set("vfy", "", { path: "/", expires: new Date(0), httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
     res.cookies.set("uid", String(updatedUser.id), {

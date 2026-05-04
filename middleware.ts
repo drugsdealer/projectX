@@ -5,6 +5,7 @@ import { enforceSameOrigin } from "@/lib/security";
 const SESSION_COOKIE = 'session_user_id';
 const SESSION_TOKEN_COOKIE = 'session_token';
 function readUserFast(request: NextRequest) {
+  if (process.env.NODE_ENV === "production") return null;
   const id = request.cookies.get(SESSION_COOKIE)?.value || request.cookies.get("uid")?.value;
   return id ? ({ id } as any) : null;
 }

@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const brand = await prisma.brand.findFirst({
     where: { slug: { equals: slug.trim().toLowerCase(), mode: 'insensitive' } },
     select: { name: true, description: true, logoUrl: true },
-  });
+  }).catch(() => null);
   if (!brand) return {};
   const description = brand.description || `Коллекция бренда ${brand.name} в Stage Store. Оригинальная брендовая одежда и аксессуары с доставкой по России.`;
   const images = brand.logoUrl ? [{ url: brand.logoUrl, width: 400, height: 400, alt: brand.name }] : [];
@@ -59,12 +59,32 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
 
   // 1) Ищем сам бренд по slug (регистронезависимо)
   const norm = slug.trim().toLowerCase();
+  let dbUnavailable = false;
   const brand = await prisma.brand.findFirst({
     where: { slug: { equals: norm, mode: 'insensitive' } },
+  }).catch(() => {
+    dbUnavailable = true;
+    return null;
   });
 
   // Если бренда нет — 404
   if (!brand) {
+    if (dbUnavailable) {
+      const fallbackName = norm
+        .split("-")
+        .filter(Boolean)
+        .map((part) => part.slice(0, 1).toUpperCase() + part.slice(1))
+        .join(" ") || "Brand";
+
+      return (
+        <BrandClient
+          items={[]}
+          brandName={fallbackName}
+          meta={{ tags: [] }}
+          slug={norm}
+        />
+      );
+    }
     notFound();
   }
 
@@ -98,7 +118,7 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
       updatedAt: true,
       Brand: true,
     },
-  });
+  }).catch(() => []);
 
   type BrandItemDTO = Omit<Product, 'images'> & { images: string[]; Brand: Brand | null };
 

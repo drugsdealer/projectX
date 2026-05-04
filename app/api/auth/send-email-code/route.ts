@@ -130,9 +130,9 @@ export async function POST(req: Request) {
   </table>
 </body></html>`,
       });
-      console.log(`[send-email-code] code sent to ${normalizedEmail}`);
+      console.log("[send-email-code] code sent");
     } catch (emailErr) {
-      console.error('[send-email-code] failed to send email:', emailErr);
+      console.error('[send-email-code] failed to send email');
     }
 
     const res = NextResponse.json({ success: true });

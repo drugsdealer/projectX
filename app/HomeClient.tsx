@@ -32,6 +32,41 @@ const LABELS: Record<string, string> = {
   headwear: 'Головные уборы',
 };
 
+const HOME_GATEWAYS = [
+  {
+    eyebrow: "Premium",
+    title: "Кураторская полка",
+    text: "Редкие позиции, аккуратная проверка и вещи, которые не выглядят как массовая выдача каталога.",
+    href: "/premium",
+    cta: "Открыть Premium",
+    className: "md:col-span-2 bg-black text-white",
+  },
+  {
+    eyebrow: "Sale",
+    title: "Скидки без ощущения стока",
+    text: "Выборочные предложения по одежде, обуви и аксессуарам.",
+    href: "/sale",
+    cta: "Смотреть Sale",
+    className: "bg-[#e7ded0] text-black",
+  },
+  {
+    eyebrow: "Catalog",
+    title: "Быстрый вход в категории",
+    text: "Обувь, одежда, сумки, аксессуары и парфюм в одной структуре.",
+    href: "/search",
+    cta: "Перейти в каталог",
+    className: "bg-white text-black",
+  },
+];
+
+const HOME_CATEGORY_LINKS = [
+  { label: "Обувь", href: "/category/footwear", image: "/img/placeholder.svg" },
+  { label: "Одежда", href: "/category/clothes", image: "/img/MMbanner1.jpg" },
+  { label: "Сумки", href: "/category/bags", image: "/img/placeholder.svg" },
+  { label: "Аксессуары", href: "/category/accessories", image: "/img/placeholder.svg" },
+  { label: "Парфюм", href: "/category/fragrance", image: "/img/placeholder.svg" },
+];
+
 type TopBrandSignal = {
   brandId: number;
   brandName: string;
@@ -1752,6 +1787,77 @@ export default function Home() {
 
       <div className="h-4 sm:h-6" />
       <Container className="mt-10 pb-14">
+        <section className="mb-14 px-3 sm:px-0">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-black/45">
+                Stage Store guide
+              </p>
+              <h2 className="mt-2 text-3xl font-black tracking-[-0.05em] text-black sm:text-5xl">
+                Не просто каталог. Витрина выбора.
+              </h2>
+            </div>
+            <p className="max-w-md text-sm leading-6 text-black/55">
+              Главные маршруты собраны в одном месте: Premium, Sale и категории.
+              Так страница выглядит цельно и для людей, и для поисковых систем.
+            </p>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-4">
+            {HOME_GATEWAYS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={[
+                  "group relative overflow-hidden rounded-[32px] p-6 shadow-sm transition duration-500 hover:-translate-y-1 hover:shadow-xl",
+                  item.className,
+                ].join(" ")}
+              >
+                <div className="absolute right-[-42px] top-[-42px] h-28 w-28 rounded-full border border-current opacity-15 transition duration-500 group-hover:scale-125" />
+                <p className="text-[11px] font-bold uppercase tracking-[0.28em] opacity-55">
+                  {item.eyebrow}
+                </p>
+                <h3 className="mt-8 max-w-sm text-2xl font-black leading-none tracking-[-0.05em] sm:text-4xl">
+                  {item.title}
+                </h3>
+                <p className="mt-4 max-w-md text-sm leading-6 opacity-65">
+                  {item.text}
+                </p>
+                <span className="mt-8 inline-flex rounded-full border border-current px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] opacity-80 transition group-hover:opacity-100">
+                  {item.cta}
+                </span>
+              </Link>
+            ))}
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {HOME_CATEGORY_LINKS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="group relative min-h-[150px] overflow-hidden rounded-[26px] bg-black text-white shadow-sm"
+              >
+                <Image
+                  src={item.image}
+                  alt=""
+                  fill
+                  sizes="(max-width: 1024px) 50vw, 20vw"
+                  className="object-cover opacity-45 grayscale transition duration-500 group-hover:scale-105 group-hover:opacity-65"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 p-5">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/55">
+                    Category
+                  </p>
+                  <h3 className="mt-1 text-xl font-black tracking-[-0.04em]">
+                    {item.label}
+                  </h3>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
         <div className="grid grid-cols-1 gap-6">
           {/* PRODUCTS BY CATEGORY */}
           <section className="space-y-10">

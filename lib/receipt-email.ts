@@ -28,6 +28,15 @@ function formatPrice(amount: number): string {
   return amount.toLocaleString("ru-RU") + " \u20BD";
 }
 
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function buildReceiptHtml(params: ReceiptParams): string {
   const { orderNumber, fullName, items, totalAmount, address, phone, paidAt } = params;
 
@@ -43,7 +52,7 @@ function buildReceiptHtml(params: ReceiptParams): string {
           <table width="100%" cellpadding="0" cellspacing="0">
             <tr>
               <td style="font-size:14px;color:#1a1a1a;padding-right:8px;word-break:break-word">
-                ${item.name}${item.size ? `<br><span style="font-size:12px;color:#888">Размер: ${item.size}</span>` : ""}
+                ${escapeHtml(item.name)}${item.size ? `<br><span style="font-size:12px;color:#888">Размер: ${escapeHtml(item.size)}</span>` : ""}
               </td>
               <td style="font-size:14px;color:#1a1a1a;text-align:right;white-space:nowrap;vertical-align:top;min-width:80px">
                 <span style="color:#888;font-size:12px;display:block">${item.quantity}&nbsp;шт</span>
@@ -79,7 +88,7 @@ function buildReceiptHtml(params: ReceiptParams): string {
               Спасибо за покупку!
             </div>
             <div style="margin-top:8px;font-size:14px;color:#666">
-              Заказ ${orderNumber} от ${date}
+              Заказ ${escapeHtml(orderNumber)} от ${escapeHtml(date)}
             </div>
           </td>
         </tr>
@@ -90,15 +99,15 @@ function buildReceiptHtml(params: ReceiptParams): string {
             <table width="100%" cellpadding="0" cellspacing="0" style="background:#fafafa;border-radius:12px;padding:16px 20px">
               <tr>
                 <td style="font-size:13px;color:#888;padding:4px 0">Получатель</td>
-                <td style="font-size:13px;color:#1a1a1a;text-align:right;padding:4px 0;font-weight:500">${fullName}</td>
+                <td style="font-size:13px;color:#1a1a1a;text-align:right;padding:4px 0;font-weight:500">${escapeHtml(fullName)}</td>
               </tr>
               ${phone ? `<tr>
                 <td style="font-size:13px;color:#888;padding:4px 0">Телефон</td>
-                <td style="font-size:13px;color:#1a1a1a;text-align:right;padding:4px 0">${phone}</td>
+                <td style="font-size:13px;color:#1a1a1a;text-align:right;padding:4px 0">${escapeHtml(phone)}</td>
               </tr>` : ""}
               <tr>
                 <td style="font-size:13px;color:#888;padding:4px 0">Адрес</td>
-                <td style="font-size:13px;color:#1a1a1a;text-align:right;padding:4px 0">${address}</td>
+                <td style="font-size:13px;color:#1a1a1a;text-align:right;padding:4px 0">${escapeHtml(address)}</td>
               </tr>
             </table>
           </td>
@@ -169,14 +178,14 @@ export async function sendOrderReceipt(params: ReceiptParams): Promise<boolean> 
     });
 
     if (error) {
-      console.error("[receipt] Resend error:", error);
+      console.error("[receipt] Resend error");
       return false;
     }
 
-    console.log(`[receipt] sent to ${params.to} for order ${params.orderNumber}`);
+    console.log("[receipt] sent");
     return true;
   } catch (err) {
-    console.error("[receipt] failed to send:", err);
+    console.error("[receipt] failed to send");
     return false;
   }
 }

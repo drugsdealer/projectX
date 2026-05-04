@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildEventsServiceUrl, getEventsServiceApiKey } from "@/lib/events-upstream";
-import { blockIfCsrf } from "@/lib/api-hardening";
+import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -19,6 +19,11 @@ const ALLOWED_EVENT_TYPES = new Set([
 ]);
 
 const MAX_STRING = 500;
+const MAX_BATCH = 20;
+
+function cleanPositiveInt(value: unknown) {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : undefined;
+}
 
 function sanitizeEvent(e: unknown): Record<string, unknown> | null {
   if (!e || typeof e !== "object") return null;
@@ -28,9 +33,9 @@ function sanitizeEvent(e: unknown): Record<string, unknown> | null {
 
   return {
     eventType,
-    productId: typeof ev.productId === "number" ? ev.productId : undefined,
-    brandId: typeof ev.brandId === "number" ? ev.brandId : undefined,
-    categoryId: typeof ev.categoryId === "number" ? ev.categoryId : undefined,
+    productId: cleanPositiveInt(ev.productId),
+    brandId: cleanPositiveInt(ev.brandId),
+    categoryId: cleanPositiveInt(ev.categoryId),
     query: typeof ev.query === "string" ? ev.query.slice(0, MAX_STRING) : undefined,
     pageUrl: typeof ev.pageUrl === "string" ? ev.pageUrl.slice(0, MAX_STRING) : undefined,
     source: typeof ev.source === "string" ? ev.source.slice(0, 50) : undefined,
@@ -40,6 +45,8 @@ function sanitizeEvent(e: unknown): Record<string, unknown> | null {
 export async function POST(req: Request) {
   const csrf = blockIfCsrf(req);
   if (csrf) return csrf;
+  const json = requireJsonRequest(req);
+  if (json) return json;
 
   const ip = getClientIp(req);
   const rl = await rateLimit(`events-track:${ip}`, 30, 60_000);
@@ -59,7 +66,9 @@ export async function POST(req: Request) {
 
   // Sanitize: only allow known event types with known fields
   let sanitized: Record<string, unknown>[];
-  const raw = Array.isArray((body as any).events) ? (body as any).events : [body];
+  const raw = Array.isArray((body as any).events)
+    ? (body as any).events.slice(0, MAX_BATCH)
+    : [body];
   sanitized = raw.map(sanitizeEvent).filter(Boolean) as Record<string, unknown>[];
 
   if (sanitized.length === 0) {

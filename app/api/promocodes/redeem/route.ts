@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { redeemPromoForOrder, validatePromo } from "@/lib/promos";
 import { getUserIdFromRequest } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { blockIfCsrf } from "@/lib/api-hardening";
+import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   const csrf = blockIfCsrf(req);
   if (csrf) return csrf;
+  const jsonBlocked = requireJsonRequest(req);
+  if (jsonBlocked) return jsonBlocked;
 
   const ip = getClientIp(req);
   const rl = await rateLimit(`promo-redeem:${ip}`, 10, 60_000);

@@ -19,9 +19,6 @@ export async function GET(req: NextRequest) {
       return tooManyRequests(ipLimit.retryAfter);
     }
 
-    // Достаём cookies один раз (в App Router cookies() нужно вызывать как async)
-    const jar = await cookies();
-
     // 1) userId из нашей сессии/next-auth-обёртки
     const rawSessId = await getUserIdFromRequest();
     let effectiveUserId: number | null = null;
@@ -36,14 +33,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 1.1) fallback: из cookie session_user_id (если есть)
-    if (!effectiveUserId) {
-      const cookieUser = jar.get("session_user_id")?.value || null;
-      const n2 = cookieUser ? parseInt(cookieUser, 10) : NaN;
-      if (Number.isFinite(n2) && n2 > 0) {
-        effectiveUserId = n2;
-      }
-    }
+    const jar = await cookies();
 
     // 2) guest token из cookie / query / header
     const cookieToken =

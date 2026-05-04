@@ -4,11 +4,14 @@ import { prisma } from "@/lib/prisma";
 import { getUserIdFromRequest } from "@/lib/session";
 import { enforceSameOrigin } from "@/lib/security";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { requireJsonRequest } from "@/lib/api-hardening";
 
 export async function POST(req: Request) {
   // CSRF
   const csrf = enforceSameOrigin(req);
   if (csrf) return csrf;
+  const jsonBlocked = requireJsonRequest(req);
+  if (jsonBlocked) return jsonBlocked;
 
   // Rate limit: 5 платежей в минуту на IP
   const ip = getClientIp(req);

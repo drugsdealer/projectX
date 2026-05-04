@@ -88,14 +88,14 @@ export async function POST(req: Request) {
     });
 
     if (error) {
-      console.error("[password-reset/request] email send failed:", error);
+      console.error("[password-reset/request] email send failed");
       return NextResponse.json({
         success: false,
         message: "Не удалось отправить письмо. Попробуйте позже.",
       }, { status: 500 });
     }
 
-    console.log(`[password-reset] code sent to ${user.email}`);
+    console.log("[password-reset] code sent");
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("[password-reset/request] error");

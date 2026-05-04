@@ -14,7 +14,7 @@ async function getCookieJar(): Promise<any> {
 /**
  * Unified auth session utilities
  *
- * \- Primary httpOnly cookie: `session_user_id` (stores numeric user id as string)
+ * \- Legacy compatibility cookie: `session_user_id` (plain numeric id; never trusted in production)
  * \- Legacy support: signed token cookie `auth_session` (uid.ts.nonce.sig)
  * \- UI helper cookies for client hydration: `ui_user_data`, `ui_fullname`
  */
@@ -81,7 +81,7 @@ export function parseToken(token: string | null): string | null {
 }
 
 /**
- * Set primary auth session cookie with plain user id. Prefer setSessionOnResponse in route handlers.
+ * Set legacy UI/auth compatibility cookie with plain user id. Prefer DB-backed session_token for auth.
  */
 export async function setSession(userId: string | number) {
   try {
@@ -250,7 +250,6 @@ export async function getSessionUserId(): Promise<string | null> {
         select: { userId: true, revokedAt: true, lastSeen: true },
       });
       if (!session || session.revokedAt) {
-        // keep session_user_id as fallback
         jar.set({ name: SESSION_TOKEN_COOKIE, value: '', path: '/', maxAge: 0 });
         return null;
       }
@@ -267,8 +266,16 @@ export async function getSessionUserId(): Promise<string | null> {
     }
   }
 
-  const id = jar.get(SESSION_COOKIE)?.value;
-  if (id && id.trim() !== '') return id;
+  if (process.env.NODE_ENV !== "production") {
+    const id = jar.get(SESSION_COOKIE)?.value;
+    if (id && id.trim() !== '') return id;
+  } else {
+    const hasLegacyId = jar.get(SESSION_COOKIE)?.value || jar.get("uid")?.value;
+    if (hasLegacyId) {
+      jar.set({ name: SESSION_COOKIE, value: '', path: '/', maxAge: 0 });
+      jar.set({ name: "uid", value: '', path: '/', maxAge: 0 });
+    }
+  }
 
   const legacyRaw = jar.get(LEGACY_AUTH_COOKIE)?.value || null;
   const legacyId = parseToken(legacyRaw);
@@ -402,6 +409,7 @@ export async function getUserFromSession() {
 
 /** Read numeric user id directly from a Request's Cookie header (compat helper) */
 export function getUserIdFromRequest(req: Request): number | null {
+  if (process.env.NODE_ENV === "production") return null;
   try {
     const cookie = req.headers.get('cookie') ?? '';
     const sm = cookie.match(new RegExp(`${SESSION_TOKEN_COOKIE}=([^;]+)`));

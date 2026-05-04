@@ -12,6 +12,10 @@ const ADMIN_2FA_SECRET =
   process.env.STAGE_VAULT_SECRET ||
   (process.env.NODE_ENV !== "production" ? "dev_2fa_hmac_key" : "");
 
+if (process.env.NODE_ENV === "production" && !ADMIN_2FA_SECRET) {
+  throw new Error("ADMIN_2FA_HMAC_SECRET or STAGE_VAULT_SECRET is required in production");
+}
+
 export function sign2FACookie(userId: number): string {
   const payload = `2fa:${userId}:${Math.floor(Date.now() / 1000)}`;
   const sig = createHmac("sha256", ADMIN_2FA_SECRET).update(payload).digest("hex");

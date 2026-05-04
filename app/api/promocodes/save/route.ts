@@ -1,12 +1,14 @@
 // app/api/promocodes/save/route.ts
 import { prisma } from "@/lib/prisma";
 import { getUserIdFromRequest } from "@/lib/session";
-import { blockIfCsrf } from "@/lib/api-hardening";
+import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   const csrf = blockIfCsrf(req);
   if (csrf) return csrf;
+  const jsonBlocked = requireJsonRequest(req);
+  if (jsonBlocked) return jsonBlocked;
 
   const ip = getClientIp(req);
   const rl = await rateLimit(`promo-save:${ip}`, 10, 60_000);

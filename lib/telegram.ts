@@ -9,6 +9,14 @@ const ORDER_CHAT_ID = process.env.TELEGRAM_ORDER_CHAT_ID;
 const CONCIERGE_BOT_TOKEN = process.env.TELEGRAM_CONCIERGE_BOT_TOKEN;
 const CONCIERGE_CHAT_ID = process.env.TELEGRAM_CONCIERGE_CHAT_ID;
 
+function escapeTelegramHtml(value: unknown, maxLength = 1000) {
+  return String(value ?? "")
+    .slice(0, maxLength)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 // Базовая отправка текста
 async function sendTelegramMessage(botToken: string, chatId: string, text: string) {
   if (!botToken || !chatId) {
@@ -55,17 +63,16 @@ export async function sendOrderNotificationToTelegram(payload: {
   phone?: string;
   email?: string;
 }) {
-  const { orderId, token, amount, fullName, phone, email } = payload;
+  const { orderId, amount, fullName, phone, email } = payload;
 
   const lines: string[] = [];
   lines.push("🆕 <b>Новый заказ</b>");
   lines.push("");
-  lines.push(`<b>Номер заказа:</b> ${orderId}`);
-  if (token) lines.push(`<b>Токен:</b> <code>${token}</code>`);
-  lines.push(`<b>Сумма:</b> ${amount.toLocaleString("ru-RU")} ₽`);
-  if (fullName) lines.push(`<b>Имя:</b> ${fullName}`);
-  if (phone) lines.push(`<b>Телефон:</b> ${phone}`);
-  if (email) lines.push(`<b>Email:</b> ${email}`);
+  lines.push(`<b>Номер заказа:</b> ${escapeTelegramHtml(orderId, 80)}`);
+  lines.push(`<b>Сумма:</b> ${escapeTelegramHtml(amount.toLocaleString("ru-RU"), 40)} ₽`);
+  if (fullName) lines.push(`<b>Имя:</b> ${escapeTelegramHtml(fullName, 160)}`);
+  if (phone) lines.push(`<b>Телефон:</b> ${escapeTelegramHtml(phone, 80)}`);
+  if (email) lines.push(`<b>Email:</b> ${escapeTelegramHtml(email, 160)}`);
 
   const text = lines.join("\n");
 
@@ -87,11 +94,11 @@ export async function sendDeliveryRequestToTelegram(payload: {
   const lines: string[] = [];
   lines.push("🚚 <b>Запрос доставки на дом</b>");
   lines.push("");
-  lines.push(`<b>Заказ:</b> ${orderNumber}`);
-  lines.push(`<b>ФИО:</b> ${fullName}`);
-  lines.push(`<b>Адрес:</b> ${address}`);
-  lines.push(`<b>Время:</b> ${scheduledAt}`);
-  if (phone) lines.push(`<b>Телефон:</b> ${phone}`);
+  lines.push(`<b>Заказ:</b> ${escapeTelegramHtml(orderNumber, 80)}`);
+  lines.push(`<b>ФИО:</b> ${escapeTelegramHtml(fullName, 160)}`);
+  lines.push(`<b>Адрес:</b> ${escapeTelegramHtml(address, 500)}`);
+  lines.push(`<b>Время:</b> ${escapeTelegramHtml(scheduledAt, 120)}`);
+  if (phone) lines.push(`<b>Телефон:</b> ${escapeTelegramHtml(phone, 80)}`);
 
   const text = lines.join("\n");
   await sendTelegramMessage(ORDER_BOT_TOKEN as string, ORDER_CHAT_ID as string, text);

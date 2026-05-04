@@ -24,6 +24,44 @@ const SUCCEEDED_ENUM: any = (Prisma as any)?.OrderStatus?.SUCCEEDED
   ?? (Prisma as any)?.$Enums?.OrderStatus?.SUCCEEDED
   ?? "SUCCEEDED";
 
+async function verifyYooKassaPayment(orderId: number, paymentId: string | null) {
+  const shopId = process.env.YOOKASSA_SHOP_ID;
+  const apiKey = process.env.YOOKASSA_API_KEY;
+
+  if (!shopId || !apiKey) {
+    if (process.env.NODE_ENV === "production") {
+      return { ok: false, status: 503, message: "Payment provider is not configured" };
+    }
+    return { ok: true, skipped: true };
+  }
+
+  if (!paymentId) {
+    return { ok: false, status: 402, message: "Payment has not been initiated" };
+  }
+
+  try {
+    const upstream = await fetch(`https://api.yookassa.ru/v3/payments/${encodeURIComponent(paymentId)}`, {
+      headers: {
+        Authorization: "Basic " + Buffer.from(`${shopId}:${apiKey}`).toString("base64"),
+      },
+      cache: "no-store",
+    });
+    if (!upstream.ok) {
+      return { ok: false, status: 402, message: "Payment verification failed" };
+    }
+
+    const payment = await upstream.json().catch(() => null);
+    const metaOrderId = String(payment?.metadata?.orderId ?? "");
+    if (payment?.status !== "succeeded" || metaOrderId !== String(orderId)) {
+      return { ok: false, status: 402, message: "Payment is not completed" };
+    }
+
+    return { ok: true };
+  } catch {
+    return { ok: false, status: 502, message: "Payment verification unavailable" };
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const csrfBlocked = blockIfCsrf(req);
@@ -62,8 +100,8 @@ export async function POST(req: Request) {
         : null;
 
     // 3) Находим целевой заказ: по id, по токену, либо последнюю PENDING запись пользователя
-    const selectBase = { id: true, token: true, status: true, userId: true } as const;
-    let order = null as null | { id: number; token: string | null; status: any; userId: number | null };
+    const selectBase = { id: true, token: true, status: true, userId: true, paymentId: true } as const;
+    let order = null as null | { id: number; token: string | null; status: any; userId: number | null; paymentId: string | null };
 
     if (hasId) {
       order = await prisma.order.findUnique({ where: { id: parsedId }, select: selectBase });
@@ -80,7 +118,7 @@ export async function POST(req: Request) {
     }
 
     // Дополнительная защита: если заказ привязан к другому пользователю — запрещаем завершение
-    if (order.userId && userId && order.userId !== userId) {
+    if (order.userId && (!userId || order.userId !== userId)) {
       return NextResponse.json(
         { success: false, message: "Forbidden" },
         { status: 403, headers: buildPrivateHeaders() },
@@ -91,6 +129,14 @@ export async function POST(req: Request) {
     // Если заказ уже оплачен — считаем ок и возвращаем id
     if (alreadySucceeded) {
       return privateJson({ success: true, orderId: order.id });
+    }
+
+    const paymentCheck = await verifyYooKassaPayment(order.id, order.paymentId);
+    if (!paymentCheck.ok) {
+      return privateJson(
+        { success: false, message: paymentCheck.message },
+        { status: paymentCheck.status || 402 },
+      );
     }
 
     // Человеко-читаемый номер заказа, детерминированный по id (исключает гонки и пересечения)

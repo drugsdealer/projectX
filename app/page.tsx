@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import HomeClient from "./HomeClient";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
@@ -79,6 +80,63 @@ const homeJsonLd = {
   },
 };
 
+function HomePresentationFallback() {
+  const categories = [
+    { label: "Premium", href: "/premium" },
+    { label: "Sale", href: "/sale" },
+    { label: "Обувь", href: "/category/footwear" },
+    { label: "Одежда", href: "/category/clothes" },
+    { label: "Сумки", href: "/category/bags" },
+    { label: "Аксессуары", href: "/category/accessories" },
+  ];
+
+  return (
+    <main className="min-h-screen bg-[#f3efe7] text-[#15130f]">
+      <section className="relative isolate min-h-[92svh] overflow-hidden px-5 pt-28 pb-12 sm:px-8 lg:px-14">
+        <div className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_18%_18%,rgba(255,255,255,0.9),transparent_26%),linear-gradient(135deg,#f7f1e7_0%,#d9cbb8_44%,#0f0f0e_100%)]" />
+        <div className="absolute right-[-8%] top-[10%] -z-10 h-[62vh] w-[52vw] min-w-[320px] rounded-[42px] bg-black/85 shadow-2xl rotate-3" />
+        <div className="absolute right-[5%] top-[18%] -z-10 h-[52vh] w-[34vw] min-w-[240px] overflow-hidden rounded-[34px] border border-white/25 bg-[url('https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008429/IMG_0364_xcrp0m.jpg')] bg-cover bg-center shadow-[0_35px_90px_rgba(0,0,0,0.35)]" />
+
+        <div className="mx-auto flex min-h-[72svh] max-w-7xl flex-col justify-end">
+          <p className="mb-5 text-xs font-semibold uppercase tracking-[0.34em] text-black/55">
+            Original fashion concept store
+          </p>
+          <h1 className="max-w-4xl text-[clamp(3.5rem,11vw,9.5rem)] font-black uppercase leading-[0.82] tracking-[-0.08em]">
+            Stage
+            <span className="block pl-[0.08em] italic text-black/45">Store</span>
+          </h1>
+          <div className="mt-8 grid max-w-5xl gap-6 md:grid-cols-[1fr_0.85fr] md:items-end">
+            <p className="max-w-2xl text-base leading-7 text-black/68 sm:text-lg">
+              Оригинальная одежда, обувь и аксессуары: Premium-подборки, Sale,
+              редкие размеры и аккуратная проверка перед отправкой.
+            </p>
+            <div className="flex flex-wrap gap-3 md:justify-end">
+              <Link href="/premium" className="rounded-full bg-black px-6 py-3 text-sm font-semibold text-white transition hover:bg-white hover:text-black">
+                Смотреть Premium
+              </Link>
+              <Link href="/search" className="rounded-full border border-black/25 bg-white/35 px-6 py-3 text-sm font-semibold text-black backdrop-blur transition hover:border-black">
+                В каталог
+              </Link>
+            </div>
+          </div>
+
+          <nav className="mt-10 flex flex-wrap gap-2" aria-label="Главные разделы">
+            {categories.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="rounded-full border border-black/15 bg-white/30 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-black/70 backdrop-blur transition hover:border-black hover:text-black"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      </section>
+    </main>
+  );
+}
+
 export default function Page() {
   return (
     <>
@@ -87,11 +145,7 @@ export default function Page() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }}
       />
       <Suspense
-        fallback={
-          <div className="min-h-screen flex items-center justify-center text-sm text-gray-500">
-            Загрузка…
-          </div>
-        }
+        fallback={<HomePresentationFallback />}
       >
         <HomeClient />
       </Suspense>

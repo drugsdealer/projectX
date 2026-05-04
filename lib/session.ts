@@ -118,9 +118,8 @@ export async function getUserIdFromRequest(): Promise<number | null> {
           select: { userId: true, revokedAt: true, lastSeen: true },
         });
         if (!session || session.revokedAt) {
-          // do not clear session_user_id here; fall back to legacy cookie
           jar.delete?.(SESSION_TOKEN_COOKIE);
-          // fall through to other mechanisms
+          if (isProd) return null;
         } else {
           const now = Date.now();
           if (!session.lastSeen || now - session.lastSeen.getTime() > 5 * 60 * 1000) {
@@ -132,7 +131,7 @@ export async function getUserIdFromRequest(): Promise<number | null> {
           foundUserId = session.userId;
         }
       } catch {
-        // БД недоступна — игнорируем session_token и продолжаем
+        if (isProd) return null;
       }
     }
   } catch {}
@@ -161,7 +160,7 @@ export async function getUserIdFromRequest(): Promise<number | null> {
       // в production максимально ограничиваемся проверенными httpOnly-куками,
       // в dev допускаем дополнительные варианты для отладки.
       const candidates = isProd
-        ? ["session_user_id", "auth_user_id"]
+        ? []
         : [
             "session_user_id",
             "sessionUserId",

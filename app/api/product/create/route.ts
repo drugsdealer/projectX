@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/admin";
+import { requireJsonRequest } from "@/lib/api-hardening";
 
 export async function POST(req: Request) {
-  const guard = await requireAdminApi({ req });
+  const guard = await requireAdminApi({ require2FA: true, req });
   if (!guard.ok) return guard.response;
+  const json = requireJsonRequest(req);
+  if (json) return json;
 
   const body = await req.json();
 

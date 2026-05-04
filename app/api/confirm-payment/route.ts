@@ -7,7 +7,7 @@ import { sendOrderNotificationToTelegram } from '@/lib/telegram';
 import { redeemPromoForOrder } from '@/lib/promos';
 import { sendOrderReceipt } from '@/lib/receipt-email';
 import { getClientIp, rateLimit } from '@/lib/rate-limit';
-import { blockIfCsrf } from '@/lib/api-hardening';
+import { blockIfCsrf, requireJsonRequest } from '@/lib/api-hardening';
 
 // аккуратный парсер числа
 function toInt(v: unknown): number | null {
@@ -34,6 +34,8 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   const csrfBlocked = blockIfCsrf(req);
   if (csrfBlocked) return csrfBlocked;
+  const jsonBlocked = requireJsonRequest(req);
+  if (jsonBlocked) return jsonBlocked;
   try {
     /* 0. Rate limiting */
     const ip = getClientIp(req);
@@ -213,6 +215,13 @@ export async function POST(req: Request) {
     if (existing.status !== 'SUCCEEDED') {
       const shopId = process.env.YOOKASSA_SHOP_ID;
       const apiKey = process.env.YOOKASSA_API_KEY;
+      if ((!shopId || !apiKey) && process.env.NODE_ENV === 'production') {
+        console.error('[api.confirm-payment] YooKassa credentials are not configured');
+        return NextResponse.json(
+          { success: false, message: 'Платёжная система не настроена' },
+          { status: 503 },
+        );
+      }
       if (shopId && apiKey) {
         const paymentId = existing.paymentId;
         if (!paymentId) {

@@ -4,7 +4,7 @@ export const revalidate = 0;
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { clearSessionTokenOnResponse, setSessionOnResponse, setSessionTokenOnResponse } from "../../_utils/session";
+import { clearSessionOnResponse, clearSessionTokenOnResponse, setSessionOnResponse, setSessionTokenOnResponse } from "../../_utils/session";
 import { cookies as nextCookies } from "next/headers";
 import { handleApiError } from "@/lib/errors";
 import { logAction } from "@/lib/logAction";
@@ -164,7 +164,7 @@ export async function POST(req: Request) {
 
     let user = await prisma.user.findUnique({
       where: { email },
-      select: { id: true, email: true, fullName: true, role: true, password: true, deletedAt: true },
+      select: { id: true, email: true, fullName: true, role: true, password: true, verified: true, deletedAt: true },
     });
 
     if (!user || !user.password) {
@@ -181,6 +181,13 @@ export async function POST(req: Request) {
       );
     }
 
+    if (!user.verified || user.verified.getTime() <= 0) {
+      return NextResponse.json(
+        { success: false, message: "Подтвердите email перед входом", needsVerification: true },
+        { status: 403 }
+      );
+    }
+
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) {
       return NextResponse.json(
@@ -193,7 +200,7 @@ export async function POST(req: Request) {
       const updated = await prisma.user.update({
         where: { id: user.id },
         data: { role: "ADMIN" as any },
-        select: { id: true, email: true, fullName: true, role: true, password: true, deletedAt: true },
+        select: { id: true, email: true, fullName: true, role: true, password: true, verified: true, deletedAt: true },
       }).catch(() => null);
       if (updated) user = updated;
     }
@@ -291,7 +298,12 @@ export async function POST(req: Request) {
       setSessionTokenOnResponse(res, sessionToken);
     } catch (e) {
       console.warn("[LOGIN] failed to create session:");
-      clearSessionTokenOnResponse(res);
+      if (process.env.NODE_ENV === "production") {
+        clearSessionOnResponse(res);
+        res.cookies.set("uid", "", { path: "/", maxAge: 0 });
+      } else {
+        clearSessionTokenOnResponse(res);
+      }
     }
 
     return res;

@@ -1,30 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies, headers } from "next/headers";
-
-async function getUserIdFromHeadersOrCookies(): Promise<number | null> {
-  try {
-    const h = await headers();
-    const idFromHeader = h.get("x-user-id") || h.get("X-User-Id");
-    if (idFromHeader) {
-      const n = Number(idFromHeader);
-      if (Number.isFinite(n)) return n;
-    }
-  } catch {}
-  try {
-    const c = await cookies();
-    const idFromCookie = c.get("userId")?.value || c.get("uid")?.value;
-    if (idFromCookie) {
-      const n = Number(idFromCookie);
-      if (Number.isFinite(n)) return n;
-    }
-  } catch {}
-  return null;
-}
+import { getUserIdFromRequest } from "@/lib/session";
 
 export async function GET(req: NextRequest) {
   try {
-    const userId = await getUserIdFromHeadersOrCookies();
+    const userId = await getUserIdFromRequest();
     const now = new Date();
 
     const active = await (prisma as any).promoCode.findMany({

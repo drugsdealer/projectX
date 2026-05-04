@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { headers, cookies } from "next/headers";
+import { getUserIdFromRequest } from "@/lib/session";
 
 type PromoRedemptionView = { code: string; usedAt: Date };
 
@@ -62,25 +62,11 @@ async function fetchUserRedemptions(userId: number): Promise<PromoRedemptionView
   );
 }
 
-async function getUserFromHeaders() {
-  try {
-    const h = await headers();
-    const c = await cookies();
-    const idFromHeader = h.get("x-user-id") || h.get("X-User-Id");
-    const idFromCookie = c.get("userId")?.value || c.get("uid")?.value;
-    const idStr = idFromHeader ?? idFromCookie ?? undefined;
-    const id = idStr ? Number(idStr) : undefined;
-    if (id && Number.isFinite(id)) {
-      return { id, name: undefined as string | undefined };
-    }
-  } catch {}
-  return null;
-}
-
 export const dynamic = "force-dynamic";
 
 export default async function PromoCodesPage() {
-  const user = await getUserFromHeaders(); // верни { id, name? } или null
+  const userId = await getUserIdFromRequest();
+  const user = userId ? { id: userId, name: undefined as string | undefined } : null;
   const now = new Date();
 
   const active = await fetchActivePromos(now);

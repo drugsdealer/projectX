@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { getUserIdFromRequest } from '@/lib/session';
-import { blockIfCsrf } from '@/lib/api-hardening';
+import { blockIfCsrf, requireJsonRequest } from '@/lib/api-hardening';
 
 /**
  * Secure profile persistence via HttpOnly cookie (AES‑GCM, WebCrypto)
@@ -89,6 +89,9 @@ function fromBase64Url(s: string): ArrayBuffer {
 // ---------- WebCrypto AES‑GCM ----------
 async function getKey(): Promise<CryptoKey> {
   const secret = process.env.STAGE_VAULT_SECRET || '';
+  if (process.env.NODE_ENV === 'production' && !secret) {
+    throw new Error('STAGE_VAULT_SECRET must be set in production');
+  }
   const raw = te.encode(secret || ''); // default empty -> still deterministic
   const digest = await crypto.subtle.digest('SHA-256', raw);
   return crypto.subtle.importKey('raw', digest, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
@@ -160,6 +163,8 @@ async function writeCookieProfile(p: Profile) {
 export async function POST(req: NextRequest) {
   const csrfBlocked = blockIfCsrf(req);
   if (csrfBlocked) return csrfBlocked;
+  const jsonBlocked = requireJsonRequest(req);
+  if (jsonBlocked) return jsonBlocked;
   try {
     const payload = (await req.json()) as Record<string, unknown>;
 
@@ -167,7 +172,7 @@ export async function POST(req: NextRequest) {
       fullName: sanitizeString(payload.fullName),
       phone: normalizePhone(sanitizeString(payload.phone)),
       address: sanitizeString(payload.address, 300),
-      email: sanitizeString(payload.email, 120),
+      // Email changes must go through a dedicated verification flow.
       gender: sanitizeGender((payload as any).gender),
       birthDate: sanitizeBirthDate((payload as any).birthDate),
       city: sanitizeString((payload as any).city, 120),
@@ -202,7 +207,6 @@ export async function POST(req: NextRequest) {
         if (merged.city) data.city = merged.city;
         if (merged.gender) data.gender = merged.gender;
         if (merged.avatarEmoji) data.avatarEmoji = merged.avatarEmoji;
-        if (merged.email) data.email = merged.email;
 
         if (Object.keys(data).length > 0) {
           dbUpdatedUser = await prisma.user.update({
