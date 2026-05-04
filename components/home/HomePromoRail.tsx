@@ -238,73 +238,40 @@ export default function HomePromoRail({
 
   const visiblePromos = resolvedPromos.filter(
     (p) => !usedCodes.has(String(p?.code || '').trim().toUpperCase())
+  );
+  const uniqueVisiblePromos = Array.from(
+    new Map(
+      visiblePromos
+        .map((promo) => [String(promo?.code || '').trim().toUpperCase(), promo] as const)
+        .filter(([code]) => Boolean(code))
+    ).values()
   ).slice(0, 8);
+
   return (
-    <section className="relative overflow-hidden rounded-[30px] border border-black/15 bg-gradient-to-br from-[#f6f8fb] via-[#fbfcff] to-[#f3f6fb] p-4 sm:p-5">
+    <section className="relative overflow-hidden rounded-[34px] border border-black/10 bg-[#f4efe6] p-4 text-[#15130f] shadow-[0_24px_90px_rgba(0,0,0,0.08)] sm:p-6">
       <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_82%,rgba(37,99,235,0.12),transparent_44%),radial-gradient(circle_at_82%_18%,rgba(29,78,216,0.10),transparent_42%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(255,255,255,0.92),transparent_24%),linear-gradient(135deg,rgba(255,255,255,0.72),rgba(255,255,255,0.1)_48%,rgba(0,0,0,0.045))]" />
+        <div className="absolute right-[-12%] top-[-42%] h-[360px] w-[360px] rounded-full border border-black/10" />
+        <div className="absolute bottom-[-46%] left-[42%] h-[340px] w-[340px] rounded-full bg-black/[0.035]" />
         {showAmbientPlanes ? (
-          <>
-            <div className="ambient-plane plane-a">
-              <svg
-                viewBox="0 0 24 24"
-                className="h-6 w-6 text-[#1d4ed8]"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.9"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M3 11.5 21 3 13 21 10.2 13.8 3 11.5Z" />
-                <path d="M10.2 13.8 21 3" />
-              </svg>
-            </div>
-            <div className="ambient-plane plane-b">
-              <svg
-                viewBox="0 0 24 24"
-                className="h-5 w-5 text-[#2563eb]"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.9"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M3 11.5 21 3 13 21 10.2 13.8 3 11.5Z" />
-                <path d="M10.2 13.8 21 3" />
-              </svg>
-            </div>
-            <div className="ambient-plane plane-c">
-              <svg
-                viewBox="0 0 24 24"
-                className="h-4 w-4 text-[#3b82f6]"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.9"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M3 11.5 21 3 13 21 10.2 13.8 3 11.5Z" />
-                <path d="M10.2 13.8 21 3" />
-              </svg>
-            </div>
-          </>
+          <div className={`ticket-scan ${isMotionPaused ? "paused" : ""}`} />
         ) : null}
       </div>
 
       <div className="relative z-10">
-        <div className="mb-3 flex items-end justify-between gap-3">
+        <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="inline-flex rounded-full bg-black/8 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-black/70">
+            <div className="inline-flex rounded-full border border-black/10 bg-white/35 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-black/55 backdrop-blur">
               {eyebrow}
             </div>
-            <h4 className="mt-2 text-[17px] font-extrabold tracking-tight text-black/90">{title}</h4>
-            <p className="mt-1 text-xs text-black/60">{subtitle}</p>
+            <h4 className="mt-3 text-2xl font-black tracking-[-0.05em] text-black sm:text-4xl">{title}</h4>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-black/55">{subtitle}</p>
             {claimError ? <p className="mt-1 text-xs text-rose-600">{claimError}</p> : null}
           </div>
-          <div ref={profileTargetRef} className="shrink-0">
+          <div ref={profileTargetRef} className="shrink-0 self-start lg:self-auto">
             <Link
               href="/profile/promocodes"
-              className="rounded-full border border-black/15 bg-white px-3 py-1.5 text-[11px] font-semibold text-black/70 transition hover:bg-black hover:text-white"
+              className="inline-flex rounded-full border border-black/15 bg-white/60 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-black/65 backdrop-blur transition hover:bg-black hover:text-white"
             >
               Все промокоды
             </Link>
@@ -312,13 +279,14 @@ export default function HomePromoRail({
         </div>
 
         <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {visiblePromos.length === 0 ? (
-            <div className="w-[220px] shrink-0 snap-start rounded-2xl border border-dashed border-black/20 bg-white/70 p-3 text-xs text-black/60">
+          {uniqueVisiblePromos.length === 0 ? (
+            <div className="ticket-empty relative min-h-[178px] w-[250px] shrink-0 snap-start overflow-hidden rounded-[24px] border border-dashed border-black/20 bg-white/45 p-5 text-sm leading-6 text-black/55 backdrop-blur">
+              <div className="mb-8 text-[10px] font-bold uppercase tracking-[0.22em] text-black/35">No active tickets</div>
               Сейчас нет активных общедоступных промокодов. Следи за обновлениями в Telegram.
             </div>
           ) : null}
 
-          {visiblePromos.map((promo) => {
+          {uniqueVisiblePromos.map((promo) => {
             const codeUpper = String(promo?.code || '').trim().toUpperCase();
             const isOwned = ownedCodes.has(codeUpper);
             const isClaiming = claimingCode === codeUpper;
@@ -327,30 +295,33 @@ export default function HomePromoRail({
               <button
                 key={`promo-${promo.code}`}
                 type="button"
+                disabled={isClaiming}
                 onClick={(e) => claimPromo(codeUpper, e.currentTarget)}
-                className="relative w-[220px] shrink-0 snap-start overflow-hidden rounded-2xl border border-black/18 bg-white px-3 pb-3 pt-2 shadow-[0_10px_22px_rgba(0,0,0,0.06)]"
+                className={`promo-ticket group relative min-h-[178px] w-[250px] shrink-0 snap-start overflow-hidden rounded-[24px] border border-black/12 bg-[#fffaf1] p-4 text-left shadow-[0_18px_42px_rgba(0,0,0,0.08)] transition ${reduceMotion || balancedMotion ? "" : "hover:-translate-y-1 hover:shadow-[0_24px_58px_rgba(0,0,0,0.12)]"} disabled:cursor-wait disabled:opacity-70`}
+                aria-label={`${isOwned ? 'Промокод уже в профиле' : 'Забрать промокод'} ${codeUpper}`}
               >
-                <span className="pointer-events-none absolute -left-2 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-[#f6f8fb]" />
-                <span className="pointer-events-none absolute -right-2 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-[#f6f8fb]" />
+                <span className="pointer-events-none absolute -left-3 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-[#f4efe6]" />
+                <span className="pointer-events-none absolute -right-3 top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-[#f4efe6]" />
+                <span className="pointer-events-none absolute inset-y-0 left-[72%] border-l border-dashed border-black/12" />
 
-                <div className="border-b border-dashed border-black/18 pb-2">
+                <div className="border-b border-dashed border-black/14 pb-3 pr-12">
                   <div className="flex items-start justify-between gap-2">
-                    <span className="rounded-full bg-black px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white">
+                    <span className="rounded-full bg-black px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white">
                       {promo.code}
                     </span>
-                    <span className="text-sm font-extrabold text-black/85">{promoLabel(promo)}</span>
+                    <span className="text-lg font-black tracking-[-0.04em] text-black">{promoLabel(promo)}</span>
                   </div>
                 </div>
 
-                <div className="mt-2 line-clamp-2 text-xs font-semibold text-black/80">
+                <div className="mt-3 line-clamp-2 pr-8 text-sm font-bold leading-5 text-black/78">
                   {promo.description || 'Скидка по общедоступному промокоду'}
                 </div>
-                <div className="mt-2 text-[11px] text-black/55">
+                <div className="mt-3 text-[11px] font-semibold text-black/45">
                   {promo.minSubtotal ? `от ${Number(promo.minSubtotal).toLocaleString('ru-RU')} ₽` : 'Без минимальной суммы'}
                 </div>
-                {end ? <div className="mt-1 text-[10px] uppercase tracking-[0.12em] text-black/45">до {end}</div> : null}
+                {end ? <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-black/38">до {end}</div> : null}
 
-                <div className="mt-2 inline-flex rounded-full border border-black/15 bg-black/5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-black/75">
+                <div className="absolute bottom-4 right-4 inline-flex rounded-full border border-black/12 bg-black/[0.04] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-black/70 transition group-hover:bg-black group-hover:text-white">
                   {isOwned ? 'В профиле' : isClaiming ? 'Сохраняем...' : 'Забрать билет'}
                 </div>
               </button>
@@ -361,12 +332,13 @@ export default function HomePromoRail({
             href={telegramUrl}
             target="_blank"
             rel="noreferrer"
-            className={`relative w-[220px] shrink-0 snap-start rounded-2xl border border-[#2563eb]/25 bg-gradient-to-br from-[#eff6ff] to-[#dbeafe] p-3 shadow-[0_10px_22px_rgba(0,0,0,0.06)] transition ${reduceMotion || balancedMotion ? "" : "hover:-translate-y-0.5"}`}
+            className={`relative min-h-[178px] w-[250px] shrink-0 snap-start overflow-hidden rounded-[24px] border border-black/12 bg-black p-4 text-white shadow-[0_18px_42px_rgba(0,0,0,0.12)] transition ${reduceMotion || balancedMotion ? "" : "hover:-translate-y-1 hover:shadow-[0_24px_58px_rgba(0,0,0,0.18)]"}`}
           >
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#1d4ed8]">Telegram</div>
-            <div className="mt-2 text-sm font-extrabold leading-tight text-[#1e3a8a]">Больше промокодов в канале</div>
-            <div className="mt-2 text-xs text-[#1e40af]/90">{telegramText}</div>
-            <div className="mt-3 inline-flex rounded-full bg-[#1d4ed8] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white">
+            <div className="absolute right-[-34px] top-[-34px] h-24 w-24 rounded-full border border-white/12" />
+            <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/45">Telegram</div>
+            <div className="mt-5 max-w-[170px] text-xl font-black leading-none tracking-[-0.05em] text-white">Больше промокодов в канале</div>
+            <div className="mt-3 text-xs leading-5 text-white/58">{telegramText}</div>
+            <div className="mt-5 inline-flex rounded-full bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-black">
               Перейти
             </div>
           </a>
@@ -390,156 +362,66 @@ export default function HomePromoRail({
       ) : null}
 
       <style jsx>{`
-        .ambient-plane {
+        .ticket-scan {
           position: absolute;
-          left: 0;
+          left: -25%;
           top: 0;
-          opacity: 0;
-          filter: drop-shadow(0 4px 12px rgba(37, 99, 235, 0.2));
-          will-change: opacity, transform;
-        }
-        .ambient-plane svg {
-          animation: plane-soft-tilt 4.8s ease-in-out infinite;
+          height: 100%;
+          width: 28%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.38), transparent);
+          transform: skewX(-18deg);
+          animation: ticket-scan 8s ease-in-out infinite;
           animation-play-state: ${isMotionPaused ? "paused" : "running"};
+          will-change: transform, opacity;
         }
-        .plane-a {
-          left: -8%;
-          top: 74%;
-          animation: plane-fly-a 18s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
-          animation-play-state: ${isMotionPaused ? "paused" : "running"};
+        .ticket-scan.paused {
+          animation-play-state: paused;
         }
-        .plane-b {
-          left: -10%;
-          top: 32%;
-          animation: plane-fly-b 20s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
-          animation-delay: 1.8s;
-          animation-play-state: ${isMotionPaused ? "paused" : "running"};
+        .promo-ticket::after,
+        .ticket-empty::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          background:
+            radial-gradient(circle at 12px 12px, rgba(0, 0, 0, 0.045) 0 1px, transparent 1.5px) 0 0 / 22px 22px;
+          opacity: 0.28;
+          mix-blend-mode: multiply;
         }
-        .plane-c {
-          left: -12%;
-          top: 58%;
-          animation: plane-fly-c 22s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
-          animation-delay: 4.2s;
-          animation-play-state: ${isMotionPaused ? "paused" : "running"};
+        .promo-ticket::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          background: linear-gradient(115deg, transparent 0%, transparent 42%, rgba(255, 255, 255, 0.72) 50%, transparent 58%, transparent 100%);
+          transform: translateX(-120%);
+          transition: transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
         }
-        @keyframes plane-soft-tilt {
-          0%,
-          100% {
-            transform: rotate(-2deg);
-          }
-          50% {
-            transform: rotate(2.5deg);
-          }
+        .promo-ticket:hover::before {
+          transform: translateX(120%);
         }
-        @keyframes plane-fly-a {
+        @keyframes ticket-scan {
           0% {
             opacity: 0;
-            transform: translate(0, 0) rotate(-14deg) scale(0.92);
+            transform: translateX(0) skewX(-18deg);
           }
-          7% {
-            opacity: 0.2;
-          }
-          18% {
-            transform: translate(16vw, -8vh) rotate(8deg) scale(0.95);
-          }
-          26% {
-            transform: translate(22vw, -15vh) rotate(82deg) scale(0.98);
-          }
-          34% {
-            transform: translate(16vw, -22vh) rotate(156deg) scale(1);
+          12% {
+            opacity: 0.7;
           }
           42% {
-            transform: translate(10vw, -15vh) rotate(230deg) scale(0.98);
-          }
-          50% {
-            transform: translate(16vw, -8vh) rotate(304deg) scale(0.95);
-          }
-          64% {
-            transform: translate(36vw, -20vh) rotate(336deg) scale(0.95);
-          }
-          78% {
-            transform: translate(56vw, -32vh) rotate(8deg) scale(0.92);
-          }
-          90% {
-            opacity: 0.14;
-            transform: translate(72vw, -40vh) rotate(24deg) scale(0.9);
+            opacity: 0;
+            transform: translateX(520%) skewX(-18deg);
           }
           100% {
             opacity: 0;
-            transform: translate(88vw, -48vh) rotate(40deg) scale(0.88);
+            transform: translateX(520%) skewX(-18deg);
           }
         }
-        @keyframes plane-fly-b {
-          0% {
-            opacity: 0;
-            transform: translate(0, 0) rotate(12deg) scale(0.84);
-          }
-          8% {
-            opacity: 0.22;
-          }
-          18% {
-            transform: translate(18vw, 2vh) rotate(2deg) scale(0.88);
-          }
-          28% {
-            transform: translate(28vw, 10vh) rotate(-32deg) scale(0.92);
-          }
-          38% {
-            transform: translate(20vw, 18vh) rotate(-112deg) scale(0.96);
-          }
-          48% {
-            transform: translate(30vw, 26vh) rotate(-196deg) scale(0.98);
-          }
-          58% {
-            transform: translate(40vw, 18vh) rotate(-274deg) scale(0.94);
-          }
-          68% {
-            transform: translate(30vw, 10vh) rotate(-346deg) scale(0.9);
-          }
-          80% {
-            transform: translate(54vw, 20vh) rotate(-320deg) scale(0.88);
-          }
-          92% {
-            opacity: 0.12;
-            transform: translate(72vw, 32vh) rotate(-300deg) scale(0.84);
-          }
-          100% {
-            opacity: 0;
-            transform: translate(90vw, 42vh) rotate(-282deg) scale(0.8);
-          }
-        }
-        @keyframes plane-fly-c {
-          0% {
-            opacity: 0;
-            transform: translate(0, 0) rotate(-8deg) scale(0.76);
-          }
-          10% {
-            opacity: 0.18;
-          }
-          20% {
-            transform: translate(14vw, -8vh) rotate(6deg) scale(0.8);
-          }
-          30% {
-            transform: translate(26vw, -16vh) rotate(74deg) scale(0.84);
-          }
-          40% {
-            transform: translate(18vw, -24vh) rotate(140deg) scale(0.88);
-          }
-          50% {
-            transform: translate(10vw, -16vh) rotate(214deg) scale(0.84);
-          }
-          60% {
-            transform: translate(18vw, -8vh) rotate(286deg) scale(0.8);
-          }
-          72% {
-            transform: translate(40vw, -20vh) rotate(320deg) scale(0.84);
-          }
-          86% {
-            opacity: 0.12;
-            transform: translate(62vw, -28vh) rotate(352deg) scale(0.8);
-          }
-          100% {
-            opacity: 0;
-            transform: translate(84vw, -38vh) rotate(22deg) scale(0.78);
+        @media (prefers-reduced-motion: reduce) {
+          .ticket-scan,
+          .promo-ticket::before {
+            animation: none !important;
+            transition: none !important;
           }
         }
       `}</style>

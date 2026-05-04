@@ -1891,6 +1891,17 @@ export default function Home() {
         <div className="grid grid-cols-1 gap-6">
           {/* PRODUCTS BY CATEGORY */}
           <section className="space-y-10">
+            <div className="space-y-4 px-3 sm:px-0">
+              <HomePromoRail
+                promoCodes={publicPromoCodes}
+                eyebrow={promocodeSpace?.eyebrow}
+                title={promocodeSpace?.title}
+                subtitle={promocodeSpace?.subtitle}
+                telegramUrl={promocodeSpace?.telegramUrl}
+                telegramText={promocodeSpace?.telegramText}
+              />
+            </div>
+
             {isProductsLoading ? (
               <ProductsSkeleton />
             ) : (
@@ -1915,19 +1926,6 @@ export default function Home() {
                 {!productsError && !sectionOrder.length && (
                   <div className="text-center text-sm text-gray-500 py-8">
                     По выбранным фильтрам ничего не найдено
-                  </div>
-                )}
-
-                {!productsError && (
-                  <div className="space-y-4 px-3 sm:px-0">
-                    <HomePromoRail
-                      promoCodes={publicPromoCodes}
-                      eyebrow={promocodeSpace?.eyebrow}
-                      title={promocodeSpace?.title}
-                      subtitle={promocodeSpace?.subtitle}
-                      telegramUrl={promocodeSpace?.telegramUrl}
-                      telegramText={promocodeSpace?.telegramText}
-                    />
                   </div>
                 )}
 
