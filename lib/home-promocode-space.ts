@@ -25,7 +25,7 @@ const FILE_PATH = path.join(process.cwd(), "content", "home-promos", "promocode-
 
 const DEFAULT_SPACE: HomePromocodeSpace = {
   eyebrow: "Промокоды",
-  title: "Билеты на скидку",
+  title: "Скидки по коду",
   subtitle: "Здесь только общедоступные промокоды без лимита использований.",
   telegramUrl: "https://t.me/stagestore",
   telegramText: "В нашем Telegram ещё больше промокодов и быстрые анонсы акций.",

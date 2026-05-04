@@ -1803,56 +1803,81 @@ export default function Home() {
       <div className="h-4 sm:h-6" />
       <Container className="mt-10 pb-14">
         <section className="mb-14 px-3 sm:px-0">
-          <div className="grid gap-3 md:grid-cols-4">
-            {HOME_GATEWAYS.map((item) => (
+          {/* Gateway grid: 2-col mobile (Premium full-width, Sale+Catalog side-by-side), 4-col desktop */}
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4">
+            {/* Premium — full width on all screens */}
+            <Link
+              href={HOME_GATEWAYS[0].href}
+              className={[
+                "group relative col-span-2 overflow-hidden rounded-[24px] sm:rounded-[32px] p-4 sm:p-6 shadow-sm transition duration-500 hover:-translate-y-1 hover:shadow-xl",
+                HOME_GATEWAYS[0].className,
+              ].join(" ")}
+            >
+              <div className="absolute right-[-42px] top-[-42px] h-28 w-28 rounded-full border border-current opacity-15 transition duration-500 group-hover:scale-125" />
+              <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.28em] opacity-55">
+                {HOME_GATEWAYS[0].eyebrow}
+              </p>
+              <h3 className="mt-4 sm:mt-8 max-w-sm text-xl sm:text-4xl font-black leading-none tracking-[-0.05em]">
+                {HOME_GATEWAYS[0].title}
+              </h3>
+              <p className="mt-2 sm:mt-4 max-w-md text-xs sm:text-sm leading-5 sm:leading-6 opacity-65 line-clamp-2 sm:line-clamp-none">
+                {HOME_GATEWAYS[0].text}
+              </p>
+              <span className="mt-4 sm:mt-8 inline-flex rounded-full border border-current px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.16em] opacity-80 transition group-hover:opacity-100">
+                {HOME_GATEWAYS[0].cta}
+              </span>
+            </Link>
+
+            {/* Sale + Catalog — side by side on mobile, 1 col each on desktop */}
+            {HOME_GATEWAYS.slice(1).map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 className={[
-                  "group relative overflow-hidden rounded-[32px] p-6 shadow-sm transition duration-500 hover:-translate-y-1 hover:shadow-xl",
+                  "group relative col-span-1 overflow-hidden rounded-[24px] sm:rounded-[32px] p-4 sm:p-6 shadow-sm transition duration-500 hover:-translate-y-1 hover:shadow-xl",
                   item.className,
                 ].join(" ")}
               >
                 <div className="absolute right-[-42px] top-[-42px] h-28 w-28 rounded-full border border-current opacity-15 transition duration-500 group-hover:scale-125" />
-                <p className="text-[11px] font-bold uppercase tracking-[0.28em] opacity-55">
+                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.28em] opacity-55">
                   {item.eyebrow}
                 </p>
-                <h3 className="mt-8 max-w-sm text-2xl font-black leading-none tracking-[-0.05em] sm:text-4xl">
+                <h3 className="mt-3 sm:mt-8 text-base sm:text-4xl font-black leading-tight sm:leading-none tracking-[-0.04em] sm:tracking-[-0.05em]">
                   {item.title}
                 </h3>
-                <p className="mt-4 max-w-md text-sm leading-6 opacity-65">
+                <p className="mt-2 sm:mt-4 text-[11px] sm:text-sm leading-5 sm:leading-6 opacity-65 line-clamp-3 sm:line-clamp-none hidden sm:block">
                   {item.text}
                 </p>
-                <span className="mt-8 inline-flex rounded-full border border-current px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] opacity-80 transition group-hover:opacity-100">
+                <span className="mt-4 sm:mt-8 inline-flex rounded-full border border-current px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.16em] opacity-80 transition group-hover:opacity-100">
                   {item.cta}
                 </span>
               </Link>
             ))}
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="mt-2.5 sm:mt-4 grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-2">
             {HOME_GENDER_SELECTIONS.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="group relative min-h-[260px] overflow-hidden rounded-[34px] bg-black text-white shadow-sm transition duration-500 hover:-translate-y-1 hover:shadow-xl sm:min-h-[340px]"
+                className="group relative min-h-[160px] sm:min-h-[260px] md:min-h-[340px] overflow-hidden rounded-[24px] sm:rounded-[34px] bg-black text-white shadow-sm transition duration-500 hover:-translate-y-1 hover:shadow-xl"
               >
                 <Image
                   src={item.image}
                   alt=""
                   fill
-                  sizes="(max-width: 768px) 100vw, 50vw"
+                  sizes="(max-width: 768px) 50vw, 50vw"
                   className="object-cover opacity-62 grayscale transition duration-700 group-hover:scale-105 group-hover:opacity-78"
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/25 to-transparent" />
-                <div className="absolute inset-0 flex flex-col justify-end p-6 sm:p-8">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-white/55">
+                <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-6 md:p-8">
+                  <p className="text-[9px] sm:text-[11px] font-bold uppercase tracking-[0.32em] text-white/55">
                     {item.label}
                   </p>
-                  <h3 className="mt-3 max-w-xs text-4xl font-black uppercase leading-[0.9] tracking-[-0.07em] sm:text-6xl">
+                  <h3 className="mt-1.5 sm:mt-3 max-w-xs text-2xl sm:text-4xl md:text-6xl font-black uppercase leading-[0.9] tracking-[-0.07em]">
                     {item.title}
                   </h3>
-                  <span className="mt-6 w-fit rounded-full border border-white/45 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/85 transition group-hover:border-white group-hover:text-white">
+                  <span className="mt-3 sm:mt-6 w-fit rounded-full border border-white/45 px-3 sm:px-4 py-1 sm:py-2 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.16em] text-white/85 transition group-hover:border-white group-hover:text-white">
                     Смотреть
                   </span>
                 </div>
