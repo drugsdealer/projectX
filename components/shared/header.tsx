@@ -231,7 +231,7 @@ useLayoutEffect(() => {
   const [randomProducts, setRandomProducts] = useState<ProductLite[]>([]);
 
   // Live mobile autocomplete via lightweight /api/autocomplete
-  const { products: acProducts, brands: acBrands, loading: acLoading, active: acActive } =
+  const { products: acProducts, brands: acBrands, suggestions: acSuggestions, loading: acLoading, active: acActive } =
     useAutocomplete(mSearchValue);
 
   const openMobileSearch = () => {
@@ -597,8 +597,21 @@ useLayoutEffect(() => {
                         <div className="text-xs opacity-50 py-1">Ищем…</div>
                       )}
                       {!acLoading && acBrands.length === 0 && acProducts.length === 0 && (
-                        <div className="text-xs opacity-50 py-2">Ничего не найдено</div>
+                        <div className="text-xs opacity-50 py-2">Точных совпадений нет</div>
                       )}
+                      {!acLoading && acSuggestions.map((s) => (
+                        <button
+                          key={`${s.label}-${s.query}`}
+                          onClick={() => { addToHistory(s.query); router.push(`/search?q=${encodeURIComponent(s.query)}`); closeMobileSearch(); }}
+                          className={cn(
+                            "w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-left text-xs opacity-70 hover:opacity-100",
+                            isStageMode ? "hover:bg-white/5" : "hover:bg-black/5"
+                          )}
+                        >
+                          <Search size={11} />
+                          {s.label}
+                        </button>
+                      ))}
                       {acBrands.map((b) => (
                         <button
                           key={b.slug}
@@ -639,7 +652,7 @@ useLayoutEffect(() => {
                           </div>
                         </button>
                       ))}
-                      {(acProducts.length > 0 || acBrands.length > 0) && (
+                      {(acProducts.length > 0 || acBrands.length > 0 || acActive) && (
                         <button
                           onClick={() => { addToHistory(mSearchValue.trim()); router.push(`/search?q=${encodeURIComponent(mSearchValue.trim())}`); closeMobileSearch(); }}
                           className="mt-1 w-full text-left px-2 py-1.5 text-xs opacity-50 hover:opacity-100 transition flex items-center gap-1"

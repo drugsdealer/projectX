@@ -26,7 +26,7 @@ export function SearchBar({ isTransparent = false }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { products, brands, loading, active } = useAutocomplete(value);
+  const { products, brands, suggestions, loading, active } = useAutocomplete(value);
 
   // Sync history from localStorage on mount
   useEffect(() => {
@@ -164,10 +164,21 @@ export function SearchBar({ isTransparent = false }: Props) {
                 )}
 
                 {!loading && brands.length === 0 && products.length === 0 && (
-                  <div className="px-3 py-5 text-sm text-black/35 text-center">
-                    Ничего не найдено
+                  <div className="px-3 py-3 text-sm text-black/35 text-center">
+                    Точных совпадений нет
                   </div>
                 )}
+
+                {!loading && suggestions.map((s) => (
+                  <button
+                    key={`${s.label}-${s.query}`}
+                    onClick={() => navigate(s.query)}
+                    className="w-full flex items-center gap-1.5 px-3 py-2 text-xs text-black/55 hover:text-black hover:bg-black/5 rounded-xl transition"
+                  >
+                    <Search size={11} />
+                    {s.label}
+                  </button>
+                ))}
 
                 {brands.map((b) => (
                   <button
@@ -226,7 +237,7 @@ export function SearchBar({ isTransparent = false }: Props) {
                   </button>
                 ))}
 
-                {(brands.length > 0 || products.length > 0) && (
+                {(brands.length > 0 || products.length > 0 || active) && (
                   <button
                     onClick={() => navigate(value)}
                     className="w-full flex items-center gap-1.5 px-3 py-2 mt-0.5 text-xs text-black/45 hover:text-black hover:bg-black/5 rounded-xl transition"

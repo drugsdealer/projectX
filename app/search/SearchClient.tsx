@@ -81,6 +81,92 @@ const PROMOS: Promo[] = [
   { title: 'Дропы', desc: 'Подборка по свежим релизам и лимиткам.', href: '/search?tag=drops', tag: 'DROP' },
 ];
 
+const CATEGORY_VISUALS: Record<string, { mark: string; tone: string; glow: string; ink: string; pattern: string }> = {
+  обувь: {
+    mark: '01',
+    tone: 'from-[#f5efe2] via-white to-[#d9cbb5]',
+    glow: 'bg-[#c7a96b]',
+    ink: 'text-[#3d2f18]',
+    pattern: 'radial-gradient(circle_at_18%_22%,rgba(120,83,36,0.20),transparent_28%)',
+  },
+  одежда: {
+    mark: '02',
+    tone: 'from-[#eef3ef] via-white to-[#cbd8cd]',
+    glow: 'bg-[#70886f]',
+    ink: 'text-[#233426]',
+    pattern: 'linear-gradient(135deg,rgba(35,52,38,0.12),transparent_42%)',
+  },
+  сумки: {
+    mark: '03',
+    tone: 'from-[#f7eeee] via-white to-[#d9c5c2]',
+    glow: 'bg-[#9e6f67]',
+    ink: 'text-[#432623]',
+    pattern: 'radial-gradient(circle_at_75%_18%,rgba(126,68,58,0.18),transparent_30%)',
+  },
+  аксессуары: {
+    mark: '04',
+    tone: 'from-[#eef1f6] via-white to-[#c6cfdb]',
+    glow: 'bg-[#687995]',
+    ink: 'text-[#22304a]',
+    pattern: 'linear-gradient(90deg,rgba(34,48,74,0.10),transparent_55%)',
+  },
+  парфюм: {
+    mark: '05',
+    tone: 'from-[#f4eff8] via-white to-[#d4c4dd]',
+    glow: 'bg-[#8a6b98]',
+    ink: 'text-[#372441]',
+    pattern: 'radial-gradient(circle_at_32%_72%,rgba(101,58,127,0.16),transparent_34%)',
+  },
+  головные: {
+    mark: '06',
+    tone: 'from-[#f1f1ed] via-white to-[#cfcfc4]',
+    glow: 'bg-[#7b7a64]',
+    ink: 'text-[#343322]',
+    pattern: 'linear-gradient(160deg,rgba(58,57,42,0.12),transparent_48%)',
+  },
+};
+
+const DEFAULT_CATEGORY_VISUAL = {
+  mark: 'ST',
+  tone: 'from-[#f5f5f2] via-white to-[#d9d9d0]',
+  glow: 'bg-black',
+  ink: 'text-black',
+  pattern: 'radial-gradient(circle_at_18%_18%,rgba(0,0,0,0.10),transparent_30%)',
+};
+
+function getCategoryVisual(title: string) {
+  const key = normalizeQuery(title).toLowerCase();
+  if (key.includes('обув')) return CATEGORY_VISUALS.обувь;
+  if (key.includes('одеж')) return CATEGORY_VISUALS.одежда;
+  if (key.includes('сум')) return CATEGORY_VISUALS.сумки;
+  if (key.includes('аксесс')) return CATEGORY_VISUALS.аксессуары;
+  if (key.includes('парф')) return CATEGORY_VISUALS.парфюм;
+  if (key.includes('голов')) return CATEGORY_VISUALS.головные;
+  return DEFAULT_CATEGORY_VISUAL;
+}
+
+function getSelectionCopy(gender: string) {
+  if (gender === 'men') {
+    return {
+      eyebrow: 'Men selection',
+      title: 'Мужская селекция',
+      desc: 'Показываем категории и товары, подходящие для мужской подборки.',
+    };
+  }
+  if (gender === 'women') {
+    return {
+      eyebrow: 'Women selection',
+      title: 'Женская селекция',
+      desc: 'Показываем категории и товары, подходящие для женской подборки.',
+    };
+  }
+  return {
+    eyebrow: 'Full catalog',
+    title: 'Вся витрина',
+    desc: 'Категории без ограничения по полу: мужское, женское и унисекс.',
+  };
+}
+
 const HISTORY_KEY = 'stage.searchHistory.v2';
 const HISTORY_TTL_MS = 1000 * 60 * 60 * 24 * 90; // 90 days
 const HISTORY_MAX = 12;
@@ -477,6 +563,7 @@ const SidebarPromos = memo(function SidebarPromos({
 // -------------------- Stable category components (outside SearchPage to avoid remount on re-render) --------------------
 
 const CategoryCard = memo(function CategoryCard({ c, meta, genderSuffix = '' }: { c: Category; meta?: string; genderSuffix?: string }) {
+  const visual = getCategoryVisual(c.title);
   const chips = c.subtitle.includes('·')
     ? c.subtitle
         .split('·')
@@ -492,21 +579,25 @@ const CategoryCard = memo(function CategoryCard({ c, meta, genderSuffix = '' }: 
   return (
     <Link
       href={href}
-      className="group relative overflow-hidden rounded-2xl sm:rounded-3xl border border-black/10 bg-white p-4 sm:p-5 transition-colors duration-200 md:hover:border-black/20 md:hover:bg-black/[0.02]"
+      className={`group relative min-h-[118px] overflow-hidden rounded-[26px] border border-black/10 bg-gradient-to-br ${visual.tone} p-4 shadow-[0_10px_28px_rgba(0,0,0,0.045)] transition duration-300 hover:-translate-y-0.5 hover:border-black/20 hover:shadow-[0_22px_52px_rgba(0,0,0,0.10)] sm:min-h-[148px] sm:p-5`}
     >
-      <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white to-black/[0.02]" />
-      <div className="absolute inset-0 pointer-events-none opacity-[0.05] [background-image:radial-gradient(rgba(0,0,0,1)_1px,transparent_1px)] [background-size:14px_14px]" />
+      <div className="absolute inset-0 pointer-events-none opacity-80" style={{ backgroundImage: visual.pattern }} />
+      <div className="absolute -right-8 -top-10 h-28 w-28 rounded-full bg-white/60 blur-2xl sm:h-36 sm:w-36" />
+      <div className={`absolute bottom-4 left-4 h-2 w-14 rounded-full ${visual.glow} opacity-75 transition group-hover:w-20`} />
+      <div className="absolute right-4 top-3 text-[58px] font-black leading-none tracking-[-0.08em] text-black/[0.045] sm:right-5 sm:top-4 sm:text-[76px]">
+        {visual.mark}
+      </div>
 
       <div className="relative flex items-start justify-between gap-3 sm:gap-4">
         <div className="min-w-0">
-          <div className="text-base sm:text-[18px] font-extrabold tracking-tight">{c.title}</div>
+          <div className={`text-lg font-black tracking-[-0.04em] sm:text-[24px] ${visual.ink}`}>{c.title}</div>
           {meta ? (
             <>
-              <div className="mt-1 text-[11px] text-black/55 sm:hidden">{meta}</div>
-              <div className="mt-1 hidden sm:block text-[11px] sm:text-xs text-black/55">{meta}</div>
+              <div className="mt-1 text-[11px] font-semibold text-black/55 sm:hidden">{meta}</div>
+              <div className="mt-1 hidden text-[11px] font-semibold text-black/55 sm:block sm:text-xs">{meta}</div>
             </>
           ) : (
-            <div className="mt-1 hidden sm:block text-[11px] sm:text-xs text-black/55">{c.subtitle}</div>
+            <div className="mt-1 hidden text-[11px] font-semibold text-black/55 sm:block sm:text-xs">{c.subtitle}</div>
           )}
 
           {chips.length ? (
@@ -514,7 +605,7 @@ const CategoryCard = memo(function CategoryCard({ c, meta, genderSuffix = '' }: 
               {chips.map((chip) => (
                 <span
                   key={chip}
-                  className="inline-flex items-center h-6 sm:h-7 px-2.5 sm:px-3 rounded-full border border-black/10 bg-white/70 text-[10px] sm:text-[11px] font-semibold text-black/70"
+                  className="inline-flex h-6 items-center rounded-full border border-black/10 bg-white/70 px-2.5 text-[10px] font-semibold text-black/70 backdrop-blur sm:h-7 sm:px-3 sm:text-[11px]"
                 >
                   {chip}
                 </span>
@@ -524,9 +615,9 @@ const CategoryCard = memo(function CategoryCard({ c, meta, genderSuffix = '' }: 
         </div>
 
         <div className="shrink-0">
-          <div className="h-10 sm:h-11 px-3 sm:px-4 rounded-full border border-black/10 bg-white flex items-center gap-2 text-xs sm:text-sm font-semibold text-black/70 transition-colors duration-200">
+          <div className="flex h-10 items-center gap-2 rounded-full border border-black/10 bg-white/80 px-3 text-xs font-bold text-black/70 shadow-sm backdrop-blur transition duration-300 group-hover:bg-black group-hover:text-white sm:h-11 sm:px-4 sm:text-sm">
             <span className="hidden md:inline">Открыть</span>
-            <span className="inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-black/5 text-black/70 transition-colors duration-200">
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/5 text-black/70 transition duration-300 group-hover:bg-white group-hover:text-black sm:h-8 sm:w-8">
               →
             </span>
           </div>
@@ -537,17 +628,21 @@ const CategoryCard = memo(function CategoryCard({ c, meta, genderSuffix = '' }: 
 });
 
 const SubcategoryTile = memo(function SubcategoryTile({ name, count, genderSuffix = '' }: { name: string; count?: number; genderSuffix?: string }) {
+  const visual = getCategoryVisual(prettySubcategory(name));
   const href = genderSuffix
     ? `/category/${encodeURIComponent(name)}?gender=${encodeURIComponent(genderSuffix)}`
     : `/category/${encodeURIComponent(name)}`;
   return (
     <Link
       href={href}
-      className="rounded-2xl border border-black/10 bg-white px-3 py-3 transition hover:border-black/20"
+      className={`group relative overflow-hidden rounded-2xl border border-black/10 bg-gradient-to-br ${visual.tone} px-3 py-3 transition duration-300 hover:-translate-y-0.5 hover:border-black/20 hover:shadow-[0_14px_30px_rgba(0,0,0,0.09)]`}
       title={name}
     >
-      <div className="text-sm font-semibold leading-snug">{prettySubcategory(name)}</div>
-      {typeof count === 'number' ? <div className="mt-1 text-[11px] text-black/50">{count} товаров</div> : null}
+      <div className="absolute inset-0 opacity-70" style={{ backgroundImage: visual.pattern }} />
+      <div className="relative">
+        <div className="text-sm font-black leading-snug tracking-[-0.03em]">{prettySubcategory(name)}</div>
+        {typeof count === 'number' ? <div className="mt-1 text-[11px] font-semibold text-black/50">{count} товаров</div> : null}
+      </div>
     </Link>
   );
 });
@@ -587,6 +682,7 @@ export default function SearchPage() {
   }, [user?.gender]);
 
   const [activeGender, setActiveGender] = useState(genderFromUrl);
+  const selectionCopy = getSelectionCopy(activeGender);
 
   // keep gender in sync when URL changes (back/forward navigation)
   useEffect(() => { setActiveGender(genderFromUrl); }, [genderFromUrl]);
@@ -1113,9 +1209,8 @@ export default function SearchPage() {
               )}
               {/* Gender selector */}
               {!panelOpen && (
-                <div className="mt-3">
-                  {/* Tab underline style — same on mobile and desktop */}
-                  <div className="flex items-center gap-0 border-b border-black/[0.08]">
+                <div className="mt-3 space-y-3">
+                  <div className="inline-flex w-full rounded-[22px] border border-black/10 bg-black/[0.035] p-1 sm:w-auto">
                     {(['', 'men', 'women'] as const).map((g) => {
                       const label = g === '' ? 'Все' : g === 'men' ? 'Мужское' : 'Женское';
                       const isActive = activeGender === g;
@@ -1130,20 +1225,35 @@ export default function SearchPage() {
                               gender: g || undefined,
                             }));
                           }}
-                          className="relative pb-2.5 pt-1 px-4 text-sm font-medium transition-colors duration-150 whitespace-nowrap"
-                          style={{ color: isActive ? '#000' : 'rgba(0,0,0,0.38)' }}
+                          className="relative h-10 flex-1 rounded-[18px] px-4 text-sm font-extrabold transition-colors duration-150 whitespace-nowrap sm:flex-none"
+                          style={{ color: isActive ? '#fff' : 'rgba(0,0,0,0.45)' }}
                         >
-                          {label}
                           {isActive && (
                             <motion.span
-                              layoutId="search-gender-underline"
-                              className="absolute bottom-0 left-0 right-0 h-[2px] bg-black rounded-full"
-                              transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+                              layoutId="search-gender-pill"
+                              className="absolute inset-0 rounded-[18px] bg-black shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
+                              transition={{ type: 'spring', stiffness: 500, damping: 42 }}
                             />
                           )}
+                          <span className="relative z-10">{label}</span>
                         </button>
                       );
                     })}
+                  </div>
+
+                  <div className="relative overflow-hidden rounded-[26px] border border-black/10 bg-gradient-to-br from-black via-[#222018] to-[#756a52] px-4 py-4 text-white shadow-[0_18px_46px_rgba(0,0,0,0.16)] sm:px-5">
+                    <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(circle_at_18%_18%,rgba(255,255,255,0.9),transparent_18%),linear-gradient(120deg,transparent,rgba(255,255,255,0.20),transparent)]" />
+                    <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-white/55">{selectionCopy.eyebrow}</div>
+                        <div className="mt-1 text-xl font-black tracking-[-0.05em] sm:text-2xl">{selectionCopy.title}</div>
+                        <div className="mt-1 max-w-xl text-xs font-semibold leading-relaxed text-white/62 sm:text-sm">{selectionCopy.desc}</div>
+                      </div>
+                      <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-xs font-bold text-white/80 backdrop-blur">
+                        <span className="h-2 w-2 rounded-full bg-[#d8c69a]" />
+                        Активно сейчас
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1260,7 +1370,15 @@ export default function SearchPage() {
 
             <div className="mt-8 sm:mt-10 grid grid-cols-1 lg:grid-cols-[1fr_560px] gap-6 sm:gap-8">
               <section>
-                <div className="text-sm font-semibold">Категории</div>
+                <div className="flex items-end justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-black/40">Navigation</div>
+                    <h2 className="mt-1 text-2xl font-black tracking-[-0.06em] sm:text-3xl">Категории</h2>
+                  </div>
+                  <span className="hidden rounded-full border border-black/10 px-3 py-1.5 text-xs font-bold text-black/45 sm:inline-flex">
+                    {selectionCopy.title}
+                  </span>
+                </div>
                 <div className="mt-2 sm:mt-3">
                   <div className="grid grid-cols-1 gap-3 sm:hidden">
                     {CATEGORIES.map((c) => (
@@ -1311,9 +1429,14 @@ export default function SearchPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_560px] gap-6 sm:gap-8">
             <section>
-              <div className="flex items-end justify-between">
-                <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">Категории</h2>
-                <span className="text-xs sm:text-sm text-black/50">Быстрая навигация</span>
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-black/40">Navigation</div>
+                  <h2 className="mt-1 text-2xl font-black tracking-[-0.06em] sm:text-4xl">Категории</h2>
+                </div>
+                <span className="hidden rounded-full border border-black/10 px-3 py-1.5 text-xs font-bold text-black/45 sm:inline-flex">
+                  Быстрая навигация
+                </span>
               </div>
 
               <div className="mt-4 sm:mt-6">

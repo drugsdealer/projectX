@@ -15,16 +15,23 @@ export type AcBrand = {
   slug: string;
 };
 
+export type AcSuggestion = {
+  label: string;
+  query: string;
+};
+
 export function useAutocomplete(query: string) {
   const q = query.trim();
   const [products, setProducts] = useState<AcProduct[]>([]);
   const [brands, setBrands] = useState<AcBrand[]>([]);
+  const [suggestions, setSuggestions] = useState<AcSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (q.length < 2) {
       setProducts([]);
       setBrands([]);
+      setSuggestions([]);
       setLoading(false);
       return;
     }
@@ -37,6 +44,7 @@ export function useAutocomplete(query: string) {
         const data = await res.json();
         setProducts(data.products ?? []);
         setBrands(data.brands ?? []);
+        setSuggestions(data.suggestions ?? []);
       } catch {
         // silent — partial results are fine
       } finally {
@@ -47,5 +55,5 @@ export function useAutocomplete(query: string) {
     return () => clearTimeout(timer);
   }, [q]);
 
-  return { products, brands, loading, active: q.length >= 2 };
+  return { products, brands, suggestions, loading, active: q.length >= 2 };
 }
