@@ -22,6 +22,7 @@ import CmsPromoBlock from "@/components/home/promos/CmsPromoBlock";
 import { renderAuthorHomePromo } from "@/components/home/promos/author-promos";
 import type { HomeCmsPromoConfig, HomePromoProduct } from "@/components/home/promos/types";
 import { useMotionBudget, type MotionLevel } from "@/components/MotionBudgetProvider";
+import { shouldBypassNextImageOptimization } from "@/lib/media";
 // Локальные подписи основных категорий
 const LABELS: Record<string, string> = {
   footwear: 'Обувь',
@@ -404,6 +405,7 @@ const ProductCardImage = memo(function ProductCardImage({
             src={displaySrc}
             alt={alt}
             fill
+            unoptimized={shouldBypassNextImageOptimization(displaySrc)}
             className="object-contain"
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
             priority={false}

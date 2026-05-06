@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { shouldBypassNextImageOptimization } from "@/lib/media";
 
 interface Variant {
   price: number;
@@ -401,6 +402,7 @@ export const ProductCard: React.FC<Props> = ({
             src={displayImage}
             alt={name}
             fill
+            unoptimized={shouldBypassNextImageOptimization(displayImage)}
             draggable={false}
             className="object-cover transition-transform group-hover:scale-105"
             sizes="(max-width: 768px) 100vw, 33vw"
@@ -418,7 +420,7 @@ export const ProductCard: React.FC<Props> = ({
                 e.stopPropagation();
               }}
             >
-              <Image src={brandLogo} alt={brandForButton} fill className="object-contain" />
+              <Image src={brandLogo} alt={brandForButton} fill unoptimized={shouldBypassNextImageOptimization(brandLogo)} className="object-contain" />
             </Link>
           )}
           <h3 className="font-bold text-xs md:text-sm line-clamp-2 inline-flex items-center gap-1">

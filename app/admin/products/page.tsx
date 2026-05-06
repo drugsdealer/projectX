@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import ImageKitUploadField from "@/components/admin/ImageKitUploadField";
 
 type Category = { id: number; name: string; slug: string };
 type Brand = { id: number; name: string; slug: string };
@@ -500,6 +501,13 @@ export default function AdminProductsPage() {
             <div className="text-sm font-semibold">Добавить бренд</div>
             <input className={"mt-3 " + inputCls} placeholder="Название бренда" value={newBrand} onChange={(e) => setNewBrand(e.target.value)} />
             <input className={"mt-3 " + inputCls} placeholder="Ссылка на логотип (URL)" value={newBrandLogo} onChange={(e) => setNewBrandLogo(e.target.value)} />
+            <div className="mt-3">
+              <ImageKitUploadField
+                folder="/stage/brands"
+                label="Загрузить логотип"
+                onUploaded={setNewBrandLogo}
+              />
+            </div>
             <button onClick={addBrand} className={"mt-3 " + btnPrimary}>Добавить</button>
           </div>
           <div className="rounded-2xl border border-black/10 p-4">
@@ -541,8 +549,22 @@ export default function AdminProductsPage() {
                 {" · "}{Number(price).toLocaleString("ru-RU")} → {Number(noBoxPrice).toLocaleString("ru-RU")} ₽
               </div>
             )}
-            <input className={inputCls + " sm:col-span-2"} placeholder="Ссылка на фото" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
-            <textarea className={inputCls + " sm:col-span-2"} placeholder="Галерея фото (по одному URL на строку)" rows={4} value={galleryText} onChange={(e) => setGalleryText(e.target.value)} />
+            <div className="sm:col-span-2 grid gap-3 md:grid-cols-[minmax(0,1fr)_320px]">
+              <input className={inputCls} placeholder="Ссылка на фото" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+              <ImageKitUploadField
+                folder="/stage/products"
+                label="Загрузить главное фото"
+                onUploaded={setImageUrl}
+              />
+            </div>
+            <div className="sm:col-span-2 grid gap-3 md:grid-cols-[minmax(0,1fr)_320px]">
+              <textarea className={inputCls} placeholder="Галерея фото (по одному URL на строку)" rows={4} value={galleryText} onChange={(e) => setGalleryText(e.target.value)} />
+              <ImageKitUploadField
+                folder="/stage/products/gallery"
+                label="Добавить в галерею"
+                onUploaded={(url) => setGalleryText((prev) => (prev.trim() ? `${prev.trim()}\n${url}` : url))}
+              />
+            </div>
             <select className={inputCls} value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setSubcategoryId(""); }}>
               <option value="">Категория</option>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -766,8 +788,22 @@ export default function AdminProductsPage() {
                         </div>
                       </div>
 
-                      <input className={inputCls + " sm:col-span-2"} placeholder="Ссылка на главное фото" value={editForm.imageUrl} onChange={(e) => setEditField("imageUrl", e.target.value)} />
-                      <textarea className={inputCls + " sm:col-span-2"} placeholder="Галерея фото (по одному URL на строку)" rows={3} value={editForm.galleryText} onChange={(e) => setEditField("galleryText", e.target.value)} />
+                      <div className="sm:col-span-2 grid gap-3 md:grid-cols-[minmax(0,1fr)_320px]">
+                        <input className={inputCls} placeholder="Ссылка на главное фото" value={editForm.imageUrl} onChange={(e) => setEditField("imageUrl", e.target.value)} />
+                        <ImageKitUploadField
+                          folder="/stage/products"
+                          label="Заменить фото"
+                          onUploaded={(url) => setEditField("imageUrl", url)}
+                        />
+                      </div>
+                      <div className="sm:col-span-2 grid gap-3 md:grid-cols-[minmax(0,1fr)_320px]">
+                        <textarea className={inputCls} placeholder="Галерея фото (по одному URL на строку)" rows={3} value={editForm.galleryText} onChange={(e) => setEditField("galleryText", e.target.value)} />
+                        <ImageKitUploadField
+                          folder="/stage/products/gallery"
+                          label="Добавить в галерею"
+                          onUploaded={(url) => setEditField("galleryText", editForm.galleryText.trim() ? `${editForm.galleryText.trim()}\n${url}` : url)}
+                        />
+                      </div>
                       <textarea className={inputCls + " sm:col-span-2"} placeholder="Описание" rows={3} value={editForm.description} onChange={(e) => setEditField("description", e.target.value)} />
 
                       <select className={inputCls} value={editForm.categoryId} onChange={(e) => setEditField("categoryId", e.target.value)}>

@@ -23,6 +23,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@imagekit/next": "^2.1.5",
     "@pbe/react-yandex-maps": "^1.2.5",
     "@prisma/client": "6.18.0",
     "@radix-ui/react-checkbox": "^1.1.1",

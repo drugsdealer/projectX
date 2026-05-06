@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { shouldBypassNextImageOptimization } from '@/lib/media';
 
 type ProductItem = {
   id: number;
@@ -167,6 +168,7 @@ export default function HomeFeedInsert({
                       src={item.imageUrl}
                       alt={item.name}
                       fill
+                      unoptimized={shouldBypassNextImageOptimization(item.imageUrl)}
                       className="object-contain p-2 sm:p-3 transition duration-300 group-hover:scale-[1.01]"
                     />
                   ) : null}

@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { shouldBypassNextImageOptimization } from '@/lib/media';
 
 import type { HomeCmsPromoConfig, HomePromoProduct } from '@/components/home/promos/types';
 
@@ -25,6 +26,7 @@ export default function CmsPromoBlock({ promo, items }: Props) {
           src={promo.backgroundImageUrl}
           alt=""
           fill
+          unoptimized={shouldBypassNextImageOptimization(promo.backgroundImageUrl)}
           className="object-cover"
           aria-hidden
         />
@@ -51,6 +53,7 @@ export default function CmsPromoBlock({ promo, items }: Props) {
                 alt={promo.name}
                 width={420}
                 height={140}
+                unoptimized={shouldBypassNextImageOptimization(promo.logoImageUrl)}
                 className="h-auto w-full object-contain"
               />
             </div>
@@ -74,7 +77,7 @@ export default function CmsPromoBlock({ promo, items }: Props) {
                   style={{ backgroundColor: accent }}
                 />
                 <div className="relative aspect-[4/5] bg-black/[0.03]">
-                  {item.imageUrl ? <Image src={item.imageUrl} alt={item.name} fill className="object-cover" /> : null}
+                  {item.imageUrl ? <Image src={item.imageUrl} alt={item.name} fill unoptimized={shouldBypassNextImageOptimization(item.imageUrl)} className="object-cover" /> : null}
                 </div>
                 <div className="space-y-1 p-3">
                   {item.brandName ? <p className="text-[10px] uppercase tracking-[0.12em] text-black/45">{item.brandName}</p> : null}

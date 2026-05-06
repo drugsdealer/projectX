@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { HomePromoProduct } from '@/components/home/promos/types';
+import { shouldBypassNextImageOptimization } from '@/lib/media';
 
 type BowConfig = {
   top: string;
@@ -59,7 +60,7 @@ export default function FstuStudiosSpotlight({
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.6),transparent_45%),radial-gradient(circle_at_80%_85%,rgba(255,255,255,0.65),transparent_42%)]" />
       {backgroundImageUrl ? (
         <div className="pointer-events-none absolute inset-0 opacity-20">
-          <Image src={backgroundImageUrl} alt="" fill className="object-cover" aria-hidden />
+          <Image src={backgroundImageUrl} alt="" fill unoptimized={shouldBypassNextImageOptimization(backgroundImageUrl)} className="object-cover" aria-hidden />
         </div>
       ) : null}
 
@@ -80,6 +81,7 @@ export default function FstuStudiosSpotlight({
               alt=""
               width={bow.size}
               height={Math.round((bow.size * 104) / 140)}
+              unoptimized={shouldBypassNextImageOptimization(bowImageUrl)}
               className="h-auto w-auto"
               aria-hidden
             />
@@ -96,6 +98,7 @@ export default function FstuStudiosSpotlight({
             alt="ACNE"
             width={460}
             height={138}
+            unoptimized={shouldBypassNextImageOptimization(logoImageUrl)}
             className="h-auto w-full object-contain"
           />
         </div>
@@ -123,6 +126,7 @@ export default function FstuStudiosSpotlight({
                       src={item.imageUrl}
                       alt={item.name}
                       fill
+                      unoptimized={shouldBypassNextImageOptimization(item.imageUrl)}
                       className="object-cover transition duration-500 group-hover:scale-[1.03]"
                     />
                   ) : null}

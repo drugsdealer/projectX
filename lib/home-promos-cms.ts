@@ -2,6 +2,7 @@ import "server-only";
 
 import path from "node:path";
 import { promises as fs } from "node:fs";
+import { isAllowedMediaUrl, isImageKitUrl } from "@/lib/media";
 
 export type HomeCmsPromo = {
   id: string;
@@ -21,13 +22,6 @@ export type HomeCmsPromo = {
 };
 
 const CMS_PROMOS_FILE = path.join(process.cwd(), "content", "home-promos", "cms-promos.json");
-
-const isCloudinaryUrl = (raw: unknown) => {
-  if (typeof raw !== "string") return false;
-  const v = raw.trim();
-  if (!v) return false;
-  return /^https:\/\/res\.cloudinary\.com\//i.test(v);
-};
 
 const toSafeString = (v: unknown, fallback = "") => (typeof v === "string" ? v.trim() : fallback);
 
@@ -50,7 +44,7 @@ const normalizePromo = (raw: any, idx: number): HomeCmsPromo | null => {
   const enabled = raw?.enabled !== false;
   const variant = "generic" as const;
 
-  if (!title || !subtitle || !isCloudinaryUrl(bg)) return null;
+  if (!title || !subtitle || !isAllowedMediaUrl(bg)) return null;
 
   const brandQueries = Array.isArray(raw?.brandQueries)
     ? raw.brandQueries.map((v: any) => toSafeString(v).toLowerCase()).filter(Boolean).slice(0, 12)
@@ -71,7 +65,7 @@ const normalizePromo = (raw: any, idx: number): HomeCmsPromo | null => {
     title,
     subtitle,
     backgroundImageUrl: bg,
-    logoImageUrl: isCloudinaryUrl(logo) ? logo : undefined,
+    logoImageUrl: isAllowedMediaUrl(logo) ? logo : undefined,
     accentColor: accentColor || undefined,
     brandQueries,
     productIds,
@@ -129,5 +123,10 @@ export async function writeHomeCmsPromos(input: unknown): Promise<HomeCmsPromo[]
 
 export function isValidCloudinaryUrl(url?: string | null): boolean {
   if (!url) return false;
-  return isCloudinaryUrl(url);
+  return isImageKitUrl(url);
+}
+
+export function isValidMediaUrl(url?: string | null): boolean {
+  if (!url) return false;
+  return isAllowedMediaUrl(url);
 }

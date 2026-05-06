@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import type { HomePromoProduct } from '@/components/home/promos/types';
+import { shouldBypassNextImageOptimization } from '@/lib/media';
 
 const BANNER =
   'https://res.cloudinary.com/dc57mpiao/image/upload/v1774993505/plp_0_pc_3840_1800_bnvuth.avif';
@@ -112,6 +113,7 @@ export default function GentleMonsterSpotlight({ items = [] }: Props) {
             alt="Gentle Monster 2025 FALL"
             width={1120}
             height={525}
+            unoptimized={shouldBypassNextImageOptimization(BANNER)}
             style={{ width: '100%', display: 'block', objectFit: 'cover', height: 'auto' }}
             priority
           />
@@ -160,7 +162,7 @@ export default function GentleMonsterSpotlight({ items = [] }: Props) {
               >
                 <div style={{ position: 'relative', background: '#f4f4f2', overflow: 'hidden', aspectRatio: '1/1' }}>
                   {item.imageUrl
-                    ? <Image src={item.imageUrl} alt={item.name} fill style={{ objectFit: 'cover' }} />
+                    ? <Image src={item.imageUrl} alt={item.name} fill unoptimized={shouldBypassNextImageOptimization(item.imageUrl)} style={{ objectFit: 'cover' }} />
                     : null}
                   <HeartButton />
                 </div>
@@ -206,7 +208,7 @@ export default function GentleMonsterSpotlight({ items = [] }: Props) {
             >
               <div style={{ position: 'relative', background: '#f4f4f2', overflow: 'hidden', aspectRatio: '1/1' }}>
                 {item.imageUrl
-                  ? <Image src={item.imageUrl} alt={item.name} fill style={{ objectFit: 'cover' }} />
+                  ? <Image src={item.imageUrl} alt={item.name} fill unoptimized={shouldBypassNextImageOptimization(item.imageUrl)} style={{ objectFit: 'cover' }} />
                   : null}
                 <HeartButton />
               </div>

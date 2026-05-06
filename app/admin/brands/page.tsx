@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import ImageKitUploadField from "@/components/admin/ImageKitUploadField";
 
 type BrandProduct = {
   id: number;
@@ -319,6 +320,13 @@ export default function AdminBrandsPage() {
           value={form.logoUrl}
           onChange={(e) => setField("logoUrl", e.target.value)}
         />
+        <div className="sm:col-span-2">
+          <ImageKitUploadField
+            folder="/stage/brands"
+            label="Загрузить логотип в ImageKit"
+            onUploaded={(url) => setField("logoUrl", url)}
+          />
+        </div>
         <textarea
           className={inputCls + " sm:col-span-2"}
           placeholder="Краткое описание"

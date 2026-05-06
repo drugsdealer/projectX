@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { shouldBypassNextImageOptimization } from '@/lib/media';
 
 type RecommendationItem = {
   id: number;
@@ -36,7 +37,7 @@ function ProductMiniCard({ item }: { item: RecommendationItem }) {
     >
       <div className="relative aspect-[4/5] bg-black/[0.03]">
         {item.imageUrl ? (
-          <Image src={item.imageUrl} alt={item.name} fill className="object-cover transition group-hover:scale-[1.03]" />
+          <Image src={item.imageUrl} alt={item.name} fill unoptimized={shouldBypassNextImageOptimization(item.imageUrl)} className="object-cover transition group-hover:scale-[1.03]" />
         ) : null}
       </div>
       <div className="p-3">
@@ -94,7 +95,7 @@ export default function PersonalizedHomeSections({
                 >
                   {brand.logoUrl ? (
                     <span className="relative block h-4 w-4 overflow-hidden rounded-full bg-white">
-                      <Image src={brand.logoUrl} alt={brand.brandName} fill className="object-contain" />
+                      <Image src={brand.logoUrl} alt={brand.brandName} fill unoptimized={shouldBypassNextImageOptimization(brand.logoUrl)} className="object-contain" />
                     </span>
                   ) : null}
                   {brand.brandName}
