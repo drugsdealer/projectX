@@ -2,7 +2,7 @@ import "server-only";
 
 import path from "node:path";
 import { promises as fs } from "node:fs";
-import { isAllowedMediaUrl, isImageKitUrl } from "@/lib/media";
+import { isAllowedMediaUrl } from "@/lib/media";
 
 export type HomeCmsPromo = {
   id: string;
@@ -119,11 +119,6 @@ export async function writeHomeCmsPromos(input: unknown): Promise<HomeCmsPromo[]
   await fs.mkdir(path.dirname(CMS_PROMOS_FILE), { recursive: true });
   await fs.writeFile(CMS_PROMOS_FILE, `${JSON.stringify(out, null, 2)}\n`, "utf-8");
   return out;
-}
-
-export function isValidCloudinaryUrl(url?: string | null): boolean {
-  if (!url) return false;
-  return isImageKitUrl(url);
 }
 
 export function isValidMediaUrl(url?: string | null): boolean {

@@ -485,13 +485,7 @@ useLayoutEffect(() => {
                 }}
                 className="h-10 w-10 inline-flex items-center justify-center bg-transparent hover:bg-transparent p-0 focus-visible:outline-none"
               >
-                <Image
-                  src="https://res.cloudinary.com/dhufbfxcy/image/upload/v1768669741/free-icon-search-1828057_l8up8k.png"
-                  alt="Меню и поиск"
-                  width={18}
-                  height={18}
-                  className="opacity-90"
-                />
+                <Search size={18} className="opacity-90" aria-hidden />
               </button>
               <Link href="/favorites_item" aria-label="Избранное">
                 <Button variant="ghost" className="h-10 w-10 p-0 flex items-center justify-center border-none bg-transparent hover:bg-transparent focus-visible:ring-0">

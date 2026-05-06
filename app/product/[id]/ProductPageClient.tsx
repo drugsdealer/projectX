@@ -33,6 +33,7 @@ import { FreeMode, Mousewheel, Navigation, Pagination } from "swiper/modules";
 import SizeSelector from '@/components/shared/SizeSelector';
 import { useToast } from "@/context/ToastContext";
 import { useCart } from "@/context/CartContext";
+import { shouldBypassNextImageOptimization } from "@/lib/media";
 import { useUser } from "@/user/UserContext";
 import "swiper/css";
 import "swiper/css/mousewheel";
@@ -1252,6 +1253,7 @@ const handleCancel = () => {
                       src={displayedImages[0] ?? "/img/placeholder.svg"}
                       alt={product.name}
                       fill
+                      unoptimized={shouldBypassNextImageOptimization(displayedImages[0])}
                       className="object-cover"
                       priority
                     />
@@ -1319,7 +1321,7 @@ const handleCancel = () => {
                   >
                     {brandLogoSrc ? (
                       <div className="relative w-[140px] h-[56px]">
-                        <Image src={brandLogoSrc} alt={primaryBrand!} fill className="object-contain" />
+                        <Image src={brandLogoSrc} alt={primaryBrand!} fill unoptimized={shouldBypassNextImageOptimization(brandLogoSrc)} className="object-contain" />
                       </div>
                     ) : (
                       <span className="text-sm font-semibold tracking-tight text-black">{primaryBrand}</span>
@@ -1347,7 +1349,7 @@ const handleCancel = () => {
                         <div className="flex items-center gap-3">
                           {brandLogoSrc ? (
                             <div className="relative w-9 h-6">
-                              <Image src={brandLogoSrc} alt={primaryBrand!} fill className="object-contain" />
+                              <Image src={brandLogoSrc} alt={primaryBrand!} fill unoptimized={shouldBypassNextImageOptimization(brandLogoSrc)} className="object-contain" />
                             </div>
                           ) : (
                             <span className="text-sm font-semibold">{primaryBrand}</span>
@@ -1427,6 +1429,7 @@ const handleCancel = () => {
                             alt={`Product image ${index + 1}`}
                             width={800}
                             height={800}
+                            unoptimized={shouldBypassNextImageOptimization(url)}
                             className="object-contain w-full h-full select-none pointer-events-none"
                             draggable={false}
                           />
@@ -1463,6 +1466,7 @@ const handleCancel = () => {
                     alt={product.name}
                     width={800}
                     height={800}
+                    unoptimized={shouldBypassNextImageOptimization(product.imageUrl)}
                     className="object-contain w-full h-full"
                   />
                 </div>
@@ -1975,6 +1979,7 @@ const handleCancel = () => {
                             src={colorProduct.images[0] || '/img/placeholder.svg'}
                             alt={colorProduct.name}
                             fill
+                            unoptimized={shouldBypassNextImageOptimization(colorProduct.images[0])}
                             className="object-contain p-1"
                             sizes="96px"
                           />
@@ -2081,6 +2086,7 @@ const handleCancel = () => {
                                     src={colorProduct.images[0] || '/img/placeholder.svg'}
                                     alt={colorProduct.name}
                                     fill
+                                    unoptimized={shouldBypassNextImageOptimization(colorProduct.images[0])}
                                     className="object-contain p-1"
                                     sizes="(max-width: 640px) 30vw, 150px"
                                   />
@@ -2247,6 +2253,7 @@ const handleCancel = () => {
                           src={similarProduct.images[0] || "/img/placeholder.svg"}
                           alt={similarProduct.name}
                           fill
+                          unoptimized={shouldBypassNextImageOptimization(similarProduct.images[0])}
                           className="object-cover transition-transform group-hover:scale-105"
                           sizes="(max-width: 768px) 50vw, 25vw"
                           priority
@@ -2260,6 +2267,7 @@ const handleCancel = () => {
                                 src={(similarProduct as any).brandLogo}
                                 alt="Логотип бренда"
                                 fill
+                                unoptimized={shouldBypassNextImageOptimization((similarProduct as any).brandLogo)}
                                 className="object-contain"
                                 priority
                               />
@@ -2326,6 +2334,7 @@ const handleCancel = () => {
                           src={best.images[0] || "/img/placeholder.svg"}
                           alt={best.name}
                           fill
+                          unoptimized={shouldBypassNextImageOptimization(best.images[0])}
                           className="object-cover transition-transform group-hover:scale-105"
                         />
                       </div>
@@ -2379,6 +2388,7 @@ const handleCancel = () => {
                             src={r.images[0] || "/img/placeholder.svg"}
                             alt={r.name}
                             fill
+                            unoptimized={shouldBypassNextImageOptimization(r.images[0])}
                             className="object-contain p-2 transition-transform group-hover:scale-105"
                             sizes="190px"
                           />

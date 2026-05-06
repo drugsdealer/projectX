@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { useUser } from "@/user/UserContext";
+import { shouldBypassNextImageOptimization } from "@/lib/media";
 
 type SaleProduct = {
   id: string | number;
@@ -62,6 +63,7 @@ function SaleCard({ product }: { product: SaleProduct }) {
             src={img}
             alt={product.name}
             fill
+            unoptimized={shouldBypassNextImageOptimization(img)}
             sizes="(max-width:640px) 50vw, (max-width:1024px) 33vw, 25vw"
             className="object-cover transition-transform duration-500 group-hover:scale-105"
           />

@@ -37,8 +37,8 @@ export const metadata: Metadata = {
   authors: [{ name: "Stage Store" }],
   creator: "Stage Store",
   icons: {
-    icon: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008466/IMG_0363_iaalz9.png",
-    apple: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008466/IMG_0363_iaalz9.png",
+    icon: "/img/IMG_0363.PNG",
+    apple: "/img/IMG_0363.PNG",
   },
   openGraph: {
     type: "website",
@@ -50,7 +50,7 @@ export const metadata: Metadata = {
       "Оригинальная брендовая одежда, обувь и аксессуары. Premium коллекция, Sale и доставка по России.",
     images: [
       {
-        url: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008429/IMG_0364_xcrp0m.jpg",
+        url: "/img/IMG_0364.JPG",
         width: 1200,
         height: 630,
         alt: "Stage Store — Брендовая одежда и аксессуары",
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     title: "Stage Store — брендовая одежда, обувь, Premium и Sale",
     description:
       "Оригинальная брендовая одежда, обувь, аксессуары, Premium коллекция и Sale.",
-    images: ["https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008429/IMG_0364_xcrp0m.jpg"],
+    images: ["/img/IMG_0364.JPG"],
   },
   robots: {
     index: true,
@@ -112,14 +112,14 @@ export default function RootLayout({
                   logo: {
                     "@type": "ImageObject",
                     "@id": `${SITE_URL}/#logo`,
-                    url: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008466/IMG_0363_iaalz9.png",
+                    url: `${SITE_URL}/img/IMG_0363.PNG`,
                     width: 512,
                     height: 512,
                     caption: "Stage Store",
                   },
                   image: {
                     "@type": "ImageObject",
-                    url: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008429/IMG_0364_xcrp0m.jpg",
+                    url: `${SITE_URL}/img/IMG_0364.JPG`,
                     width: 1200,
                     height: 630,
                   },

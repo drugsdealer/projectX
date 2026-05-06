@@ -5,10 +5,10 @@ import type { HomePromoProduct } from '@/components/home/promos/types';
 export const AUTHOR_PROMOS_HELP_PATH = 'components/home/promos/author-promos.tsx';
 
 const FSTU_CLOUDINARY_ASSETS = {
-  // Вставь сюда свои Cloudinary URL
-  // backgroundImageUrl: 'https://res.cloudinary.com/<cloud>/image/upload/<bg>.jpg',
-  // logoImageUrl: 'https://res.cloudinary.com/<cloud>/image/upload/<logo>.png',
-  // bowImageUrl: 'https://res.cloudinary.com/<cloud>/image/upload/<bow>.png',
+  // Вставь сюда свои ImageKit URL
+  // backgroundImageUrl: 'https://ik.imagekit.io/<id>/<bg>.jpg',
+  // logoImageUrl: 'https://ik.imagekit.io/<id>/<logo>.png',
+  // bowImageUrl: 'https://ik.imagekit.io/<id>/<bow>.png',
 };
 
 /**

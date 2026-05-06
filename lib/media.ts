@@ -10,12 +10,8 @@ export function isImageKitUrl(url?: string | null) {
   return /^https:\/\/(?:[^/]+\.)?imagekit\.io\//i.test(src) || /^https:\/\/ik\.imagekit\.io\//i.test(src);
 }
 
-export function isCloudinaryUrl(url?: string | null) {
-  return /^https:\/\/res\.cloudinary\.com\//i.test(normalizeMediaUrl(url));
-}
-
 export function shouldBypassNextImageOptimization(url?: string | null) {
-  return isImageKitUrl(url);
+  return /^https?:\/\//i.test(normalizeMediaUrl(url));
 }
 
 export function isAllowedMediaUrl(url?: string | null) {

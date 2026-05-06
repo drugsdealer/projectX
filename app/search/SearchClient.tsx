@@ -10,6 +10,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useUser } from '@/user/UserContext';
 import { getOrCreateEventsSessionId, trackShopEvent } from '@/lib/events-client';
+import { shouldBypassNextImageOptimization } from '@/lib/media';
 
 // -------------------- Data models --------------------
 
@@ -1219,7 +1220,7 @@ export default function SearchPage() {
                     className="mb-4 sm:mb-5 flex items-center gap-3 rounded-3xl border border-black/10 bg-white px-4 sm:px-5 py-3 sm:py-4 hover:shadow-[0_20px_60px_rgba(0,0,0,0.08)] transition"
                   >
                     {brandSuggestion.logo ? (
-                      <Image src={brandSuggestion.logo} alt={brandSuggestion.name} width={56} height={56} className="h-12 w-12 sm:h-14 sm:w-14 object-contain" />
+                      <Image src={brandSuggestion.logo} alt={brandSuggestion.name} width={56} height={56} unoptimized={shouldBypassNextImageOptimization(brandSuggestion.logo)} className="h-12 w-12 sm:h-14 sm:w-14 object-contain" />
                     ) : null}
                     <div className="flex-1">
                       <div className="text-[10px] uppercase tracking-[0.2em] text-black/45">Бренд</div>
@@ -1239,7 +1240,7 @@ export default function SearchPage() {
                     >
                       <div className="aspect-[4/5] bg-black/[0.03] relative">
                         {p.imageUrl ? (
-                          <Image src={p.imageUrl} alt={p.name} fill className="object-cover group-hover:scale-[1.03] transition" />
+                          <Image src={p.imageUrl} alt={p.name} fill unoptimized={shouldBypassNextImageOptimization(p.imageUrl)} className="object-cover group-hover:scale-[1.03] transition" />
                         ) : null}
                       </div>
                       <div className="p-3">

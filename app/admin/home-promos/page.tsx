@@ -25,7 +25,7 @@ const emptyPromo = (): PromoRow => ({
   tag: "PROMO",
   title: "Новый блок",
   subtitle: "Описание блока",
-  backgroundImageUrl: "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg",
+  backgroundImageUrl: "",
   logoImageUrl: "",
   accentColor: "#111111",
   brandQueries: [],
@@ -176,8 +176,8 @@ export default function AdminHomePromosPage() {
               <input value={promo.tag} onChange={(e) => update(idx, { tag: e.target.value })} placeholder="Тег" className="rounded-xl border border-black/10 px-3 py-2 text-sm" />
               <input value={promo.title} onChange={(e) => update(idx, { title: e.target.value })} placeholder="Заголовок" className="rounded-xl border border-black/10 px-3 py-2 text-sm" />
               <input value={promo.subtitle} onChange={(e) => update(idx, { subtitle: e.target.value })} placeholder="Подзаголовок" className="rounded-xl border border-black/10 px-3 py-2 text-sm sm:col-span-2" />
-              <input value={promo.backgroundImageUrl} onChange={(e) => update(idx, { backgroundImageUrl: e.target.value })} placeholder="Cloudinary фон" className="rounded-xl border border-black/10 px-3 py-2 text-sm sm:col-span-2" />
-              <input value={promo.logoImageUrl || ""} onChange={(e) => update(idx, { logoImageUrl: e.target.value })} placeholder="Cloudinary логотип (опционально)" className="rounded-xl border border-black/10 px-3 py-2 text-sm sm:col-span-2" />
+              <input value={promo.backgroundImageUrl} onChange={(e) => update(idx, { backgroundImageUrl: e.target.value })} placeholder="ImageKit фон" className="rounded-xl border border-black/10 px-3 py-2 text-sm sm:col-span-2" />
+              <input value={promo.logoImageUrl || ""} onChange={(e) => update(idx, { logoImageUrl: e.target.value })} placeholder="ImageKit логотип (опционально)" className="rounded-xl border border-black/10 px-3 py-2 text-sm sm:col-span-2" />
               <input value={promo.accentColor || ""} onChange={(e) => update(idx, { accentColor: e.target.value })} placeholder="Акцентный цвет (#111111)" className="rounded-xl border border-black/10 px-3 py-2 text-sm" />
               <input
                 value={arrayToCsv(promo.brandQueries)}

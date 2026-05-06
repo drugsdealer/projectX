@@ -85,6 +85,30 @@ function bestSuggestion(q: string, candidates: string[]) {
   return null;
 }
 
+function tokenizeSearch(input: string) {
+  return normalizeMatchText(input)
+    .split(' ')
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2);
+}
+
+function bestTokenSuggestion(tokens: string[], candidates: string[]) {
+  let best: { token: string; candidate: string; distance: number } | null = null;
+  for (const token of tokens) {
+    for (const candidate of candidates) {
+      const norm = normalizeMatchText(candidate);
+      if (!norm) continue;
+      const distance = levenshtein(token, norm);
+      const maxDistance = token.length <= 4 ? 1 : token.length <= 7 ? 2 : 3;
+      if (distance > maxDistance) continue;
+      if (!best || distance < best.distance || (distance === best.distance && norm.length > normalizeMatchText(best.candidate).length)) {
+        best = { token, candidate, distance };
+      }
+    }
+  }
+  return best;
+}
+
 // RU/EN synonyms -> your DB subcategory slugs
 const SUBCATEGORY_SYNONYMS: Record<string, string> = {
   // footwear
@@ -214,6 +238,77 @@ const SUBCATEGORY_SYNONYMS: Record<string, string> = {
   fragance: 'fragrance',
 };
 
+const SUBCATEGORY_ALIASES: Record<string, string[]> = {
+  sneaker: ['sneaker', 'sneakers'],
+  sneakers: ['sneakers', 'sneaker'],
+  boot: ['boot', 'boots'],
+  boots: ['boots', 'boot'],
+  loafer: ['loafer', 'loafers'],
+  loafers: ['loafers', 'loafer'],
+  sandal: ['sandal', 'sandals'],
+  sandals: ['sandals', 'sandal'],
+  hoodie: ['hoodie', 'hoodies'],
+  hoodies: ['hoodies', 'hoodie'],
+  sweater: ['sweater', 'sweaters'],
+  sweaters: ['sweaters', 'sweater'],
+  sweatshirt: ['sweatshirt', 'sweatshirts'],
+  sweatshirts: ['sweatshirts', 'sweatshirt'],
+  cardigan: ['cardigan', 'cardigans'],
+  cardigans: ['cardigans', 'cardigan'],
+  tshirt: ['tshirt', 'tshirts', 't-shirt', 'tee'],
+  tshirts: ['tshirts', 'tshirt', 't-shirt', 'tee'],
+  trouser: ['trouser', 'trousers', 'pants'],
+  trousers: ['trousers', 'trouser', 'pants'],
+  pant: ['pant', 'pants', 'trousers'],
+  pants: ['pants', 'pant', 'trousers'],
+  jean: ['jean', 'jeans'],
+  jeans: ['jeans', 'jean'],
+  jacket: ['jacket', 'jackets'],
+  jackets: ['jackets', 'jacket'],
+  coat: ['coat', 'coats'],
+  coats: ['coats', 'coat'],
+  dress: ['dress', 'dresses'],
+  dresses: ['dresses', 'dress'],
+  skirt: ['skirt', 'skirts'],
+  skirts: ['skirts', 'skirt'],
+  bag: ['bag', 'bags'],
+  bags: ['bags', 'bag'],
+  backpack: ['backpack', 'backpacks'],
+  backpacks: ['backpacks', 'backpack'],
+  fragrance: ['fragrance', 'fragrances'],
+  fragrances: ['fragrances', 'fragrance'],
+  cap: ['cap', 'caps'],
+  caps: ['caps', 'cap'],
+  beanie: ['beanie', 'beanies'],
+  beanies: ['beanies', 'beanie'],
+  hat: ['hat', 'hats'],
+  hats: ['hats', 'hat'],
+  ring: ['ring', 'rings'],
+  rings: ['rings', 'ring'],
+  earring: ['earring', 'earrings'],
+  earrings: ['earrings', 'earring'],
+  belt: ['belt', 'belts'],
+  belts: ['belts', 'belt'],
+};
+
+function subcategoryAliases(slug?: string | null) {
+  if (!slug) return [];
+  const base = normalizeMatchText(slug);
+  return Array.from(new Set([base, ...(SUBCATEGORY_ALIASES[base] ?? [])].filter(Boolean)));
+}
+
+function subcategoryRuWords(slugs: string[]) {
+  const aliases = new Set(slugs.flatMap((slug) => subcategoryAliases(slug)));
+  const words: string[] = [];
+  for (const [word, slug] of Object.entries(SUBCATEGORY_SYNONYMS)) {
+    if (!/[а-яё]/i.test(word)) continue;
+    if (aliases.has(slug) || subcategoryAliases(slug).some((alias) => aliases.has(alias))) {
+      words.push(word);
+    }
+  }
+  return Array.from(new Set(words));
+}
+
 // Generic words that map to MULTIPLE subcategories (e.g. "кофта" = hoodie + sweater + sweatshirt + cardigan)
 const GROUP_SYNONYMS: Record<string, string[]> = {
   'кофта': ['hoodie', 'sweater', 'sweatshirt', 'cardigan'],
@@ -253,24 +348,40 @@ export async function GET(req: Request) {
     const q = qRaw.trim().replace(/\s+/g, ' ');
     const qNorm = normalizeText(q);
     const qMatch = normalizeMatchText(qRaw);
+    const qTokens = tokenizeSearch(qRaw);
     const categoryRaw = searchParams.get('category') ?? '';
     const category = categoryRaw.trim();
     const genderParam = (searchParams.get('gender') ?? '').trim().toLowerCase();
 
     // --- fuzzy text for brands / names (peezy -> yeezy, etc.) ---
     let fuzzyText: string | null = null;
+    let brandRowsCache: Array<{ id: number; name: string; slug: string; logoUrl: string | null }> | null = null;
     let brandCandidates: string[] | null = null;
 
-    const loadBrandCandidates = async () => {
-      if (brandCandidates) return brandCandidates;
-      const brandRows = await prisma.brand.findMany({
+    const loadBrandRows = async () => {
+      if (brandRowsCache) return brandRowsCache;
+      brandRowsCache = await prisma.brand.findMany({
         where: { deletedAt: null },
-        select: { name: true },
+        select: { id: true, name: true, slug: true, logoUrl: true },
         take: 3000,
         orderBy: { createdAt: 'desc' },
       });
+      return brandRowsCache;
+    };
+
+    const loadBrandCandidates = async () => {
+      if (brandCandidates) return brandCandidates;
+      const brandRows = await loadBrandRows();
       brandCandidates = Array.from(
-        new Set(brandRows.map((r: any) => String(r?.name ?? '').trim()).filter(Boolean))
+        new Set(
+          brandRows
+            .flatMap((r: any) => {
+              const name = String(r?.name ?? '').trim();
+              const slug = String(r?.slug ?? '').trim();
+              return [name, slug, ...tokenizeSearch(name), ...tokenizeSearch(slug)];
+            })
+            .filter(Boolean)
+        )
       );
       return brandCandidates;
     };
@@ -298,23 +409,32 @@ export async function GET(req: Request) {
       }
     };
 
+    const groupKeys = Object.keys(GROUP_SYNONYMS);
+    const synKeys = Object.keys(SUBCATEGORY_SYNONYMS);
+
     // Check group synonyms first ("кофта" -> [hoodie, sweater, sweatshirt, cardigan])
     const groupMatch = GROUP_SYNONYMS[qNorm] ?? GROUP_SYNONYMS[qMatch] ?? null;
     // Also check if any group synonym appears as a phrase in the query ("кофта balenciaga" -> кофта)
     const groupPhraseMatch = !groupMatch && qMatch
-      ? findBestPhraseMatch(qMatch, Object.keys(GROUP_SYNONYMS))
+      ? findBestPhraseMatch(qMatch, groupKeys)
+      : null;
+    const groupTokenSuggestion = !groupMatch && !groupPhraseMatch
+      ? bestTokenSuggestion(qTokens, groupKeys)
       : null;
     const groupSubs: string[] | null = groupMatch
-      ?? (groupPhraseMatch ? GROUP_SYNONYMS[groupPhraseMatch.raw] ?? GROUP_SYNONYMS[groupPhraseMatch.norm] ?? null : null);
+      ?? (groupPhraseMatch ? GROUP_SYNONYMS[groupPhraseMatch.raw] ?? GROUP_SYNONYMS[groupPhraseMatch.norm] ?? null : null)
+      ?? (groupTokenSuggestion ? GROUP_SYNONYMS[groupTokenSuggestion.candidate] ?? null : null);
 
     // exact synonym match ("кроссовки" -> sneakers)
     const subFromSynExact = !groupSubs ? (SUBCATEGORY_SYNONYMS[qNorm] ?? SUBCATEGORY_SYNONYMS[qMatch]) : undefined;
 
     // fuzzy synonym match for typos
-    const synKeys = Object.keys(SUBCATEGORY_SYNONYMS);
     const canonicalSubs = Array.from(new Set(Object.values(SUBCATEGORY_SYNONYMS)));
 
-    const bestSynKey = !subFromSynExact && !groupSubs ? bestSuggestion(qRaw, [...synKeys, ...canonicalSubs]) : null;
+    const bestSynKey =
+      !subFromSynExact && !groupSubs
+        ? (bestSuggestion(qRaw, [...synKeys, ...canonicalSubs]) ?? bestTokenSuggestion(qTokens, [...synKeys, ...canonicalSubs])?.candidate ?? null)
+        : null;
 
     const subFromSynFuzzy = bestSynKey ? SUBCATEGORY_SYNONYMS[normalizeText(bestSynKey)] ?? bestSynKey : undefined;
 
@@ -322,7 +442,7 @@ export async function GET(req: Request) {
     const catMatch = !subMatch && !groupSubs && qMatch ? findBestPhraseMatch(qMatch, Object.keys(CATEGORY_SYNONYMS)) : null;
 
     const subFromMatch = subMatch ? SUBCATEGORY_SYNONYMS[subMatch.raw] ?? SUBCATEGORY_SYNONYMS[subMatch.norm] : null;
-    const subForFilter = subFromMatch ?? subFromSynExact ?? null;
+    const subForFilter = subFromMatch ?? subFromSynExact ?? subFromSynFuzzy ?? null;
     const subFromSyn = subFromMatch ?? subFromSynExact ?? subFromSynFuzzy;
 
     const synonymSuggestion =
@@ -494,20 +614,44 @@ export async function GET(req: Request) {
 
     await maybeBuildFuzzy();
 
-    let detectedBrand: { name: string; norm: string } | null = null;
+    let detectedBrand: { id: number; name: string; slug: string; logoUrl: string | null; norm: string; matchedToken?: string } | null = null;
     if (qMatch && qMatch.length >= 2) {
+      const brandRows = await loadBrandRows();
+      const brandNames = brandRows.map((b) => b.name);
+      const brandSlugs = brandRows.map((b) => b.slug);
       const candidates = await loadBrandCandidates();
       const best = findBestPhraseMatch(qMatch, candidates);
       if (best) {
-        const original = candidates.find((b) => normalizeMatchText(b) === best.norm) ?? best.raw;
-        detectedBrand = { name: original, norm: best.norm };
+        const row =
+          brandRows.find((b) => normalizeMatchText(b.name) === best.norm || normalizeMatchText(b.slug) === best.norm) ??
+          brandRows.find((b) => normalizeMatchText(b.name).includes(best.norm) || normalizeMatchText(b.slug).includes(best.norm));
+        if (row) detectedBrand = { ...row, norm: best.norm };
+      }
+      if (!detectedBrand) {
+        const bestBrandToken = bestTokenSuggestion(qTokens, [...brandNames, ...brandSlugs]);
+        if (bestBrandToken) {
+          const bestNorm = normalizeMatchText(bestBrandToken.candidate);
+          const row =
+            brandRows.find((b) => normalizeMatchText(b.name) === bestNorm || normalizeMatchText(b.slug) === bestNorm) ??
+            brandRows.find((b) => normalizeMatchText(b.name).split(' ').includes(bestNorm) || normalizeMatchText(b.slug).split('-').includes(bestNorm));
+          if (row) detectedBrand = { ...row, norm: bestNorm, matchedToken: bestBrandToken.token };
+        }
       }
     }
 
     let smartText = qMatch;
-    if (detectedBrand) smartText = stripPhrase(smartText, detectedBrand.norm);
+    if (detectedBrand) {
+      smartText = stripPhrase(smartText, detectedBrand.norm);
+      if (detectedBrand.matchedToken) smartText = stripPhrase(smartText, detectedBrand.matchedToken);
+    }
     if (groupPhraseMatch) smartText = stripPhrase(smartText, normalizeMatchText(groupPhraseMatch.raw));
+    if (groupTokenSuggestion) smartText = stripPhrase(smartText, groupTokenSuggestion.token);
     if (subMatch) smartText = stripPhrase(smartText, normalizeMatchText(subMatch.raw));
+    if (bestSynKey) {
+      const bestSynToken = bestTokenSuggestion(qTokens, [bestSynKey]);
+      if (bestSynToken) smartText = stripPhrase(smartText, bestSynToken.token);
+      smartText = stripPhrase(smartText, normalizeMatchText(bestSynKey));
+    }
     if (catMatch) smartText = stripPhrase(smartText, normalizeMatchText(catMatch.raw));
     const smartQuery = smartText.trim();
 
@@ -520,7 +664,9 @@ export async function GET(req: Request) {
       orFilters.push({ description: { contains: textForSearch, mode: Prisma.QueryMode.insensitive } });
       orFilters.push({ subcategory: { contains: textForSearch, mode: Prisma.QueryMode.insensitive } });
       if (subFromSyn) {
-        orFilters.push({ subcategory: { equals: subFromSyn, mode: Prisma.QueryMode.insensitive } });
+        for (const alias of subcategoryAliases(subFromSyn)) {
+          orFilters.push({ subcategory: { equals: alias, mode: Prisma.QueryMode.insensitive } });
+        }
       }
       orFilters.push({ Brand: { is: { name: { startsWith: textForSearch, mode: Prisma.QueryMode.insensitive } } } });
       if (fuzzyText) {
@@ -557,8 +703,13 @@ export async function GET(req: Request) {
     // Also match by product name, because subcategory in DB might differ from English slug.
     // E.g. product "Свитер Acne Studios" may have subcategory=null but "свитер" is in its name.
     if (groupSubs && groupSubs.length > 0) {
-      const groupKey = groupPhraseMatch?.raw ?? Object.keys(GROUP_SYNONYMS).find(k => GROUP_SYNONYMS[k] === groupSubs) ?? '';
-      const nameVariants: Prisma.ProductWhereInput[] = groupSubs.map((sub) => ({
+      const groupKey =
+        groupPhraseMatch?.raw ??
+        groupTokenSuggestion?.candidate ??
+        Object.keys(GROUP_SYNONYMS).find(k => GROUP_SYNONYMS[k] === groupSubs) ??
+        '';
+      const groupAliases = Array.from(new Set(groupSubs.flatMap((sub) => subcategoryAliases(sub))));
+      const nameVariants: Prisma.ProductWhereInput[] = groupAliases.map((sub) => ({
         subcategory: { equals: sub, mode: Prisma.QueryMode.insensitive },
       }));
       // Also search by the original Russian word in product name (e.g. "кофта" in name)
@@ -566,28 +717,16 @@ export async function GET(req: Request) {
         nameVariants.push({ name: { contains: groupKey, mode: Prisma.QueryMode.insensitive } });
       }
       // Add all individual subcategory names as name searches too (e.g. "свитер", "худи" in name)
-      const reverseMap: Record<string, string[]> = {};
-      for (const [ru, en] of Object.entries(SUBCATEGORY_SYNONYMS)) {
-        if (groupSubs.includes(en)) {
-          if (!reverseMap[en]) reverseMap[en] = [];
-          // Only add Russian words (contain cyrillic)
-          if (/[а-яё]/i.test(ru)) reverseMap[en].push(ru);
-        }
-      }
-      for (const ruWords of Object.values(reverseMap)) {
-        for (const w of ruWords) {
-          nameVariants.push({ name: { contains: w, mode: Prisma.QueryMode.insensitive } });
-        }
+      for (const w of subcategoryRuWords(groupSubs)) {
+        nameVariants.push({ name: { contains: w, mode: Prisma.QueryMode.insensitive } });
       }
       andFilters.push({ OR: nameVariants });
     } else if (subForFilter) {
       // Single subcategory: also search by name as fallback
-      const subRuWords: string[] = [];
-      for (const [ru, en] of Object.entries(SUBCATEGORY_SYNONYMS)) {
-        if (en === subForFilter && /[а-яё]/i.test(ru)) subRuWords.push(ru);
-      }
+      const aliases = subcategoryAliases(subForFilter);
+      const subRuWords = subcategoryRuWords([subForFilter]);
       const subOrFilters: Prisma.ProductWhereInput[] = [
-        { subcategory: { equals: subForFilter, mode: Prisma.QueryMode.insensitive } },
+        ...aliases.map((alias) => ({ subcategory: { equals: alias, mode: Prisma.QueryMode.insensitive } })),
         ...subRuWords.map((w) => ({ name: { contains: w, mode: Prisma.QueryMode.insensitive } })),
       ];
       andFilters.push({ OR: subOrFilters });
@@ -608,7 +747,17 @@ export async function GET(req: Request) {
 
     // Brand card (even if results are empty)
     let brandCard: { name: string; slug: string; logoUrl: string | null; count: number } | null = null;
-    if (qNorm.length >= 2) {
+    if (detectedBrand?.id) {
+      const count = await prisma.product.count({
+        where: { deletedAt: null, brandId: detectedBrand.id },
+      });
+      brandCard = {
+        name: detectedBrand.name,
+        slug: detectedBrand.slug,
+        logoUrl: detectedBrand.logoUrl ?? null,
+        count,
+      };
+    } else if (qNorm.length >= 2) {
       const slugGuess = slugify(q);
       const orBrand: Prisma.BrandWhereInput[] = [];
       if (detectedBrand?.name) {
@@ -643,7 +792,7 @@ export async function GET(req: Request) {
     const products = await prisma.product.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      take,
+      take: Math.min(200, Math.max(take * 4, take)),
       select: {
         id: true,
         name: true,
@@ -664,7 +813,65 @@ export async function GET(req: Request) {
       },
     });
 
-    const items = products.map((p: any) => {
+    const queryTerms = smartQuery
+      ? tokenizeSearch(smartQuery)
+      : qTokens.filter((token) => token !== detectedBrand?.matchedToken && token !== detectedBrand?.norm);
+    const wantedSubs = groupSubs?.length
+      ? Array.from(new Set(groupSubs.flatMap((sub) => subcategoryAliases(sub))))
+      : subForFilter
+      ? subcategoryAliases(subForFilter)
+      : [];
+    const wantedRuWords = groupSubs?.length
+      ? subcategoryRuWords(groupSubs)
+      : subForFilter
+      ? subcategoryRuWords([subForFilter])
+      : [];
+
+    const scoreProduct = (p: any) => {
+      const name = normalizeMatchText(p.name || '');
+      const description = normalizeMatchText(p.description || '');
+      const subcategory = normalizeMatchText(p.subcategory || '');
+      const brandName = normalizeMatchText(p.Brand?.name || '');
+      const brandSlug = normalizeMatchText(p.Brand?.slug || '');
+      let score = 0;
+
+      if (detectedBrand) {
+        if (brandName === normalizeMatchText(detectedBrand.name) || brandSlug === normalizeMatchText(detectedBrand.slug)) score += 80;
+        else if (brandName.includes(detectedBrand.norm) || brandSlug.includes(detectedBrand.norm)) score += 45;
+      }
+
+      if (wantedSubs.length) {
+        if (wantedSubs.includes(subcategory)) score += 70;
+        if (wantedRuWords.some((word) => name.includes(normalizeMatchText(word)))) score += 55;
+      }
+
+      for (const term of queryTerms) {
+        if (!term) continue;
+        if (name === term) score += 55;
+        else if (name.startsWith(term)) score += 35;
+        else if (name.includes(term)) score += 22;
+        if (brandName.includes(term) || brandSlug.includes(term)) score += 18;
+        if (subcategory.includes(term)) score += 12;
+        if (description.includes(term)) score += 4;
+      }
+
+      if (p.imageUrl || (Array.isArray(p.images) && p.images.length)) score += 5;
+      if (p.available !== false) score += 3;
+      if (p.oldPrice || String(p.badge || '').toLowerCase() === 'sale') score += 1;
+
+      return score;
+    };
+
+    const rankedProducts = [...products]
+      .map((p: any) => ({ product: p, score: scoreProduct(p) }))
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return new Date(b.product.createdAt ?? 0).getTime() - new Date(a.product.createdAt ?? 0).getTime();
+      })
+      .slice(0, take)
+      .map((row) => row.product);
+
+    const items = rankedProducts.map((p: any) => {
       const arrayFirst = Array.isArray(p.images) && p.images.length > 0 ? p.images[0] : null;
       const img = typeof p.imageUrl === 'string' && p.imageUrl.length > 0 ? p.imageUrl : arrayFirst;
 
@@ -680,7 +887,12 @@ export async function GET(req: Request) {
       };
     });
 
-    let suggestion: string | null = fuzzyText ?? synonymSuggestion;
+    const correctedParts = [
+      groupTokenSuggestion?.candidate && groupTokenSuggestion.candidate !== groupTokenSuggestion.token ? groupTokenSuggestion.candidate : null,
+      bestSynKey && !subMatch && normalizeText(bestSynKey) !== qNorm ? bestSynKey : null,
+      detectedBrand?.matchedToken && normalizeMatchText(detectedBrand.name) !== detectedBrand.matchedToken ? detectedBrand.name : null,
+    ].filter(Boolean) as string[];
+    let suggestion: string | null = fuzzyText ?? synonymSuggestion ?? (correctedParts.length ? correctedParts.join(' ') : null);
 
     if (!suggestion && items.length === 0 && qNorm && !subFromSyn) {
       const subcategoryGroups = await prisma.product.groupBy({

@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Plus, RefreshCw, Trash2, Eye, EyeOff, Star } from "lucide-react";
+import ImageKitUploadField from "@/components/admin/ImageKitUploadField";
 
 type CatalogItem = { id: number; name: string; slug?: string; categoryId?: number };
 
@@ -232,12 +233,19 @@ export default function AdminStudioClient() {
             onChange={(e) => setForm((p) => ({ ...p, price: e.target.value.replace(/[^\d.]/g, "") }))}
             required
           />
-          <input
-            className="rounded-xl border border-black/10 px-3 py-2 text-sm"
-            placeholder="URL главного фото"
-            value={form.imageUrl}
-            onChange={(e) => setForm((p) => ({ ...p, imageUrl: e.target.value }))}
-          />
+          <div className="grid gap-2">
+            <input
+              className="rounded-xl border border-black/10 px-3 py-2 text-sm"
+              placeholder="URL главного фото"
+              value={form.imageUrl}
+              onChange={(e) => setForm((p) => ({ ...p, imageUrl: e.target.value }))}
+            />
+            <ImageKitUploadField
+              folder="/stage/products"
+              label="Загрузить главное фото"
+              onUploaded={(url) => setForm((p) => ({ ...p, imageUrl: url }))}
+            />
+          </div>
 
           <select
             className="rounded-xl border border-black/10 px-3 py-2 text-sm"
@@ -328,6 +336,18 @@ export default function AdminStudioClient() {
           value={form.imagesText}
           onChange={(e) => setForm((p) => ({ ...p, imagesText: e.target.value }))}
         />
+        <div className="mt-3">
+          <ImageKitUploadField
+            folder="/stage/products/gallery"
+            label="Добавить фото в галерею"
+            onUploaded={(url) =>
+              setForm((p) => ({
+                ...p,
+                imagesText: p.imagesText.trim() ? `${p.imagesText.trim()}\n${url}` : url,
+              }))
+            }
+          />
+        </div>
 
         <button
           type="submit"

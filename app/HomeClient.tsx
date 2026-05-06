@@ -79,7 +79,7 @@ const HOME_GENDER_SELECTIONS = [
     label: "Women selection",
     title: "Женская селекция",
     href: "/search?gender=women",
-    image: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008429/IMG_0364_xcrp0m.jpg",
+    image: "/img/IMG_0364.JPG",
   },
 ];
 

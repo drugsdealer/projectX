@@ -46,18 +46,18 @@ interface FavoriteBrand {
   tags?: string[];
 }
 
-// Cloudinary фолбэки для основных брендов, если API не вернул logoUrl
+// Локальные фолбэки для основных брендов, если API не вернул logoUrl
 const BRAND_LOGO_FALLBACKS: Record<string, string> = {
-  adidas: 'https://res.cloudinary.com/dhufbfxcy/image/upload/v1761176393/Adidas_Logo_Alternative_2_2_l0avvn.webp',
-  nike: 'https://res.cloudinary.com/dhufbfxcy/image/upload/v1761176393/nike_bkpkj3.png',
-  puma: 'https://res.cloudinary.com/dhufbfxcy/image/upload/v1761176393/puma_kz0bjl.png',
-  reebok: 'https://res.cloudinary.com/dhufbfxcy/image/upload/v1761176393/reebok_kfdl0e.png',
-  'new-balance': 'https://res.cloudinary.com/dhufbfxcy/image/upload/v1761176393/newbalance_v4lovh.png',
-  'chrome-hearts': 'https://res.cloudinary.com/dhufbfxcy/image/upload/v1761176393/chromehearts_iwxxvz.png',
-  'stone-island': 'https://res.cloudinary.com/dhufbfxcy/image/upload/v1761176393/stoneisland_nhhazi.png',
-  converse: 'https://res.cloudinary.com/dhufbfxcy/image/upload/v1761176393/converse_ddr6ot.png',
-  'louis-vuitton': 'https://res.cloudinary.com/dhufbfxcy/image/upload/v1761174359/LV_khvkyh.svg',
-  supreme: 'https://res.cloudinary.com/dhufbfxcy/image/upload/v1761176286/idiZv-aD8G_logos_qrn7qg.png',
+  nike: '/img/найк.webp',
+  puma: '/img/puma_rsx.jpg',
+  'chrome-hearts': '/img/chrome-hearts.svg',
+  'louis-vuitton': '/img/LV.svg',
+  supreme: '/img/supreme.png',
+  goyard: '/img/Logo_Goyard.png',
+  acne: '/img/acne.png',
+  'acne-studios': '/img/acne.png',
+  chanel: '/img/chanel logo.png',
+  prada: '/img/prada-logo.png',
 };
 
 // prettify name from slug if API not available

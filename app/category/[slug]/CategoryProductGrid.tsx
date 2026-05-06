@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, memo, type MutableRe
 import Image from 'next/image';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
+import { shouldBypassNextImageOptimization } from '@/lib/media';
 
 type CategoryProduct = {
   id: string;
@@ -237,6 +238,7 @@ const ProductCardImage = memo(function ProductCardImage({
             src={activeSrc}
             alt={alt}
             fill
+            unoptimized={shouldBypassNextImageOptimization(activeSrc)}
             className="object-contain"
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
             priority={false}

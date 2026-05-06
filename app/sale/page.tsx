@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     description: "Скидки на брендовую одежду, обувь и аксессуары. Оригинальные товары по сниженным ценам.",
     images: [
       {
-        url: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008429/IMG_0364_xcrp0m.jpg",
+        url: "/img/IMG_0364.JPG",
         width: 1200,
         height: 630,
         alt: "Sale — Stage Store",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Sale — Stage Store",
     description: "Скидки на оригинальную брендовую одежду, обувь и аксессуары Stage Store.",
-    images: ["https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008429/IMG_0364_xcrp0m.jpg"],
+    images: ["/img/IMG_0364.JPG"],
   },
   robots: { index: true, follow: true },
 };

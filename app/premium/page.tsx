@@ -21,7 +21,7 @@ export const metadata: Metadata = {
       "Редкая брендовая одежда, обувь, сумки и аксессуары премиального сегмента.",
     images: [
       {
-        url: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008429/IMG_0364_xcrp0m.jpg",
+        url: "/img/IMG_0364.JPG",
         width: 1200,
         height: 630,
         alt: "Premium коллекция Stage Store",
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Premium коллекция — Stage Store",
     description: "Редкие бренды, premium-позиции и эксклюзивные товары Stage Store.",
-    images: ["https://res.cloudinary.com/dhufbfxcy/image/upload/v1774008429/IMG_0364_xcrp0m.jpg"],
+    images: ["/img/IMG_0364.JPG"],
   },
   robots: { index: true, follow: true },
 };
