@@ -309,6 +309,95 @@ function subcategoryRuWords(slugs: string[]) {
   return Array.from(new Set(words));
 }
 
+const TYPE_CATEGORY_ALIASES: Record<string, string[]> = {
+  sneaker: ['footwear', 'обувь'],
+  sneakers: ['footwear', 'обувь'],
+  boot: ['footwear', 'обувь'],
+  boots: ['footwear', 'обувь'],
+  loafer: ['footwear', 'обувь'],
+  loafers: ['footwear', 'обувь'],
+  sandal: ['footwear', 'обувь'],
+  sandals: ['footwear', 'обувь'],
+  hoodie: ['clothes', 'одежда'],
+  hoodies: ['clothes', 'одежда'],
+  sweater: ['clothes', 'одежда'],
+  sweaters: ['clothes', 'одежда'],
+  sweatshirt: ['clothes', 'одежда'],
+  sweatshirts: ['clothes', 'одежда'],
+  cardigan: ['clothes', 'одежда'],
+  cardigans: ['clothes', 'одежда'],
+  tshirt: ['clothes', 'одежда'],
+  tshirts: ['clothes', 'одежда'],
+  jacket: ['clothes', 'одежда'],
+  jackets: ['clothes', 'одежда'],
+  coat: ['clothes', 'одежда'],
+  coats: ['clothes', 'одежда'],
+  pant: ['clothes', 'одежда'],
+  pants: ['clothes', 'одежда'],
+  jeans: ['clothes', 'одежда'],
+  bag: ['bags', 'сумки', 'сумки-и-рюкзаки'],
+  bags: ['bags', 'сумки', 'сумки-и-рюкзаки'],
+  travelbag: ['bags', 'сумки', 'сумки-и-рюкзаки'],
+  backpack: ['bags', 'сумки', 'сумки-и-рюкзаки'],
+  backpacks: ['bags', 'сумки', 'сумки-и-рюкзаки'],
+  waistbag: ['bags', 'сумки', 'сумки-и-рюкзаки'],
+  waistbags: ['bags', 'сумки', 'сумки-и-рюкзаки'],
+  wallet: ['bags', 'сумки', 'сумки-и-рюкзаки'],
+  wallets: ['bags', 'сумки', 'сумки-и-рюкзаки'],
+  cardholder: ['bags', 'сумки', 'сумки-и-рюкзаки'],
+  cardholders: ['bags', 'сумки', 'сумки-и-рюкзаки'],
+  fragrance: ['fragrance', 'fragrances', 'парфюм', 'парфюмерия'],
+  fragrances: ['fragrance', 'fragrances', 'парфюм', 'парфюмерия'],
+};
+
+const TYPE_RELATED_SUBS: Record<string, string[]> = {
+  bag: ['bag', 'bags', 'travelbag', 'travelbags', 'backpack', 'backpacks', 'waistbag', 'waistbags', 'wallet', 'wallets', 'cardholder', 'cardholders'],
+  bags: ['bag', 'bags', 'travelbag', 'travelbags', 'backpack', 'backpacks', 'waistbag', 'waistbags', 'wallet', 'wallets', 'cardholder', 'cardholders'],
+};
+
+const TYPE_NAME_ALIASES: Record<string, string[]> = {
+  bag: ['bag', 'bags', 'сумка', 'сумки', 'сумочка', 'keepall', 'neverfull', 'speedy', 'pochette', 'alma', 'capucines', 'on-the-go', 'onthego', 'sac'],
+  bags: ['bag', 'bags', 'сумка', 'сумки', 'сумочка', 'keepall', 'neverfull', 'speedy', 'pochette', 'alma', 'capucines', 'on-the-go', 'onthego', 'sac'],
+  sweater: ['sweater', 'sweaters', 'свитер', 'свитеры', 'джемпер', 'knit', 'knitwear', 'pullover'],
+  sweaters: ['sweater', 'sweaters', 'свитер', 'свитеры', 'джемпер', 'knit', 'knitwear', 'pullover'],
+  hoodie: ['hoodie', 'hoodies', 'худи', 'толстовка'],
+  hoodies: ['hoodie', 'hoodies', 'худи', 'толстовка'],
+  tshirt: ['tshirt', 't-shirt', 'tee', 'футболка', 'футболки'],
+  tshirts: ['tshirt', 't-shirt', 'tee', 'футболка', 'футболки'],
+};
+
+function expandSubcategories(slugs: string[]) {
+  const expanded = new Set<string>();
+  for (const slug of slugs) {
+    for (const alias of subcategoryAliases(slug)) expanded.add(alias);
+    for (const related of TYPE_RELATED_SUBS[normalizeMatchText(slug)] ?? []) {
+      for (const alias of subcategoryAliases(related)) expanded.add(alias);
+    }
+  }
+  return Array.from(expanded);
+}
+
+function typeCategoryAliases(slugs: string[]) {
+  const out = new Set<string>();
+  for (const slug of slugs) {
+    for (const alias of subcategoryAliases(slug)) {
+      for (const cat of TYPE_CATEGORY_ALIASES[alias] ?? []) out.add(normalizeMatchText(cat));
+    }
+  }
+  return Array.from(out);
+}
+
+function typeNameAliases(slugs: string[]) {
+  const out = new Set<string>();
+  for (const slug of slugs) {
+    for (const alias of subcategoryAliases(slug)) {
+      for (const name of TYPE_NAME_ALIASES[alias] ?? []) out.add(normalizeMatchText(name));
+    }
+  }
+  for (const word of subcategoryRuWords(slugs)) out.add(normalizeMatchText(word));
+  return Array.from(out);
+}
+
 // Generic words that map to MULTIPLE subcategories (e.g. "кофта" = hoodie + sweater + sweatshirt + cardigan)
 const GROUP_SYNONYMS: Record<string, string[]> = {
   'кофта': ['hoodie', 'sweater', 'sweatshirt', 'cardigan'],
@@ -708,10 +797,16 @@ export async function GET(req: Request) {
         groupTokenSuggestion?.candidate ??
         Object.keys(GROUP_SYNONYMS).find(k => GROUP_SYNONYMS[k] === groupSubs) ??
         '';
-      const groupAliases = Array.from(new Set(groupSubs.flatMap((sub) => subcategoryAliases(sub))));
+      const groupAliases = expandSubcategories(groupSubs);
+      const groupCategoryAliases = typeCategoryAliases(groupSubs);
+      const groupNameAliases = typeNameAliases(groupSubs);
       const nameVariants: Prisma.ProductWhereInput[] = groupAliases.map((sub) => ({
         subcategory: { equals: sub, mode: Prisma.QueryMode.insensitive },
       }));
+      for (const categoryAlias of groupCategoryAliases) {
+        nameVariants.push({ Category: { is: { slug: { equals: categoryAlias, mode: Prisma.QueryMode.insensitive } } } });
+        nameVariants.push({ Category: { is: { name: { equals: categoryAlias, mode: Prisma.QueryMode.insensitive } } } });
+      }
       // Also search by the original Russian word in product name (e.g. "кофта" in name)
       if (groupKey) {
         nameVariants.push({ name: { contains: groupKey, mode: Prisma.QueryMode.insensitive } });
@@ -720,14 +815,22 @@ export async function GET(req: Request) {
       for (const w of subcategoryRuWords(groupSubs)) {
         nameVariants.push({ name: { contains: w, mode: Prisma.QueryMode.insensitive } });
       }
+      for (const w of groupNameAliases) {
+        nameVariants.push({ name: { contains: w, mode: Prisma.QueryMode.insensitive } });
+      }
       andFilters.push({ OR: nameVariants });
     } else if (subForFilter) {
       // Single subcategory: also search by name as fallback
-      const aliases = subcategoryAliases(subForFilter);
-      const subRuWords = subcategoryRuWords([subForFilter]);
+      const aliases = expandSubcategories([subForFilter]);
+      const categoryAliases = typeCategoryAliases([subForFilter]);
+      const typeWords = typeNameAliases([subForFilter]);
       const subOrFilters: Prisma.ProductWhereInput[] = [
         ...aliases.map((alias) => ({ subcategory: { equals: alias, mode: Prisma.QueryMode.insensitive } })),
-        ...subRuWords.map((w) => ({ name: { contains: w, mode: Prisma.QueryMode.insensitive } })),
+        ...categoryAliases.flatMap((categoryAlias) => [
+          { Category: { is: { slug: { equals: categoryAlias, mode: Prisma.QueryMode.insensitive } } } },
+          { Category: { is: { name: { equals: categoryAlias, mode: Prisma.QueryMode.insensitive } } } },
+        ]),
+        ...typeWords.map((w) => ({ name: { contains: w, mode: Prisma.QueryMode.insensitive } })),
       ];
       andFilters.push({ OR: subOrFilters });
     }
@@ -810,16 +913,22 @@ export async function GET(req: Request) {
         brandId: true,
         createdAt: true,
         Brand: { select: { id: true, name: true, slug: true, logoUrl: true } },
+        Category: { select: { name: true, slug: true } },
       },
     });
 
     const queryTerms = smartQuery
       ? tokenizeSearch(smartQuery)
       : qTokens.filter((token) => token !== detectedBrand?.matchedToken && token !== detectedBrand?.norm);
-    const wantedSubs = groupSubs?.length
-      ? Array.from(new Set(groupSubs.flatMap((sub) => subcategoryAliases(sub))))
-      : subForFilter
-      ? subcategoryAliases(subForFilter)
+    const wantedBaseSubs = groupSubs?.length ? groupSubs : subForFilter ? [subForFilter] : [];
+    const wantedSubs = wantedBaseSubs.length
+      ? expandSubcategories(wantedBaseSubs)
+      : [];
+    const wantedCategories = wantedBaseSubs.length
+      ? typeCategoryAliases(wantedBaseSubs)
+      : [];
+    const wantedNameAliases = wantedBaseSubs.length
+      ? typeNameAliases(wantedBaseSubs)
       : [];
     const wantedRuWords = groupSubs?.length
       ? subcategoryRuWords(groupSubs)
@@ -833,6 +942,8 @@ export async function GET(req: Request) {
       const subcategory = normalizeMatchText(p.subcategory || '');
       const brandName = normalizeMatchText(p.Brand?.name || '');
       const brandSlug = normalizeMatchText(p.Brand?.slug || '');
+      const categoryName = normalizeMatchText(p.Category?.name || '');
+      const categorySlug = normalizeMatchText(p.Category?.slug || '');
       let score = 0;
 
       if (detectedBrand) {
@@ -842,7 +953,9 @@ export async function GET(req: Request) {
 
       if (wantedSubs.length) {
         if (wantedSubs.includes(subcategory)) score += 70;
+        if (wantedCategories.includes(categoryName) || wantedCategories.includes(categorySlug)) score += 48;
         if (wantedRuWords.some((word) => name.includes(normalizeMatchText(word)))) score += 55;
+        if (wantedNameAliases.some((word) => name.includes(word))) score += 45;
       }
 
       for (const term of queryTerms) {
@@ -852,6 +965,7 @@ export async function GET(req: Request) {
         else if (name.includes(term)) score += 22;
         if (brandName.includes(term) || brandSlug.includes(term)) score += 18;
         if (subcategory.includes(term)) score += 12;
+        if (categoryName.includes(term) || categorySlug.includes(term)) score += 10;
         if (description.includes(term)) score += 4;
       }
 
