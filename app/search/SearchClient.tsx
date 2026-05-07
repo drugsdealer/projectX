@@ -1,7 +1,7 @@
 
 'use client';
 
-// ✅ UPDATED: categories-premium-v2
+// ✅ UPDATED: categories-clean-selection-v3
 
 import Link from 'next/link';
 import Image from 'next/image';
@@ -81,57 +81,36 @@ const PROMOS: Promo[] = [
   { title: 'Дропы', desc: 'Подборка по свежим релизам и лимиткам.', href: '/search?tag=drops', tag: 'DROP' },
 ];
 
-const CATEGORY_VISUALS: Record<string, { mark: string; tone: string; glow: string; ink: string; pattern: string }> = {
+const CATEGORY_VISUALS: Record<string, { icon: string; helper: string }> = {
   обувь: {
-    mark: '01',
-    tone: 'from-[#f5efe2] via-white to-[#d9cbb5]',
-    glow: 'bg-[#c7a96b]',
-    ink: 'text-[#3d2f18]',
-    pattern: 'radial-gradient(circle_at_18%_22%,rgba(120,83,36,0.20),transparent_28%)',
+    icon: 'SH',
+    helper: 'Кроссовки, ботинки, лоферы',
   },
   одежда: {
-    mark: '02',
-    tone: 'from-[#eef3ef] via-white to-[#cbd8cd]',
-    glow: 'bg-[#70886f]',
-    ink: 'text-[#233426]',
-    pattern: 'linear-gradient(135deg,rgba(35,52,38,0.12),transparent_42%)',
+    icon: 'CL',
+    helper: 'Худи, трикотаж, верхняя одежда',
   },
   сумки: {
-    mark: '03',
-    tone: 'from-[#f7eeee] via-white to-[#d9c5c2]',
-    glow: 'bg-[#9e6f67]',
-    ink: 'text-[#432623]',
-    pattern: 'radial-gradient(circle_at_75%_18%,rgba(126,68,58,0.18),transparent_30%)',
+    icon: 'BG',
+    helper: 'Tote, crossbody, shoulder bags',
   },
   аксессуары: {
-    mark: '04',
-    tone: 'from-[#eef1f6] via-white to-[#c6cfdb]',
-    glow: 'bg-[#687995]',
-    ink: 'text-[#22304a]',
-    pattern: 'linear-gradient(90deg,rgba(34,48,74,0.10),transparent_55%)',
+    icon: 'AC',
+    helper: 'Очки, ремни, украшения',
   },
   парфюм: {
-    mark: '05',
-    tone: 'from-[#f4eff8] via-white to-[#d4c4dd]',
-    glow: 'bg-[#8a6b98]',
-    ink: 'text-[#372441]',
-    pattern: 'radial-gradient(circle_at_32%_72%,rgba(101,58,127,0.16),transparent_34%)',
+    icon: 'PF',
+    helper: 'Ниша, EDP, повседневные ароматы',
   },
   головные: {
-    mark: '06',
-    tone: 'from-[#f1f1ed] via-white to-[#cfcfc4]',
-    glow: 'bg-[#7b7a64]',
-    ink: 'text-[#343322]',
-    pattern: 'linear-gradient(160deg,rgba(58,57,42,0.12),transparent_48%)',
+    icon: 'HD',
+    helper: 'Кепки, шапки, панамы',
   },
 };
 
 const DEFAULT_CATEGORY_VISUAL = {
-  mark: 'ST',
-  tone: 'from-[#f5f5f2] via-white to-[#d9d9d0]',
-  glow: 'bg-black',
-  ink: 'text-black',
-  pattern: 'radial-gradient(circle_at_18%_18%,rgba(0,0,0,0.10),transparent_30%)',
+  icon: 'ST',
+  helper: 'Категория каталога',
 };
 
 function getCategoryVisual(title: string) {
@@ -150,20 +129,20 @@ function getSelectionCopy(gender: string) {
     return {
       eyebrow: 'Men selection',
       title: 'Мужская селекция',
-      desc: 'Показываем категории и товары, подходящие для мужской подборки.',
+      desc: 'Категории и товары сейчас фильтруются под мужскую подборку.',
     };
   }
   if (gender === 'women') {
     return {
       eyebrow: 'Women selection',
       title: 'Женская селекция',
-      desc: 'Показываем категории и товары, подходящие для женской подборки.',
+      desc: 'Категории и товары сейчас фильтруются под женскую подборку.',
     };
   }
   return {
     eyebrow: 'Full catalog',
     title: 'Вся витрина',
-    desc: 'Категории без ограничения по полу: мужское, женское и унисекс.',
+    desc: 'Показываем мужское, женское и унисекс без ограничения.',
   };
 }
 
@@ -579,50 +558,44 @@ const CategoryCard = memo(function CategoryCard({ c, meta, genderSuffix = '' }: 
   return (
     <Link
       href={href}
-      className={`group relative min-h-[118px] overflow-hidden rounded-[26px] border border-black/10 bg-gradient-to-br ${visual.tone} p-4 shadow-[0_10px_28px_rgba(0,0,0,0.045)] transition duration-300 hover:-translate-y-0.5 hover:border-black/20 hover:shadow-[0_22px_52px_rgba(0,0,0,0.10)] sm:min-h-[148px] sm:p-5`}
+      className="group block rounded-3xl border border-black/10 bg-white p-4 transition duration-200 hover:-translate-y-0.5 hover:border-black/20 hover:bg-[#fbfbfa] hover:shadow-[0_18px_44px_rgba(0,0,0,0.07)] sm:p-5"
     >
-      <div className="absolute inset-0 pointer-events-none opacity-80" style={{ backgroundImage: visual.pattern }} />
-      <div className="absolute -right-8 -top-10 h-28 w-28 rounded-full bg-white/60 blur-2xl sm:h-36 sm:w-36" />
-      <div className={`absolute bottom-4 left-4 h-2 w-14 rounded-full ${visual.glow} opacity-75 transition group-hover:w-20`} />
-      <div className="absolute right-4 top-3 text-[58px] font-black leading-none tracking-[-0.08em] text-black/[0.045] sm:right-5 sm:top-4 sm:text-[76px]">
-        {visual.mark}
-      </div>
-
-      <div className="relative flex items-start justify-between gap-3 sm:gap-4">
-        <div className="min-w-0">
-          <div className={`text-lg font-black tracking-[-0.04em] sm:text-[24px] ${visual.ink}`}>{c.title}</div>
-          {meta ? (
-            <>
-              <div className="mt-1 text-[11px] font-semibold text-black/55 sm:hidden">{meta}</div>
-              <div className="mt-1 hidden text-[11px] font-semibold text-black/55 sm:block sm:text-xs">{meta}</div>
-            </>
-          ) : (
-            <div className="mt-1 hidden text-[11px] font-semibold text-black/55 sm:block sm:text-xs">{c.subtitle}</div>
-          )}
-
-          {chips.length ? (
-            <div className="mt-3 hidden sm:flex flex-wrap gap-2">
-              {chips.map((chip) => (
-                <span
-                  key={chip}
-                  className="inline-flex h-6 items-center rounded-full border border-black/10 bg-white/70 px-2.5 text-[10px] font-semibold text-black/70 backdrop-blur sm:h-7 sm:px-3 sm:text-[11px]"
-                >
-                  {chip}
-                </span>
-              ))}
-            </div>
-          ) : null}
+      <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-black/10 bg-black/[0.035] text-[11px] font-black tracking-[0.12em] text-black/65 transition group-hover:bg-black group-hover:text-white sm:h-14 sm:w-14">
+          {visual.icon}
         </div>
 
-        <div className="shrink-0">
-          <div className="flex h-10 items-center gap-2 rounded-full border border-black/10 bg-white/80 px-3 text-xs font-bold text-black/70 shadow-sm backdrop-blur transition duration-300 group-hover:bg-black group-hover:text-white sm:h-11 sm:px-4 sm:text-sm">
-            <span className="hidden md:inline">Открыть</span>
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/5 text-black/70 transition duration-300 group-hover:bg-white group-hover:text-black sm:h-8 sm:w-8">
-              →
-            </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="truncate text-lg font-extrabold tracking-[-0.035em] sm:text-xl">{c.title}</div>
+            {genderSuffix ? (
+              <span className="rounded-full bg-black/[0.055] px-2 py-1 text-[10px] font-bold text-black/55">
+                {genderSuffix === 'men' ? 'Мужское' : 'Женское'}
+              </span>
+            ) : null}
+          </div>
+          <div className="mt-1 text-xs font-medium leading-relaxed text-black/50 sm:text-sm">
+            {meta || visual.helper}
           </div>
         </div>
+
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/10 bg-white text-lg leading-none text-black/65 transition group-hover:border-black group-hover:bg-black group-hover:text-white">
+          →
+        </div>
       </div>
+
+      {chips.length ? (
+        <div className="mt-4 hidden flex-wrap gap-2 sm:flex">
+          {chips.map((chip) => (
+            <span
+              key={chip}
+              className="inline-flex h-7 items-center rounded-full bg-black/[0.035] px-3 text-[11px] font-semibold text-black/55"
+            >
+              {chip}
+            </span>
+          ))}
+        </div>
+      ) : null}
     </Link>
   );
 });
@@ -635,13 +608,17 @@ const SubcategoryTile = memo(function SubcategoryTile({ name, count, genderSuffi
   return (
     <Link
       href={href}
-      className={`group relative overflow-hidden rounded-2xl border border-black/10 bg-gradient-to-br ${visual.tone} px-3 py-3 transition duration-300 hover:-translate-y-0.5 hover:border-black/20 hover:shadow-[0_14px_30px_rgba(0,0,0,0.09)]`}
+      className="group block rounded-2xl border border-black/10 bg-white px-3 py-3 transition duration-200 hover:border-black/20 hover:bg-[#fbfbfa] hover:shadow-[0_12px_28px_rgba(0,0,0,0.06)]"
       title={name}
     >
-      <div className="absolute inset-0 opacity-70" style={{ backgroundImage: visual.pattern }} />
-      <div className="relative">
-        <div className="text-sm font-black leading-snug tracking-[-0.03em]">{prettySubcategory(name)}</div>
-        {typeof count === 'number' ? <div className="mt-1 text-[11px] font-semibold text-black/50">{count} товаров</div> : null}
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-extrabold leading-snug tracking-[-0.02em]">{prettySubcategory(name)}</div>
+          {typeof count === 'number' ? <div className="mt-1 text-[11px] font-semibold text-black/45">{count} товаров</div> : null}
+        </div>
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-black/[0.04] text-sm text-black/55 transition group-hover:bg-black group-hover:text-white">
+          →
+        </span>
       </div>
     </Link>
   );
@@ -1209,8 +1186,8 @@ export default function SearchPage() {
               )}
               {/* Gender selector */}
               {!panelOpen && (
-                <div className="mt-3 space-y-3">
-                  <div className="inline-flex w-full rounded-[22px] border border-black/10 bg-black/[0.035] p-1 sm:w-auto">
+                <div className="mt-3 rounded-3xl border border-black/10 bg-white p-2 shadow-[0_10px_30px_rgba(0,0,0,0.035)] sm:flex sm:items-center sm:justify-between sm:gap-4">
+                  <div className="grid grid-cols-3 rounded-2xl bg-black/[0.035] p-1 sm:flex sm:w-auto">
                     {(['', 'men', 'women'] as const).map((g) => {
                       const label = g === '' ? 'Все' : g === 'men' ? 'Мужское' : 'Женское';
                       const isActive = activeGender === g;
@@ -1225,13 +1202,13 @@ export default function SearchPage() {
                               gender: g || undefined,
                             }));
                           }}
-                          className="relative h-10 flex-1 rounded-[18px] px-4 text-sm font-extrabold transition-colors duration-150 whitespace-nowrap sm:flex-none"
-                          style={{ color: isActive ? '#fff' : 'rgba(0,0,0,0.45)' }}
+                          className="relative h-10 rounded-[14px] px-4 text-sm font-bold text-black/45 transition-colors duration-150 whitespace-nowrap sm:min-w-[112px]"
+                          style={{ color: isActive ? 'rgba(0,0,0,0.92)' : 'rgba(0,0,0,0.45)' }}
                         >
                           {isActive && (
                             <motion.span
                               layoutId="search-gender-pill"
-                              className="absolute inset-0 rounded-[18px] bg-black shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
+                              className="absolute inset-0 rounded-[14px] border border-black/10 bg-white shadow-[0_6px_18px_rgba(0,0,0,0.08)]"
                               transition={{ type: 'spring', stiffness: 500, damping: 42 }}
                             />
                           )}
@@ -1241,18 +1218,12 @@ export default function SearchPage() {
                     })}
                   </div>
 
-                  <div className="relative overflow-hidden rounded-[26px] border border-black/10 bg-gradient-to-br from-black via-[#222018] to-[#756a52] px-4 py-4 text-white shadow-[0_18px_46px_rgba(0,0,0,0.16)] sm:px-5">
-                    <div className="absolute inset-0 opacity-25 [background-image:radial-gradient(circle_at_18%_18%,rgba(255,255,255,0.9),transparent_18%),linear-gradient(120deg,transparent,rgba(255,255,255,0.20),transparent)]" />
-                    <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-white/55">{selectionCopy.eyebrow}</div>
-                        <div className="mt-1 text-xl font-black tracking-[-0.05em] sm:text-2xl">{selectionCopy.title}</div>
-                        <div className="mt-1 max-w-xl text-xs font-semibold leading-relaxed text-white/62 sm:text-sm">{selectionCopy.desc}</div>
-                      </div>
-                      <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-xs font-bold text-white/80 backdrop-blur">
-                        <span className="h-2 w-2 rounded-full bg-[#d8c69a]" />
-                        Активно сейчас
-                      </div>
+                  <div className="mt-2 flex items-start gap-2 rounded-2xl bg-black/[0.025] px-3 py-3 text-xs leading-relaxed text-black/55 sm:mt-0 sm:flex-1 sm:items-center sm:bg-transparent sm:px-0 sm:py-0">
+                    <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-black/70 sm:mt-0" />
+                    <div>
+                      <span className="font-extrabold text-black/80">{selectionCopy.title}</span>
+                      <span className="mx-1 text-black/30">·</span>
+                      <span>{selectionCopy.desc}</span>
                     </div>
                   </div>
                 </div>
@@ -1372,10 +1343,10 @@ export default function SearchPage() {
               <section>
                 <div className="flex items-end justify-between gap-3">
                   <div>
-                    <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-black/40">Navigation</div>
-                    <h2 className="mt-1 text-2xl font-black tracking-[-0.06em] sm:text-3xl">Категории</h2>
+                    <div className="text-xs font-semibold text-black/45">Быстрый переход</div>
+                    <h2 className="mt-1 text-2xl font-extrabold tracking-[-0.04em] sm:text-3xl">Категории</h2>
                   </div>
-                  <span className="hidden rounded-full border border-black/10 px-3 py-1.5 text-xs font-bold text-black/45 sm:inline-flex">
+                  <span className="hidden rounded-full bg-black/[0.04] px-3 py-1.5 text-xs font-bold text-black/55 sm:inline-flex">
                     {selectionCopy.title}
                   </span>
                 </div>
@@ -1431,11 +1402,11 @@ export default function SearchPage() {
             <section>
               <div className="flex items-end justify-between gap-3">
                 <div>
-                  <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-black/40">Navigation</div>
-                  <h2 className="mt-1 text-2xl font-black tracking-[-0.06em] sm:text-4xl">Категории</h2>
+                  <div className="text-xs font-semibold text-black/45">Быстрый переход</div>
+                  <h2 className="mt-1 text-2xl font-extrabold tracking-[-0.04em] sm:text-3xl">Категории</h2>
                 </div>
-                <span className="hidden rounded-full border border-black/10 px-3 py-1.5 text-xs font-bold text-black/45 sm:inline-flex">
-                  Быстрая навигация
+                <span className="hidden rounded-full bg-black/[0.04] px-3 py-1.5 text-xs font-bold text-black/55 sm:inline-flex">
+                  {selectionCopy.title}
                 </span>
               </div>
 
