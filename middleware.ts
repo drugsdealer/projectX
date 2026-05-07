@@ -145,7 +145,14 @@ export async function middleware(request: NextRequest) {
   const hasSessionToken = Boolean(request.cookies.get(SESSION_TOKEN_COOKIE)?.value);
   const fastUser = needUserFor ? readUserFast(request) : null;
   const user = needUserFor
-    ? (fastUser ?? (hasSessionToken ? await fetchUser(request) : null))
+    ? (
+        fastUser ??
+        (hasSessionToken
+          // Не дергаем БД на обычной странице профиля: короткий timeout мог случайно
+          // редиректить живую сессию на главную при сетевом сбое.
+          ? (pathname.startsWith("/user") ? ({ id: null } as any) : await fetchUser(request))
+          : null)
+      )
     : null;
   const vfyCookie = request.cookies.get("vfy")?.value ?? null;
 

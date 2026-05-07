@@ -8,8 +8,6 @@ import { SESSION_TOKEN_COOKIE } from "../../../_utils/session";
 import { blockIfCsrf } from "@/lib/api-hardening";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
-const HOURS_24 = 24 * 60 * 60 * 1000;
-
 export async function POST(req: Request) {
   const csrf = blockIfCsrf(req);
   if (csrf) return csrf;
@@ -44,13 +42,6 @@ export async function POST(req: Request) {
     });
     if (!current || current.userId !== userId || current.revokedAt) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
-    }
-
-    if (Date.now() - current.createdAt.getTime() < HOURS_24) {
-      return NextResponse.json(
-        { success: false, message: "С этой сессии можно отключать другие устройства только через 24 часа." },
-        { status: 403 }
-      );
     }
 
     if (current.id === sessionId) {

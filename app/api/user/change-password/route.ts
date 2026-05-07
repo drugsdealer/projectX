@@ -6,6 +6,8 @@ import { getUserIdFromRequest } from "@/lib/session";
 import bcrypt from "bcryptjs";
 import { blockIfCsrf } from "@/lib/api-hardening";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { cookies } from "next/headers";
+import { SESSION_TOKEN_COOKIE } from "../../_utils/session";
 
 export async function POST(req: Request) {
   const csrf = blockIfCsrf(req);
@@ -51,12 +53,26 @@ export async function POST(req: Request) {
     }
 
     const hash = await bcrypt.hash(newPassword, 10);
-    await prisma.user.update({
-      where: { id: userId },
-      data: { password: hash },
-    });
+    const jar: any = cookies() as any;
+    const cookieJar = typeof jar?.then === "function" ? await jar : jar;
+    const currentToken = cookieJar?.get?.(SESSION_TOKEN_COOKIE)?.value || null;
 
-    return NextResponse.json({ success: true });
+    const [, revoked] = await prisma.$transaction([
+      prisma.user.update({
+        where: { id: userId },
+        data: { password: hash },
+      }),
+      prisma.userSession.updateMany({
+        where: {
+          userId,
+          revokedAt: null,
+          ...(currentToken ? { token: { not: currentToken } } : {}),
+        },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
+
+    return NextResponse.json({ success: true, revokedSessions: revoked.count });
   } catch (e) {
     console.error("[change-password] error");
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });

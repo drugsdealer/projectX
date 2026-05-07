@@ -9,8 +9,6 @@ import { SESSION_TOKEN_COOKIE, setSessionTokenOnResponse } from "../../_utils/se
 import { randomBytes } from "crypto";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
-const HOURS_2 = 2 * 60 * 60 * 1000;
-
 export async function GET(req: Request) {
   const ip = getClientIp(req);
   const rl = await rateLimit(`sessions:${ip}`, 15, 60_000);
@@ -110,12 +108,8 @@ export async function GET(req: Request) {
         data: { revokedAt: new Date() },
       }).catch(() => {});
     }
-    const now = Date.now();
-    const canRevokeOthers = current ? (current.isPrimary || (now - current.createdAt.getTime() >= HOURS_2)) : false;
-    const cooldownMs = current && !current.isPrimary
-      ? Math.max(0, HOURS_2 - (now - current.createdAt.getTime()))
-      : 0;
-    const cooldownHoursLeft = Math.ceil(cooldownMs / (60 * 60 * 1000));
+    const canRevokeOthers = Boolean(current);
+    const cooldownHoursLeft = 0;
 
     const res = NextResponse.json({
       success: true,

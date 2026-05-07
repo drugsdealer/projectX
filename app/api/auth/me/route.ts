@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 import { prisma } from '@/lib/prisma';
 import { getUserIdFromRequest } from '@/lib/session';
+import { clearSessionOnResponse } from '../../_utils/session';
 
 // "Кто я" — возвращает текущего пользователя по сессии.
 export async function GET() {
@@ -11,7 +14,9 @@ export async function GET() {
 
     // Не авторизован — возвращаем user: null (200), чтобы фронт не падал
     if (!userId) {
-      return NextResponse.json({ success: true, user: null }, { status: 200 });
+      const res = NextResponse.json({ success: true, user: null }, { status: 200 });
+      clearSessionOnResponse(res);
+      return res;
     }
 
     const user = await prisma.user.findUnique({
@@ -35,7 +40,9 @@ export async function GET() {
 
     if (!user) {
       // Сессия указывает на несуществующего/удалённого пользователя — считаем, что он не авторизован
-      return NextResponse.json({ success: true, user: null }, { status: 200 });
+      const res = NextResponse.json({ success: true, user: null }, { status: 200 });
+      clearSessionOnResponse(res);
+      return res;
     }
 
     return NextResponse.json({ success: true, user }, { status: 200 });

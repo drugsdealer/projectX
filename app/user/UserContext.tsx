@@ -121,12 +121,31 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const userRef = useRef<User | null>(null);
   useEffect(() => { userRef.current = user; }, [user]);
 
+  const clearCachedAuth = useCallback(() => {
+    setUser(null);
+    try {
+      localStorage.removeItem('ui_user_data');
+      localStorage.removeItem('ui_profile_fullName');
+    } catch {}
+    try {
+      document.cookie = 'ui_user_data=; Path=/; Max-Age=0; SameSite=Lax';
+      document.cookie = 'ui_fullname=; Path=/; Max-Age=0; SameSite=Lax';
+      document.cookie = 'ui_user_id=; Path=/; Max-Age=0; SameSite=Lax';
+      document.cookie = 'ui_user_email=; Path=/; Max-Age=0; SameSite=Lax';
+      document.cookie = 'ui_user_fullName=; Path=/; Max-Age=0; SameSite=Lax';
+    } catch {}
+  }, []);
+
   // Refresh function to fetch user profile from server
   // Wrapped in useCallback with empty deps so event listeners always call the latest version via ref
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch('/api/auth/me', { cache: 'no-store' });
+      const res = await fetch('/api/auth/me', { cache: 'no-store', credentials: 'include' });
       const data = await res.json().catch(() => ({}));
+      if (res.status === 401 || res.status === 403) {
+        clearCachedAuth();
+        return;
+      }
       const serverAnswered = Boolean(res?.ok) && data?.success === true;
 
       const serverUser = data?.success && data?.user
@@ -136,15 +155,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       // Важный кейс для production: сервер явно говорит, что сессии нет.
       // Не оставляем "фантомный" профиль из localStorage/cookie.
       if (serverAnswered && !serverUser) {
-        setUser(null);
-        try {
-          localStorage.removeItem('ui_user_data');
-          localStorage.removeItem('ui_profile_fullName');
-        } catch {}
-        try {
-          document.cookie = 'ui_user_data=; Path=/; Max-Age=0; SameSite=Lax';
-          document.cookie = 'ui_fullname=; Path=/; Max-Age=0; SameSite=Lax';
-        } catch {}
+        clearCachedAuth();
         return;
       }
 
@@ -192,7 +203,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     }
-  }, []);
+  }, [clearCachedAuth]);
 
   useEffect(() => {
     let cancelled = false;
@@ -220,7 +231,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       await refresh();
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [refresh]);
 
   // Listen for auth:changed event to refresh user
   useEffect(() => {
@@ -231,7 +242,33 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       window.removeEventListener("auth:changed", handler);
     };
-  }, []);
+  }, [refresh]);
+
+  // Keep auth state honest across devices. When password change or session revoke happens
+  // elsewhere, /api/auth/me returns user:null and we clear the cached profile without reload.
+  useEffect(() => {
+    let stopped = false;
+    let inFlight = false;
+    const check = async () => {
+      if (stopped || inFlight || !userRef.current) return;
+      if (document.visibilityState !== "visible") return;
+      inFlight = true;
+      try {
+        await refresh();
+      } finally {
+        inFlight = false;
+      }
+    };
+    const interval = window.setInterval(check, 5000);
+    window.addEventListener("focus", check);
+    document.addEventListener("visibilitychange", check);
+    return () => {
+      stopped = true;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", check);
+      document.removeEventListener("visibilitychange", check);
+    };
+  }, [refresh]);
 
   // Listen for profile:updated (from profile form) to refresh cached user name quickly
   useEffect(() => {
@@ -312,6 +349,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     } catch {}
     try {
       localStorage.removeItem("ui_user_data");
+      localStorage.removeItem("ui_profile_fullName");
     } catch {}
     try {
       document.cookie = 'ui_user_data=; Path=/; Max-Age=0; SameSite=Lax';
