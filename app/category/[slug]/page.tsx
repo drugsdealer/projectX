@@ -3,6 +3,13 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 
 import prisma from '@/lib/prisma';
+import {
+  getParentSubcategories,
+  getSubcategoryAliases,
+  normalizeCategorySlug,
+  normalizeSubcategorySlug,
+  resolveProductTaxonomy,
+} from '@/lib/catalog-taxonomy';
 import CategoryProductGrid from './CategoryProductGrid';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://stagestore.app';
@@ -379,29 +386,23 @@ export default async function CategoryPage({
     'парфюмерия': 'fragrance',
   };
 
-  // Filter: product belongs to this category if its inferred/DB subcategory matches the slug,
-  // OR if its DB category maps to this parent slug (catches products without matching subcategory inference)
-  const parentChildren = PARENT_CATEGORIES[slugLow];
+  // Product DB category + stored subcategory are the source of truth.
+  // Text inference is only a constrained fallback inside resolveProductTaxonomy.
+  const normalizedSlug = normalizeCategorySlug(slugLow) ?? normalizeSubcategorySlug(slugLow) ?? slugLow;
+  const parentChildren = getParentSubcategories(normalizedSlug);
+  const slugSubAliases = getSubcategoryAliases(normalizedSlug);
   const products = (allProducts as any[]).filter((p) => {
-    const dbSub = (p.subcategory ?? '').trim().toLowerCase();
-    const inferred = inferSub(p.name ?? '', p.description ?? null);
-    const effectiveSub = dbSub || inferred;
+    const taxonomy = resolveProductTaxonomy(p);
+    const effectiveSub = taxonomy.subcategorySlug;
+    const effectiveCategory = taxonomy.categorySlug;
 
-    // Primary match: subcategory-based
     if (effectiveSub) {
-      if (parentChildren) return parentChildren.includes(effectiveSub);
-      return effectiveSub === slugLow;
+      if (parentChildren.length) return parentChildren.includes(effectiveSub);
+      return slugSubAliases.includes(effectiveSub);
     }
 
-    // Fallback: match by DB category slug (for products without subcategory inference)
-    const dbCatSlug = (p.Category?.slug ?? '').trim().toLowerCase();
-    if (dbCatSlug) {
-      const mappedEn = DB_SLUG_TO_EN[dbCatSlug] ?? dbCatSlug;
-      if (parentChildren) {
-        // For parent categories like footwear/clothes, check if DB category matches
-        return mappedEn === slugLow || dbCatSlug === slugLow;
-      }
-      return mappedEn === slugLow || dbCatSlug === slugLow;
+    if (effectiveCategory) {
+      return effectiveCategory === normalizedSlug;
     }
 
     return false;
@@ -432,6 +433,7 @@ export default async function CategoryPage({
       price: p.price ?? null,
       minPrice: getMinPrice(p),
       images: uniq,
+      subcategory: resolveProductTaxonomy(p).subcategorySlug,
     };
   });
 

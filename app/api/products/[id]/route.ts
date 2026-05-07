@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { normalizeCategorySlug, resolveProductTaxonomy } from "@/lib/catalog-taxonomy";
 
 const PUBLIC_CACHE_HEADERS = {
   "Cache-Control": "public, max-age=30, s-maxage=120, stale-while-revalidate=300",
@@ -17,9 +18,7 @@ const RU_TO_EN: Record<string, string> = {
 };
 
 function uiCategoryFromDbSlug(dbSlug?: string | null): string | null {
-  if (!dbSlug) return null;
-  const key = String(dbSlug).trim().toLowerCase();
-  return RU_TO_EN[key] ?? key;
+  return normalizeCategorySlug(dbSlug);
 }
 
 // very light-weight subcategory inference by text
@@ -312,8 +311,9 @@ export async function GET(
 
     // --- category normalization for detail response ---
     const categoryDbSlug = (product as any)?.Category?.slug ?? null;
-    const subCategorySlug = inferSubcategorySlugByText(pAny?.name, pAny?.description);
-    const categorySlug = inferMainCategorySlug({ ...pAny, category: product.Category, categorySlug: categoryDbSlug }, subCategorySlug) ?? uiCategoryFromDbSlug(categoryDbSlug);
+    const taxonomy = resolveProductTaxonomy({ ...pAny, Category: product.Category, categorySlug: categoryDbSlug });
+    const subCategorySlug = taxonomy.subcategorySlug;
+    const categorySlug = taxonomy.categorySlug ?? uiCategoryFromDbSlug(categoryDbSlug);
     const categoryId = (product as any)?.categoryId ?? (product as any)?.Category?.id ?? null;
     const categoryName = (product as any)?.Category?.name ?? null;
 
@@ -321,6 +321,7 @@ export async function GET(
     try {
       const isPerfumeCategory =
         categorySlug === "perfumery" ||
+        categorySlug === "fragrance" ||
         categorySlug === "perfume" ||
         /(парфюмер|духи|fragrance|perfume)/.test(
           `${pAny?.name ?? ""} ${pAny?.description ?? ""}`.toLowerCase()

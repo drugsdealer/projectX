@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { normalizeSubcategorySlug } from "@/lib/catalog-taxonomy";
 
 const CACHE_HEADERS = {
   "Cache-Control": "public, max-age=15, s-maxage=60, stale-while-revalidate=120",
@@ -75,6 +76,21 @@ const TYPE_INTENTS: Record<string, { subs: string[]; cats: string[]; words: stri
     cats: ["clothes", "одежда"],
     words: ["футболка", "футболки", "лонгслив", "tshirt", "t-shirt", "tee"],
   },
+  jeans: {
+    subs: ["jeans", "jean"],
+    cats: ["clothes", "одежда"],
+    words: ["джинсы", "джинс", "jeans", "denim"],
+  },
+  belt: {
+    subs: ["belt", "belts"],
+    cats: ["accessories", "аксессуары"],
+    words: ["ремень", "ремни", "ремен", "belt", "belts"],
+  },
+  glasses: {
+    subs: ["glasses", "glass"],
+    cats: ["accessories", "аксессуары"],
+    words: ["очки", "glasses", "sunglasses"],
+  },
   fragrance: {
     subs: ["fragrance", "fragrances"],
     cats: ["fragrance", "fragrances", "парфюм", "парфюмерия"],
@@ -113,6 +129,19 @@ const TYPE_SYNONYMS: Record<string, keyof typeof TYPE_INTENTS> = {
   футболки: "tshirt",
   tshirt: "tshirt",
   "t-shirt": "tshirt",
+  джинсы: "jeans",
+  джинс: "jeans",
+  jeans: "jeans",
+  denim: "jeans",
+  ремень: "belt",
+  ремни: "belt",
+  ремня: "belt",
+  ремню: "belt",
+  belt: "belt",
+  belts: "belt",
+  очки: "glasses",
+  glasses: "glasses",
+  sunglasses: "glasses",
   парфюм: "fragrance",
   духи: "fragrance",
   аромат: "fragrance",
@@ -178,7 +207,7 @@ function productScore(p: any, params: { brandId?: number; typeKey?: keyof typeof
   const name = normalizeText(p.name);
   const description = normalizeText(p.description);
   const brandName = normalizeText(p.Brand?.name);
-  const sub = normalizeText(p.subcategory);
+  const sub = normalizeSubcategorySlug(p.subcategory) ?? normalizeText(p.subcategory);
   const catName = normalizeText(p.Category?.name);
   const catSlug = normalizeText(p.Category?.slug);
   const intent = params.typeKey ? TYPE_INTENTS[params.typeKey] : null;
@@ -186,8 +215,7 @@ function productScore(p: any, params: { brandId?: number; typeKey?: keyof typeof
 
   if (params.brandId && p.Brand?.id === params.brandId) score += 90;
   if (intent) {
-    if (intent.subs.includes(sub)) score += 70;
-    if (intent.cats.includes(catName) || intent.cats.includes(catSlug)) score += 50;
+    if (intent.subs.map((x) => normalizeSubcategorySlug(x) ?? normalizeText(x)).includes(sub)) score += 70;
     if (intent.words.some((word) => name.includes(normalizeText(word)))) score += 45;
   }
   for (const term of params.terms) {
@@ -225,12 +253,12 @@ export async function GET(req: NextRequest) {
   const andFilters: Prisma.ProductWhereInput[] = [];
   if (brand?.id) andFilters.push({ brandId: brand.id });
   if (intent) {
+    const intentSubs = Array.from(new Set(intent.subs.map((sub) => normalizeSubcategorySlug(sub) ?? sub)));
     andFilters.push({
       OR: [
-        ...intent.subs.map((sub) => ({ subcategory: { equals: sub, mode: Prisma.QueryMode.insensitive } })),
-        ...intent.cats.flatMap((cat) => [
-          { Category: { is: { name: { equals: cat, mode: Prisma.QueryMode.insensitive } } } },
-          { Category: { is: { slug: { equals: cat, mode: Prisma.QueryMode.insensitive } } } },
+        ...intentSubs.flatMap((sub) => [
+          { subcategory: { equals: sub, mode: Prisma.QueryMode.insensitive } },
+          ...intent.subs.map((rawSub) => ({ subcategory: { equals: rawSub, mode: Prisma.QueryMode.insensitive } })),
         ]),
         ...intent.words.map((word) => ({ name: { contains: word, mode: Prisma.QueryMode.insensitive } })),
       ],

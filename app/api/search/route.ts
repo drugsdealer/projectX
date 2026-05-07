@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { slugify } from '@/lib/slug';
 import { getClientIp, rateLimit } from '@/lib/rate-limit';
+import { normalizeSubcategorySlug, resolveProductTaxonomy } from '@/lib/catalog-taxonomy';
 
 const PUBLIC_CACHE_HEADERS = {
   'Cache-Control': 'public, max-age=30, s-maxage=120, stale-while-revalidate=300',
@@ -618,12 +619,19 @@ export async function GET(req: Request) {
       // Load all products with name + existing subcategory to infer missing ones
       const allProducts = await prisma.product.findMany({
         where: facetsWhere,
-        select: { id: true, name: true, description: true, subcategory: true },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          subcategory: true,
+          sizeType: true,
+          Category: { select: { slug: true } },
+        },
       });
 
       const subCountMap = new Map<string, number>();
       for (const p of allProducts) {
-        const sub = (p.subcategory?.trim().toLowerCase()) || inferSub(p.name, p.description) || null;
+        const sub = resolveProductTaxonomy(p).subcategorySlug;
         if (!sub) continue;
         subCountMap.set(sub, (subCountMap.get(sub) ?? 0) + 1);
       }
@@ -798,15 +806,10 @@ export async function GET(req: Request) {
         Object.keys(GROUP_SYNONYMS).find(k => GROUP_SYNONYMS[k] === groupSubs) ??
         '';
       const groupAliases = expandSubcategories(groupSubs);
-      const groupCategoryAliases = typeCategoryAliases(groupSubs);
       const groupNameAliases = typeNameAliases(groupSubs);
       const nameVariants: Prisma.ProductWhereInput[] = groupAliases.map((sub) => ({
         subcategory: { equals: sub, mode: Prisma.QueryMode.insensitive },
       }));
-      for (const categoryAlias of groupCategoryAliases) {
-        nameVariants.push({ Category: { is: { slug: { equals: categoryAlias, mode: Prisma.QueryMode.insensitive } } } });
-        nameVariants.push({ Category: { is: { name: { equals: categoryAlias, mode: Prisma.QueryMode.insensitive } } } });
-      }
       // Also search by the original Russian word in product name (e.g. "кофта" in name)
       if (groupKey) {
         nameVariants.push({ name: { contains: groupKey, mode: Prisma.QueryMode.insensitive } });
@@ -822,14 +825,9 @@ export async function GET(req: Request) {
     } else if (subForFilter) {
       // Single subcategory: also search by name as fallback
       const aliases = expandSubcategories([subForFilter]);
-      const categoryAliases = typeCategoryAliases([subForFilter]);
       const typeWords = typeNameAliases([subForFilter]);
       const subOrFilters: Prisma.ProductWhereInput[] = [
         ...aliases.map((alias) => ({ subcategory: { equals: alias, mode: Prisma.QueryMode.insensitive } })),
-        ...categoryAliases.flatMap((categoryAlias) => [
-          { Category: { is: { slug: { equals: categoryAlias, mode: Prisma.QueryMode.insensitive } } } },
-          { Category: { is: { name: { equals: categoryAlias, mode: Prisma.QueryMode.insensitive } } } },
-        ]),
         ...typeWords.map((w) => ({ name: { contains: w, mode: Prisma.QueryMode.insensitive } })),
       ];
       andFilters.push({ OR: subOrFilters });
@@ -924,9 +922,6 @@ export async function GET(req: Request) {
     const wantedSubs = wantedBaseSubs.length
       ? expandSubcategories(wantedBaseSubs)
       : [];
-    const wantedCategories = wantedBaseSubs.length
-      ? typeCategoryAliases(wantedBaseSubs)
-      : [];
     const wantedNameAliases = wantedBaseSubs.length
       ? typeNameAliases(wantedBaseSubs)
       : [];
@@ -939,7 +934,7 @@ export async function GET(req: Request) {
     const scoreProduct = (p: any) => {
       const name = normalizeMatchText(p.name || '');
       const description = normalizeMatchText(p.description || '');
-      const subcategory = normalizeMatchText(p.subcategory || '');
+      const subcategory = normalizeSubcategorySlug(p.subcategory) ?? normalizeMatchText(p.subcategory || '');
       const brandName = normalizeMatchText(p.Brand?.name || '');
       const brandSlug = normalizeMatchText(p.Brand?.slug || '');
       const categoryName = normalizeMatchText(p.Category?.name || '');
@@ -953,7 +948,6 @@ export async function GET(req: Request) {
 
       if (wantedSubs.length) {
         if (wantedSubs.includes(subcategory)) score += 70;
-        if (wantedCategories.includes(categoryName) || wantedCategories.includes(categorySlug)) score += 48;
         if (wantedRuWords.some((word) => name.includes(normalizeMatchText(word)))) score += 55;
         if (wantedNameAliases.some((word) => name.includes(word))) score += 45;
       }

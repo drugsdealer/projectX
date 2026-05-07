@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  getSubcategoryAliases,
+  mapUiCategoryToDb,
+  normalizeCategorySlug,
+  normalizeSubcategorySlug,
+  resolveProductTaxonomy,
+} from "@/lib/catalog-taxonomy";
 
 // --- Runtime relation-name detector (handles category/brand vs Category/Brand) ---
 // --- Relation names for Product model (fixed to match Prisma schema) ---
@@ -29,33 +36,11 @@ const CAT_EN_TO_DB: Record<string, string> = Object.entries(CAT_DB_TO_EN)
   }, {} as Record<string, string>);
 
 function mapDbToEnCategorySlug(dbSlug?: string | null): string | null {
-  if (!dbSlug) return null;
-  return CAT_DB_TO_EN[dbSlug] ?? dbSlug;
+  return normalizeCategorySlug(dbSlug);
 }
 
 function mapEnToDbCategorySlug(enSlug?: string | null): string | null {
-  if (!enSlug) return null;
-  // allow multiple synonyms coming from the UI
-  const alias = enSlug.toLowerCase();
-  const SYN: Record<string, string> = {
-    shoes: "footwear",
-    shoe: "footwear",
-    footwear: "footwear",
-    clothing: "clothes",
-    apparel: "clothes",
-    clothes: "clothes",
-    headwear: "headwear",
-    hats: "headwear",
-    bags: "bags",
-    bag: "bags",
-    perfume: "fragrance",
-    perfumery: "fragrance",
-    fragrance: "fragrance",
-    fragrances: "fragrance",
-  };
-  const canonical = CAT_EN_TO_DB[SYN[alias] ?? alias];
-  // if already RU slug was passed, keep it
-  return canonical ?? enSlug;
+  return mapUiCategoryToDb(enSlug);
 }
 
 function inferMainCategorySlug(p: any, sub: string | null): string | null {
@@ -304,7 +289,7 @@ function getFallbackProducts(params: {
     if (params.dbCategoryFilter === "premium") return product.premium;
     if (!params.includePremium && product.premium) return false;
     if (params.desiredUiCategory && product.categorySlug !== params.desiredUiCategory) return false;
-    if (params.subParam && product.subCategorySlug !== params.subParam) return false;
+    if (params.subParam && !getSubcategoryAliases(params.subParam).includes(product.subCategorySlug)) return false;
     if (params.saleOnly && product.badge !== "sale" && !product.oldPrice) return false;
     if (
       params.genderFilter &&
@@ -348,7 +333,7 @@ export async function GET(req: Request) {
     // Allow the client to pass EN aliases; convert to DB RU slug for filtering
     const dbCategoryFilter = mapEnToDbCategorySlug(categorySlugParam);
     const subParamRaw = url.searchParams.get("sub") ?? url.searchParams.get("subcategory");
-    const subParam = subParamRaw ? subParamRaw.toLowerCase().trim() : null;
+    const subParam = subParamRaw ? normalizeSubcategorySlug(subParamRaw) : null;
     const desiredUiCategory = dbCategoryFilter === "premium"
       ? null
       : (mapDbToEnCategorySlug(dbCategoryFilter ?? null)
@@ -424,16 +409,14 @@ export async function GET(req: Request) {
       const imageUrl = mergedImages[0] || "/img/placeholder.svg";
 
       const dbCategorySlug = (item as any)?.category?.slug ?? (item as any)?.Category?.slug ?? null;
-      const subCategorySlug = inferSubcategorySlug({
-        name: item.name,
-        description: item.description,
-        category: (item as any).category ?? (item as any).Category,
+      const taxonomy = resolveProductTaxonomy({
+        ...(item as any),
+        Category: (item as any).Category,
+        category: (item as any).category,
         categorySlug: dbCategorySlug,
       });
-      const mainCategorySlug = inferMainCategorySlug(
-        { ...(item as any), category: (item as any).category ?? (item as any).Category },
-        subCategorySlug
-      );
+      const subCategorySlug = taxonomy.subcategorySlug;
+      const mainCategorySlug = taxonomy.categorySlug;
 
       const product = {
         id: item.id,
@@ -584,17 +567,14 @@ export async function GET(req: Request) {
       const images = mergedImages.length ? mergedImages : ["/img/placeholder.svg"];
 
       const dbCategorySlug = (p as any)?.category?.slug ?? (p as any)?.Category?.slug ?? null;
-      const subCategorySlug =
-        inferSubcategorySlug({
-          name: p.name,
-          description: p.description,
-          category: (p as any).category ?? (p as any).Category,
-          categorySlug: dbCategorySlug,
-        }) || null;
-      const mainCategorySlug = inferMainCategorySlug(
-        { ...(p as any), category: (p as any).category ?? (p as any).Category },
-        subCategorySlug
-      );
+      const taxonomy = resolveProductTaxonomy({
+        ...(p as any),
+        Category: (p as any).Category,
+        category: (p as any).category,
+        categorySlug: dbCategorySlug,
+      });
+      const subCategorySlug = taxonomy.subcategorySlug;
+      const mainCategorySlug = taxonomy.categorySlug;
 
       return {
         id: p.id,
@@ -633,7 +613,7 @@ export async function GET(req: Request) {
       : products;
 
     const filteredBySub = subParam
-      ? filteredByCategory.filter((it) => (it.subCategorySlug || '').toLowerCase() === subParam)
+      ? filteredByCategory.filter((it) => getSubcategoryAliases(subParam).includes((it.subCategorySlug || '').toLowerCase()))
       : filteredByCategory;
 
     return NextResponse.json(
@@ -661,7 +641,7 @@ export async function GET(req: Request) {
     return NextResponse.json(
       getFallbackProducts({
         desiredUiCategory,
-        subParam: subParamRaw ? subParamRaw.toLowerCase().trim() : null,
+        subParam: subParamRaw ? normalizeSubcategorySlug(subParamRaw) : null,
         includePremium: includePremiumRaw === "1" || includePremiumRaw === "true",
         dbCategoryFilter,
         saleOnly: (url.searchParams.get("sale") ?? "") === "1",
