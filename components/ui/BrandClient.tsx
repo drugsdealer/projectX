@@ -497,28 +497,25 @@ export default function BrandClient({
         <div className="relative z-10 grid gap-8 px-5 py-7 sm:px-8 sm:py-10 lg:grid-cols-[1.08fr_0.92fr] lg:px-12 lg:py-12">
           <div className="flex min-h-[350px] flex-col justify-between">
             <div>
-              <div className="mb-8 flex items-center justify-between gap-3">
-                <div className="inline-flex items-center rounded-full border border-black/10 bg-white/55 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-black/45 backdrop-blur">
-                  Brand edit
-                </div>
-          {meta.logo && (
-                  <div className="grid h-14 w-14 place-items-center rounded-2xl border border-black/10 bg-white/75 p-2 shadow-sm">
+              <div className="mb-8 flex items-center justify-end gap-3">
+                {meta.logo && (
+                  <div className="grid h-20 w-20 place-items-center rounded-3xl border border-black/10 bg-white/75 p-3 shadow-sm sm:h-24 sm:w-24">
                     <img src={meta.logo} alt={`${brandName} logo`} className="max-h-full max-w-full object-contain opacity-80" />
                   </div>
-          )}
+                )}
               </div>
 
-              <h1 className="text-[clamp(3.15rem,9vw,8.25rem)] font-black uppercase leading-[0.82] tracking-[-0.08em] text-black">
+              <h1 className="text-[clamp(3.05rem,8.4vw,7.8rem)] font-black uppercase leading-[0.84] tracking-[-0.045em] text-black">
                 {brandName}
               </h1>
-              <p className="mt-6 max-w-2xl text-base font-semibold leading-7 text-black/66 sm:text-lg">
-            {meta.about || `Коллекция бренда ${brandName}.`}
+              <p className="mt-5 max-w-xl text-sm font-semibold leading-6 text-black/62 sm:text-base">
+                {meta.about || `Коллекция бренда ${brandName}.`}
               </p>
-          {meta.aboutLong && (
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-black/48 sm:text-base">
-              {meta.aboutLong}
-            </p>
-          )}
+              {meta.aboutLong && (
+                <p className="mt-3 max-w-xl text-xs leading-5 text-black/46 sm:text-sm">
+                  {meta.aboutLong}
+                </p>
+              )}
               {!!meta.tags?.length && (
                 <div className="mt-5 flex flex-wrap gap-2">
                   {meta.tags.slice(0, 5).map((tag) => (

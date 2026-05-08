@@ -110,7 +110,7 @@ export default function BannerMargiela() {
         }
       }}
     >
-      <div className="absolute left-4 right-4 top-[calc(env(safe-area-inset-top)+14px)] z-30 flex gap-1.5 sm:hidden">
+      <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+18px)] left-5 right-5 z-30 flex gap-1.5 sm:hidden">
         {SLIDES.map((item, i) => (
           <button
             key={item.src}
@@ -120,21 +120,23 @@ export default function BannerMargiela() {
               e.stopPropagation();
               handleNav(i, i >= index ? 1 : -1);
             }}
-            className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/28"
+            className={`h-px flex-1 overflow-visible rounded-full transition-colors duration-300 ${
+              i === index ? 'bg-white/32' : 'bg-white/18'
+            }`}
             data-no-hero-tap
           >
             {i < index ? (
-              <span className="block h-full w-full bg-white/85" />
+              <span className="block h-full w-full rounded-full bg-white/58" />
             ) : i === index ? (
               <motion.span
                 key={`mobile-progress-${index}`}
-                className="block h-full bg-white/95"
+                className="block h-full rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.82)]"
                 initial={{ width: '0%' }}
                 animate={{ width: '100%' }}
                 transition={{ duration: AUTO_MS / 1000, ease: 'linear' }}
               />
             ) : (
-              <span className="block h-full w-0 bg-white/85" />
+              <span className="block h-full w-0 rounded-full bg-white/58" />
             )}
           </button>
         ))}
