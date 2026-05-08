@@ -48,6 +48,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 type BrandMeta = {
+  id?: number;
   logo?: string;
   about?: string;
   aboutLong?: string;
@@ -117,10 +118,15 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
       createdAt: true,
       updatedAt: true,
       Brand: true,
+      Category: { select: { name: true, slug: true } },
     },
   }).catch(() => []);
 
-  type BrandItemDTO = Omit<Product, 'images'> & { images: string[]; Brand: Brand | null };
+  type BrandItemDTO = Omit<Product, 'images'> & {
+    images: string[];
+    Brand: Brand | null;
+    Category: { name: string; slug: string } | null;
+  };
 
   const brandItems: BrandItemDTO[] = productsRaw.map((p: any) => {
     const mainUrl = typeof p.imageUrl === 'string' && p.imageUrl.trim() ? p.imageUrl.trim() : null;
@@ -141,6 +147,7 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
 
   // 3) Собираем мету для клиентского компонента
   const meta: BrandMeta = {
+    id: brand.id,
     logo: brand.logoUrl || undefined,
     about: brand.description || undefined,
     aboutLong: brand.aboutLong || undefined,

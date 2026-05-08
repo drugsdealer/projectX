@@ -624,6 +624,9 @@ const { user } = useUser();
   const [colorSheetOpen, setColorSheetOpen] = useState(false);
   const [colorSheetExpanded, setColorSheetExpanded] = useState(false);
   const colorSheetDragControls = useDragControls();
+  const colorSheetPointerRef = useRef<{ x: number; y: number } | null>(null);
+  const colorSheetPointerMovedRef = useRef(false);
+  const colorSheetLastScrollAtRef = useRef(0);
 
   const colorSheetScrollY = useRef(0);
   useEffect(() => {
@@ -637,6 +640,32 @@ const { user } = useUser();
       };
     }
   }, [colorSheetOpen]);
+
+  const handleColorVariantPointerDown = (e: React.PointerEvent<HTMLAnchorElement>) => {
+    colorSheetPointerRef.current = { x: e.clientX, y: e.clientY };
+    colorSheetPointerMovedRef.current = false;
+  };
+
+  const handleColorVariantPointerMove = (e: React.PointerEvent<HTMLAnchorElement>) => {
+    const start = colorSheetPointerRef.current;
+    if (!start) return;
+    const dx = Math.abs(e.clientX - start.x);
+    const dy = Math.abs(e.clientY - start.y);
+    if (dx > 8 || dy > 8) colorSheetPointerMovedRef.current = true;
+  };
+
+  const handleColorVariantClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    const isAfterScroll = Date.now() - colorSheetLastScrollAtRef.current < 260;
+    if (colorSheetPointerMovedRef.current || isAfterScroll) {
+      e.preventDefault();
+      e.stopPropagation();
+      colorSheetPointerMovedRef.current = false;
+      return;
+    }
+
+    document.body.style.overflow = '';
+    setColorSheetOpen(false);
+  };
 
   // Brand center overlay + slide-up panel
   const [brandPanelOpen, setBrandPanelOpen] = useState(false);
@@ -2051,24 +2080,43 @@ const handleCancel = () => {
                       {/* Header */}
                       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
                         <p className="text-sm font-semibold text-gray-900 truncate pr-4">{product?.name}</p>
-                        <button
-                          onClick={() => setColorSheetOpen(false)}
-                          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-                          aria-label="Закрыть"
-                        >
-                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                            <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                          </svg>
-                        </button>
+                        <div className="flex shrink-0 items-center gap-2">
+                          {colorSheetExpanded && (
+                            <button
+                              type="button"
+                              onClick={() => setColorSheetExpanded(false)}
+                              className="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-200"
+                            >
+                              Свернуть
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setColorSheetOpen(false)}
+                            className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+                            aria-label="Закрыть"
+                          >
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                              <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                            </svg>
+                          </button>
+                        </div>
                       </div>
-                      {/* Scrollable grid — скролл вверх раскрывает шторку, вниз к топу — сворачивает */}
+                      {/* Scrollable grid — вертикальный жест всегда остаётся скроллом, а не кликом по карточке */}
                       <div
                         className="overflow-y-auto px-4 py-4"
-                        style={{ maxHeight: colorSheetExpanded ? "calc(90vh - 90px)" : "calc(58vh - 90px)", paddingBottom: "env(safe-area-inset-bottom, 16px)", transition: "max-height 0.35s cubic-bezier(0.32,0.72,0,1)" }}
+                        style={{
+                          maxHeight: colorSheetExpanded ? "calc(90vh - 90px)" : "calc(58vh - 90px)",
+                          paddingBottom: "env(safe-area-inset-bottom, 16px)",
+                          transition: "max-height 0.35s cubic-bezier(0.32,0.72,0,1)",
+                          overscrollBehaviorY: "contain",
+                          WebkitOverflowScrolling: "touch",
+                          touchAction: "pan-y",
+                        }}
                         onScroll={(e) => {
                           const top = (e.currentTarget as HTMLDivElement).scrollTop;
+                          colorSheetLastScrollAtRef.current = Date.now();
                           if (top > 10 && !colorSheetExpanded) setColorSheetExpanded(true);
-                          if (top === 0 && colorSheetExpanded) setColorSheetExpanded(false);
                         }}
                       >
                         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
@@ -2078,8 +2126,14 @@ const handleCancel = () => {
                               <Link
                                 key={colorProduct.id}
                                 href={`/product/${colorProduct.id}`}
-                                onClick={() => { document.body.style.overflow = ''; setColorSheetOpen(false); }}
-                                className="flex flex-col items-center gap-1.5 p-2 rounded-xl border border-gray-100 bg-gray-50 hover:border-black transition-colors duration-150"
+                                onPointerDown={handleColorVariantPointerDown}
+                                onPointerMove={handleColorVariantPointerMove}
+                                onPointerCancel={() => {
+                                  colorSheetPointerRef.current = null;
+                                  colorSheetPointerMovedRef.current = true;
+                                }}
+                                onClick={handleColorVariantClick}
+                                className="flex flex-col items-center gap-1.5 p-2 rounded-xl border border-gray-100 bg-gray-50 transition-colors duration-150 hover:border-black"
                               >
                                 <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-white">
                                   <Image

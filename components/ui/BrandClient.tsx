@@ -424,6 +424,12 @@ export default function BrandClient({
     });
   }, [items, query, activeCategory, maxPrice]);
 
+  const heroProducts = useMemo(() => items.slice(0, 3), [items]);
+  const premiumCount = useMemo(() => items.filter((it) => Boolean((it as any)?.premium)).length, [items]);
+  const displayMinPrice = priceBounds.min > 0 ? priceBounds.min : 0;
+  const displayMaxPrice = priceBounds.max > 0 ? priceBounds.max : 0;
+  const collectionLabel = items.length === 1 ? 'позиция' : items.length > 1 && items.length < 5 ? 'позиции' : 'позиций';
+
   const triggerFavBurst = () => {
     setFavBurst(false);
     requestAnimationFrame(() => setFavBurst(true));
@@ -466,46 +472,85 @@ export default function BrandClient({
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="text-xs text-gray-500 mb-3">
+    <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 lg:px-8">
+      <div className="mb-4 text-xs font-medium text-gray-500">
         <Link href="/" className="hover:text-black transition-colors">Главная</Link>
         <span className="mx-2">/</span>
         <span className="text-gray-700">{brandName}</span>
       </div>
 
-      <div className="relative overflow-hidden rounded-[28px] border border-black/10 bg-gradient-to-br from-[#f3f1ea] via-[#f6f4ee] to-[#f1ede4] shadow-[0_25px_60px_rgba(0,0,0,0.12)]">
+      <div className="relative overflow-hidden rounded-[34px] border border-black/10 bg-gradient-to-br from-[#f4f1ea] via-[#fbfaf6] to-[#e9e3d8] shadow-[0_30px_90px_rgba(0,0,0,0.13)]">
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute inset-0 opacity-[0.15]" style={{
+          <div className="absolute inset-0 opacity-[0.75]" style={{
             backgroundImage:
-              "radial-gradient(600px 300px at 10% 10%, rgba(255,255,255,0.6), transparent 60%), radial-gradient(500px 280px at 90% 80%, rgba(0,0,0,0.06), transparent 60%)",
+              "radial-gradient(900px 360px at 12% 0%, rgba(255,255,255,0.9), transparent 62%), radial-gradient(620px 380px at 92% 88%, rgba(0,0,0,0.08), transparent 64%)",
           }} />
-          <div className="absolute inset-0 opacity-[0.12]" style={{
+          <div className="absolute inset-0 opacity-[0.08]" style={{
             backgroundImage:
               "linear-gradient(0deg, rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)",
-            backgroundSize: "140px 140px",
+            backgroundSize: "96px 96px",
           }} />
+          <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full border border-black/10" />
+          <div className="absolute -bottom-28 left-10 h-72 w-72 rounded-full border border-black/10" />
         </div>
 
-        <div className="relative z-10 px-6 py-10 md:px-10 md:py-12 text-center max-w-3xl mx-auto">
+        <div className="relative z-10 grid gap-8 px-5 py-7 sm:px-8 sm:py-10 lg:grid-cols-[1.08fr_0.92fr] lg:px-12 lg:py-12">
+          <div className="flex min-h-[350px] flex-col justify-between">
+            <div>
+              <div className="mb-8 flex items-center justify-between gap-3">
+                <div className="inline-flex items-center rounded-full border border-black/10 bg-white/55 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-black/45 backdrop-blur">
+                  Brand edit
+                </div>
           {meta.logo && (
-            <img src={meta.logo} alt={`${brandName} logo`} className="h-10 w-auto mx-auto mb-3 opacity-80" />
+                  <div className="grid h-14 w-14 place-items-center rounded-2xl border border-black/10 bg-white/75 p-2 shadow-sm">
+                    <img src={meta.logo} alt={`${brandName} logo`} className="max-h-full max-w-full object-contain opacity-80" />
+                  </div>
           )}
-          <h1 className="mt-3 text-xl md:text-2xl font-semibold text-black/70">
+              </div>
+
+              <h1 className="text-[clamp(3.15rem,9vw,8.25rem)] font-black uppercase leading-[0.82] tracking-[-0.08em] text-black">
+                {brandName}
+              </h1>
+              <p className="mt-6 max-w-2xl text-base font-semibold leading-7 text-black/66 sm:text-lg">
             {meta.about || `Коллекция бренда ${brandName}.`}
-          </h1>
+              </p>
           {meta.aboutLong && (
-            <p className="mt-3 text-sm md:text-base text-black/60 leading-relaxed">
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-black/48 sm:text-base">
               {meta.aboutLong}
             </p>
           )}
+              {!!meta.tags?.length && (
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {meta.tags.slice(0, 5).map((tag) => (
+                    <span key={tag} className="rounded-full border border-black/10 bg-white/45 px-3 py-1.5 text-xs font-semibold text-black/55">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
 
-          <div className="mt-5 flex items-center justify-center">
+            <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
+              <div className="grid grid-cols-3 gap-2 rounded-3xl border border-black/10 bg-white/55 p-2 backdrop-blur">
+                <div className="rounded-2xl bg-white/70 px-4 py-3">
+                  <div className="text-xl font-black text-black">{items.length}</div>
+                  <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-black/38">{collectionLabel}</div>
+                </div>
+                <div className="rounded-2xl bg-white/70 px-4 py-3">
+                  <div className="text-xl font-black text-black">{categories.length || 1}</div>
+                  <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-black/38">категорий</div>
+                </div>
+                <div className="rounded-2xl bg-white/70 px-4 py-3">
+                  <div className="text-xl font-black text-black">{premiumCount}</div>
+                  <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-black/38">premium</div>
+                </div>
+              </div>
             <button
               type="button"
               onClick={toggleFavorite}
               aria-pressed={isFav}
               aria-label={isFav ? 'Убрать бренд из избранного' : 'Добавить бренд в избранное'}
-              className="relative inline-flex items-center gap-2 px-5 py-2 rounded-full border border-black/20 bg-white/70 backdrop-blur text-black/70 hover:text-black hover:border-black/40 transition overflow-visible"
+                className="relative inline-flex items-center gap-2 overflow-visible rounded-full border border-black/15 bg-black px-5 py-3 text-sm font-bold text-white shadow-[0_14px_30px_rgba(0,0,0,0.18)] transition hover:-translate-y-0.5 hover:bg-white hover:text-black"
             >
               {favBurst && (
                 <span className="fav-burst-layer" aria-hidden="true">
@@ -526,33 +571,67 @@ export default function BrandClient({
               )}
               <svg
                 viewBox="0 0 24 24"
-                className={`h-4 w-4 ${isFav ? 'text-red-600' : 'text-gray-500'}`}
+                className={`h-4 w-4 ${isFav ? 'text-red-500' : 'text-current'}`}
                 fill="currentColor"
                 aria-hidden="true"
               >
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1.01 4.5 2.09C12.09 5.01 13.76 4 15.5 4 18 4 20 6 20 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
               </svg>
-              <span className="font-medium">
-                {isFav ? 'В избранном' : 'Добавить в избранное'}
-              </span>
+                <span>{isFav ? 'В избранном' : 'В избранное'}</span>
             </button>
+            </div>
+          </div>
+
+          <div className="relative min-h-[330px]">
+            <div className="absolute inset-x-8 top-8 h-48 rounded-full bg-black/10 blur-3xl" />
+            <div className="relative grid h-full grid-cols-2 gap-3 sm:grid-cols-3">
+              {heroProducts.length > 0 ? heroProducts.map((item, idx) => {
+                const images =
+                  (Array.isArray((item as any).images) ? (item as any).images : undefined) ||
+                  ((item as any).imageUrl ? [(item as any).imageUrl] : ['/img/placeholder.svg']);
+                return (
+                  <Link
+                    key={item.id}
+                    href={`/product/${item.id}`}
+                    className={`group relative overflow-hidden rounded-[26px] border border-black/10 bg-white/75 p-3 shadow-[0_18px_45px_rgba(0,0,0,0.12)] transition hover:-translate-y-1 ${
+                      idx === 1 ? 'mt-10' : idx === 2 ? 'mt-20 hidden sm:block' : ''
+                    }`}
+                  >
+                    <div className="relative h-56 rounded-2xl bg-white">
+                      <BrandCardPreview images={images} alt={(item as any).name} />
+                    </div>
+                    <div className="mt-3">
+                      <div className="line-clamp-2 text-xs font-bold leading-4 text-black/72">{(item as any).name}</div>
+                      <div className="mt-1 text-xs font-black text-black">{Number((item as any).price || 0).toLocaleString('ru-RU')}₽</div>
+                    </div>
+                  </Link>
+                );
+              }) : (
+                <div className="col-span-2 grid place-items-center rounded-[28px] border border-black/10 bg-white/50 text-sm font-semibold text-black/45 sm:col-span-3">
+                  Коллекция скоро появится
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="mt-6 mb-6 rounded-2xl border border-black/10 bg-white/80 backdrop-blur px-4 py-4 shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-4">
-          <div>
-            <label className="text-xs text-gray-500">Поиск по бренду</label>
+      <div className="mt-6 mb-7 overflow-hidden rounded-[28px] border border-black/10 bg-white shadow-[0_16px_45px_rgba(0,0,0,0.06)]">
+        <div className="grid grid-cols-1 gap-0 divide-y divide-black/10 md:grid-cols-[1.35fr_1fr] md:divide-x md:divide-y-0">
+          <div className="p-4 sm:p-5">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-black/38">Поиск по бренду</label>
+              <span className="text-xs font-semibold text-black/35">{filtered.length} из {items.length}</span>
+            </div>
             <div className="mt-2 relative h-11">
               <motion.div
                 aria-hidden="true"
-                className="absolute inset-0 rounded-full border border-black/10 bg-white"
+                className="absolute inset-0 rounded-2xl border border-black/10 bg-[#f7f6f2]"
                 initial={false}
                 animate={{
-                  scaleX: searchOpen ? 1 : 0.06,
-                  opacity: searchOpen ? 1 : 0,
-                  boxShadow: searchOpen ? "0 12px 30px rgba(0,0,0,0.08)" : "0 0 0 rgba(0,0,0,0)",
+                  scaleX: 1,
+                  opacity: 1,
+                  boxShadow: searchOpen || query ? "0 12px 30px rgba(0,0,0,0.08)" : "0 0 0 rgba(0,0,0,0)",
                 }}
                 transition={{ duration: 0.32, ease: [0.2, 0.8, 0.2, 1] }}
                 style={{ transformOrigin: "left center" }}
@@ -573,8 +652,8 @@ export default function BrandClient({
                   onClick={() => setSearchOpen((v) => !v)}
                   aria-expanded={searchOpen}
                   aria-label="Открыть поиск"
-                  className={`absolute left-[2px] top-1/2 -translate-y-1/2 h-10 w-10 rounded-full border border-black/10 grid place-items-center transition ${
-                    searchOpen ? "bg-black text-white border-black" : "bg-white text-black/60 hover:text-black"
+                  className={`absolute left-[2px] top-1/2 -translate-y-1/2 h-10 w-10 rounded-xl border border-black/10 grid place-items-center transition ${
+                    searchOpen || query ? "bg-black text-white border-black" : "bg-white text-black/60 hover:text-black"
                   }`}
                 >
                   <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
@@ -596,8 +675,8 @@ export default function BrandClient({
                         ref={searchInputRef}
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Введите название товара..."
-                        className="w-full bg-transparent outline-none text-sm placeholder:text-gray-400"
+                        placeholder="Найти товар внутри бренда"
+                        className="w-full bg-transparent text-sm font-semibold outline-none placeholder:text-black/32"
                       />
                     </motion.div>
                   )}
@@ -605,8 +684,8 @@ export default function BrandClient({
               </div>
             </div>
           </div>
-          <div>
-            <label className="text-xs text-gray-500">Цена до</label>
+          <div className="p-4 sm:p-5">
+            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-black/38">Цена до</label>
             <div className="mt-2 flex items-center gap-3">
               <input
                 type="range"
@@ -620,16 +699,20 @@ export default function BrandClient({
                 {maxPrice ? `${maxPrice.toLocaleString('ru-RU')}₽` : '—'}
               </div>
             </div>
+            <div className="mt-2 flex justify-between text-xs font-semibold text-black/35">
+              <span>{displayMinPrice.toLocaleString('ru-RU')}₽</span>
+              <span>{displayMaxPrice.toLocaleString('ru-RU')}₽</span>
+            </div>
           </div>
         </div>
 
         {categories.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 border-t border-black/10 bg-[#faf9f6] p-4 sm:p-5">
             <button
               type="button"
               onClick={() => setActiveCategory(null)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
-                !activeCategory ? 'bg-black text-white border-black' : 'bg-white text-black/70 border-black/15 hover:border-black/40'
+              className={`rounded-full border px-4 py-2 text-xs font-bold transition ${
+                !activeCategory ? 'bg-black text-white border-black' : 'bg-white text-black/60 border-black/10 hover:border-black/35 hover:text-black'
               }`}
             >
               Все категории
@@ -639,8 +722,8 @@ export default function BrandClient({
                 key={cat}
                 type="button"
                 onClick={() => setActiveCategory(cat)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
-                  activeCategory === cat ? 'bg-black text-white border-black' : 'bg-white text-black/70 border-black/15 hover:border-black/40'
+                className={`rounded-full border px-4 py-2 text-xs font-bold transition ${
+                  activeCategory === cat ? 'bg-black text-white border-black' : 'bg-white text-black/60 border-black/10 hover:border-black/35 hover:text-black'
                 }`}
               >
                 {cat}

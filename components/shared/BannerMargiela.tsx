@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -46,6 +46,7 @@ export default function BannerMargiela() {
   const [dir, setDir] = useState<1 | -1>(1);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const touchRef = useRef<{ x: number; y: number } | null>(null);
+  const suppressTapRef = useRef(0);
 
   const slide = SLIDES[index];
   const isRight = slide.align === 'right';
@@ -75,10 +76,25 @@ export default function BannerMargiela() {
     resetTimer();
   };
 
+  const handleMobileTap = (e: MouseEvent<HTMLElement>) => {
+    if (typeof window === 'undefined') return;
+    if (!window.matchMedia('(max-width: 639px)').matches) return;
+    if (Date.now() - suppressTapRef.current < 450) return;
+    if ((e.target as HTMLElement | null)?.closest('[data-no-hero-tap]')) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    if (x < rect.width / 2) {
+      handleNav(index - 1, -1);
+    } else {
+      handleNav(index + 1, 1);
+    }
+  };
+
   return (
     <section
       className="relative h-full w-full overflow-hidden bg-[#090907] text-white select-none"
-      data-no-hero-tap
+      onClick={handleMobileTap}
       onTouchStart={(e) => {
         touchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       }}
@@ -88,11 +104,42 @@ export default function BannerMargiela() {
         const dy = Math.abs(e.changedTouches[0].clientY - touchRef.current.y);
         touchRef.current = null;
         if (Math.abs(dx) > 48 && Math.abs(dx) > dy) {
+          suppressTapRef.current = Date.now();
           if (dx < 0) handleNav(index + 1, 1);
           else handleNav(index - 1, -1);
         }
       }}
     >
+      <div className="absolute left-4 right-4 top-[calc(env(safe-area-inset-top)+14px)] z-30 flex gap-1.5 sm:hidden">
+        {SLIDES.map((item, i) => (
+          <button
+            key={item.src}
+            type="button"
+            aria-label={`Перейти к баннеру ${i + 1}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleNav(i, i >= index ? 1 : -1);
+            }}
+            className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/28"
+            data-no-hero-tap
+          >
+            {i < index ? (
+              <span className="block h-full w-full bg-white/85" />
+            ) : i === index ? (
+              <motion.span
+                key={`mobile-progress-${index}`}
+                className="block h-full bg-white/95"
+                initial={{ width: '0%' }}
+                animate={{ width: '100%' }}
+                transition={{ duration: AUTO_MS / 1000, ease: 'linear' }}
+              />
+            ) : (
+              <span className="block h-full w-0 bg-white/85" />
+            )}
+          </button>
+        ))}
+      </div>
+
       <AnimatePresence initial={false} custom={dir}>
         <motion.div
           key={slide.src}
@@ -176,7 +223,7 @@ export default function BannerMargiela() {
         {String(SLIDES.length).padStart(2, '0')}
       </div>
 
-      <div className="absolute bottom-6 left-5 right-5 z-20 flex items-center justify-between gap-4 sm:left-auto sm:right-40 sm:w-[210px]">
+      <div className="absolute bottom-6 left-5 right-5 z-20 hidden items-center justify-between gap-4 sm:left-auto sm:right-40 sm:flex sm:w-[210px]">
         <button
           type="button"
           onClick={(e) => {
