@@ -30,6 +30,7 @@ export default async function BrandsPage() {
         name: true,
         slug: true,
         logoUrl: true,
+        features: true,
         _count: { select: { Product: { where: { deletedAt: null } } } },
       },
       orderBy: { name: "asc" },
@@ -40,6 +41,7 @@ export default async function BrandsPage() {
         name: b.name,
         slug: b.slug,
         logoUrl: b.logoUrl ?? null,
+        imageUrl: b.features ?? null,
         count: b._count.Product,
       }))
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "ru"));

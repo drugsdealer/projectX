@@ -16,6 +16,8 @@ type Brand = {
   name: string;
   slug: string;
   logoUrl: string | null;
+  imageUrl: string | null;
+  features?: string | null;
   description: string | null;
   aboutLong: string | null;
   isPremium: boolean;
@@ -26,6 +28,7 @@ type BrandForm = {
   name: string;
   slug: string;
   logoUrl: string;
+  imageUrl: string;
   description: string;
   aboutLong: string;
   isPremium: boolean;
@@ -35,6 +38,7 @@ const emptyForm = (): BrandForm => ({
   name: "",
   slug: "",
   logoUrl: "",
+  imageUrl: "",
   description: "",
   aboutLong: "",
   isPremium: false,
@@ -87,7 +91,13 @@ export default function AdminBrandsPage() {
       const res = await fetch("/api/admin/brands", { cache: "no-store" });
       const data = await authGuardOrData(res);
       if (res.ok && data?.success) {
-        setBrands(data.brands || []);
+        const list = Array.isArray(data.brands)
+          ? data.brands.map((brand: any) => ({
+              ...brand,
+              imageUrl: brand.imageUrl || brand.features || null,
+            }))
+          : [];
+        setBrands(list);
       } else {
         throw new Error(data?.message || "Не удалось загрузить бренды");
       }
@@ -187,6 +197,7 @@ export default function AdminBrandsPage() {
           name: addForm.name,
           slug: addForm.slug,
           logoUrl: addForm.logoUrl,
+          imageUrl: addForm.imageUrl,
           description: addForm.description || null,
           aboutLong: addForm.aboutLong || null,
           isPremium: addForm.isPremium,
@@ -214,6 +225,7 @@ export default function AdminBrandsPage() {
       name: brand.name,
       slug: brand.slug,
       logoUrl: brand.logoUrl || "",
+      imageUrl: brand.imageUrl || brand.features || "",
       description: brand.description || "",
       aboutLong: brand.aboutLong || "",
       isPremium: brand.isPremium,
@@ -239,6 +251,7 @@ export default function AdminBrandsPage() {
           name: editForm.name,
           slug: editForm.slug,
           logoUrl: editForm.logoUrl,
+          imageUrl: editForm.imageUrl,
           description: editForm.description || null,
           aboutLong: editForm.aboutLong || null,
           isPremium: editForm.isPremium,
@@ -325,6 +338,19 @@ export default function AdminBrandsPage() {
             folder="/stage/brands"
             label="Загрузить логотип в ImageKit"
             onUploaded={(url) => setField("logoUrl", url)}
+          />
+        </div>
+        <input
+          className={inputCls + " sm:col-span-2"}
+          placeholder="URL фото бренда для витрины"
+          value={form.imageUrl}
+          onChange={(e) => setField("imageUrl", e.target.value)}
+        />
+        <div className="sm:col-span-2">
+          <ImageKitUploadField
+            folder="/stage/brand-covers"
+            label="Загрузить фото бренда для витрины"
+            onUploaded={(url) => setField("imageUrl", url)}
           />
         </div>
         <textarea
@@ -424,6 +450,14 @@ export default function AdminBrandsPage() {
                       <div className="h-10 w-10 rounded-xl bg-black/5 flex items-center justify-center text-xs text-black/30">
                         ?
                       </div>
+                    )}
+                    {brand.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={brand.imageUrl}
+                        alt=""
+                        className="hidden h-10 w-16 rounded-xl object-cover bg-black/5 sm:block"
+                      />
                     )}
                     <div>
                       <div className="flex items-center gap-2">

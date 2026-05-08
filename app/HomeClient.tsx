@@ -43,11 +43,11 @@ const HOME_GATEWAYS = [
     className: "md:col-span-2 bg-black text-white",
   },
   {
-    eyebrow: "Sale",
-    title: "Скидки без ощущения стока",
-    text: "Выборочные предложения по одежде, обуви и аксессуарам.",
-    href: "/sale",
-    cta: "Смотреть Sale",
+    eyebrow: "Brands",
+    title: "Все бренды в одной витрине",
+    text: "Автоматический индекс брендов с отдельными страницами, логотипами и визуальными обложками.",
+    href: "/brands",
+    cta: "Открыть бренды",
     className: "bg-[#e7ded0] text-black",
   },
   {

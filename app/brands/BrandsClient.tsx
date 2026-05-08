@@ -1,138 +1,177 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
+import { shouldBypassNextImageOptimization } from "@/lib/media";
 
 export type BrandItem = {
   name: string;
   slug: string;
   logoUrl: string | null;
+  imageUrl?: string | null;
   count: number;
 };
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { delay: (i % 6) * 0.05, duration: 0.35, ease: "easeOut" as const },
-  }),
-};
+const LETTERS = ["All", "0-9", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")];
 
-function BrandCard({ brand, index }: { brand: BrandItem; index: number }) {
-  const hasProducts = brand.count > 0;
+function firstBucket(name: string) {
+  const first = name.trim().charAt(0).toUpperCase();
+  if (!first) return "#";
+  if (/\d/.test(first)) return "0-9";
+  if (/[A-Z]/.test(first)) return first;
+  return "#";
+}
 
-  return (
-    <motion.div
-      custom={index}
-      variants={cardVariants}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, margin: "-40px" }}
-    >
-      <Link
-        href={`/brand/${brand.slug}`}
-        className={`group block ${!hasProducts ? "pointer-events-none" : ""}`}
-        tabIndex={hasProducts ? undefined : -1}
-        aria-disabled={!hasProducts}
-      >
-        <div
-          className={`relative aspect-square rounded-2xl border flex items-center justify-center p-5 transition-all duration-300 ${
-            hasProducts
-              ? "border-black/8 bg-white group-hover:border-black/20 group-hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)]"
-              : "border-black/6 bg-black/[0.02]"
-          }`}
-        >
-          {brand.logoUrl ? (
-            <Image
-              src={brand.logoUrl}
-              alt={brand.name}
-              width={96}
-              height={96}
-              className={`w-full h-full object-contain transition-opacity duration-300 ${
-                hasProducts ? "opacity-90 group-hover:opacity-100" : "opacity-30"
-              }`}
-            />
-          ) : (
-            <span className="text-2xl font-black text-black/20">
-              {brand.name.charAt(0)}
-            </span>
-          )}
-
-          {!hasProducts && (
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-black/6 text-[10px] text-black/35 font-medium whitespace-nowrap">
-              Скоро
-            </div>
-          )}
-        </div>
-
-        <div className="mt-2 px-0.5">
-          <div
-            className={`text-xs sm:text-sm font-semibold truncate transition-colors duration-200 ${
-              hasProducts ? "text-black group-hover:text-black" : "text-black/35"
-            }`}
-          >
-            {brand.name}
-          </div>
-          {hasProducts && (
-            <div className="text-[11px] text-black/40 mt-0.5">
-              {brand.count} {brand.count === 1 ? "товар" : brand.count < 5 ? "товара" : "товаров"}
-            </div>
-          )}
-        </div>
-      </Link>
-    </motion.div>
-  );
+function brandFallback(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
 }
 
 export default function BrandsClient({ brands }: { brands: BrandItem[] }) {
-  const active = brands.filter((b) => b.count > 0);
-  const upcoming = brands.filter((b) => b.count === 0);
+  const activeBrands = useMemo(() => brands.filter((brand) => brand.count > 0), [brands]);
+  const [letter, setLetter] = useState("All");
+  const [activeSlug, setActiveSlug] = useState<string | null>(activeBrands[0]?.slug ?? null);
+
+  const filtered = useMemo(() => {
+    if (letter === "All") return activeBrands;
+    return activeBrands.filter((brand) => firstBucket(brand.name) === letter);
+  }, [activeBrands, letter]);
+
+  const activeBrand =
+    activeBrands.find((brand) => brand.slug === activeSlug) ||
+    filtered[0] ||
+    activeBrands[0] ||
+    null;
+
+  const previewImage = activeBrand?.imageUrl || activeBrand?.logoUrl || null;
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Hero */}
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 pt-10 sm:pt-14 pb-6 sm:pb-8">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <div className="text-xs uppercase tracking-[0.2em] text-black/40 mb-2">Stage Store</div>
-          <h1 className="text-4xl sm:text-5xl font-black tracking-tight leading-none">
-            Бренды
-          </h1>
-          <p className="mt-3 text-sm sm:text-base text-black/50 max-w-md">
-            {active.length} брендов в наличии · {upcoming.length} готовятся к запуску
+    <div className="min-h-screen bg-[#f4f4f2] text-black">
+      <div className="mx-auto max-w-[1480px] px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-7 flex items-end justify-between gap-5">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-[0.24em] text-black/35">Stage Store</div>
+            <h1 className="mt-2 text-5xl font-black uppercase tracking-[-0.04em] sm:text-7xl">
+              Бренды
+            </h1>
+          </div>
+          <p className="hidden max-w-sm text-right text-sm font-medium leading-6 text-black/45 sm:block">
+            Все бренды подтягиваются автоматически из каталога и админки.
           </p>
-        </motion.div>
-      </div>
+        </div>
 
-      {/* Active brands */}
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 pb-6">
-        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
-          {active.map((brand, i) => (
-            <BrandCard key={brand.slug} brand={brand} index={i} />
-          ))}
+        <div className="sticky top-0 z-20 -mx-4 border-y border-black/10 bg-[#f4f4f2]/92 px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+          <div className="flex gap-5 overflow-x-auto text-sm font-bold text-black/35 [scrollbar-width:none]">
+            {LETTERS.map((item) => {
+              const disabled =
+                item !== "All" && !activeBrands.some((brand) => firstBucket(brand.name) === item);
+              const selected = letter === item;
+              return (
+                <button
+                  key={item}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => {
+                    setLetter(item);
+                    const next = item === "All" ? activeBrands[0] : activeBrands.find((brand) => firstBucket(brand.name) === item);
+                    setActiveSlug(next?.slug ?? null);
+                  }}
+                  className={`shrink-0 transition ${
+                    selected ? "text-black" : disabled ? "cursor-not-allowed text-black/18" : "hover:text-black"
+                  }`}
+                >
+                  {item}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="grid min-h-[680px] border-x border-black/10 bg-white lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="divide-y divide-black/10">
+            {filtered.length > 0 ? (
+              filtered.map((brand, index) => (
+                <motion.div
+                  key={brand.slug}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(index * 0.025, 0.25), duration: 0.28 }}
+                >
+                  <Link
+                    href={`/brand/${brand.slug}`}
+                    onMouseEnter={() => setActiveSlug(brand.slug)}
+                    onFocus={() => setActiveSlug(brand.slug)}
+                    className={`group grid min-h-[92px] grid-cols-[1fr_auto] items-center gap-4 px-5 py-5 transition sm:min-h-[118px] sm:px-7 ${
+                      activeBrand?.slug === brand.slug ? "bg-black text-white" : "hover:bg-black hover:text-white"
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-3xl font-semibold tracking-[-0.05em] sm:text-5xl">
+                        {brand.name}
+                      </div>
+                      <div className={`mt-2 text-xs font-bold uppercase tracking-[0.16em] ${
+                        activeBrand?.slug === brand.slug ? "text-white/45" : "text-black/35 group-hover:text-white/45"
+                      }`}>
+                        {brand.count} {brand.count === 1 ? "товар" : brand.count < 5 ? "товара" : "товаров"}
+                      </div>
+                    </div>
+                    <div className={`grid h-14 w-14 place-items-center rounded-2xl border p-2 transition sm:h-16 sm:w-16 ${
+                      activeBrand?.slug === brand.slug ? "border-white/15 bg-white/10" : "border-black/10 bg-white group-hover:border-white/15 group-hover:bg-white/10"
+                    }`}>
+                      {brand.logoUrl ? (
+                        <Image
+                          src={brand.logoUrl}
+                          alt={brand.name}
+                          width={64}
+                          height={64}
+                          unoptimized={shouldBypassNextImageOptimization(brand.logoUrl)}
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      ) : (
+                        <span className="text-sm font-black">{brandFallback(brand.name)}</span>
+                      )}
+                    </div>
+                  </Link>
+                </motion.div>
+              ))
+            ) : (
+              <div className="px-7 py-12 text-sm font-semibold text-black/45">В этой букве пока нет брендов.</div>
+            )}
+          </div>
+
+          <div className="sticky top-[58px] hidden h-[calc(100vh-58px)] min-h-[680px] overflow-hidden bg-[#e8e8e4] lg:block">
+            {previewImage ? (
+              <Image
+                key={previewImage}
+                src={previewImage}
+                alt={activeBrand?.name || "Brand preview"}
+                fill
+                priority
+                unoptimized={shouldBypassNextImageOptimization(previewImage)}
+                className="object-cover"
+                sizes="50vw"
+              />
+            ) : (
+              <div className="grid h-full place-items-center text-8xl font-black text-black/10">
+                {activeBrand ? brandFallback(activeBrand.name) : "ST"}
+              </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/18 via-transparent to-white/10" />
+            {activeBrand && (
+              <div className="absolute bottom-7 left-7 rounded-3xl bg-white/82 px-5 py-4 backdrop-blur">
+                <div className="text-xs font-bold uppercase tracking-[0.2em] text-black/35">Selected</div>
+                <div className="mt-1 text-2xl font-black tracking-[-0.04em]">{activeBrand.name}</div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Upcoming brands */}
-      {upcoming.length > 0 && (
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 pb-16">
-          <div className="mt-8 mb-4 flex items-center gap-3">
-            <div className="h-px flex-1 bg-black/6" />
-            <span className="text-xs text-black/35 font-medium uppercase tracking-[0.15em]">Скоро</span>
-            <div className="h-px flex-1 bg-black/6" />
-          </div>
-          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
-            {upcoming.map((brand, i) => (
-              <BrandCard key={brand.slug} brand={brand} index={i} />
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -499,7 +499,7 @@ export default function BrandClient({
           <div className="absolute -bottom-28 left-10 h-72 w-72 rounded-full border border-black/10" />
         </div>
         {meta.logo && (
-          <div className="absolute right-6 top-6 z-20 grid h-20 w-20 place-items-center rounded-3xl border border-black/10 bg-white/78 p-3 shadow-[0_16px_35px_rgba(0,0,0,0.10)] backdrop-blur sm:h-24 sm:w-24 lg:right-16 lg:top-14 lg:h-28 lg:w-28 lg:p-4">
+          <div className="absolute right-6 top-3 z-20 grid h-20 w-20 place-items-center rounded-3xl border border-black/10 bg-white/78 p-3 shadow-[0_16px_35px_rgba(0,0,0,0.10)] backdrop-blur sm:top-4 sm:h-24 sm:w-24 lg:right-16 lg:top-7 lg:h-28 lg:w-28 lg:p-4">
             <img src={meta.logo} alt={`${brandName} logo`} className="max-h-full max-w-full object-contain opacity-85" />
           </div>
         )}
@@ -624,7 +624,7 @@ export default function BrandClient({
             </div>
             <div className="mt-2 flex h-12 items-center">
               <motion.div
-                className="relative h-12 overflow-hidden rounded-full border border-black/10 bg-[#f7f6f2] shadow-sm"
+                className="relative h-12 overflow-hidden rounded-full border border-black/10 bg-white shadow-sm"
                 initial={false}
                 animate={{
                   width: searchOpen ? '100%' : query ? 190 : 48,
@@ -633,7 +633,7 @@ export default function BrandClient({
                 transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
                 style={{ transformOrigin: "left center" }}
               >
-                <div className="absolute inset-0 rounded-full bg-[linear-gradient(90deg,rgba(0,0,0,0.08),rgba(255,255,255,0.2),transparent)] opacity-70" />
+                <div className="absolute inset-0 rounded-full bg-[linear-gradient(90deg,rgba(0,0,0,0.04),rgba(255,255,255,0.35),transparent)] opacity-70" />
                 <button
                   type="button"
                   onClick={openBrandSearch}
