@@ -392,7 +392,7 @@ export default function BrandClient({
     if (!searchOpen) return;
     const id = window.setTimeout(() => {
       searchInputRef.current?.focus();
-    }, 60);
+    }, 120);
     return () => window.clearTimeout(id);
   }, [searchOpen]);
 
@@ -429,6 +429,11 @@ export default function BrandClient({
   const displayMinPrice = priceBounds.min > 0 ? priceBounds.min : 0;
   const displayMaxPrice = priceBounds.max > 0 ? priceBounds.max : 0;
   const collectionLabel = items.length === 1 ? 'позиция' : items.length > 1 && items.length < 5 ? 'позиции' : 'позиций';
+
+  const openBrandSearch = () => {
+    setSearchOpen(true);
+    window.setTimeout(() => searchInputRef.current?.focus(), 80);
+  };
 
   const triggerFavBurst = () => {
     setFavBurst(false);
@@ -493,19 +498,16 @@ export default function BrandClient({
           <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full border border-black/10" />
           <div className="absolute -bottom-28 left-10 h-72 w-72 rounded-full border border-black/10" />
         </div>
+        {meta.logo && (
+          <div className="absolute right-6 top-6 z-20 grid h-20 w-20 place-items-center rounded-3xl border border-black/10 bg-white/78 p-3 shadow-[0_16px_35px_rgba(0,0,0,0.10)] backdrop-blur sm:h-24 sm:w-24 lg:right-16 lg:top-14 lg:h-28 lg:w-28 lg:p-4">
+            <img src={meta.logo} alt={`${brandName} logo`} className="max-h-full max-w-full object-contain opacity-85" />
+          </div>
+        )}
 
         <div className="relative z-10 grid gap-8 px-5 py-7 sm:px-8 sm:py-10 lg:grid-cols-[1.08fr_0.92fr] lg:px-12 lg:py-12">
           <div className="flex min-h-[350px] flex-col justify-between">
-            <div>
-              <div className="mb-8 flex items-center justify-end gap-3">
-                {meta.logo && (
-                  <div className="grid h-20 w-20 place-items-center rounded-3xl border border-black/10 bg-white/75 p-3 shadow-sm sm:h-24 sm:w-24">
-                    <img src={meta.logo} alt={`${brandName} logo`} className="max-h-full max-w-full object-contain opacity-80" />
-                  </div>
-                )}
-              </div>
-
-              <h1 className="text-[clamp(3.05rem,8.4vw,7.8rem)] font-black uppercase leading-[0.84] tracking-[-0.045em] text-black">
+            <div className="pt-20 lg:pt-8">
+              <h1 className="text-[clamp(2.85rem,11vw,5rem)] font-black uppercase leading-[0.86] tracking-[-0.025em] text-black sm:text-[clamp(3rem,8vw,5.6rem)] lg:text-[clamp(3.2rem,5.35vw,5.85rem)] lg:tracking-[-0.005em]">
                 {brandName}
               </h1>
               <p className="mt-5 max-w-xl text-sm font-semibold leading-6 text-black/62 sm:text-base">
@@ -620,36 +622,24 @@ export default function BrandClient({
               <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-black/38">Поиск по бренду</label>
               <span className="text-xs font-semibold text-black/35">{filtered.length} из {items.length}</span>
             </div>
-            <div className="mt-2 relative h-11">
+            <div className="mt-2 flex h-12 items-center">
               <motion.div
-                aria-hidden="true"
-                className="absolute inset-0 rounded-2xl border border-black/10 bg-[#f7f6f2]"
+                className="relative h-12 overflow-hidden rounded-full border border-black/10 bg-[#f7f6f2] shadow-sm"
                 initial={false}
                 animate={{
-                  scaleX: 1,
-                  opacity: 1,
+                  width: searchOpen ? '100%' : query ? 190 : 48,
                   boxShadow: searchOpen || query ? "0 12px 30px rgba(0,0,0,0.08)" : "0 0 0 rgba(0,0,0,0)",
                 }}
-                transition={{ duration: 0.32, ease: [0.2, 0.8, 0.2, 1] }}
+                transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
                 style={{ transformOrigin: "left center" }}
               >
-                <div
-                  className="absolute inset-0 rounded-full"
-                  style={{
-                    background:
-                      "linear-gradient(90deg, rgba(0,0,0,0.12), rgba(0,0,0,0.04), transparent)",
-                    opacity: 0.7,
-                  }}
-                />
-              </motion.div>
-
-              <div className="relative h-full flex items-center gap-2 pl-14 pr-3">
+                <div className="absolute inset-0 rounded-full bg-[linear-gradient(90deg,rgba(0,0,0,0.08),rgba(255,255,255,0.2),transparent)] opacity-70" />
                 <button
                   type="button"
-                  onClick={() => setSearchOpen((v) => !v)}
+                  onClick={openBrandSearch}
                   aria-expanded={searchOpen}
                   aria-label="Открыть поиск"
-                  className={`absolute left-[2px] top-1/2 -translate-y-1/2 h-10 w-10 rounded-xl border border-black/10 grid place-items-center transition ${
+                  className={`absolute left-1 top-1 grid h-10 w-10 place-items-center rounded-full border border-black/10 transition ${
                     searchOpen || query ? "bg-black text-white border-black" : "bg-white text-black/60 hover:text-black"
                   }`}
                 >
@@ -662,23 +652,33 @@ export default function BrandClient({
                   {searchOpen && (
                     <motion.div
                       key="brand-search-wrap"
-                      className="flex-1 overflow-hidden"
+                      className="absolute inset-y-0 left-14 right-3 flex items-center overflow-hidden"
                       initial={{ opacity: 0, width: 0 }}
                       animate={{ opacity: 1, width: "100%" }}
                       exit={{ opacity: 0, width: 0 }}
-                      transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
+                      transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
                     >
                       <input
                         ref={searchInputRef}
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
+                        onBlur={() => window.setTimeout(() => setSearchOpen(false), 80)}
                         placeholder="Найти товар внутри бренда"
                         className="w-full bg-transparent text-sm font-semibold outline-none placeholder:text-black/32"
                       />
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </div>
+                {!searchOpen && query && (
+                  <button
+                    type="button"
+                    onClick={openBrandSearch}
+                    className="absolute inset-y-0 left-14 right-4 overflow-hidden text-left text-xs font-bold text-black/48"
+                  >
+                    <span className="block truncate">{query}</span>
+                  </button>
+                )}
+              </motion.div>
             </div>
           </div>
           <div className="p-4 sm:p-5">
