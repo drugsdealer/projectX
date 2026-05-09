@@ -11,6 +11,7 @@ import { PremiumConcierge } from "@/components/PremiumConcierge";
 import { NewsletterForm } from "@/components/shared/NewsletterForm";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { ChevronDown, Search, Filter, X, Menu, Crown } from "lucide-react";
+import { safeJsonLd } from "@/lib/json-ld";
 
 const wrapIndex = (min: number, max: number, v: number) => {
   const range = max - min;
@@ -4128,7 +4129,7 @@ export default function PremiumPage() {
               <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
-                  __html: JSON.stringify({
+                  __html: safeJsonLd({
                     '@context': 'https://schema.org',
                     '@type': 'ItemList',
                     itemListElement: (filteredPremium.length ? filteredPremium : currentPremium).slice(0, 20).map((p: any, i: number) => ({

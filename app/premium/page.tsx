@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import PremiumClient from "./PremiumClient";
 import type { Metadata } from "next";
+import { safeJsonLd } from "@/lib/json-ld";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
 
@@ -66,7 +67,7 @@ export default function PremiumPage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(premiumJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(premiumJsonLd) }}
       />
       <Suspense
         fallback={

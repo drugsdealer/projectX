@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "../_utils/session";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { withDbRetry } from "@/lib/db-retry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,56 +74,76 @@ export async function GET(req: NextRequest) {
   }
 
   const jar = await cookies();
-  const { cart, userId } = await resolveCart(jar);
+  const resolved = await resolveCart(jar).catch((err) => {
+    console.warn("[bootstrap] cart unavailable", err);
+    return null;
+  });
+
+  if (!resolved) {
+    return NextResponse.json(
+      {
+        user: null,
+        favorites: { products: [], brands: [] },
+        cart: { id: null, items: [], totalAmount: 0 },
+        degraded: true,
+      },
+      { status: 200, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
+  const { cart, userId } = resolved;
 
   try {
-    const [favoritesProducts, favoritesBrands, user, cartItems] = await Promise.all([
-      userId
-        ? (prisma as any).favoriteProduct.findMany({
-            where: { userId },
-            include: {
-              Product: {
-                select: { id: true, name: true, price: true, imageUrl: true, Brand: { select: { name: true } } },
-              },
-            },
-            orderBy: { createdAt: "desc" },
-          })
-        : Promise.resolve([] as any[]),
-      userId
-        ? prisma.favoriteBrand.findMany({
-            where: { userId },
-            select: {
-              Brand: {
-                select: {
-                  slug: true,
-                  name: true,
-                  logoUrl: true,
+    const [favoritesProducts, favoritesBrands, user, cartItems] = await withDbRetry(
+      () => Promise.all([
+        userId
+          ? (prisma as any).favoriteProduct.findMany({
+              where: { userId },
+              include: {
+                Product: {
+                  select: { id: true, name: true, price: true, imageUrl: true, Brand: { select: { name: true } } },
                 },
               },
-            },
-            orderBy: { createdAt: "desc" },
-          })
-        : Promise.resolve([] as any[]),
-      userId
-        ? prisma.user.findUnique({
-            where: { id: userId },
-            select: {
-              id: true,
-              email: true,
-              fullName: true,
-              phone: true,
-              city: true,
-              address: true,
-              avatarEmoji: true,
-              loyaltyPoints: true,
-            },
-          })
-        : null,
-      prisma.cartItem.findMany({
-        where: { cartId: cart.id },
-        orderBy: { createdAt: "asc" },
-      }),
-    ]);
+              orderBy: { createdAt: "desc" },
+            })
+          : Promise.resolve([] as any[]),
+        userId
+          ? prisma.favoriteBrand.findMany({
+              where: { userId },
+              select: {
+                Brand: {
+                  select: {
+                    slug: true,
+                    name: true,
+                    logoUrl: true,
+                  },
+                },
+              },
+              orderBy: { createdAt: "desc" },
+            })
+          : Promise.resolve([] as any[]),
+        userId
+          ? prisma.user.findUnique({
+              where: { id: userId },
+              select: {
+                id: true,
+                email: true,
+                fullName: true,
+                phone: true,
+                city: true,
+                address: true,
+                avatarEmoji: true,
+                loyaltyPoints: true,
+              },
+            })
+          : null,
+        prisma.cartItem.findMany({
+          where: { cartId: cart.id },
+          orderBy: { createdAt: "asc" },
+        }),
+      ]),
+      { retries: 2, timeoutMs: 10000, label: "bootstrap payload" }
+    );
 
     const cartTotal = (cartItems as any[]).reduce(
       (sum, it) => sum + Number(it.price ?? 0) * Number(it.quantity ?? 1),
@@ -157,6 +178,14 @@ export async function GET(req: NextRequest) {
     );
   } catch (err) {
     console.error("[bootstrap] error");
-    return NextResponse.json({ error: "server_error" }, { status: 500 });
+    return NextResponse.json(
+      {
+        user: null,
+        favorites: { products: [], brands: [] },
+        cart: { id: cart.id, items: [], totalAmount: 0 },
+        degraded: true,
+      },
+      { status: 200, headers: { "Cache-Control": "no-store" } }
+    );
   }
 }

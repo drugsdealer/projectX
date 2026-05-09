@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { isTransientDbError } from "./db-retry";
 
 declare global {
   var __prisma: PrismaClient | undefined;
@@ -47,6 +48,17 @@ function isDangerousSQL(sql: unknown): boolean {
   return false;
 }
 
+const READ_ACTIONS = new Set([
+  "findUnique",
+  "findUniqueOrThrow",
+  "findFirst",
+  "findFirstOrThrow",
+  "findMany",
+  "count",
+  "aggregate",
+  "groupBy",
+]);
+
 // ✅ Безопасно добавляем middleware только если $use доступен
 if (
   typeof (prismaInstance as any).$use === "function" &&
@@ -76,7 +88,25 @@ if (
     }
 
     const start = Date.now();
-    const result = await next(params);
+    let result: any;
+    if (READ_ACTIONS.has(params.action)) {
+      const attempts = 3;
+      for (let attempt = 0; attempt < attempts; attempt++) {
+        try {
+          result = await next(params);
+          break;
+        } catch (error) {
+          if (attempt === attempts - 1 || !isTransientDbError(error)) {
+            throw error;
+          }
+
+          const jitter = Math.floor(Math.random() * 80);
+          await new Promise((resolve) => setTimeout(resolve, 180 * (attempt + 1) + jitter));
+        }
+      }
+    } else {
+      result = await next(params);
+    }
     const end = Date.now();
 
     // Redact sensitive fields (password) on read operations to reduce accidental leakage

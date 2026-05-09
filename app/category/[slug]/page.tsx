@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 
 import prisma from '@/lib/prisma';
+import { safeJsonLd } from '@/lib/json-ld';
+import { withDbRetry } from '@/lib/db-retry';
 import {
   getParentSubcategories,
   getSubcategoryAliases,
@@ -43,10 +45,13 @@ const CATEGORY_SEO: Record<string, { name: string; description: string }> = {
 
 export async function generateStaticParams() {
   try {
-    const categories = await prisma.category.findMany({
-      select: { slug: true },
-      take: 100,
-    });
+    const categories = await withDbRetry(
+      () => prisma.category.findMany({
+        select: { slug: true },
+        take: 100,
+      }),
+      { retries: 2, timeoutMs: 8000, label: 'category static params' }
+    );
     return categories.map((c) => ({ slug: c.slug }));
   } catch {
     return [];
@@ -60,10 +65,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   let dbName: string | null = null;
 
   try {
-    const category = await prisma.category.findFirst({
-      where: { slug: { equals: decoded, mode: 'insensitive' } },
-      select: { name: true },
-    });
+    const category = await withDbRetry(
+      () => prisma.category.findFirst({
+        where: { slug: { equals: decoded, mode: 'insensitive' } },
+        select: { name: true },
+      }),
+      { retries: 2, timeoutMs: 6000, label: `category metadata ${decoded}` }
+    );
     dbName = category?.name ?? null;
   } catch {
     dbName = null;
@@ -351,30 +359,33 @@ export default async function CategoryPage({
   };
 
   // Load all products, then filter using the same regex inference as search facets
-  const allProducts = await (prisma as any).product.findMany({
-    where: { deletedAt: null },
-    select: {
-      id: true,
-      name: true,
-      price: true,
-      oldPrice: true,
-      imageUrl: true,
-      images: true,
-      description: true,
-      available: true,
-      premium: true,
-      badge: true,
-      categoryId: true,
-      brandId: true,
-      createdAt: true,
-      subcategory: true,
-      gender: true,
-      Category: { select: { slug: true } },
-      ProductItem: { select: { price: true } },
-      PerfumeVariant: { select: { price: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+  const allProducts = await withDbRetry(
+    () => (prisma as any).product.findMany({
+      where: { deletedAt: null },
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        oldPrice: true,
+        imageUrl: true,
+        images: true,
+        description: true,
+        available: true,
+        premium: true,
+        badge: true,
+        categoryId: true,
+        brandId: true,
+        createdAt: true,
+        subcategory: true,
+        gender: true,
+        Category: { select: { slug: true } },
+        ProductItem: { select: { price: true } },
+        PerfumeVariant: { select: { price: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    }),
+    { retries: 2, timeoutMs: 12000, label: `category products ${slugLow}` }
+  ).catch(() => []);
 
   // Mapping from DB RU category slugs to EN app slugs
   const DB_SLUG_TO_EN: Record<string, string> = {
@@ -464,7 +475,7 @@ export default async function CategoryPage({
     <main className="bg-white text-black">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10">
         <section className="relative overflow-hidden rounded-[32px] border border-black/10 bg-white/80 p-6 sm:p-8 shadow-[0_30px_80px_rgba(0,0,0,0.08)] backdrop-blur">

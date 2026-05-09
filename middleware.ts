@@ -4,6 +4,55 @@ import { enforceSameOrigin } from "@/lib/security";
 // Быстрый путь: читаем id из httpOnly куки без похода к API
 const SESSION_COOKIE = 'session_user_id';
 const SESSION_TOKEN_COOKIE = 'session_token';
+const ADMIN_2FA_SECRET =
+  process.env.ADMIN_2FA_HMAC_SECRET ||
+  process.env.STAGE_VAULT_SECRET ||
+  (process.env.NODE_ENV !== "production" ? "dev_2fa_hmac_key" : "");
+
+function hexToBytes(hex: string) {
+  if (!/^[a-f0-9]+$/i.test(hex) || hex.length % 2 !== 0) return null;
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
+}
+
+function constantTimeEqual(a: Uint8Array, b: Uint8Array) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
+async function verify2FACookieInMiddleware(value: string | null, userId: string | number | null | undefined) {
+  if (!value || userId == null || !ADMIN_2FA_SECRET) return false;
+  const dot = value.lastIndexOf(".");
+  if (dot < 0) return false;
+  const payload = value.slice(0, dot);
+  const sigHex = value.slice(dot + 1);
+  const parts = payload.split(":");
+  if (parts[0] !== "2fa" || parts[1] !== String(userId)) return false;
+  const ts = Number(parts[2]);
+  if (!Number.isFinite(ts)) return false;
+  if (Math.floor(Date.now() / 1000) - ts > 4 * 60 * 60) return false;
+
+  const expectedBytes = await crypto.subtle.sign(
+    "HMAC",
+    await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(ADMIN_2FA_SECRET),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    ),
+    new TextEncoder().encode(payload)
+  );
+  const actual = hexToBytes(sigHex);
+  if (!actual) return false;
+  return constantTimeEqual(actual, new Uint8Array(expectedBytes));
+}
+
 function readUserFast(request: NextRequest) {
   if (process.env.NODE_ENV === "production") return null;
   const id = request.cookies.get(SESSION_COOKIE)?.value || request.cookies.get("uid")?.value;
@@ -181,7 +230,8 @@ export async function middleware(request: NextRequest) {
     }
     if (!pathname.startsWith("/admin/2fa") && !pathname.startsWith("/liza/2fa")) {
       const ok = request.cookies.get("admin_2fa_ok")?.value || null;
-      if (!ok || !ok.startsWith(`2fa:${user.id}:`)) {
+      const verified2fa = await verify2FACookieInMiddleware(ok, user.id);
+      if (!verified2fa) {
         const twofaUrl = new URL("/admin/2fa", request.url);
         return applySecurityHeaders(NextResponse.redirect(twofaUrl));
       }

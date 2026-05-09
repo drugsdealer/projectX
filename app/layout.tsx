@@ -13,6 +13,7 @@ import RouteTransitions from "@/components/RouteTransitions";
 import MotionBudgetProvider from "@/components/MotionBudgetProvider";
 import YandexMetrika from "@/components/YandexMetrika";
 import type { Metadata } from "next";
+import { safeJsonLd } from "@/lib/json-ld";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
 const SITE_LOGO_URL = "https://ik.imagekit.io/qowmy92ny/IMG_0363%20(1).PNG";
@@ -102,7 +103,7 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
+            __html: safeJsonLd({
               "@context": "https://schema.org",
               "@graph": [
                 {

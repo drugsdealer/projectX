@@ -3,16 +3,21 @@ import { notFound } from 'next/navigation';
 import BrandClient from '@/components/ui/BrandClient';
 import type { Brand, Product } from '@prisma/client';
 import type { Metadata } from 'next';
+import { safeJsonLd } from '@/lib/json-ld';
+import { withDbRetry } from '@/lib/db-retry';
 
 export const revalidate = 300; // ISR: revalidate every 5 minutes
 
 export async function generateStaticParams() {
   try {
-    const brands = await prisma.brand.findMany({
-      where: { deletedAt: null },
-      select: { slug: true },
-      take: 200,
-    });
+    const brands = await withDbRetry(
+      () => prisma.brand.findMany({
+        where: { deletedAt: null },
+        select: { slug: true },
+        take: 200,
+      }),
+      { retries: 2, timeoutMs: 10000, label: 'brand static params' }
+    );
     return brands.map((b) => ({ slug: b.slug }));
   } catch {
     // DB unavailable at build time — pages will be generated on first request via ISR
@@ -24,10 +29,13 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const brand = await prisma.brand.findFirst({
-    where: { slug: { equals: slug.trim().toLowerCase(), mode: 'insensitive' } },
-    select: { name: true, description: true, logoUrl: true },
-  }).catch(() => null);
+  const brand = await withDbRetry(
+    () => prisma.brand.findFirst({
+      where: { slug: { equals: slug.trim().toLowerCase(), mode: 'insensitive' } },
+      select: { name: true, description: true, logoUrl: true },
+    }),
+    { retries: 2, timeoutMs: 8000, label: `brand metadata ${slug}` }
+  ).catch(() => null);
   if (!brand) return {};
   const description = brand.description || `Коллекция бренда ${brand.name} в Stage Store. Оригинальная брендовая одежда и аксессуары с доставкой по России.`;
   const images = brand.logoUrl ? [{ url: brand.logoUrl, width: 400, height: 400, alt: brand.name }] : [];
@@ -61,9 +69,12 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
   // 1) Ищем сам бренд по slug (регистронезависимо)
   const norm = slug.trim().toLowerCase();
   let dbUnavailable = false;
-  const brand = await prisma.brand.findFirst({
-    where: { slug: { equals: norm, mode: 'insensitive' } },
-  }).catch(() => {
+  const brand = await withDbRetry(
+    () => prisma.brand.findFirst({
+      where: { slug: { equals: norm, mode: 'insensitive' } },
+    }),
+    { retries: 2, timeoutMs: 8000, label: `brand page ${norm}` }
+  ).catch(() => {
     dbUnavailable = true;
     return null;
   });
@@ -90,37 +101,40 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
   }
 
   // 2) Подтягиваем товары бренда (может быть пусто — это ок)
-  const productsRaw = await prisma.product.findMany({
-    where: { brandId: brand.id, deletedAt: null },
-    select: {
-      id: true,
-      name: true,
-      price: true,
-      oldPrice: true,
-      imageUrl: true,
-      images: true,
-      description: true,
-      available: true,
-      premium: true,
-      badge: true,
-      gender: true,
-      subcategory: true,
-      sizeType: true,
-      material: true,
-      features: true,
-      styleNotes: true,
-      widthCm: true,
-      heightCm: true,
-      depthCm: true,
-      categoryId: true,
-      brandId: true,
-      colorId: true,
-      createdAt: true,
-      updatedAt: true,
-      Brand: true,
-      Category: { select: { name: true, slug: true } },
-    },
-  }).catch(() => []);
+  const productsRaw = await withDbRetry(
+    () => prisma.product.findMany({
+      where: { brandId: brand.id, deletedAt: null },
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        oldPrice: true,
+        imageUrl: true,
+        images: true,
+        description: true,
+        available: true,
+        premium: true,
+        badge: true,
+        gender: true,
+        subcategory: true,
+        sizeType: true,
+        material: true,
+        features: true,
+        styleNotes: true,
+        widthCm: true,
+        heightCm: true,
+        depthCm: true,
+        categoryId: true,
+        brandId: true,
+        colorId: true,
+        createdAt: true,
+        updatedAt: true,
+        Brand: true,
+        Category: { select: { name: true, slug: true } },
+      },
+    }),
+    { retries: 2, timeoutMs: 10000, label: `brand products ${brand.id}` }
+  ).catch(() => []);
 
   type BrandItemDTO = Omit<Product, 'images'> & {
     images: string[];
@@ -192,7 +206,7 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(brandJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(brandJsonLd) }}
       />
       <BrandClient
         items={brandItems}

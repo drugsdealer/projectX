@@ -1,23 +1,27 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
+import { withDbRetry } from "@/lib/db-retry";
 
 export const runtime = "nodejs";
 export const revalidate = 300;
 
 export async function GET() {
   try {
-    const rows = await prisma.brand.findMany({
-      where: { deletedAt: null },
-      select: {
-        name: true,
-        slug: true,
-        logoUrl: true,
-        features: true,
-        _count: { select: { Product: { where: { deletedAt: null } } } },
-      },
-      orderBy: { name: "asc" },
-    });
+    const rows = await withDbRetry(
+      () => prisma.brand.findMany({
+        where: { deletedAt: null },
+        select: {
+          name: true,
+          slug: true,
+          logoUrl: true,
+          features: true,
+          _count: { select: { Product: { where: { deletedAt: null } } } },
+        },
+        orderBy: { name: "asc" },
+      }),
+      { retries: 2, timeoutMs: 10000, label: "api brands" }
+    );
 
     const brands = rows
       .map((brand) => ({

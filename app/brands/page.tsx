@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import type { Metadata } from "next";
 import BrandsClient, { type BrandItem } from "./BrandsClient";
+import { safeJsonLd } from "@/lib/json-ld";
+import { withDbRetry } from "@/lib/db-retry";
 
 export const revalidate = 3600;
 
@@ -24,17 +26,20 @@ export default async function BrandsPage() {
   let brands: BrandItem[] = [];
 
   try {
-    const rows = await prisma.brand.findMany({
-      where: { deletedAt: null },
-      select: {
-        name: true,
-        slug: true,
-        logoUrl: true,
-        features: true,
-        _count: { select: { Product: { where: { deletedAt: null } } } },
-      },
-      orderBy: { name: "asc" },
-    });
+    const rows = await withDbRetry(
+      () => prisma.brand.findMany({
+        where: { deletedAt: null },
+        select: {
+          name: true,
+          slug: true,
+          logoUrl: true,
+          features: true,
+          _count: { select: { Product: { where: { deletedAt: null } } } },
+        },
+        orderBy: { name: "asc" },
+      }),
+      { retries: 2, timeoutMs: 10000, label: "brands page" }
+    );
 
     brands = rows
       .map((b) => ({
@@ -69,7 +74,7 @@ export default async function BrandsPage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
       <BrandsClient brands={brands} />
     </>

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import ProductPageClient from "./ProductPageClient";
+import { safeJsonLd } from "@/lib/json-ld";
+import { withDbRetry } from "@/lib/db-retry";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
 
@@ -14,17 +16,20 @@ export async function generateMetadata({
   const productId = Number(id);
   if (!Number.isFinite(productId) || productId <= 0) return {};
 
-  const product = await prisma.product.findUnique({
-    where: { id: productId },
-    select: {
-      name: true,
-      description: true,
-      price: true,
-      imageUrl: true,
-      Brand: { select: { name: true } },
-      Category: { select: { name: true } },
-    },
-  }).catch(() => null);
+  const product = await withDbRetry(
+    () => prisma.product.findUnique({
+      where: { id: productId },
+      select: {
+        name: true,
+        description: true,
+        price: true,
+        imageUrl: true,
+        Brand: { select: { name: true } },
+        Category: { select: { name: true } },
+      },
+    }),
+    { retries: 2, timeoutMs: 8000, label: `product metadata ${productId}` }
+  ).catch(() => null);
 
   if (!product) return {};
 
@@ -63,12 +68,15 @@ export const revalidate = 300; // ISR: revalidate every 5 minutes
 
 export async function generateStaticParams() {
   try {
-    const products = await prisma.product.findMany({
-      where: { deletedAt: null },
-      select: { id: true },
-      orderBy: { updatedAt: "desc" },
-      take: 500,
-    });
+    const products = await withDbRetry(
+      () => prisma.product.findMany({
+        where: { deletedAt: null },
+        select: { id: true },
+        orderBy: { updatedAt: "desc" },
+        take: 500,
+      }),
+      { retries: 2, timeoutMs: 10000, label: "product static params" }
+    );
     return products.map((p) => ({ id: String(p.id) }));
   } catch {
     return [];
@@ -86,17 +94,20 @@ export default async function ProductPage({
   let jsonLd: object | null = null;
 
   if (Number.isFinite(productId) && productId > 0) {
-    const p = await prisma.product.findUnique({
-      where: { id: productId },
-      select: {
-        name: true,
-        price: true,
-        imageUrl: true,
-        description: true,
-        Brand: { select: { name: true } },
-        Category: { select: { name: true, slug: true } },
-      },
-    }).catch(() => null);
+    const p = await withDbRetry(
+      () => prisma.product.findUnique({
+        where: { id: productId },
+        select: {
+          name: true,
+          price: true,
+          imageUrl: true,
+          description: true,
+          Brand: { select: { name: true } },
+          Category: { select: { name: true, slug: true } },
+        },
+      }),
+      { retries: 2, timeoutMs: 8000, label: `product json-ld ${productId}` }
+    ).catch(() => null);
 
     if (p) {
       const brandName = p.Brand?.name;
@@ -193,7 +204,7 @@ export default async function ProductPage({
       {jsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
         />
       )}
       <Suspense>

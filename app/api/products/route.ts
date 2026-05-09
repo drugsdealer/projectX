@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { withDbRetry } from "@/lib/db-retry";
 import {
   getSubcategoryAliases,
   mapUiCategoryToDb,
@@ -353,26 +354,29 @@ export async function GET(req: Request) {
         );
       }
 
-      const item = await prisma.product.findFirst({
-        where: { id: idNum, deletedAt: null },
-        include: {
-          [rel.categoryKey]: { select: { id: true, name: true, slug: true } },
-          [rel.brandKey]:    { select: { id: true, name: true, slug: true } },
-          ProductItem: {
-            include: {
-              Size: {
-                select: { id: true, name: true },
-              },
-              SizeCl: {
-                select: { id: true, name: true },
-              },
-              OneSize: {
-                select: { id: true, name: true },
+      const item = await withDbRetry(
+        () => prisma.product.findFirst({
+          where: { id: idNum, deletedAt: null },
+          include: {
+            [rel.categoryKey]: { select: { id: true, name: true, slug: true } },
+            [rel.brandKey]:    { select: { id: true, name: true, slug: true } },
+            ProductItem: {
+              include: {
+                Size: {
+                  select: { id: true, name: true },
+                },
+                SizeCl: {
+                  select: { id: true, name: true },
+                },
+                OneSize: {
+                  select: { id: true, name: true },
+                },
               },
             },
-          },
-        } as any,
-      });
+          } as any,
+        }),
+        { retries: 2, timeoutMs: 8000, label: `api product ${idNum}` }
+      );
 
       if (!item) {
         return NextResponse.json(
@@ -506,28 +510,31 @@ export async function GET(req: Request) {
       ];
     }
 
-    const rows = await prisma.product.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      take,
-      include: {
-        [rel.categoryKey]: { select: { id: true, name: true, slug: true } },
-        [rel.brandKey]:    { select: { id: true, name: true, slug: true } },
-        ProductItem: {
-          include: {
-            Size: {
-              select: { id: true, name: true },
-            },
-            SizeCl: {
-              select: { id: true, name: true },
-            },
-            OneSize: {
-              select: { id: true, name: true },
+    const rows = await withDbRetry(
+      () => prisma.product.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        take,
+        include: {
+          [rel.categoryKey]: { select: { id: true, name: true, slug: true } },
+          [rel.brandKey]:    { select: { id: true, name: true, slug: true } },
+          ProductItem: {
+            include: {
+              Size: {
+                select: { id: true, name: true },
+              },
+              SizeCl: {
+                select: { id: true, name: true },
+              },
+              OneSize: {
+                select: { id: true, name: true },
+              },
             },
           },
-        },
-      } as any,
-    });
+        } as any,
+      }),
+      { retries: 2, timeoutMs: 10000, label: "api products list" }
+    );
 
     // Подтягиваем фото из связанной таблицы, если она есть
     const imagesByProductId: Record<number, string[]> = {};
