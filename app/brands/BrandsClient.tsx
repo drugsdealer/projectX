@@ -53,7 +53,7 @@ export default function BrandsClient({ brands }: { brands: BrandItem[] }) {
 
   return (
     <div className="min-h-screen bg-[#f4f4f2] text-black">
-      <div className="mx-auto max-w-[1480px] px-4 py-8 sm:px-6 lg:px-8">
+      <div className="px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-7 flex items-end justify-between gap-5">
           <div>
             <div className="text-xs font-bold uppercase tracking-[0.24em] text-black/35">Stage Store</div>
@@ -61,9 +61,6 @@ export default function BrandsClient({ brands }: { brands: BrandItem[] }) {
               Бренды
             </h1>
           </div>
-          <p className="hidden max-w-sm text-right text-sm font-medium leading-6 text-black/45 sm:block">
-            Все бренды подтягиваются автоматически из каталога и админки.
-          </p>
         </div>
 
         <div className="sticky top-0 z-20 -mx-4 border-y border-black/10 bg-[#f4f4f2]/92 px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
@@ -93,7 +90,7 @@ export default function BrandsClient({ brands }: { brands: BrandItem[] }) {
           </div>
         </div>
 
-        <div className="grid min-h-[680px] border-x border-black/10 bg-white lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="-mx-4 grid min-h-[680px] bg-white sm:-mx-6 lg:-mx-8 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="divide-y divide-black/10">
             {filtered.length > 0 ? (
               filtered.map((brand, index) => (
@@ -163,12 +160,6 @@ export default function BrandsClient({ brands }: { brands: BrandItem[] }) {
               </div>
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/18 via-transparent to-white/10" />
-            {activeBrand && (
-              <div className="absolute bottom-7 left-7 rounded-3xl bg-white/82 px-5 py-4 backdrop-blur">
-                <div className="text-xs font-bold uppercase tracking-[0.2em] text-black/35">Selected</div>
-                <div className="mt-1 text-2xl font-black tracking-[-0.04em]">{activeBrand.name}</div>
-              </div>
-            )}
           </div>
         </div>
       </div>
