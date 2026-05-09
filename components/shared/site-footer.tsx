@@ -4,6 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { NewsletterForm } from "./NewsletterForm";
 
+const SITE_LOGO_URL = "https://ik.imagekit.io/qowmy92ny/IMG_0363%20(1).PNG";
+
 const FOOTER_LINKS = {
   catalog: [
     { label: "Поиск и категории", href: "/search" },
@@ -87,7 +89,7 @@ export function SiteFooter() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr] gap-8">
             <div>
               <div className="flex items-center gap-3">
-                <Image src="/img/IMG_0363.PNG" alt="Stage Store" width={64} height={56} className="object-contain" />
+                <Image src={SITE_LOGO_URL} alt="Stage Store" width={64} height={56} className="object-contain" />
                 <div>
                   <div className="text-lg font-extrabold tracking-tight">STAGE STORE</div>
                   <div className="text-[11px] uppercase tracking-[0.2em] text-white/60">Concept Store</div>

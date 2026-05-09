@@ -51,6 +51,7 @@ type BagDimensions = { width: number; height: number; depth: number };
 
 // Use the shared normalized product shape everywhere on this page
 type Product = NormalizedProduct;
+const SITE_LOGO_URL = "https://ik.imagekit.io/qowmy92ny/IMG_0363%20(1).PNG";
 
 // Narrow helper type for bags (kept only for casts where needed)
 type BagProduct = {
@@ -2578,7 +2579,7 @@ const handleCancel = () => {
               >
                 <div className="flex items-center justify-center gap-3 mb-4">
                   <Image
-                    src="/img/IMG_0363.PNG"
+                    src={SITE_LOGO_URL}
                     alt="StageStore Logo"
                     width={32}
                     height={32}

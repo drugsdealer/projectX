@@ -15,6 +15,7 @@ import YandexMetrika from "@/components/YandexMetrika";
 import type { Metadata } from "next";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
+const SITE_LOGO_URL = "https://ik.imagekit.io/qowmy92ny/IMG_0363%20(1).PNG";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -37,8 +38,8 @@ export const metadata: Metadata = {
   authors: [{ name: "Stage Store" }],
   creator: "Stage Store",
   icons: {
-    icon: "/img/IMG_0363.PNG",
-    apple: "/img/IMG_0363.PNG",
+    icon: SITE_LOGO_URL,
+    apple: SITE_LOGO_URL,
   },
   openGraph: {
     type: "website",
@@ -112,7 +113,7 @@ export default function RootLayout({
                   logo: {
                     "@type": "ImageObject",
                     "@id": `${SITE_URL}/#logo`,
-                    url: `${SITE_URL}/img/IMG_0363.PNG`,
+                    url: SITE_LOGO_URL,
                     width: 512,
                     height: 512,
                     caption: "Stage Store",

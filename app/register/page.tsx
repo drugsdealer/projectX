@@ -4,6 +4,8 @@ import React from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 
+const SITE_LOGO_URL = "https://ik.imagekit.io/qowmy92ny/IMG_0363%20(1).PNG";
+
 export default function RegisterPage() {
   const readCookie = (name: string) => {
     if (typeof document === "undefined") return null;
@@ -235,7 +237,7 @@ export default function RegisterPage() {
               </div>
             )}
             <div className="flex items-center gap-3 pb-5 sm:pb-6">
-              <img src="/img/IMG_0363.PNG" alt="StageStore Logo" className="hidden h-10 w-auto lg:block" />
+              <img src={SITE_LOGO_URL} alt="StageStore Logo" className="hidden h-10 w-auto lg:block" />
               <div>
                 <h1 className="text-xl font-bold leading-tight sm:text-2xl lg:text-3xl">Регистрация в StageStore</h1>
                 <p className="text-xs text-slate-500 sm:text-sm lg:text-base">

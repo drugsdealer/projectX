@@ -35,6 +35,7 @@ const STAGE_SUGGESTIONS = [
 
 
 const HISTORY_KEY = "searchHistory.v1";
+const SITE_LOGO_URL = "https://ik.imagekit.io/qowmy92ny/IMG_0363%20(1).PNG";
 
 const BURGER_LINKS: Array<{ label: string; href: string; badge?: string }> = [
   { label: "Каталог", href: "/" },
@@ -366,7 +367,7 @@ useLayoutEffect(() => {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Image src="/img/IMG_0363.PNG" alt="Logo" width={54} height={50} />
+                    <Image src={SITE_LOGO_URL} alt="Logo" width={54} height={50} />
                     <div className="text-sm font-semibold">Stage Store</div>
                   </div>
                   <button
@@ -496,7 +497,7 @@ useLayoutEffect(() => {
 
             {/* CENTER LOGO */}
             <Link href={logoTarget} onClick={handleLogoClick} className="flex items-center justify-center" aria-label="На главную">
-              <Image src="/img/IMG_0363.PNG" alt="Logo" width={70} height={66} />
+              <Image src={SITE_LOGO_URL} alt="Logo" width={70} height={66} />
             </Link>
 
             {/* RIGHT ICONS: profile/login, cart */}
@@ -744,7 +745,7 @@ useLayoutEffect(() => {
           </div>
           <div className="absolute left-1/2 transform -translate-x-1/2 z-10">
             <Link href={logoTarget} onClick={handleLogoClick} className="flex items-center gap-4 hover:opacity-80 transition">
-              <Image src="/img/IMG_0363.PNG" alt="Logo" width={85} height={80} />
+              <Image src={SITE_LOGO_URL} alt="Logo" width={85} height={80} />
               <div className="sr-only">{title}</div>
             </Link>
           </div>
