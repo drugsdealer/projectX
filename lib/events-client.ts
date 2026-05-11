@@ -33,6 +33,7 @@ function createSessionId() {
 
 export function getOrCreateEventsSessionId() {
   if (typeof window === "undefined") return "server-session";
+  if (!canUseOptionalClientData()) return "no-consent-session";
 
   const existing = window.localStorage.getItem(SESSION_STORAGE_KEY);
   if (existing) return existing;
@@ -43,6 +44,10 @@ export function getOrCreateEventsSessionId() {
 }
 
 export async function trackShopEvent(payload: TrackEventPayload) {
+  if (typeof window !== "undefined" && !canUseOptionalClientData()) {
+    return null;
+  }
+
   const sessionId = payload.sessionId ?? getOrCreateEventsSessionId();
   return fetch("/api/events/track", {
     method: "POST",
@@ -58,3 +63,4 @@ export async function trackShopEvent(payload: TrackEventPayload) {
     keepalive: true,
   });
 }
+import { canUseOptionalClientData } from "./privacy-consent";

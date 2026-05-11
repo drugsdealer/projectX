@@ -12,6 +12,7 @@ import { useUser } from '@/user/UserContext';
 import { getOrCreateEventsSessionId, trackShopEvent } from '@/lib/events-client';
 import { shouldBypassNextImageOptimization } from '@/lib/media';
 import { productPath } from '@/lib/product-url';
+import { canUseOptionalClientData } from '@/lib/privacy-consent';
 
 // -------------------- Data models --------------------
 
@@ -820,6 +821,16 @@ export default function SearchPage() {
   const fetchPicks = useCallback(async () => {
     setPicksLoading(true);
     try {
+      if (!canUseOptionalClientData()) {
+        const res = await fetch('/api/recommendations/bestsellers?limit=12&days=90', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await res.json().catch(() => ({} as any));
+        setPicks(Array.isArray(data?.items) ? data.items.slice(0, 12) : []);
+        return;
+      }
+
       const seed = String(Date.now());
       const sessionId = getOrCreateEventsSessionId();
       const excludeCsv = Array.from(seenPickIdsRef.current).join(",");

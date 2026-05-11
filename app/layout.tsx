@@ -11,7 +11,6 @@ import { UserProvider } from "@/user/UserContext";
 import ClientLayout from "@/components/ClientLayout";
 import RouteTransitions from "@/components/RouteTransitions";
 import MotionBudgetProvider from "@/components/MotionBudgetProvider";
-import YandexMetrika from "@/components/YandexMetrika";
 import type { Metadata } from "next";
 import { safeJsonLd } from "@/lib/json-ld";
 
@@ -246,9 +245,6 @@ export default function RootLayout({
       <body
         className={`${nunito.className} min-h-screen bg-white text-black`}
       >
-        <Suspense fallback={null}>
-          <YandexMetrika />
-        </Suspense>
         <div className="safe-top safe-bottom bg-white min-h-screen">
           <DiscountProvider>
             <CartProvider>

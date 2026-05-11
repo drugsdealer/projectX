@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { Header } from "@/components/shared/header";
 import { SiteFooter } from "@/components/shared/site-footer";
 import { SWRConfig } from "swr";
+import { PrivacyConsentBanner } from "@/components/privacy/PrivacyConsentBanner";
+import { ConsentAwareYandexMetrika } from "@/components/privacy/ConsentAwareYandexMetrika";
 
 const swrFetcher = async (url: string) => {
   const res = await fetch(url, {
@@ -148,6 +150,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         {!hideHeaderFooter && <Header />}
         <main className="flex-1">{children}</main>
         {!hideFooter && <SiteFooter />}
+        <React.Suspense fallback={null}>
+          <ConsentAwareYandexMetrika />
+        </React.Suspense>
+        <PrivacyConsentBanner />
       </div>
     </SWRConfig>
   );

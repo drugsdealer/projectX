@@ -35,6 +35,7 @@ import { useToast } from "@/context/ToastContext";
 import { useCart } from "@/context/CartContext";
 import { shouldBypassNextImageOptimization } from "@/lib/media";
 import { parseProductPathId, productPath } from "@/lib/product-url";
+import { canUseOptionalClientData } from "@/lib/privacy-consent";
 import { useUser } from "@/user/UserContext";
 import "swiper/css";
 import "swiper/css/mousewheel";
@@ -590,12 +591,18 @@ const { user } = useUser();
   // Restock notify modal state
   const [showRestockModal, setShowRestockModal] = useState(false);
   const [restockContact, setRestockContact] = useState("");
+  const [restockSizeInput, setRestockSizeInput] = useState("");
   const [restockSubmitting, setRestockSubmitting] = useState(false);
   const [restockTouched, setRestockTouched] = useState(false);
+  const [restockSizeTouched, setRestockSizeTouched] = useState(false);
   const contactValid = React.useMemo(() => {
     const value = restockContact.trim();
     return value.length >= 5 && value.length <= 160;
   }, [restockContact]);
+  const restockSizeValid = React.useMemo(() => {
+    const value = restockSizeInput.trim();
+    return value.length >= 1 && value.length <= 80;
+  }, [restockSizeInput]);
   // Restock size state and available sizes helper
   const [restockSize, setRestockSize] = useState<string | number | null>(null);
   const availableSizes: Array<string | number> = React.useMemo(() => {
@@ -857,6 +864,11 @@ useEffect(() => {
 
     const loadPersonalized = async () => {
       try {
+        if (!canUseOptionalClientData()) {
+          fallbackSimilar();
+          return;
+        }
+
         const sessionId = getOrCreateEventsSessionId();
         const categoryId = Number((rawProduct as any)?.categoryId);
         const params = new URLSearchParams({
@@ -1041,7 +1053,9 @@ const handleCancel = () => {
 
   const openRestockModal = (size?: string | number | null) => {
     setRestockSize(size ?? null);
+    setRestockSizeInput(size != null ? String(size) : "");
     setRestockTouched(false);
+    setRestockSizeTouched(false);
     if (!restockContact.trim()) {
       const email = String((user as any)?.email ?? "").trim();
       if (email) {
@@ -1052,10 +1066,13 @@ const handleCancel = () => {
   };
 
   const handleRestockSubmit = async () => {
-    if (!contactValid || !product || restockSubmitting) return;
+    setRestockTouched(true);
+    setRestockSizeTouched(true);
+    if (!contactValid || !restockSizeValid || !product || restockSubmitting) return;
     setRestockSubmitting(true);
     try {
       const contact = restockContact.trim();
+      const requestedSize = restockSizeInput.trim();
       const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1063,7 +1080,7 @@ const handleCancel = () => {
           productId: product.id,
           productName: product.name,
           brand: primaryBrand,
-          size: restockSize,
+          size: requestedSize,
           contact,
           pageUrl: window.location.href,
         }),
@@ -1075,7 +1092,7 @@ const handleCancel = () => {
       prev.unshift({
         productId: product.id,
         productName: product.name,
-        size: restockSize,
+        size: requestedSize,
         email: contact,
         contact,
         time: Date.now(),
@@ -1083,9 +1100,10 @@ const handleCancel = () => {
       localStorage.setItem(key, JSON.stringify(prev.slice(0, 100)));
       setShowRestockModal(false);
       setRestockTouched(false);
+      setRestockSizeTouched(false);
       showToast({
         title: "Заявка принята",
-        details: restockSize != null ? `Сообщим, когда появится размер ${restockSize}` : "Свяжемся, когда найдем нужный размер",
+        details: `Свяжемся по размеру ${requestedSize}`,
       });
     } catch {
       showToast({
@@ -1099,8 +1117,9 @@ const handleCancel = () => {
 
   const closeRestockModal = () => {
     if (restockSubmitting) return;
-      setShowRestockModal(false);
+    setShowRestockModal(false);
     setRestockTouched(false);
+    setRestockSizeTouched(false);
   };
 
   // Helper functions
@@ -2580,28 +2599,41 @@ const handleCancel = () => {
                   <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center">!
                   </div>
                   <h3 className="text-lg font-semibold">
-                    Этого размера сейчас нет в наличии{restockSize != null ? ` — ${restockSize}` : ''}
+                    Вашего размера нет? Свяжитесь с нами
                   </h3>
                 </div>
                 <p className="text-sm text-gray-600 mb-4">
-                  Оставьте email, телефон или Telegram — мы проверим поставщиков и сообщим, когда размер появится.
+                  Напишите нужный размер и оставьте email, телефон или Telegram — мы проверим поставщиков и вернёмся с ответом.
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="space-y-3">
                   <input
                     type="text"
-                    value={restockContact}
-                    onChange={(e) => setRestockContact(e.target.value)}
-                    onBlur={() => setRestockTouched(true)}
-                    placeholder="Email, телефон или @telegram"
-                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 outline-none focus:ring-2 focus:ring-black/60"
+                    value={restockSizeInput}
+                    onChange={(e) => setRestockSizeInput(e.target.value)}
+                    onBlur={() => setRestockSizeTouched(true)}
+                    placeholder="Нужный размер, например 42 / M / 100 мл"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:ring-2 focus:ring-black/60"
                   />
-                  <button
-                    disabled={!contactValid || restockSubmitting}
-                    onClick={handleRestockSubmit}
-                    className={`px-4 py-2 rounded-lg text-white transition ${contactValid && !restockSubmitting ? 'bg-black hover:bg-gray-800' : 'bg-gray-400 cursor-not-allowed'}`}
-                  >
-                    {restockSubmitting ? '...' : 'Отправить'}
-                  </button>
+                  {restockSizeTouched && !restockSizeValid && (
+                    <p className="-mt-2 text-xs text-red-600">Укажите нужный размер.</p>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={restockContact}
+                      onChange={(e) => setRestockContact(e.target.value)}
+                      onBlur={() => setRestockTouched(true)}
+                      placeholder="Email, телефон или @telegram"
+                      className="flex-1 rounded-lg border border-gray-300 px-3 py-2 outline-none focus:ring-2 focus:ring-black/60"
+                    />
+                    <button
+                      disabled={!contactValid || !restockSizeValid || restockSubmitting}
+                      onClick={handleRestockSubmit}
+                      className={`px-4 py-2 rounded-lg text-white transition ${contactValid && restockSizeValid && !restockSubmitting ? 'bg-black hover:bg-gray-800' : 'bg-gray-400 cursor-not-allowed'}`}
+                    >
+                      {restockSubmitting ? '...' : 'Отправить'}
+                    </button>
+                  </div>
                 </div>
                 {restockTouched && !contactValid && (
                   <p className="mt-2 text-xs text-red-600">Укажите контакт для связи.</p>

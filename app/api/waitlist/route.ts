@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     const contact = cleanText(body?.contact, 160);
     const pageUrl = cleanText(body?.pageUrl, 300);
 
-    if (!Number.isFinite(productId) || productId <= 0 || !productName || contact.length < 5) {
+    if (!Number.isFinite(productId) || productId <= 0 || !productName || !size || contact.length < 5) {
       return NextResponse.json({ ok: false }, { status: 400 });
     }
 
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     lines.push(`<b>Товар:</b> ${escapeTelegramHtml(productName)}`);
     lines.push(`<b>ID:</b> ${escapeTelegramHtml(String(productId))}`);
     if (brand) lines.push(`<b>Бренд:</b> ${escapeTelegramHtml(brand)}`);
-    lines.push(`<b>Размер:</b> ${escapeTelegramHtml(size || "не указан")}`);
+    lines.push(`<b>Размер:</b> ${escapeTelegramHtml(size)}`);
     lines.push(`<b>Контакт:</b> ${escapeTelegramHtml(contact)}`);
     if (pageUrl) lines.push(`<b>Страница:</b> ${escapeTelegramHtml(pageUrl)}`);
 

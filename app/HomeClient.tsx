@@ -24,6 +24,7 @@ import type { HomeCmsPromoConfig, HomePromoProduct } from "@/components/home/pro
 import { useMotionBudget, type MotionLevel } from "@/components/MotionBudgetProvider";
 import { shouldBypassNextImageOptimization } from "@/lib/media";
 import { productPath } from "@/lib/product-url";
+import { canUseOptionalClientData } from "@/lib/privacy-consent";
 // Локальные подписи основных категорий
 const LABELS: Record<string, string> = {
   footwear: 'Обувь',
@@ -729,35 +730,34 @@ export default function Home() {
 
   const fetchHomeRecommendations = useCallback(async (rotate = false) => {
     setIsHomeRecsLoading(true);
-    const sessionId = getOrCreateEventsSessionId();
+    const canPersonalize = canUseOptionalClientData();
+    const sessionId = canPersonalize ? getOrCreateEventsSessionId() : "";
     const excludeCsv = rotate
       ? Array.from(homeSeenRecommendationIdsRef.current).join(",")
       : "";
 
     try {
-      const params = new URLSearchParams({
-        limit: "16",
-        seed: String(Date.now()),
-        sessionId,
-      });
-      if (excludeCsv) params.set("exclude", excludeCsv);
+      const params = new URLSearchParams({ limit: "16", seed: String(Date.now()) });
+      if (canPersonalize) params.set("sessionId", sessionId);
+      if (canPersonalize && excludeCsv) params.set("exclude", excludeCsv);
 
-      const [personalRes, bestsellerRes] = await Promise.all([
-        fetch(`/api/recommendations/personal?${params.toString()}`, {
-          cache: "no-store",
-          credentials: "include",
-        }),
+      const [personalData, bestsellerRes] = await Promise.all([
+        canPersonalize
+          ? fetch(`/api/recommendations/personal?${params.toString()}`, {
+              cache: "no-store",
+              credentials: "include",
+            }).then((res) => res.json().catch(() => ({} as any)))
+          : Promise.resolve({ items: [], topBrands: [] } as any),
         fetch(`/api/recommendations/bestsellers?limit=12&days=90`, {
           cache: "no-store",
           credentials: "include",
         }),
       ]);
 
-      const personalData = await personalRes.json().catch(() => ({} as any));
       const bestsellerData = await bestsellerRes.json().catch(() => ({} as any));
 
       let personalItems = Array.isArray(personalData?.items) ? personalData.items : [];
-      if (!personalItems.length && excludeCsv) {
+      if (canPersonalize && !personalItems.length && excludeCsv) {
         homeSeenRecommendationIdsRef.current = new Set();
         const retry = await fetch(
           `/api/recommendations/personal?limit=16&seed=${encodeURIComponent(String(Date.now()))}&sessionId=${encodeURIComponent(sessionId)}`,
