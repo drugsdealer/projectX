@@ -23,6 +23,7 @@ import { renderAuthorHomePromo } from "@/components/home/promos/author-promos";
 import type { HomeCmsPromoConfig, HomePromoProduct } from "@/components/home/promos/types";
 import { useMotionBudget, type MotionLevel } from "@/components/MotionBudgetProvider";
 import { shouldBypassNextImageOptimization } from "@/lib/media";
+import { productPath } from "@/lib/product-url";
 // Локальные подписи основных категорий
 const LABELS: Record<string, string> = {
   footwear: 'Обувь',
@@ -2237,7 +2238,7 @@ export default function Home() {
                               >
                                 <a
                                   id={`product-${product.id}`}
-                                  href={`/product/${product.id}`}
+                                  href={productPath({ id: product.id, name: product.name, brand: brandName })}
                                   className={`group rounded-2xl overflow-hidden bg-white shadow-sm ring-1 transition-transform will-change-transform [contain:content] ${
                                     isRestoredHomeTarget
                                       ? `ring-[#2563eb]/45 shadow-[0_0_0_7px_rgba(37,99,235,0.18)] ${reduceMotion ? "" : "animate-pulse"}`

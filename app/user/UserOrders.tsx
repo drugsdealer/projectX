@@ -11,6 +11,7 @@ function Portal({ children }: { children: React.ReactNode }) {
 }
 import Link from 'next/link';
 import { useOrders } from "../../hooks/useOrders";
+import { productPath } from '@/lib/product-url';
 
 type OrderItem = {
   id: number;
@@ -453,9 +454,9 @@ function OrderDetailsModal({ open, onClose, order }: ModalProps) {
               <div className="space-y-3">
                 {items.map((it) => {
                   const pid = it.productId ?? it.product?.id ?? null;
-                  const href = pid ? `/product/${pid}` : undefined;
                   const img = it.image || it.product?.imageUrl || '/img/placeholder.svg';
                   const title = it.name || it.product?.name || 'Товар';
+                  const href = pid ? productPath({ id: pid, name: title }) : undefined;
                   const rawSize =
                     it.size ??
                     (it as any)?.sizeLabel ??
@@ -777,9 +778,9 @@ export default function UserOrders() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     {items.map((it) => {
                       const pid = it.productId ?? it.product?.id ?? null;
-                      const href = pid ? `/product/${pid}` : undefined;
                       const img = it.image || it.product?.imageUrl || '/img/placeholder.svg';
                       const title = it.name || it.product?.name || 'Товар';
+                      const href = pid ? productPath({ id: pid, name: title }) : undefined;
                       const size = it.size ? `Размер: ${it.size}` : '';
                       const qty = Number(it.quantity) || 0;
                       const price = Number(it.price) || 0;

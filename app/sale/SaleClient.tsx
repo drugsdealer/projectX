@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { useUser } from "@/user/UserContext";
 import { shouldBypassNextImageOptimization } from "@/lib/media";
+import { productPath } from "@/lib/product-url";
 
 type SaleProduct = {
   id: string | number;
@@ -53,7 +54,7 @@ function getImage(p: SaleProduct): string | null {
 function SaleCard({ product }: { product: SaleProduct }) {
   const pct = discountPct(product.price, product.oldPrice);
   const img = getImage(product);
-  const href = `/product/${product.id}`;
+  const href = productPath({ id: product.id, name: product.name, brandName: product.brandName });
 
   return (
     <Link href={href} className="group block">

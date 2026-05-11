@@ -12,6 +12,7 @@ import { NewsletterForm } from "@/components/shared/NewsletterForm";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { ChevronDown, Search, Filter, X, Menu, Crown } from "lucide-react";
 import { safeJsonLd } from "@/lib/json-ld";
+import { premiumProductPath } from "@/lib/product-url";
 
 const wrapIndex = (min: number, max: number, v: number) => {
   const range = max - min;
@@ -1888,7 +1889,7 @@ const GridCard = React.memo(({
     >
       <Link
         id={`premium-product-${item.id}`}
-        href={buildProductHref(item.id)}
+        href={buildProductHref(item)}
         onClick={() => rememberPremiumScroll(item.id)}
         className={`relative group block rounded-2xl overflow-hidden bg-white border shadow-sm transition-all duration-300 w-full h-full ${
           isRestoreTarget
@@ -2787,12 +2788,12 @@ export default function PremiumPage() {
   const womenDisabled = genderViewCounts.women === 0 && gender !== "women";
   const unisexDisabled = genderViewCounts.unisex === 0 && gender !== "unisex";
 
-  const buildProductHref = useCallback((id: string | number) => {
+  const buildProductHref = useCallback((item: { id: string | number; name?: string | null; brand?: string | null; brandName?: string | null }) => {
     const params = new URLSearchParams();
     params.set('origin', 'premium');
     const g = gender || searchParams.get('gender');
     if (g === 'men' || g === 'women') params.set('gender', g);
-    return `/premium/product/${id}?${params.toString()}`;
+    return `${premiumProductPath(item)}?${params.toString()}`;
   }, [gender, searchParams]);
 
 
@@ -3974,7 +3975,7 @@ export default function PremiumPage() {
 
                 <Link
                   id={`premium-product-${item.id}`}
-                  href={buildProductHref(item.id)}
+                  href={buildProductHref(item)}
                   onClick={() => rememberPremiumScroll(item.id)}
                   className={`relative block rounded-2xl overflow-hidden bg-white border hover:border-black/30 shadow-sm hover:shadow-xl transition-all duration-300 min-w-[240px] max-w-[240px] ${
                     restoredPremiumProductId === String(item.id)
@@ -4313,7 +4314,7 @@ export default function PremiumPage() {
                     <p className="text-sm text-gray-600 mb-2">Цена</p>
                     <p className="text-2xl font-extrabold mb-4">{quickItem.price}₽</p>
                     <div className="flex items-center gap-3">
-                      <Link href={buildProductHref(quickItem.id)} onClick={() => rememberPremiumScroll(quickItem.id)} className="px-5 py-2.5 rounded-full bg-black text-white font-semibold hover:shadow-md active:scale-[.98] transition">Открыть страницу товара</Link>
+                      <Link href={buildProductHref(quickItem)} onClick={() => rememberPremiumScroll(quickItem.id)} className="px-5 py-2.5 rounded-full bg-black text-white font-semibold hover:shadow-md active:scale-[.98] transition">Открыть страницу товара</Link>
                       <button type="button" className="px-5 py-2.5 rounded-full border border-black/10" onClick={() => setQuickItem(null)}>Закрыть</button>
                     </div>
                   </div>

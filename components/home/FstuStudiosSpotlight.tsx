@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { HomePromoProduct } from '@/components/home/promos/types';
 import { shouldBypassNextImageOptimization } from '@/lib/media';
+import { productPath } from '@/lib/product-url';
 
 type BowConfig = {
   top: string;
@@ -117,7 +118,7 @@ export default function FstuStudiosSpotlight({
             {items.slice(0, 8).map((item) => (
               <Link
                 key={item.id}
-                href={`/product/${item.id}`}
+                href={productPath({ id: item.id, name: item.name, brandName: item.brandName })}
                 className="group relative w-[160px] shrink-0 snap-start overflow-hidden rounded-2xl border border-black/15 bg-white/88 shadow-[0_10px_24px_rgba(18,18,18,0.08)] transition hover:-translate-y-1 hover:shadow-[0_14px_28px_rgba(18,18,18,0.14)] sm:w-[186px]"
               >
                 <div className="relative aspect-[4/5] bg-black/[0.03]">

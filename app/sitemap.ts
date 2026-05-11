@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
+import { productPath } from "@/lib/product-url";
 
 export const revalidate = 3600; // regenerate sitemap every hour
 
@@ -28,13 +29,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const products = await prisma.product.findMany({
       where: { deletedAt: null },
-      select: { id: true, updatedAt: true, premium: true },
+      select: { id: true, name: true, updatedAt: true, premium: true, Brand: { select: { name: true } } },
       orderBy: { updatedAt: "desc" },
       take: 5000,
     });
     productPages = products.flatMap((p) => {
       return [{
-        url: `${siteUrl}/product/${p.id}`,
+        url: `${siteUrl}${productPath({ id: p.id, name: p.name, brandName: p.Brand?.name })}`,
         lastModified: p.updatedAt,
         changeFrequency: "weekly" as const,
         priority: 0.55,

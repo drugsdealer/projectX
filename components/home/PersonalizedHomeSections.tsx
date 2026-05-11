@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { shouldBypassNextImageOptimization } from '@/lib/media';
+import { productPath } from '@/lib/product-url';
 
 type RecommendationItem = {
   id: number;
@@ -32,7 +33,7 @@ type Props = {
 function ProductMiniCard({ item }: { item: RecommendationItem }) {
   return (
     <Link
-      href={`/product/${item.id}`}
+      href={productPath({ id: item.id, name: item.name, brandName: item.brandName })}
       className="group overflow-hidden rounded-2xl border border-black/10 bg-white transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(0,0,0,0.08)]"
     >
       <div className="relative aspect-[4/5] bg-black/[0.03]">

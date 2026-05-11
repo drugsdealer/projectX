@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 import { useUser } from '@/user/UserContext';
 import { getOrCreateEventsSessionId, trackShopEvent } from '@/lib/events-client';
 import { shouldBypassNextImageOptimization } from '@/lib/media';
+import { productPath } from '@/lib/product-url';
 
 // -------------------- Data models --------------------
 
@@ -345,7 +346,7 @@ function saveHistory(items: HistoryItem[]) {
 const PickCell = memo(function PickCell({ p, className = '' }: { p: ResultItem; className?: string }) {
   return (
     <Link
-      href={`/product/${p.id}`}
+      href={productPath({ id: p.id, name: p.name, brandName: p.brandName })}
       className={`group relative block h-full w-full overflow-hidden rounded-2xl border border-black/10 bg-transparent transition-colors duration-200 hover:border-black/20 ${className}`}
       aria-label={p.name}
     >
@@ -1316,7 +1317,7 @@ export default function SearchPage() {
                   {results.map((p) => (
                     <Link
                       key={p.id}
-                      href={`/product/${p.id}`}
+                      href={productPath({ id: p.id, name: p.name, brandName: p.brandName })}
                       className="group rounded-2xl border border-black/10 bg-white hover:shadow-[0_20px_60px_rgba(0,0,0,0.08)] transition overflow-hidden"
                     >
                       <div className="aspect-[4/5] bg-black/[0.03] relative">

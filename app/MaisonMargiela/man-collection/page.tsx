@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Bookmark, Plus } from "lucide-react";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { productPath } from "@/lib/product-url";
 
 export const revalidate = 300;
 
@@ -235,7 +236,7 @@ export default async function MargielaMenPage() {
                   key={product.id}
                   className="group rounded-2xl overflow-hidden bg-white shadow-sm ring-1 ring-black/5 transition-transform hover:-translate-y-0.5 hover:shadow-md hover:ring-black/10"
                 >
-                  <Link href={`/product/${product.id}`} className="block">
+                  <Link href={productPath({ id: product.id, name: product.name, brandName: product.brandName })} className="block">
                     <div className="relative flex h-[280px] items-center justify-center bg-[#f4f4f4] px-4 py-5 sm:h-[330px]">
                       {product.imageUrl ? (
                         <img

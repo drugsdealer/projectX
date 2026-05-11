@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, Clock, TrendingUp } from "lucide-react";
 import { useAutocomplete } from "@/hooks/useAutocomplete";
 import { cn } from "@/lib/utils";
+import { productPath } from "@/lib/product-url";
 
 const HISTORY_KEY = "searchHistory.v1";
 const POPULAR = ["Yeezy", "Supreme", "Nike Dunk", "New Balance 990", "Adidas Campus"];
@@ -205,7 +206,7 @@ export function SearchBar({ isTransparent = false }: Props) {
                     key={p.id}
                     onClick={() => {
                       pushHistory(value);
-                      router.push(`/product/${p.id}`);
+                      router.push(productPath({ id: p.id, name: p.name, brandName: p.brandName }));
                       setOpen(false);
                       setValue("");
                     }}

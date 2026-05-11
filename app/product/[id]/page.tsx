@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import ProductPageClient from "./ProductPageClient";
 import { safeJsonLd } from "@/lib/json-ld";
 import { withDbRetry } from "@/lib/db-retry";
+import { parseProductPathId, productPath } from "@/lib/product-url";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
 
@@ -13,8 +14,8 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const productId = Number(id);
-  if (!Number.isFinite(productId) || productId <= 0) return {};
+  const productId = parseProductPathId(id);
+  if (!productId) return {};
 
   const product = await withDbRetry(
     () => prisma.product.findUnique({
@@ -35,6 +36,7 @@ export async function generateMetadata({
 
   const brandName = product.Brand?.name;
   const title = brandName ? `${product.name} ${brandName}` : product.name;
+  const prettyPath = productPath({ id: productId, name: product.name, brandName });
   const price = product.price ? `${Number(product.price).toLocaleString("ru-RU")} ₽` : "";
   const description = product.description
     ? product.description.slice(0, 160)
@@ -49,7 +51,7 @@ export async function generateMetadata({
       type: "website",
       title: `${title} — Stage Store`,
       description,
-      url: `${SITE_URL}/product/${id}`,
+      url: `${SITE_URL}${prettyPath}`,
       images,
     },
     twitter: {
@@ -59,7 +61,7 @@ export async function generateMetadata({
       images: product.imageUrl ? [product.imageUrl] : [],
     },
     alternates: {
-      canonical: `${SITE_URL}/product/${id}`,
+      canonical: `${SITE_URL}${prettyPath}`,
     },
   };
 }
@@ -89,11 +91,11 @@ export default async function ProductPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const productId = Number(id);
+  const productId = parseProductPathId(id);
 
   let jsonLd: object | null = null;
 
-  if (Number.isFinite(productId) && productId > 0) {
+  if (productId) {
     const p = await withDbRetry(
       () => prisma.product.findUnique({
         where: { id: productId },
@@ -113,6 +115,7 @@ export default async function ProductPage({
       const brandName = p.Brand?.name;
       const categoryName = p.Category?.name;
       const categorySlug = p.Category?.slug;
+      const prettyPath = productPath({ id: productId, name: p.name, brandName });
 
       const productDescription = p.description
         ? p.description.slice(0, 5000)
@@ -128,13 +131,13 @@ export default async function ProductPage({
               ...(categoryName && categorySlug
                 ? [{ "@type": "ListItem", position: 2, name: categoryName, item: `${SITE_URL}/category/${categorySlug}` }]
                 : []),
-              { "@type": "ListItem", position: categorySlug ? 3 : 2, name: p.name, item: `${SITE_URL}/product/${id}` },
+              { "@type": "ListItem", position: categorySlug ? 3 : 2, name: p.name, item: `${SITE_URL}${prettyPath}` },
             ],
           },
           {
             "@type": "Product",
             name: p.name,
-            url: `${SITE_URL}/product/${id}`,
+            url: `${SITE_URL}${prettyPath}`,
             image: p.imageUrl || `${SITE_URL}/img/placeholder.svg`,
             description: productDescription,
             brand: {
@@ -147,7 +150,7 @@ export default async function ProductPage({
                     "@type": "Offer",
                     price: Number(p.price),
                     priceCurrency: "RUB",
-                    url: `${SITE_URL}/product/${id}`,
+                    url: `${SITE_URL}${prettyPath}`,
                     availability: "https://schema.org/InStock",
                     itemCondition: "https://schema.org/NewCondition",
                     seller: {

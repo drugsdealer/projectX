@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { productPath } from '@/lib/product-url';
 
 export type CategoryProduct = {
   id: string;
@@ -193,7 +194,7 @@ export default function CategoryClient({
       <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {visible.map((p) => {
           const img = pickMainImage(p);
-          const href = `/product/${p.id}`;
+          const href = productPath({ id: p.id, name: p.name, brandName: p.brandName });
 
           return (
             <Link

@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
 import dynamic from "next/dynamic";
 import { useUser } from "@/user/UserContext";
+import { productPath } from "@/lib/product-url";
 
 const CheckoutModal = dynamic(() => import("@/components/CheckoutModal"), { ssr: false });
 import { useRouter } from "next/navigation";
@@ -734,7 +735,7 @@ useEffect(() => {
                   ))
                 ) : (
                   recentProducts.map((item, index) => (
-                    <Link key={`${item.id}-${index}`} href={`/product/${item.id}`}>
+                    <Link key={`${item.id}-${index}`} href={productPath({ id: item.id, name: item.name })}>
                       <div className="group border rounded-xl overflow-hidden shadow hover:shadow-lg transition-all bg-white hover:ring-2 hover:ring-gray-300">
                         <div className="relative w-full h-48 bg-gray-100">
                           <Image
@@ -798,7 +799,7 @@ useEffect(() => {
               const productId = (item as any).productId || (item as any).id;
 
               return (
-                <Link key={index} href={`/product/${productId}`} className="block">
+                <Link key={index} href={productPath({ id: productId, name: item.name })} className="block">
                   <div
                     className={`flex flex-col sm:flex-row gap-4 sm:gap-6 p-4 sm:p-5 rounded-2xl border ${
                       isPostponed ? 'border-dashed border-gray-300 bg-gray-50' : 'border-gray-200 bg-white/90'

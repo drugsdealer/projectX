@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { ProductWithImages } from './types';
 import { useUser } from '@/user/UserContext';
 import { trackAnalyticsEvent } from '@/lib/analytics-client';
+import { productPath } from '@/lib/product-url';
 import { AnimatePresence, motion } from 'framer-motion';
 
 // -- localStorage keys (keep both for backward compatibility) --
@@ -591,7 +592,7 @@ export default function BrandClient({
                 return (
                   <Link
                     key={item.id}
-                    href={`/product/${item.id}`}
+                    href={productPath({ id: item.id, name: (item as any).name, brand: brandName })}
                     className={`group relative overflow-hidden rounded-[26px] border border-black/10 bg-white/75 p-3 shadow-[0_18px_45px_rgba(0,0,0,0.12)] transition hover:-translate-y-1 ${
                       idx === 1 ? 'mt-10' : idx === 2 ? 'mt-20 hidden sm:block' : ''
                     }`}
@@ -753,7 +754,7 @@ export default function BrandClient({
         {filtered.slice(0, limit).map((item) => (
           <Link
             key={item.id}
-            href={`/product/${item.id}`}
+            href={productPath({ id: item.id, name: (item as any).name, brand: brandName })}
             className="group relative rounded-2xl overflow-hidden bg-transparent border border-black/10 shadow-[0_14px_36px_rgba(0,0,0,0.08)] hover:shadow-[0_18px_48px_rgba(0,0,0,0.12)] transition-transform hover:-translate-y-1"
           >
             <div className="relative w-full h-64 bg-transparent">

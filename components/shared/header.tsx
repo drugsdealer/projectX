@@ -15,6 +15,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useUser } from "@/user/UserContext";
 import { useAutocomplete } from "@/hooks/useAutocomplete";
 import { SearchBar } from "./SearchBar";
+import { productPath } from "@/lib/product-url";
 
 type ProductLite = {
   id: number | string;
@@ -633,7 +634,7 @@ useLayoutEffect(() => {
                       {acProducts.map((p) => (
                         <button
                           key={p.id}
-                          onClick={() => { addToHistory(mSearchValue.trim()); router.push(`/product/${p.id}`); closeMobileSearch(); }}
+                          onClick={() => { addToHistory(mSearchValue.trim()); router.push(productPath({ id: p.id, name: p.name, brandName: (p as any).brandName ?? (p as any).Brand?.name ?? (p as any).brand?.name })); closeMobileSearch(); }}
                           className={cn(
                             "w-full flex items-center gap-2.5 px-2 py-2 rounded-lg text-left",
                             isStageMode ? "hover:bg-white/5" : "hover:bg-black/5"
@@ -707,7 +708,7 @@ useLayoutEffect(() => {
                         <div className="text-xs opacity-60 mb-2">Предложенные товары</div>
                         <div className="grid grid-cols-3 gap-3">
                           {randomProducts.map((p) => (
-                            <button key={String(p.id)} onClick={() => { router.push(`/product/${p.id}`); closeMobileSearch(); }} className="text-left">
+                            <button key={String(p.id)} onClick={() => { router.push(productPath({ id: p.id, name: p.name, brandName: (p as any).brandName ?? (p as any).Brand?.name ?? (p as any).brand?.name })); closeMobileSearch(); }} className="text-left">
                               <div className="aspect-square w-full overflow-hidden rounded-md bg-black/5">
                                 {p.imageUrl
                                   ? <Image src={p.imageUrl} alt={p.name} width={200} height={200} className="w-full h-full object-cover" />

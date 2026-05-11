@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { normalizeCategorySlug, resolveProductTaxonomy } from "@/lib/catalog-taxonomy";
+import { parseProductPathId } from "@/lib/product-url";
 
 const PUBLIC_CACHE_HEADERS = {
   "Cache-Control": "public, max-age=30, s-maxage=120, stale-while-revalidate=300",
@@ -82,9 +83,9 @@ export async function GET(
 ) {
   try {
     const { id } = await ctx.params;
-    const productId = Number(id);
+    const productId = parseProductPathId(id);
 
-    if (!Number.isFinite(productId) || productId <= 0) {
+    if (!productId) {
       return NextResponse.json(
         { success: false, message: "Invalid product id" },
         { status: 400 }

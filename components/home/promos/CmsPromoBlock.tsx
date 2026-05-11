@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { shouldBypassNextImageOptimization } from '@/lib/media';
+import { productPath } from '@/lib/product-url';
 
 import type { HomeCmsPromoConfig, HomePromoProduct } from '@/components/home/promos/types';
 
@@ -69,7 +70,7 @@ export default function CmsPromoBlock({ promo, items }: Props) {
             {items.slice(0, promo.maxItems || 8).map((item) => (
               <Link
                 key={`${promo.id}-${item.id}`}
-                href={`/product/${item.id}`}
+                href={productPath({ id: item.id, name: item.name, brandName: item.brandName })}
                 className="group relative w-[162px] shrink-0 snap-start overflow-hidden rounded-2xl border border-black/15 bg-white/90 shadow-[0_10px_24px_rgba(16,16,16,0.08)] transition hover:-translate-y-1 sm:w-[186px]"
               >
                 <div

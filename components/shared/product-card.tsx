@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { shouldBypassNextImageOptimization } from "@/lib/media";
+import { productPath } from "@/lib/product-url";
+import { slugify } from "@/lib/slug";
 
 interface Variant {
   price: number;
@@ -40,8 +42,6 @@ const getMinPrice = (product: Props): number => {
 
   return product.price || 0;
 };
-
-const slugify = (s: string) => s.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '');
 
 export const ProductCard: React.FC<Props> = ({
   id,
@@ -217,7 +217,7 @@ export const ProductCard: React.FC<Props> = ({
 
   return (
     <Link
-      href={`/product/${id}${selectedColorKey ? `?color=${encodeURIComponent(String(selectedColorKey))}` : ""}`}
+      href={`${productPath({ id, name, brand })}${selectedColorKey ? `?color=${encodeURIComponent(String(selectedColorKey))}` : ""}`}
       className="block group"
       id={`product-${id}`}
       data-product-id={id}

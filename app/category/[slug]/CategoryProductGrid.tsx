@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { shouldBypassNextImageOptimization } from '@/lib/media';
+import { productPath } from '@/lib/product-url';
 
 type CategoryProduct = {
   id: string;
@@ -433,7 +434,7 @@ export default function CategoryProductGrid({ products }: { products: CategoryPr
         return (
             <Link
               key={p.id}
-              href={`/product/${p.id}`}
+              href={productPath({ id: p.id, name: p.name })}
               className="group overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.06)] transition hover:-translate-y-1 hover:shadow-[0_22px_60px_rgba(0,0,0,0.12)]"
               onClickCapture={(e) => {
                 if (!isTouchDevice) return;

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { productPath } from "@/lib/product-url";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600;
@@ -43,7 +44,7 @@ export async function GET() {
       const price = Number(p.price).toFixed(2);
       const category = p.Category?.name ? escapeXml(p.Category.name) : "Одежда и аксессуары";
       const brand = p.Brand?.name ? escapeXml(p.Brand.name) : "Stage Store";
-      const link = `${SITE_URL}/product/${p.id}`;
+      const link = `${SITE_URL}${productPath({ id: p.id, name: p.name, brandName: p.Brand?.name })}`;
       const image = escapeXml(p.imageUrl!);
 
       return `

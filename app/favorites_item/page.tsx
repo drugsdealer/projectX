@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
+import { productPath } from "@/lib/product-url";
 
 type FavItem = {
   id: number | string;
@@ -443,7 +444,7 @@ export default function FavoritesPage() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -8, scale: 0.99 }}
                         transition={{ type: "spring", stiffness: 320, damping: 30, mass: 0.8 }}
-                        onClick={() => router.push(`/product/${item.id}`)}
+                        onClick={() => router.push(productPath({ id: item.id, name: item.name, brand: item.brand }))}
                         className="group relative rounded-2xl border border-gray-200 bg-white/90 shadow-sm hover:shadow-xl transition overflow-hidden cursor-pointer"
                       >
                         <div className="p-3 sm:p-4 flex flex-col gap-2">
@@ -512,7 +513,7 @@ export default function FavoritesPage() {
                           <div className="text-sm sm:text-base font-semibold line-clamp-2 mt-1">{item.name}</div>
                           <div className="hidden sm:flex items-center justify-between gap-2">
                             <Link
-                              href={`/product/${item.id}`}
+                              href={productPath({ id: item.id, name: item.name, brand: item.brand })}
                               onClick={(e) => e.stopPropagation()}
                               className="inline-flex items-center gap-1.5 sm:gap-2 rounded-xl bg-black text-white px-3 py-2 text-xs sm:text-sm font-semibold shadow-lg shadow-black/15 transition hover:-translate-y-0.5"
                             >

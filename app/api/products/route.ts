@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withDbRetry } from "@/lib/db-retry";
+import { parseProductPathId } from "@/lib/product-url";
 import {
   getSubcategoryAliases,
   mapUiCategoryToDb,
@@ -346,8 +347,8 @@ export async function GET(req: Request) {
     // DETAIL: /api/products?id=123
     // ----------------------------------------------------
     if (idParam) {
-      const idNum = Number(idParam);
-      if (!Number.isFinite(idNum) || idNum <= 0) {
+      const idNum = parseProductPathId(idParam);
+      if (!idNum) {
         return NextResponse.json(
           { success: false, message: "Invalid id" },
           { status: 400 }

@@ -34,6 +34,7 @@ import SizeSelector from '@/components/shared/SizeSelector';
 import { useToast } from "@/context/ToastContext";
 import { useCart } from "@/context/CartContext";
 import { shouldBypassNextImageOptimization } from "@/lib/media";
+import { parseProductPathId, productPath } from "@/lib/product-url";
 import { useUser } from "@/user/UserContext";
 import "swiper/css";
 import "swiper/css/mousewheel";
@@ -334,7 +335,7 @@ const SizeChartTable = ({
 export default function ProductPage() {
   const { id } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
-  const productId = isNaN(Number(id)) ? -1 : Number(id);
+  const productId = parseProductPathId(id) ?? -1;
   const [product, setProduct] = useState<Product | null>(null);
   // сырой объект из API, без normalizeProduct — нужен как безопасный источник размеров/объёма
   const [rawProduct, setRawProduct] = useState<any | null>(null);
@@ -588,9 +589,13 @@ const { user } = useUser();
   const [showSizeChart, setShowSizeChart] = useState(false);
   // Restock notify modal state
   const [showRestockModal, setShowRestockModal] = useState(false);
-  const [restockEmail, setRestockEmail] = useState("");
+  const [restockContact, setRestockContact] = useState("");
+  const [restockSubmitting, setRestockSubmitting] = useState(false);
   const [restockTouched, setRestockTouched] = useState(false);
-  const emailValid = React.useMemo(() => /^(?:[a-zA-Z0-9_.'%+-]+)@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/.test(restockEmail), [restockEmail]);
+  const contactValid = React.useMemo(() => {
+    const value = restockContact.trim();
+    return value.length >= 5 && value.length <= 160;
+  }, [restockContact]);
   // Restock size state and available sizes helper
   const [restockSize, setRestockSize] = useState<string | number | null>(null);
   const availableSizes: Array<string | number> = React.useMemo(() => {
@@ -1024,8 +1029,7 @@ const handleCancel = () => {
     const isAvailable = Array.isArray(available) ? available.map(String).includes(String(size)) : true;
     if (!isAvailable) {
       // Открываем модалку подписки на поступление и запоминаем желаемый размер
-      setRestockSize(size);
-      setShowRestockModal(true);
+      openRestockModal(size);
       // Не выбираем недоступный размер
       return;
     }
@@ -1035,24 +1039,68 @@ const handleCancel = () => {
 
   const toggleSizeChart = () => setShowSizeChart(prev => !prev);
 
-  const handleRestockSubmit = () => {
-    if (!emailValid || !product) return;
+  const openRestockModal = (size?: string | number | null) => {
+    setRestockSize(size ?? null);
+    setRestockTouched(false);
+    if (!restockContact.trim()) {
+      const email = String((user as any)?.email ?? "").trim();
+      if (email) {
+        setRestockContact(email);
+      }
+    }
+    setShowRestockModal(true);
+  };
+
+  const handleRestockSubmit = async () => {
+    if (!contactValid || !product || restockSubmitting) return;
+    setRestockSubmitting(true);
     try {
+      const contact = restockContact.trim();
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: product.id,
+          productName: product.name,
+          brand: primaryBrand,
+          size: restockSize,
+          contact,
+          pageUrl: window.location.href,
+        }),
+      });
+      if (!res.ok) throw new Error("waitlist_failed");
+
       const key = 'restockRequests';
       const prev = JSON.parse(localStorage.getItem(key) || '[]');
       prev.unshift({
         productId: product.id,
         productName: product.name,
         size: restockSize,
-        email: restockEmail,
+        email: contact,
+        contact,
         time: Date.now(),
       });
       localStorage.setItem(key, JSON.stringify(prev.slice(0, 100)));
       setShowRestockModal(false);
       setRestockTouched(false);
-    } catch (_) {
-      setShowRestockModal(false);
+      showToast({
+        title: "Заявка принята",
+        details: restockSize != null ? `Сообщим, когда появится размер ${restockSize}` : "Свяжемся, когда найдем нужный размер",
+      });
+    } catch {
+      showToast({
+        title: "Не удалось отправить заявку",
+        details: "Попробуйте еще раз или напишите в Telegram",
+      });
+    } finally {
+      setRestockSubmitting(false);
     }
+  };
+
+  const closeRestockModal = () => {
+    if (restockSubmitting) return;
+      setShowRestockModal(false);
+    setRestockTouched(false);
   };
 
   // Helper functions
@@ -1916,6 +1964,13 @@ const handleCancel = () => {
             ) : (requiresSizeSelection() && product.category !== 'bags') ? (
               <div className="space-y-4 mt-6">
                 {renderSizeSelector()}
+                <button
+                  type="button"
+                  onClick={() => openRestockModal(null)}
+                  className="text-sm font-medium text-black/60 underline underline-offset-4 transition hover:text-black"
+                >
+                  Не нашли свой размер? Оставьте контакт, мы проверим поставщиков
+                </button>
                 {product.category !== 'perfume' && (
                   <p
                     onClick={toggleSizeChart}
@@ -2001,7 +2056,7 @@ const handleCancel = () => {
                     return (
                       <Link
                         key={colorProduct.id}
-                        href={`/product/${colorProduct.id}`}
+                        href={productPath({ id: colorProduct.id, name: colorProduct.name })}
                         className="group flex items-center gap-2.5 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:border-black transition-colors duration-150"
                       >
                         <div className="relative w-16 h-16 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-50 shrink-0">
@@ -2126,7 +2181,7 @@ const handleCancel = () => {
                             return (
                               <Link
                                 key={colorProduct.id}
-                                href={`/product/${colorProduct.id}`}
+                                href={productPath({ id: colorProduct.id, name: colorProduct.name })}
                                 onPointerDown={handleColorVariantPointerDown}
                                 onPointerMove={handleColorVariantPointerMove}
                                 onPointerCancel={() => {
@@ -2299,7 +2354,7 @@ const handleCancel = () => {
               return (
                 <SwiperSlide key={similarProduct.id} style={{ width: '190px' }}>
                   <Link
-                    href={`/product/${similarProduct.id}`}
+                    href={productPath({ id: similarProduct.id, name: similarProduct.name, brand: (similarProduct as any).brand })}
                     className="block h-full group relative"
                   >
                     <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
@@ -2380,7 +2435,7 @@ const handleCancel = () => {
                 return (
                   <SwiperSlide key={best.id} style={{ width: '190px' }}>
                     <Link
-                      href={`/product/${best.id}`}
+                      href={productPath({ id: best.id, name: best.name, brand: (best as any).brand })}
                       className="block h-full group relative"
                   >
                     <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
@@ -2436,7 +2491,7 @@ const handleCancel = () => {
                 const minInfo = getMinPriceInfo(r);
                 return (
                   <SwiperSlide key={`recent-${r.id}`} style={{ width: '190px' }}>
-                    <Link href={`/product/${r.id}`} className="block h-full group relative">
+                    <Link href={productPath({ id: r.id, name: r.name, brand: (r as any).brand })} className="block h-full group relative">
                       <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
                         <div className="relative aspect-square w-full bg-gray-50 overflow-hidden">
                           <Image
@@ -2529,31 +2584,31 @@ const handleCancel = () => {
                   </h3>
                 </div>
                 <p className="text-sm text-gray-600 mb-4">
-                  Оставьте email — мы уведомим вас, как только размер появится на складе.
+                  Оставьте email, телефон или Telegram — мы проверим поставщиков и сообщим, когда размер появится.
                 </p>
                 <div className="flex items-center gap-2">
                   <input
-                    type="email"
-                    value={restockEmail}
-                    onChange={(e) => setRestockEmail(e.target.value)}
+                    type="text"
+                    value={restockContact}
+                    onChange={(e) => setRestockContact(e.target.value)}
                     onBlur={() => setRestockTouched(true)}
-                    placeholder="Ваш email"
+                    placeholder="Email, телефон или @telegram"
                     className="flex-1 rounded-lg border border-gray-300 px-3 py-2 outline-none focus:ring-2 focus:ring-black/60"
                   />
                   <button
-                    disabled={!emailValid}
+                    disabled={!contactValid || restockSubmitting}
                     onClick={handleRestockSubmit}
-                    className={`px-4 py-2 rounded-lg text-white transition ${emailValid ? 'bg-black hover:bg-gray-800' : 'bg-gray-400 cursor-not-allowed'}`}
+                    className={`px-4 py-2 rounded-lg text-white transition ${contactValid && !restockSubmitting ? 'bg-black hover:bg-gray-800' : 'bg-gray-400 cursor-not-allowed'}`}
                   >
-                    Отправить
+                    {restockSubmitting ? '...' : 'Отправить'}
                   </button>
                 </div>
-                {restockTouched && !emailValid && (
-                  <p className="mt-2 text-xs text-red-600">Проверьте корректность email.</p>
+                {restockTouched && !contactValid && (
+                  <p className="mt-2 text-xs text-red-600">Укажите контакт для связи.</p>
                 )}
                 <button
                   className="mt-4 text-sm text-gray-500 hover:text-black"
-                  onClick={() => setShowRestockModal(false)}
+                  onClick={closeRestockModal}
                 >
                   Закрыть
                 </button>

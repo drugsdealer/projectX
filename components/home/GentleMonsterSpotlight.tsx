@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import type { HomePromoProduct } from '@/components/home/promos/types';
 import { shouldBypassNextImageOptimization } from '@/lib/media';
+import { productPath } from '@/lib/product-url';
 
 const BANNER =
   'https://res.cloudinary.com/dc57mpiao/image/upload/v1774993505/plp_0_pc_3840_1800_bnvuth.avif';
@@ -149,7 +150,7 @@ export default function GentleMonsterSpotlight({ items = [] }: Props) {
             {items.slice(0, 8).map((item) => (
               <Link
                 key={item.id}
-                href={`/product/${item.id}`}
+                href={productPath({ id: item.id, name: item.name, brandName: item.brandName })}
                 style={{
                   display: 'block',
                   textDecoration: 'none',
@@ -196,7 +197,7 @@ export default function GentleMonsterSpotlight({ items = [] }: Props) {
           {items.slice(0, 8).map((item) => (
             <Link
               key={item.id}
-              href={`/product/${item.id}`}
+              href={productPath({ id: item.id, name: item.name, brandName: item.brandName })}
               style={{
                 display: 'block',
                 textDecoration: 'none',
