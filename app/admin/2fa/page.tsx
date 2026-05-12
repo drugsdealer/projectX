@@ -40,6 +40,7 @@ export default function Admin2FAPage() {
     const res = await fetch("/api/admin/2fa/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({ code }),
     });
     const data = await res.json().catch(() => ({}));
@@ -51,7 +52,7 @@ export default function Admin2FAPage() {
     // Full page reload ensures middleware re-evaluates the fresh admin_2fa_ok cookie.
     // router.replace() does soft navigation which can silently fail.
     setTimeout(() => {
-      window.location.href = "/admin";
+      window.location.assign("/admin");
     }, 500);
   };
 

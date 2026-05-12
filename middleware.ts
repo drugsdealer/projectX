@@ -114,19 +114,6 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/api/auth/password-reset") ||
     pathname.startsWith("/api/auth/me") ||
     pathname.startsWith("/api/auth/logout");
-  const isPrefetchRequest =
-    request.headers.get("purpose") === "prefetch" ||
-    request.headers.get("next-router-prefetch") === "1" ||
-    request.headers.get("x-middleware-prefetch") === "1";
-  const accept = request.headers.get("accept") || "";
-  const isHtmlNavigation =
-    request.method === "GET" &&
-    !isPrefetchRequest &&
-    (
-      request.headers.get("sec-fetch-mode") === "navigate" ||
-      request.headers.get("sec-fetch-dest") === "document" ||
-      accept.includes("text/html")
-    );
   const applySecurityHeaders = (res: NextResponse) => {
     const reqId = request.headers.get("x-request-id") || crypto.randomUUID();
     res.headers.set("X-Request-Id", reqId);
@@ -268,17 +255,6 @@ export async function middleware(request: NextRequest) {
       const homeUrl = new URL("/", request.url);
       return applySecurityHeaders(NextResponse.redirect(homeUrl));
     }
-  }
-
-  const shouldClear2fa =
-    !isAdminArea &&
-    isHtmlNavigation &&
-    Boolean(request.cookies.get("admin_2fa_ok")?.value);
-
-  if (shouldClear2fa) {
-    const res = NextResponse.next();
-    res.cookies.set("admin_2fa_ok", "", { path: "/", maxAge: 0 });
-    return applySecurityHeaders(res);
   }
 
   return applySecurityHeaders(NextResponse.next());

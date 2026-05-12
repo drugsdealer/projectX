@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { enforceSameOrigin } from "@/lib/security";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { createHmac, timingSafeEqual } from "crypto";
+import { isAdminEmail } from "@/lib/admin-emails";
 
 const ADMIN_2FA_SECRET =
   process.env.ADMIN_2FA_HMAC_SECRET ||
@@ -52,10 +53,19 @@ export async function getAdminUser(): Promise<AdminUser | null> {
   if (!userId) return null;
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, role: true },
+    select: { id: true, email: true, role: true, deletedAt: true },
   });
-  if (!user || user.role !== "ADMIN") return null;
-  return user;
+  if (!user || user.deletedAt) return null;
+  if (user.role === "ADMIN") return user;
+  if (!isAdminEmail(user.email)) return null;
+
+  const promoted = await prisma.user.update({
+    where: { id: user.id },
+    data: { role: "ADMIN" as any },
+    select: { id: true, email: true, role: true },
+  }).catch(() => null);
+
+  return promoted ?? { id: user.id, email: user.email, role: "ADMIN" };
 }
 
 export async function requireAdminPage() {
