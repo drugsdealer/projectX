@@ -52,7 +52,7 @@ export default function LoginPage() {
           router.push("/verify-email");
           return;
         }
-        setErr(data?.error || "Неверный email или пароль");
+        setErr(data?.message || data?.error || "Неверный email или пароль");
         return;
       }
 

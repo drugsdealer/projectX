@@ -45,7 +45,15 @@ export async function GET() {
       return res;
     }
 
-    return NextResponse.json({ success: true, user }, { status: 200 });
+    const verifiedAt = user.verified;
+    return NextResponse.json({
+      success: true,
+      user: {
+        ...user,
+        verified: Boolean(verifiedAt && verifiedAt.getTime() > 0),
+        verifiedAt,
+      },
+    }, { status: 200 });
   } catch (e) {
     console.error('[auth.me] error');
     return NextResponse.json({ success: false, user: null }, { status: 500 });

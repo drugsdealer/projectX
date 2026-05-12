@@ -28,7 +28,7 @@ export default function AdminUsersPage() {
     } catch (e: any) {
       setError(e?.message || "Не удалось загрузить пользователей");
     } finally {
-      setLoading(false);
+      setLoading(false); 
     }
   };
 

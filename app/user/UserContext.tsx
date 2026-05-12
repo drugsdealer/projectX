@@ -44,8 +44,24 @@ function pickDisplayName(src: any): string {
   return combo || PLACEHOLDER_NAME;
 }
 
+function normalizeVerified(value: any): boolean {
+  if (value === true) return true;
+  if (value === false || value == null) return false;
+  if (value instanceof Date) return value.getTime() > 0;
+  if (typeof value === "number") return value > 0;
+  if (typeof value === "string") {
+    const raw = value.trim().toLowerCase();
+    if (!raw || raw === "false" || raw === "0" || raw === "null") return false;
+    const ts = Date.parse(raw);
+    if (Number.isFinite(ts)) return ts > 0;
+    return raw === "true";
+  }
+  return false;
+}
+
 function buildUserFromLoose(src: any): User | null {
   if (!src) return null;
+  const verified = normalizeVerified(src.verified ?? src.confirmed ?? src.verifiedAt);
   const u: User = {
     id: src.id ?? undefined,
     name: pickDisplayName(src),
@@ -53,8 +69,8 @@ function buildUserFromLoose(src: any): User | null {
     email: src.email ?? undefined,
     phone: src.phone ?? undefined,
     isGuest: false,
-    verified: src.verified ?? src.confirmed ?? false,
-    confirmed: src.verified ?? src.confirmed ?? false,
+    verified,
+    confirmed: verified,
     address: src.address ?? undefined,
     gender: src.gender ?? undefined,
     birthDate: src.birthDate ? new Date(src.birthDate).toISOString() : undefined,
@@ -259,7 +275,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         inFlight = false;
       }
     };
-    const interval = window.setInterval(check, 5000);
+    const interval = window.setInterval(check, 2000);
     window.addEventListener("focus", check);
     document.addEventListener("visibilitychange", check);
     return () => {
@@ -320,8 +336,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       email,
       phone,
       isGuest: false,
-      verified: userData.verified ?? userData.confirmed ?? false,
-      confirmed: userData.verified ?? userData.confirmed ?? false,
+      verified: normalizeVerified(userData.verified ?? userData.confirmed ?? userData.verifiedAt),
+      confirmed: normalizeVerified(userData.verified ?? userData.confirmed ?? userData.verifiedAt),
       address: userData.address,
       gender: userData.gender,
       birthDate: userData.birthDate,

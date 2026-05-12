@@ -40,6 +40,21 @@ function formatPhone(v: string) {
   return out.trim();
 }
 
+function normalizeVerified(value: any): boolean {
+  if (value === true) return true;
+  if (value === false || value == null) return false;
+  if (value instanceof Date) return value.getTime() > 0;
+  if (typeof value === "number") return value > 0;
+  if (typeof value === "string") {
+    const raw = value.trim().toLowerCase();
+    if (!raw || raw === "false" || raw === "0" || raw === "null") return false;
+    const ts = Date.parse(raw);
+    if (Number.isFinite(ts)) return ts > 0;
+    return raw === "true";
+  }
+  return false;
+}
+
 // helper: show only first and last name in UI/sidebar/cookie
 function firstLast(full: string): string {
   const parts = normalizeName(full).split(/\s+/).filter(Boolean);
@@ -63,7 +78,7 @@ function readCookieJSON<T = any>(name: string): T | null {
 
 export default function UserInfo() {
   const { user, refresh } = useUser();
-  const isVerified = Boolean((user as any)?.verified);
+  const isVerified = normalizeVerified((user as any)?.verified ?? (user as any)?.verifiedAt);
   const RUS_CITIES = [
   "Москва","Санкт-Петербург","Казань","Екатеринбург","Новосибирск",
   "Нижний Новгород","Самара","Ростов-на-Дону","Краснодар","Воронеж",
@@ -99,7 +114,7 @@ export default function UserInfo() {
     phone: user?.phone,
     address: (user as any)?.address,
     email: user?.email,
-    verified: (user as any)?.verified,
+    verified: normalizeVerified((user as any)?.verified ?? (user as any)?.verifiedAt),
     gender: (user as any)?.gender,
     birthDate: (user as any)?.birthDate,
     city: (user as any)?.city,
@@ -138,7 +153,7 @@ export default function UserInfo() {
           phone: u.phone ?? prev.phone,
           address: u.address ?? prev.address,
           email: u.email ?? prev.email,
-          verified: u.verified ?? prev.verified,
+          verified: normalizeVerified(u.verified ?? u.verifiedAt ?? prev.verified),
           gender: u.gender ?? prev.gender,
           birthDate: u.birthDate ?? prev.birthDate,
           city: u.city ?? prev.city,
@@ -165,7 +180,7 @@ export default function UserInfo() {
         phone: ck.phone ?? prev.phone,
         address: ck.address ?? prev.address,
         email: ck.email ?? prev.email,
-        verified: ck.verified ?? prev.verified,
+        verified: normalizeVerified(ck.verified ?? ck.verifiedAt ?? prev.verified),
         gender: ck.gender ?? prev.gender,
         birthDate: ck.birthDate ?? prev.birthDate,
         city: ck.city ?? prev.city,
@@ -199,7 +214,7 @@ export default function UserInfo() {
       phone: user?.phone,
       address: (user as any)?.address,
       email: user?.email,
-      verified: (user as any)?.verified,
+      verified: normalizeVerified((user as any)?.verified ?? (user as any)?.verifiedAt),
       gender: (user as any)?.gender,
       birthDate: (user as any)?.birthDate,
       city: (user as any)?.city,
@@ -235,6 +250,11 @@ export default function UserInfo() {
     const draftEmpty = Object.values(draft).filter(v => !v || (v as string).trim() === '').length;
     const srvEmpty = Object.values(srv).filter(v => !v || (v as string).trim() === '').length;
     if (hydratedRef.current && srvEmpty >= draftEmpty) {
+      setViewUser(prev => ({
+        ...prev,
+        email: user?.email ?? prev.email,
+        verified: normalizeVerified((user as any)?.verified ?? (user as any)?.verifiedAt),
+      }));
       return;
     }
 
@@ -242,7 +262,7 @@ export default function UserInfo() {
       ...prev,
       ...srv,
       email: user?.email,
-      verified: (user as any)?.verified,
+      verified: normalizeVerified((user as any)?.verified ?? (user as any)?.verifiedAt),
     }));
     setDraft(srv);
   }, [user]);
@@ -480,7 +500,7 @@ export default function UserInfo() {
           birthDate: after.birthDate,
           city: after.city,
           email: user?.email ?? null,
-          verified: viewUser.verified ?? false,
+          verified: normalizeVerified(viewUser.verified),
         };
         localStorage.setItem('ui_user_data', JSON.stringify(uiPayload));
         document.cookie = `ui_user_data=${encodeURIComponent(JSON.stringify(uiPayload))}; Path=/; SameSite=Lax`;

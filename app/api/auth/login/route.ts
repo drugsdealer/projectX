@@ -4,7 +4,7 @@ export const revalidate = 0;
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { clearSessionOnResponse, clearSessionTokenOnResponse, setSessionOnResponse, setSessionTokenOnResponse } from "../../_utils/session";
+import { attachUiCookies, setSessionOnResponse, setSessionTokenOnResponse } from "../../_utils/session";
 import { cookies as nextCookies } from "next/headers";
 import { handleApiError } from "@/lib/errors";
 import { logAction } from "@/lib/logAction";
@@ -116,6 +116,43 @@ const geoByIp = async (ip?: string) => {
   }
 };
 
+async function createSessionTokenForUser(req: Request, userId: number, fallbackIp?: string) {
+  const hdr = req.headers;
+  const ipAddr = pickClientIp(req, fallbackIp);
+  let { city, country } = pickGeo(req);
+  const ua = hdr.get("user-agent") || "";
+  const parsed = parseUserAgentInfo(
+    ua,
+    hdr.get("sec-ch-ua-platform"),
+    hdr.get("sec-ch-ua-mobile")
+  );
+  if (!city && !country) {
+    const geo = await geoByIp(ipAddr);
+    city = geo.city || city;
+    country = geo.country || country;
+  }
+
+  const sessionToken = randomBytes(32).toString("hex");
+  const hasAny = await prisma.userSession.findFirst({
+    where: { userId },
+    select: { id: true },
+  });
+  await prisma.userSession.create({
+    data: {
+      userId,
+      token: sessionToken,
+      isPrimary: !hasAny,
+      ip: ipAddr,
+      city,
+      country,
+      device: parsed.device,
+      os: parsed.os,
+      userAgent: ua.slice(0, 500),
+    },
+  });
+  return sessionToken;
+}
+
 // Логин по email+password. Ставит httpOnly куку `session_user_id`,
 // которую читает твой getSessionUserId() / getUserIdFromRequest().
 export async function POST(req: Request) {
@@ -205,14 +242,35 @@ export async function POST(req: Request) {
       if (updated) user = updated;
     }
 
+    let sessionToken = "";
+    try {
+      sessionToken = await createSessionTokenForUser(req, user.id, ip || undefined);
+    } catch (e) {
+      console.error("[LOGIN] failed to create DB session");
+      return NextResponse.json(
+        { success: false, message: "Не удалось создать сессию. Попробуйте войти ещё раз." },
+        { status: 503 }
+      );
+    }
+
+    const safeUser = {
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+      verified: true,
+    };
+
     const res = NextResponse.json(
-      { success: true, user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role } },
+      { success: true, user: safeUser },
       { status: 200 }
     );
 
     const isProd = process.env.NODE_ENV === "production";
     // Ставит основную httpOnly куку сессии (session_user_id)
     setSessionOnResponse(res, user.id);
+    setSessionTokenOnResponse(res, sessionToken);
+    attachUiCookies(res, safeUser);
 
     // Совместимость: часть кода читает `uid`. Дублируем id в эту куку.
     res.cookies.set("uid", String(user.id), {
@@ -246,64 +304,6 @@ export async function POST(req: Request) {
       });
     } catch (e) {
       console.error("[LOGIN] failed to write audit log:");
-    }
-
-    let sessionMeta: {
-      ipAddr?: string;
-      city?: string;
-      country?: string;
-      device?: string;
-      os?: string;
-      ua?: string;
-    } = {};
-    try {
-      const hdr = req.headers;
-      const ipAddr = pickClientIp(req, ip || undefined);
-      let { city, country } = pickGeo(req);
-      const ua = hdr.get("user-agent") || "";
-      const parsed = parseUserAgentInfo(
-        ua,
-        hdr.get("sec-ch-ua-platform"),
-        hdr.get("sec-ch-ua-mobile")
-      );
-      if (!city && !country) {
-        const geo = await geoByIp(ipAddr);
-        city = geo.city || city;
-        country = geo.country || country;
-      }
-      sessionMeta = { ipAddr, city, country, device: parsed.device, os: parsed.os, ua };
-    } catch (e) {
-      console.warn("[LOGIN] failed to parse session meta:");
-    }
-
-    try {
-      const sessionToken = randomBytes(32).toString("hex");
-      const hasAny = await prisma.userSession.findFirst({
-        where: { userId: user.id },
-        select: { id: true },
-      });
-      await prisma.userSession.create({
-        data: {
-          userId: user.id,
-          token: sessionToken,
-          isPrimary: !hasAny,
-          ip: sessionMeta.ipAddr,
-          city: sessionMeta.city,
-          country: sessionMeta.country,
-          device: sessionMeta.device,
-          os: sessionMeta.os,
-          userAgent: sessionMeta.ua?.slice(0, 500),
-        },
-      });
-      setSessionTokenOnResponse(res, sessionToken);
-    } catch (e) {
-      console.warn("[LOGIN] failed to create session:");
-      if (process.env.NODE_ENV === "production") {
-        clearSessionOnResponse(res);
-        res.cookies.set("uid", "", { path: "/", maxAge: 0 });
-      } else {
-        clearSessionTokenOnResponse(res);
-      }
     }
 
     return res;

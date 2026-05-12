@@ -302,7 +302,7 @@ export async function getUserIdAsync() { return await getUserId(); }
 export function attachUiCookies(res: NextResponse, ui: any): NextResponse {
   try {
     const payload = JSON.stringify(ui ?? {});
-    res.cookies.set(UI_USER_COOKIE, encodeURIComponent(payload), {
+    res.cookies.set(UI_USER_COOKIE, payload, {
       path: '/',
       sameSite: 'lax',
       httpOnly: false,
@@ -316,7 +316,7 @@ export function attachUiCookies(res: NextResponse, ui: any): NextResponse {
         : typeof ui?.name === 'string'
         ? ui.name
         : '';
-    res.cookies.set(UI_FULLNAME_COOKIE, encodeURIComponent(fullName), {
+    res.cookies.set(UI_FULLNAME_COOKIE, fullName, {
       path: '/',
       sameSite: 'lax',
       httpOnly: false,

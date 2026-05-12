@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
-import { clearSessionOnResponse, clearSessionTokenOnResponse, setSessionOnResponse, setSessionTokenOnResponse } from "../../_utils/session";
+import { attachUiCookies, setSessionOnResponse, setSessionTokenOnResponse } from "../../_utils/session";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { isAdminEmail } from "@/lib/admin-emails";
 import { randomBytes, timingSafeEqual } from "crypto";
@@ -163,7 +163,7 @@ export async function POST(req: Request) {
         user: {
           id: existingUser.id,
           email: existingUser.email,
-          verified: existingUser.verified,
+          verified: true,
           fullName: existingUser.fullName ?? "",
           role: existingUser.role,
         },
@@ -202,13 +202,19 @@ export async function POST(req: Request) {
           },
         });
         setSessionTokenOnResponse(res, sessionToken);
+        attachUiCookies(res, {
+          id: existingUser.id,
+          email: existingUser.email,
+          fullName: existingUser.fullName ?? "",
+          role: existingUser.role,
+          verified: true,
+        });
       } catch (e) {
-        console.warn("[VERIFY] failed to create session:");
-        if (process.env.NODE_ENV === "production") {
-          clearSessionOnResponse(res);
-        } else {
-          clearSessionTokenOnResponse(res);
-        }
+        console.error("[VERIFY] failed to create DB session");
+        return NextResponse.json(
+          { success: false, message: "Email подтверждён, но сессию создать не удалось. Войдите ещё раз." },
+          { status: 503 }
+        );
       }
       res.cookies.set("vfy", "", {
         path: "/",
@@ -266,7 +272,7 @@ export async function POST(req: Request) {
       user: {
         id: updatedUser.id,
         email: updatedUser.email,
-        verified: updatedUser.verified,
+        verified: true,
         fullName: updatedUser.fullName ?? "",
         role: updatedUser.role,
       },
@@ -306,13 +312,19 @@ export async function POST(req: Request) {
         },
       });
       setSessionTokenOnResponse(res, sessionToken);
+      attachUiCookies(res, {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        fullName: updatedUser.fullName ?? "",
+        role: updatedUser.role,
+        verified: true,
+      });
     } catch (e) {
-      console.warn("[VERIFY] failed to create session:");
-      if (process.env.NODE_ENV === "production") {
-        clearSessionOnResponse(res);
-      } else {
-        clearSessionTokenOnResponse(res);
-      }
+      console.error("[VERIFY] failed to create DB session");
+      return NextResponse.json(
+        { success: false, message: "Email подтверждён, но сессию создать не удалось. Войдите ещё раз." },
+        { status: 503 }
+      );
     }
     res.cookies.set("vfy", "", { path: "/", expires: new Date(0), httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" });
     res.cookies.set("uid", String(updatedUser.id), {
