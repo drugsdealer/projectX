@@ -4,7 +4,6 @@ export const runtime = 'nodejs';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { getClientIp, rateLimit } from '@/lib/rate-limit';
-import { isAdminEmail } from '@/lib/admin-emails';
 import { blockIfCsrf, requireJsonRequest } from '@/lib/api-hardening';
 
 /**

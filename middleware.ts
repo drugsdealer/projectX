@@ -25,14 +25,15 @@ function constantTimeEqual(a: Uint8Array, b: Uint8Array) {
   return diff === 0;
 }
 
-async function verify2FACookieInMiddleware(value: string | null, userId: string | number | null | undefined) {
-  if (!value || userId == null || !ADMIN_2FA_SECRET) return false;
+async function verify2FACookieInMiddleware(value: string | null, userId?: string | number | null | undefined) {
+  if (!value || !ADMIN_2FA_SECRET) return false;
   const dot = value.lastIndexOf(".");
   if (dot < 0) return false;
   const payload = value.slice(0, dot);
   const sigHex = value.slice(dot + 1);
   const parts = payload.split(":");
-  if (parts[0] !== "2fa" || parts[1] !== String(userId)) return false;
+  if (parts[0] !== "2fa") return false;
+  if (userId != null && parts[1] !== String(userId)) return false;
   const ts = Number(parts[2]);
   if (!Number.isFinite(ts)) return false;
   if (Math.floor(Date.now() / 1000) - ts > 4 * 60 * 60) return false;
@@ -180,7 +181,9 @@ export async function middleware(request: NextRequest) {
   // В middleware полагаемся только на httpOnly cookie, чтобы не дергать API и не ловить fetch failed
   const hasSessionToken = Boolean(request.cookies.get(SESSION_TOKEN_COOKIE)?.value);
   const fastUser = needUserFor ? readUserFast(request) : null;
-  const user = needUserFor
+  const user = isAdminArea
+    ? (fastUser ?? (hasSessionToken ? ({ id: null } as any) : null))
+    : needUserFor
     ? (
         fastUser ??
         (hasSessionToken
@@ -211,13 +214,13 @@ export async function middleware(request: NextRequest) {
 
   // Блокируем гостей от /admin (роль проверяется в серверных страницах/роутах)
   if (isAdminArea) {
-    if (!user) {
+    if (!hasSessionToken && !fastUser) {
       const loginUrl = new URL("/login", request.url);
       return applySecurityHeaders(NextResponse.redirect(loginUrl));
     }
     if (!pathname.startsWith("/admin/2fa") && !pathname.startsWith("/liza/2fa")) {
       const ok = request.cookies.get("admin_2fa_ok")?.value || null;
-      const verified2fa = await verify2FACookieInMiddleware(ok, user.id);
+      const verified2fa = await verify2FACookieInMiddleware(ok, user?.id);
       if (!verified2fa) {
         const twofaUrl = new URL("/admin/2fa", request.url);
         return applySecurityHeaders(NextResponse.redirect(twofaUrl));

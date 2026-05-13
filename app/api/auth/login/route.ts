@@ -9,7 +9,6 @@ import { cookies as nextCookies } from "next/headers";
 import { handleApiError } from "@/lib/errors";
 import { logAction } from "@/lib/logAction";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
-import { isAdminEmail } from "@/lib/admin-emails";
 import { randomBytes } from "crypto";
 import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
 
@@ -231,15 +230,6 @@ export async function POST(req: Request) {
         { success: false, message: "Неверный email или пароль" },
         { status: 401 }
       );
-    }
-
-    if (isAdminEmail(user.email) && user.role !== "ADMIN") {
-      const updated = await prisma.user.update({
-        where: { id: user.id },
-        data: { role: "ADMIN" as any },
-        select: { id: true, email: true, fullName: true, role: true, password: true, verified: true, deletedAt: true },
-      }).catch(() => null);
-      if (updated) user = updated;
     }
 
     let sessionToken = "";

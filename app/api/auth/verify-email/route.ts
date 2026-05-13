@@ -4,7 +4,6 @@ export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
 import { attachUiCookies, setSessionOnResponse, setSessionTokenOnResponse } from "../../_utils/session";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
-import { isAdminEmail } from "@/lib/admin-emails";
 import { randomBytes, timingSafeEqual } from "crypto";
 import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
 
@@ -257,7 +256,6 @@ export async function POST(req: Request) {
       data: {
         verified: new Date(),
         updatedAt: new Date(),
-        ...(isAdminEmail(normalizedEmail) ? { role: "ADMIN" as any } : {}),
       },
     }).catch(() => null);
 

@@ -6,7 +6,6 @@ import { cookies } from "next/headers";
 import { enforceSameOrigin } from "@/lib/security";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { createHmac, timingSafeEqual } from "crypto";
-import { isAdminEmail } from "@/lib/admin-emails";
 
 const ADMIN_2FA_SECRET =
   process.env.ADMIN_2FA_HMAC_SECRET ||
@@ -48,24 +47,49 @@ export type AdminUser = {
   role: string;
 };
 
-export async function getAdminUser(): Promise<AdminUser | null> {
-  const userId = await getUserIdFromRequest();
+function readCookieFromRequest(req: Request | undefined, name: string): string | null {
+  if (!req) return null;
+  const cookie = req.headers.get("cookie") || "";
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = cookie.match(new RegExp(`(?:^|;\\s*)${escaped}=([^;]*)`));
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
+async function getUserIdFromAdminRequest(req?: Request): Promise<number | null> {
+  const token = readCookieFromRequest(req, "session_token");
+  if (token) {
+    try {
+      const session = await prisma.userSession.findUnique({
+        where: { token },
+        select: { userId: true, revokedAt: true, lastSeen: true },
+      });
+      if (!session || session.revokedAt) return null;
+
+      const now = Date.now();
+      if (!session.lastSeen || now - session.lastSeen.getTime() > 60_000) {
+        prisma.userSession.update({
+          where: { token },
+          data: { lastSeen: new Date() },
+        }).catch(() => {});
+      }
+      return session.userId;
+    } catch {
+      return null;
+    }
+  }
+
+  return getUserIdFromRequest();
+}
+
+export async function getAdminUser(req?: Request): Promise<AdminUser | null> {
+  const userId = await getUserIdFromAdminRequest(req);
   if (!userId) return null;
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { id: true, email: true, role: true, deletedAt: true },
   });
   if (!user || user.deletedAt) return null;
-  if (user.role === "ADMIN") return user;
-  if (!isAdminEmail(user.email)) return null;
-
-  const promoted = await prisma.user.update({
-    where: { id: user.id },
-    data: { role: "ADMIN" as any },
-    select: { id: true, email: true, role: true },
-  }).catch(() => null);
-
-  return promoted ?? { id: user.id, email: user.email, role: "ADMIN" };
+  return user.role === "ADMIN" ? user : null;
 }
 
 export async function requireAdminPage() {
@@ -98,7 +122,7 @@ export async function requireAdminApi(
     }
   }
 
-  const admin = await getAdminUser();
+  const admin = await getAdminUser(opts?.req);
   if (!admin) {
     return {
       ok: false,
@@ -109,9 +133,12 @@ export async function requireAdminApi(
     };
   }
   if (opts?.require2FA !== false) {
-    const jar: any = cookies() as any;
-    const c = typeof jar?.then === "function" ? await jar : jar;
-    const ok = c.get("admin_2fa_ok")?.value;
+    let ok = readCookieFromRequest(opts?.req, "admin_2fa_ok");
+    if (!ok) {
+      const jar: any = cookies() as any;
+      const c = typeof jar?.then === "function" ? await jar : jar;
+      ok = c.get("admin_2fa_ok")?.value;
+    }
     if (!ok || !verify2FACookie(ok, admin.id)) {
       return {
         ok: false,
