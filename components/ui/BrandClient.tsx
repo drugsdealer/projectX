@@ -167,6 +167,10 @@ function compactBrandDescription(meta: BrandMeta, brandName: string) {
   return full || `Коллекция бренда ${brandName} в Stage Store.`;
 }
 
+function getRelativeLuminance(r: number, g: number, b: number) {
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+}
+
 function BrandCardPreview({ images, alt }: { images: string[]; alt: string }) {
   const imagesArr = useMemo(() => images?.length ? images : ['/img/placeholder.svg'], [images]);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -362,6 +366,7 @@ export default function BrandClient({
   const [infoOpen, setInfoOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
   const [sortMode, setSortMode] = useState<SortMode>('popular');
+  const [heroTone, setHeroTone] = useState<'dark' | 'light'>('dark');
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [favBurst, setFavBurst] = useState(false);
   const burstTimerRef = useRef<number | null>(null);
@@ -487,6 +492,59 @@ export default function BrandClient({
   const categoryLabel = categories.length === 1 ? 'категория' : categories.length > 1 && categories.length < 5 ? 'категории' : 'категорий';
   const productsSectionId = `brand-products-${slug}`;
   const brandLogo = slug === 'maison-margiela' ? MAISON_MARGIELA_LOGO_URL : meta.logo;
+  const heroTextClass = heroTone === 'light' ? 'text-black' : 'text-white';
+  const heroMutedTextClass = heroTone === 'light' ? 'text-black/70' : 'text-white/78';
+  const heroIconButtonClass =
+    heroTone === 'light'
+      ? 'border-black/12 bg-white/55 text-black shadow-[0_12px_30px_rgba(255,255,255,0.16)] hover:bg-black hover:text-white'
+      : 'border-white/20 bg-white/10 text-white shadow-[0_12px_30px_rgba(0,0,0,0.22)] hover:bg-white hover:text-black';
+  const heroSearchPanelClass =
+    heroTone === 'light'
+      ? 'border-black/12 bg-black/88 text-white'
+      : 'border-white/20 bg-white/92 text-black';
+  const heroSearchPlaceholderClass = heroTone === 'light' ? 'placeholder:text-white/45' : 'placeholder:text-black/35';
+  const heroSearchIconClass = heroTone === 'light' ? 'text-white/55' : 'text-black/45';
+
+  useEffect(() => {
+    if (!heroFallbackImage || brandVideo) {
+      setHeroTone('dark');
+      return;
+    }
+
+    let cancelled = false;
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.referrerPolicy = 'no-referrer';
+    img.onload = () => {
+      if (cancelled) return;
+      try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return;
+        canvas.width = 24;
+        canvas.height = 24;
+        ctx.drawImage(img, 0, 0, 24, 24);
+        const data = ctx.getImageData(0, 0, 24, 24).data;
+        let sum = 0;
+        let count = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          sum += getRelativeLuminance(data[i], data[i + 1], data[i + 2]);
+          count += 1;
+        }
+        setHeroTone(sum / Math.max(1, count) > 0.58 ? 'light' : 'dark');
+      } catch {
+        setHeroTone('dark');
+      }
+    };
+    img.onerror = () => {
+      if (!cancelled) setHeroTone('dark');
+    };
+    img.src = heroFallbackImage;
+
+    return () => {
+      cancelled = true;
+    };
+  }, [brandVideo, heroFallbackImage]);
 
   const openBrandSearch = () => {
     setSearchOpen(true);
@@ -555,11 +613,11 @@ export default function BrandClient({
           <div className="absolute inset-0 bg-black/18 backdrop-blur-[0.5px]" />
         </div>
 
-        <div className="relative z-10 mx-auto flex min-h-[100svh] max-w-6xl flex-col px-5 py-5 sm:px-8">
-          <div className="flex items-center justify-between">
+        <div className={`relative z-10 mx-auto flex min-h-[100svh] max-w-6xl flex-col px-5 py-5 sm:px-8 ${heroTextClass}`}>
+          <div className="relative z-[60] flex items-center justify-between pt-[calc(var(--header-h,72px)+8px)] md:pt-5">
             <Link
               href="/brands"
-              className="grid h-12 w-12 place-items-center rounded-full border border-white/20 bg-white/10 text-white shadow-[0_12px_30px_rgba(0,0,0,0.22)] backdrop-blur-xl transition hover:bg-white hover:text-black"
+              className={`grid h-12 w-12 place-items-center rounded-full border backdrop-blur-xl transition ${heroIconButtonClass}`}
               aria-label="Назад к брендам"
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
@@ -571,7 +629,7 @@ export default function BrandClient({
               onClick={toggleFavorite}
               aria-pressed={isFav}
               aria-label={isFav ? 'Убрать бренд из избранного' : 'Добавить бренд в избранное'}
-              className="relative inline-flex h-12 items-center gap-2 overflow-visible rounded-full border border-white/20 bg-white/10 px-4 text-sm font-bold text-white shadow-[0_12px_30px_rgba(0,0,0,0.22)] backdrop-blur-xl transition hover:bg-white hover:text-black"
+              className={`relative inline-flex h-12 w-12 items-center justify-center overflow-visible rounded-full border text-sm font-bold backdrop-blur-xl transition sm:w-auto sm:px-4 ${heroIconButtonClass}`}
             >
               {favBurst && (
                 <span className="fav-burst-layer" aria-hidden="true">
@@ -593,7 +651,7 @@ export default function BrandClient({
               <svg viewBox="0 0 24 24" className={`h-4 w-4 ${isFav ? 'text-red-400' : 'text-current'}`} fill="currentColor" aria-hidden="true">
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1.01 4.5 2.09C12.09 5.01 13.76 4 15.5 4 18 4 20 6 20 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
               </svg>
-              <span>{isFav ? 'В избранном' : 'В избранное'}</span>
+              <span className="hidden sm:inline">{isFav ? 'В избранном' : 'В избранное'}</span>
             </button>
           </div>
 
@@ -609,7 +667,7 @@ export default function BrandClient({
                 {brandName}
               </h1>
             )}
-            <div className="mt-4 text-sm font-semibold text-white/78 sm:text-base">
+            <div className={`mt-4 text-sm font-semibold sm:text-base ${heroMutedTextClass}`}>
               {brandName} · {items.length} {collectionLabel} · {categories.length || 1} {categoryLabel}
             </div>
 
@@ -617,7 +675,7 @@ export default function BrandClient({
               <button
                 type="button"
                 onClick={openBrandSearch}
-                className="grid h-16 w-16 place-items-center rounded-full bg-white/12 text-white backdrop-blur-xl transition hover:bg-white hover:text-black"
+                className={`grid h-16 w-16 place-items-center rounded-full backdrop-blur-xl transition ${heroIconButtonClass}`}
                 aria-label="Поиск по бренду"
               >
                 <svg viewBox="0 0 24 24" className="h-7 w-7" aria-hidden="true">
@@ -634,7 +692,7 @@ export default function BrandClient({
               <button
                 type="button"
                 onClick={() => setSortOpen((v) => !v)}
-                className="grid h-16 w-16 place-items-center rounded-full bg-white/12 text-white backdrop-blur-xl transition hover:bg-white hover:text-black"
+                className={`grid h-16 w-16 place-items-center rounded-full backdrop-blur-xl transition ${heroIconButtonClass}`}
                 aria-expanded={sortOpen}
                 aria-label="Сортировка"
               >
@@ -679,9 +737,9 @@ export default function BrandClient({
                   animate={{ opacity: 1, y: 0, width: 'min(92vw,520px)' }}
                   exit={{ opacity: 0, y: -6, width: 64 }}
                   transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                  className="mt-5 flex h-14 items-center gap-3 overflow-hidden rounded-full border border-white/20 bg-white/92 px-5 text-black shadow-2xl"
+                  className={`mt-5 flex h-14 items-center gap-3 overflow-hidden rounded-full border px-5 shadow-2xl ${heroSearchPanelClass}`}
                 >
-                  <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-black/45" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" className={`h-5 w-5 shrink-0 ${heroSearchIconClass}`} aria-hidden="true">
                     <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16a6.471 6.471 0 0 0 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zM9.5 14C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
                   </svg>
                   <input
@@ -690,16 +748,16 @@ export default function BrandClient({
                     onChange={(e) => setQuery(e.target.value)}
                     onBlur={() => window.setTimeout(() => setSearchOpen(false), 100)}
                     placeholder="Найти товар внутри бренда"
-                    className="w-full bg-transparent text-sm font-bold outline-none placeholder:text-black/35"
+                    className={`w-full bg-transparent text-sm font-bold outline-none ${heroSearchPlaceholderClass}`}
                   />
                 </motion.div>
               )}
             </AnimatePresence>
 
-            <p className="mx-auto mt-7 max-w-2xl text-center text-base font-semibold leading-6 text-white/92 line-clamp-2 drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)] sm:text-lg sm:leading-7">
+            <p className={`mx-auto mt-7 max-w-2xl text-center text-base font-semibold leading-6 line-clamp-2 sm:text-lg sm:leading-7 ${heroTone === 'light' ? 'text-black drop-shadow-[0_2px_10px_rgba(255,255,255,0.8)]' : 'text-white/92 drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]'}`}>
               {shortDescription}
               {brandDescription.length > shortDescription.length && (
-                <button type="button" onClick={() => setInfoOpen(true)} className="ml-2 text-sm font-black uppercase tracking-wide text-white underline decoration-white/35 underline-offset-4">
+                <button type="button" onClick={() => setInfoOpen(true)} className={`ml-2 text-sm font-black uppercase tracking-wide underline underline-offset-4 ${heroTone === 'light' ? 'text-black decoration-black/35' : 'text-white decoration-white/35'}`}>
                   Еще
                 </button>
               )}

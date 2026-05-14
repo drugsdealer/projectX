@@ -339,6 +339,7 @@ useLayoutEffect(() => {
         'w-full z-40 transition-all duration-500',
         // when curator is open we visually push header to background
         curatorOpenRemote ? 'opacity-40 blur-sm' : '',
+        brandTransparentHeader ? 'pointer-events-none' : '',
         transparentHeader
           ? 'bg-transparent border-transparent shadow-none text-white'
           : 'bg-white border-b border-black/10 shadow-sm',
