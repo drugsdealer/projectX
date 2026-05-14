@@ -21,6 +21,7 @@ export async function GET(req: Request) {
       description: true,
       aboutLong: true,
       styleNotes: true,
+      tags: true,
       isPremium: true,
       _count: {
         select: {
@@ -45,6 +46,7 @@ export async function POST(req: Request) {
   const description = body?.description ? String(body.description).trim() : null;
   const aboutLong = body?.aboutLong ? String(body.aboutLong).trim() : null;
   const sizeChart = body?.sizeChart ? String(body.sizeChart).trim() : null;
+  const heroVideo = body?.heroVideo ? String(body.heroVideo).trim() : null;
 
   if (!name) {
     return NextResponse.json({ success: false, message: "Название обязательно" }, { status: 400 });
@@ -74,6 +76,7 @@ export async function POST(req: Request) {
       description,
       aboutLong,
       styleNotes: sizeChart,
+      tags: heroVideo ? [`video:${heroVideo}`] : [],
     },
     select: { id: true, name: true, slug: true },
   });
@@ -93,7 +96,7 @@ export async function PATCH(req: Request) {
 
   const existing = await prisma.brand.findUnique({
     where: { id },
-    select: { id: true },
+    select: { id: true, tags: true },
   });
   if (!existing) {
     return NextResponse.json({ success: false, message: "Бренд не найден" }, { status: 404 });
@@ -137,6 +140,15 @@ export async function PATCH(req: Request) {
     data.styleNotes = body.sizeChart ? String(body.sizeChart).trim() : null;
   }
 
+  if (body?.heroVideo !== undefined) {
+    const heroVideo = String(body.heroVideo || "").trim();
+    const tags = Array.isArray(existing.tags) ? existing.tags : [];
+    data.tags = [
+      ...tags.filter((tag) => typeof tag === "string" && !/^video:/i.test(tag.trim())),
+      ...(heroVideo ? [`video:${heroVideo}`] : []),
+    ];
+  }
+
   if (body?.isPremium !== undefined) {
     data.isPremium = Boolean(body.isPremium);
   }
@@ -144,7 +156,7 @@ export async function PATCH(req: Request) {
   const brand = await prisma.brand.update({
     where: { id },
     data,
-    select: { id: true, name: true, slug: true, logoUrl: true, features: true, description: true, aboutLong: true, styleNotes: true, isPremium: true },
+    select: { id: true, name: true, slug: true, logoUrl: true, features: true, description: true, aboutLong: true, styleNotes: true, tags: true, isPremium: true },
   });
 
   return NextResponse.json({ success: true, brand });

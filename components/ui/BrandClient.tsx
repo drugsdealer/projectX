@@ -100,6 +100,7 @@ interface BrandMeta {
   logo?: string;
   about?: string;
   aboutLong?: string;
+  heroVideo?: string;
   tags?: string[];
 }
 
@@ -132,6 +133,37 @@ const CARD_SWIPE_VARIANTS = {
     zIndex: 1,
   }),
 };
+
+type SortMode = 'popular' | 'priceAsc' | 'priceDesc' | 'newest';
+
+const SORT_LABELS: Record<SortMode, string> = {
+  popular: 'По умолчанию',
+  priceAsc: 'Сначала дешевле',
+  priceDesc: 'Сначала дороже',
+  newest: 'Новинки',
+};
+
+function pickBrandVideo(meta: BrandMeta) {
+  if (meta.heroVideo) return meta.heroVideo;
+  const tagVideo = meta.tags?.find((tag) => /^video:/i.test(tag.trim()));
+  return tagVideo ? tagVideo.replace(/^video:/i, '').trim() : '';
+}
+
+function pickBrandFallbackImage(items: BrandClientProps['items']) {
+  for (const item of items) {
+    const images = Array.isArray((item as any).images) ? (item as any).images : [];
+    const first =
+      images.find((src: unknown) => typeof src === 'string' && src.trim()) ||
+      ((item as any).imageUrl && String((item as any).imageUrl).trim());
+    if (first) return String(first);
+  }
+  return '/img/IMG_0364.JPG';
+}
+
+function compactBrandDescription(meta: BrandMeta, brandName: string) {
+  const full = [meta.about, meta.aboutLong].filter(Boolean).join(' ').trim();
+  return full || `Коллекция бренда ${brandName} в Stage Store.`;
+}
 
 function BrandCardPreview({ images, alt }: { images: string[]; alt: string }) {
   const imagesArr = useMemo(() => images?.length ? images : ['/img/placeholder.svg'], [images]);
@@ -325,6 +357,9 @@ export default function BrandClient({
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [maxPrice, setMaxPrice] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
+  const [sortMode, setSortMode] = useState<SortMode>('popular');
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [favBurst, setFavBurst] = useState(false);
   const burstTimerRef = useRef<number | null>(null);
@@ -414,7 +449,7 @@ export default function BrandClient({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return items.filter((it) => {
+    const rows = items.filter((it) => {
       const name = String((it as any)?.name || '').toLowerCase();
       if (q && !name.includes(q)) return false;
       const cat = (it as any)?.Category?.name || (it as any)?.category?.name || null;
@@ -423,13 +458,29 @@ export default function BrandClient({
       if (maxPrice && price && price > maxPrice) return false;
       return true;
     });
-  }, [items, query, activeCategory, maxPrice]);
+    return [...rows].sort((a, b) => {
+      if (sortMode === 'priceAsc') return Number((a as any)?.price ?? 0) - Number((b as any)?.price ?? 0);
+      if (sortMode === 'priceDesc') return Number((b as any)?.price ?? 0) - Number((a as any)?.price ?? 0);
+      if (sortMode === 'newest') {
+        const aDate = new Date((a as any)?.createdAt ?? 0).getTime();
+        const bDate = new Date((b as any)?.createdAt ?? 0).getTime();
+        return bDate - aDate;
+      }
+      return 0;
+    });
+  }, [items, query, activeCategory, maxPrice, sortMode]);
 
   const heroProducts = useMemo(() => items.slice(0, 3), [items]);
   const premiumCount = useMemo(() => items.filter((it) => Boolean((it as any)?.premium)).length, [items]);
   const displayMinPrice = priceBounds.min > 0 ? priceBounds.min : 0;
   const displayMaxPrice = priceBounds.max > 0 ? priceBounds.max : 0;
   const collectionLabel = items.length === 1 ? 'позиция' : items.length > 1 && items.length < 5 ? 'позиции' : 'позиций';
+  const brandDescription = useMemo(() => compactBrandDescription(meta, brandName), [meta, brandName]);
+  const shortDescription = brandDescription.length > 170 ? `${brandDescription.slice(0, 170).trim()}...` : brandDescription;
+  const brandVideo = useMemo(() => pickBrandVideo(meta), [meta]);
+  const heroFallbackImage = useMemo(() => pickBrandFallbackImage(items), [items]);
+  const categoryLabel = categories.length === 1 ? 'категория' : categories.length > 1 && categories.length < 5 ? 'категории' : 'категорий';
+  const productsSectionId = `brand-products-${slug}`;
 
   const openBrandSearch = () => {
     setSearchOpen(true);
@@ -478,79 +529,43 @@ export default function BrandClient({
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-7 sm:px-6 lg:px-8">
-      <div className="mb-4 text-xs font-medium text-gray-500">
-        <Link href="/" className="hover:text-black transition-colors">Главная</Link>
-        <span className="mx-2">/</span>
-        <span className="text-gray-700">{brandName}</span>
-      </div>
-
-      <div className="relative overflow-hidden rounded-[34px] border border-black/10 bg-gradient-to-br from-[#f4f1ea] via-[#fbfaf6] to-[#e9e3d8] shadow-[0_30px_90px_rgba(0,0,0,0.13)]">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute inset-0 opacity-[0.75]" style={{
-            backgroundImage:
-              "radial-gradient(900px 360px at 12% 0%, rgba(255,255,255,0.9), transparent 62%), radial-gradient(620px 380px at 92% 88%, rgba(0,0,0,0.08), transparent 64%)",
-          }} />
-          <div className="absolute inset-0 opacity-[0.08]" style={{
-            backgroundImage:
-              "linear-gradient(0deg, rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)",
-            backgroundSize: "96px 96px",
-          }} />
-          <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full border border-black/10" />
-          <div className="absolute -bottom-28 left-10 h-72 w-72 rounded-full border border-black/10" />
+    <div className="bg-white">
+      <section className="relative min-h-[calc(100svh-var(--header-h,72px))] overflow-hidden bg-black text-white">
+        <div className="absolute inset-0">
+          {brandVideo ? (
+            <video
+              className="h-full w-full object-cover"
+              src={brandVideo}
+              autoPlay
+              muted
+              loop
+              playsInline
+              poster={heroFallbackImage}
+            />
+          ) : (
+            <img src={heroFallbackImage} alt="" className="h-full w-full object-cover opacity-70 blur-[1px] scale-[1.03]" />
+          )}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_34%,rgba(255,255,255,0.18),transparent_26%),linear-gradient(180deg,rgba(0,0,0,0.32)_0%,rgba(0,0,0,0.54)_48%,rgba(0,0,0,0.94)_100%)]" />
+          <div className="absolute inset-0 bg-black/18 backdrop-blur-[0.5px]" />
         </div>
-        {meta.logo && (
-          <div className="absolute right-6 top-3 z-20 grid h-20 w-20 place-items-center rounded-3xl border border-black/10 bg-white/78 p-3 shadow-[0_16px_35px_rgba(0,0,0,0.10)] backdrop-blur sm:top-4 sm:h-24 sm:w-24 lg:right-16 lg:top-7 lg:h-28 lg:w-28 lg:p-4">
-            <img src={meta.logo} alt={`${brandName} logo`} className="max-h-full max-w-full object-contain opacity-85" />
-          </div>
-        )}
 
-        <div className="relative z-10 grid gap-8 px-5 py-7 sm:px-8 sm:py-10 lg:grid-cols-[1.08fr_0.92fr] lg:px-12 lg:py-12">
-          <div className="flex min-h-[350px] flex-col justify-between">
-            <div className="pt-20 lg:pt-8">
-              <h1 className="text-[clamp(2.85rem,11vw,5rem)] font-black uppercase leading-[0.86] tracking-[-0.025em] text-black sm:text-[clamp(3rem,8vw,5.6rem)] lg:text-[clamp(3.2rem,5.35vw,5.85rem)] lg:tracking-[-0.005em]">
-                {brandName}
-              </h1>
-              <p className="mt-5 max-w-xl text-sm font-semibold leading-6 text-black/62 sm:text-base">
-                {meta.about || `Коллекция бренда ${brandName}.`}
-              </p>
-              {meta.aboutLong && (
-                <p className="mt-3 max-w-xl text-xs leading-5 text-black/46 sm:text-sm">
-                  {meta.aboutLong}
-                </p>
-              )}
-              {!!meta.tags?.length && (
-                <div className="mt-5 flex flex-wrap gap-2">
-                  {meta.tags.slice(0, 5).map((tag) => (
-                    <span key={tag} className="rounded-full border border-black/10 bg-white/45 px-3 py-1.5 text-xs font-semibold text-black/55">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
-              <div className="grid grid-cols-3 gap-2 rounded-3xl border border-black/10 bg-white/55 p-2 backdrop-blur">
-                <div className="rounded-2xl bg-white/70 px-4 py-3">
-                  <div className="text-xl font-black text-black">{items.length}</div>
-                  <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-black/38">{collectionLabel}</div>
-                </div>
-                <div className="rounded-2xl bg-white/70 px-4 py-3">
-                  <div className="text-xl font-black text-black">{categories.length || 1}</div>
-                  <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-black/38">категорий</div>
-                </div>
-                <div className="rounded-2xl bg-white/70 px-4 py-3">
-                  <div className="text-xl font-black text-black">{premiumCount}</div>
-                  <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-black/38">premium</div>
-                </div>
-              </div>
+        <div className="relative z-10 mx-auto flex min-h-[calc(100svh-var(--header-h,72px))] max-w-6xl flex-col px-5 py-5 sm:px-8">
+          <div className="flex items-center justify-between">
+            <Link
+              href="/brands"
+              className="grid h-12 w-12 place-items-center rounded-full border border-white/20 bg-white/10 text-white shadow-[0_12px_30px_rgba(0,0,0,0.22)] backdrop-blur-xl transition hover:bg-white hover:text-black"
+              aria-label="Назад к брендам"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+                <path fill="currentColor" d="M15.7 5.3a1 1 0 0 1 0 1.4L10.42 12l5.3 5.3a1 1 0 1 1-1.42 1.4l-6-6a1 1 0 0 1 0-1.4l6-6a1 1 0 0 1 1.42 0Z" />
+              </svg>
+            </Link>
             <button
               type="button"
               onClick={toggleFavorite}
               aria-pressed={isFav}
               aria-label={isFav ? 'Убрать бренд из избранного' : 'Добавить бренд в избранное'}
-                className="relative inline-flex items-center gap-2 overflow-visible rounded-full border border-black/15 bg-black px-5 py-3 text-sm font-bold text-white shadow-[0_14px_30px_rgba(0,0,0,0.18)] transition hover:-translate-y-0.5 hover:bg-white hover:text-black"
+              className="relative inline-flex h-12 items-center gap-2 overflow-visible rounded-full border border-white/20 bg-white/10 px-4 text-sm font-bold text-white shadow-[0_12px_30px_rgba(0,0,0,0.22)] backdrop-blur-xl transition hover:bg-white hover:text-black"
             >
               {favBurst && (
                 <span className="fav-burst-layer" aria-hidden="true">
@@ -569,167 +584,242 @@ export default function BrandClient({
                   <span className="fav-bolt b4" />
                 </span>
               )}
-              <svg
-                viewBox="0 0 24 24"
-                className={`h-4 w-4 ${isFav ? 'text-red-500' : 'text-current'}`}
-                fill="currentColor"
-                aria-hidden="true"
-              >
+              <svg viewBox="0 0 24 24" className={`h-4 w-4 ${isFav ? 'text-red-400' : 'text-current'}`} fill="currentColor" aria-hidden="true">
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4c1.74 0 3.41 1.01 4.5 2.09C12.09 5.01 13.76 4 15.5 4 18 4 20 6 20 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
               </svg>
-                <span>{isFav ? 'В избранном' : 'В избранное'}</span>
+              <span>{isFav ? 'В избранном' : 'В избранное'}</span>
             </button>
-            </div>
           </div>
 
-          <div className="relative min-h-[330px]">
-            <div className="absolute inset-x-8 top-8 h-48 rounded-full bg-black/10 blur-3xl" />
-            <div className="relative grid h-full grid-cols-2 gap-3 sm:grid-cols-3">
-              {heroProducts.length > 0 ? heroProducts.map((item, idx) => {
-                const images =
-                  (Array.isArray((item as any).images) ? (item as any).images : undefined) ||
-                  ((item as any).imageUrl ? [(item as any).imageUrl] : ['/img/placeholder.svg']);
-                return (
-                  <Link
-                    key={item.id}
-                    href={productPath({ id: item.id, name: (item as any).name, brand: brandName })}
-                    className={`group relative overflow-hidden rounded-[26px] border border-black/10 bg-white/75 p-3 shadow-[0_18px_45px_rgba(0,0,0,0.12)] transition hover:-translate-y-1 ${
-                      idx === 1 ? 'mt-10' : idx === 2 ? 'mt-20 hidden sm:block' : ''
+          <div className="flex flex-1 flex-col items-center justify-center pb-24 pt-12 text-center sm:pb-28">
+            {meta.logo ? (
+              <div className="grid min-h-[112px] w-[min(78vw,440px)] place-items-center rounded-[34px] border border-white/15 bg-white/10 px-8 py-7 shadow-[0_30px_90px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+                <img src={meta.logo} alt={`${brandName} logo`} className="max-h-32 max-w-full object-contain brightness-0 invert sm:max-h-40" />
+              </div>
+            ) : (
+              <h1 className="max-w-4xl text-[clamp(2.8rem,12vw,7.2rem)] font-black uppercase leading-[0.86] tracking-[-0.07em]">
+                {brandName}
+              </h1>
+            )}
+            <div className="mt-4 text-sm font-semibold text-white/78 sm:text-base">
+              {brandName} · {items.length} {collectionLabel} · {categories.length || 1} {categoryLabel}
+            </div>
+
+            <div className="relative mt-7 flex items-center justify-center gap-4">
+              <button
+                type="button"
+                onClick={openBrandSearch}
+                className="grid h-16 w-16 place-items-center rounded-full bg-white/12 text-white backdrop-blur-xl transition hover:bg-white hover:text-black"
+                aria-label="Поиск по бренду"
+              >
+                <svg viewBox="0 0 24 24" className="h-7 w-7" aria-hidden="true">
+                  <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16a6.471 6.471 0 0 0 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zM9.5 14C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => document.getElementById(productsSectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                className="inline-flex h-16 min-w-[180px] items-center justify-center rounded-full bg-white px-8 text-lg font-black text-black shadow-[0_18px_45px_rgba(0,0,0,0.24)] transition hover:scale-[1.02]"
+              >
+                {items.length} товаров
+              </button>
+              <button
+                type="button"
+                onClick={() => setSortOpen((v) => !v)}
+                className="grid h-16 w-16 place-items-center rounded-full bg-white/12 text-white backdrop-blur-xl transition hover:bg-white hover:text-black"
+                aria-expanded={sortOpen}
+                aria-label="Сортировка"
+              >
+                <svg viewBox="0 0 24 24" className="h-7 w-7" aria-hidden="true">
+                  <path fill="currentColor" d="M7 3a1 1 0 0 1 1 1v11.59l2.3-2.29a1 1 0 1 1 1.4 1.4l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L6 15.59V4a1 1 0 0 1 1-1Zm10.7 2.3 4 4a1 1 0 0 1-1.4 1.4L18 8.41V20a1 1 0 1 1-2 0V8.41l-2.3 2.29a1 1 0 1 1-1.4-1.4l4-4a1 1 0 0 1 1.4 0Z" />
+                </svg>
+              </button>
+
+              <AnimatePresence>
+                {sortOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                    transition={{ duration: 0.18 }}
+                    className="absolute right-0 top-[76px] z-30 w-56 overflow-hidden rounded-3xl border border-white/15 bg-black/70 p-2 text-left shadow-2xl backdrop-blur-xl"
+                  >
+                    {(Object.keys(SORT_LABELS) as SortMode[]).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => {
+                          setSortMode(mode);
+                          setSortOpen(false);
+                        }}
+                        className={`block w-full rounded-2xl px-4 py-3 text-sm font-bold transition ${
+                          sortMode === mode ? 'bg-white text-black' : 'text-white/78 hover:bg-white/10 hover:text-white'
+                        }`}
+                      >
+                        {SORT_LABELS[mode]}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <AnimatePresence initial={false}>
+              {searchOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, width: 64 }}
+                  animate={{ opacity: 1, y: 0, width: 'min(92vw,520px)' }}
+                  exit={{ opacity: 0, y: -6, width: 64 }}
+                  transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                  className="mt-5 flex h-14 items-center gap-3 overflow-hidden rounded-full border border-white/20 bg-white/92 px-5 text-black shadow-2xl"
+                >
+                  <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-black/45" aria-hidden="true">
+                    <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16a6.471 6.471 0 0 0 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zM9.5 14C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                  </svg>
+                  <input
+                    ref={searchInputRef}
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onBlur={() => window.setTimeout(() => setSearchOpen(false), 100)}
+                    placeholder="Найти товар внутри бренда"
+                    className="w-full bg-transparent text-sm font-bold outline-none placeholder:text-black/35"
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="absolute inset-x-5 bottom-8 z-20 mx-auto max-w-5xl sm:bottom-10">
+            <p className="mx-auto max-w-3xl text-center text-lg font-medium leading-7 text-white/86 sm:text-xl">
+              {shortDescription}
+              {brandDescription.length > shortDescription.length && (
+                <button type="button" onClick={() => setInfoOpen(true)} className="ml-2 text-sm font-black uppercase tracking-wide text-white">
+                  Еще
+                </button>
+              )}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <div className="relative z-20 -mt-28 h-32 bg-gradient-to-b from-transparent via-white/85 to-white pointer-events-none" />
+
+      <div id={productsSectionId} className="relative z-30 mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8">
+        <div className="mb-6 overflow-hidden rounded-[28px] border border-black/10 bg-white shadow-[0_16px_45px_rgba(0,0,0,0.06)]">
+          <div className="grid grid-cols-1 gap-0 divide-y divide-black/10 md:grid-cols-[1.1fr_0.9fr] md:divide-x md:divide-y-0">
+            <div className="p-4 sm:p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-black/38">Коллекция</div>
+                  <div className="mt-1 text-sm font-black text-black">{filtered.length} из {items.length} · {SORT_LABELS[sortMode]}</div>
+                </div>
+                {!!query && (
+                  <button type="button" onClick={() => setQuery('')} className="rounded-full border border-black/10 px-3 py-2 text-xs font-bold text-black/55 hover:border-black/30 hover:text-black">
+                    Сбросить поиск
+                  </button>
+                )}
+              </div>
+              {categories.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveCategory(null)}
+                    className={`rounded-full border px-4 py-2 text-xs font-bold transition ${
+                      !activeCategory ? 'bg-black text-white border-black' : 'bg-white text-black/60 border-black/10 hover:border-black/35 hover:text-black'
                     }`}
                   >
-                    <div className="relative h-56 rounded-2xl bg-white">
-                      <BrandCardPreview images={images} alt={(item as any).name} />
-                    </div>
-                    <div className="mt-3">
-                      <div className="line-clamp-2 text-xs font-bold leading-4 text-black/72">{(item as any).name}</div>
-                      <div className="mt-1 text-xs font-black text-black">{Number((item as any).price || 0).toLocaleString('ru-RU')}₽</div>
-                    </div>
-                  </Link>
-                );
-              }) : (
-                <div className="col-span-2 grid place-items-center rounded-[28px] border border-black/10 bg-white/50 text-sm font-semibold text-black/45 sm:col-span-3">
-                  Коллекция скоро появится
+                    Все категории
+                  </button>
+                  {categories.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setActiveCategory(cat)}
+                      className={`rounded-full border px-4 py-2 text-xs font-bold transition ${
+                        activeCategory === cat ? 'bg-black text-white border-black' : 'bg-white text-black/60 border-black/10 hover:border-black/35 hover:text-black'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-6 mb-7 overflow-hidden rounded-[28px] border border-black/10 bg-white shadow-[0_16px_45px_rgba(0,0,0,0.06)]">
-        <div className="grid grid-cols-1 gap-0 divide-y divide-black/10 md:grid-cols-[1.35fr_1fr] md:divide-x md:divide-y-0">
-          <div className="p-4 sm:p-5">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-black/38">Поиск по бренду</label>
-              <span className="text-xs font-semibold text-black/35">{filtered.length} из {items.length}</span>
-            </div>
-            <div className="mt-2 flex h-12 items-center">
-              <motion.div
-                className="relative h-12 overflow-hidden rounded-full border border-black/10 bg-white shadow-sm"
-                initial={false}
-                animate={{
-                  width: searchOpen ? '100%' : query ? 190 : 48,
-                  boxShadow: searchOpen || query ? "0 12px 30px rgba(0,0,0,0.08)" : "0 0 0 rgba(0,0,0,0)",
-                }}
-                transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
-                style={{ transformOrigin: "left center" }}
-              >
-                <div className="absolute inset-0 rounded-full bg-[linear-gradient(90deg,rgba(0,0,0,0.04),rgba(255,255,255,0.35),transparent)] opacity-70" />
-                <button
-                  type="button"
-                  onClick={openBrandSearch}
-                  aria-expanded={searchOpen}
-                  aria-label="Открыть поиск"
-                  className={`absolute left-1 top-1 grid h-10 w-10 place-items-center rounded-full border border-black/10 transition ${
-                    searchOpen || query ? "bg-black text-white border-black" : "bg-white text-black/60 hover:text-black"
-                  }`}
-                >
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
-                    <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16a6.471 6.471 0 0 0 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zM9.5 14C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-                  </svg>
-                </button>
-
-                <AnimatePresence initial={false}>
-                  {searchOpen && (
-                    <motion.div
-                      key="brand-search-wrap"
-                      className="absolute inset-y-0 left-14 right-3 flex items-center overflow-hidden"
-                      initial={{ opacity: 0, width: 0 }}
-                      animate={{ opacity: 1, width: "100%" }}
-                      exit={{ opacity: 0, width: 0 }}
-                      transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
-                    >
-                      <input
-                        ref={searchInputRef}
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        onBlur={() => window.setTimeout(() => setSearchOpen(false), 80)}
-                        placeholder="Найти товар внутри бренда"
-                        className="w-full bg-transparent text-sm font-semibold outline-none placeholder:text-black/32"
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-                {!searchOpen && query && (
-                  <button
-                    type="button"
-                    onClick={openBrandSearch}
-                    className="absolute inset-y-0 left-14 right-4 overflow-hidden text-left text-xs font-bold text-black/48"
-                  >
-                    <span className="block truncate">{query}</span>
-                  </button>
-                )}
-              </motion.div>
-            </div>
-          </div>
-          <div className="p-4 sm:p-5">
-            <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-black/38">Цена до</label>
-            <div className="mt-2 flex items-center gap-3">
-              <input
-                type="range"
-                min={priceBounds.min}
-                max={priceBounds.max}
-                value={Math.min(maxPrice || priceBounds.max, priceBounds.max)}
-                onChange={(e) => setMaxPrice(Number(e.target.value))}
-                className="w-full accent-black"
-              />
-              <div className="text-sm font-semibold whitespace-nowrap">
-                {maxPrice ? `${maxPrice.toLocaleString('ru-RU')}₽` : '—'}
+            <div className="p-4 sm:p-5">
+              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-black/38">Цена до</label>
+              <div className="mt-2 flex items-center gap-3">
+                <input
+                  type="range"
+                  min={priceBounds.min}
+                  max={priceBounds.max}
+                  value={Math.min(maxPrice || priceBounds.max, priceBounds.max)}
+                  onChange={(e) => setMaxPrice(Number(e.target.value))}
+                  className="w-full accent-black"
+                />
+                <div className="text-sm font-semibold whitespace-nowrap">
+                  {maxPrice ? `${maxPrice.toLocaleString('ru-RU')}₽` : '—'}
+                </div>
+              </div>
+              <div className="mt-2 flex justify-between text-xs font-semibold text-black/35">
+                <span>{displayMinPrice.toLocaleString('ru-RU')}₽</span>
+                <span>{displayMaxPrice.toLocaleString('ru-RU')}₽</span>
               </div>
             </div>
-            <div className="mt-2 flex justify-between text-xs font-semibold text-black/35">
-              <span>{displayMinPrice.toLocaleString('ru-RU')}₽</span>
-              <span>{displayMaxPrice.toLocaleString('ru-RU')}₽</span>
-            </div>
           </div>
         </div>
 
-        {categories.length > 0 && (
-          <div className="flex flex-wrap gap-2 border-t border-black/10 bg-[#faf9f6] p-4 sm:p-5">
-            <button
-              type="button"
-              onClick={() => setActiveCategory(null)}
-              className={`rounded-full border px-4 py-2 text-xs font-bold transition ${
-                !activeCategory ? 'bg-black text-white border-black' : 'bg-white text-black/60 border-black/10 hover:border-black/35 hover:text-black'
-              }`}
+        <AnimatePresence>
+          {infoOpen && (
+            <motion.div
+              className="fixed inset-0 z-[90] bg-black/55 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setInfoOpen(false)}
             >
-              Все категории
-            </button>
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setActiveCategory(cat)}
-                className={`rounded-full border px-4 py-2 text-xs font-bold transition ${
-                  activeCategory === cat ? 'bg-black text-white border-black' : 'bg-white text-black/60 border-black/10 hover:border-black/35 hover:text-black'
-                }`}
+              <motion.div
+                role="dialog"
+                aria-modal="true"
+                aria-label={`Описание бренда ${brandName}`}
+                className="absolute inset-x-0 bottom-0 mx-auto max-w-3xl rounded-t-[34px] bg-white px-6 pb-[calc(24px+env(safe-area-inset-bottom))] pt-5 text-black shadow-[0_-28px_90px_rgba(0,0,0,0.35)] sm:bottom-8 sm:rounded-[34px] sm:px-8 sm:pb-8"
+                initial={{ y: '100%', opacity: 0.6 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: '100%', opacity: 0.6 }}
+                transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+                onClick={(e) => e.stopPropagation()}
               >
-                {cat}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+                <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-black/15" />
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-[11px] font-black uppercase tracking-[0.26em] text-black/35">О бренде</div>
+                    <h2 className="mt-2 text-3xl font-black tracking-[-0.04em] sm:text-5xl">{brandName}</h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setInfoOpen(false)}
+                    className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-black/10 bg-black text-white transition hover:bg-white hover:text-black"
+                    aria-label="Закрыть описание"
+                  >
+                    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+                      <path fill="currentColor" d="M6.3 5.3a1 1 0 0 1 1.4 0l4.3 4.29 4.3-4.3a1 1 0 1 1 1.4 1.42L13.41 11l4.3 4.3a1 1 0 0 1-1.42 1.4L12 12.41l-4.3 4.3a1 1 0 0 1-1.4-1.42l4.29-4.3-4.3-4.29a1 1 0 0 1 0-1.4Z" />
+                    </svg>
+                  </button>
+                </div>
+                <p className="mt-5 text-base font-medium leading-8 text-black/72">{brandDescription}</p>
+                {!!meta.tags?.length && (
+                  <div className="mt-6 flex flex-wrap gap-2">
+                    {meta.tags.filter((tag) => !/^video:/i.test(tag)).slice(0, 8).map((tag) => (
+                      <span key={tag} className="rounded-full border border-black/10 bg-black/[0.03] px-3 py-2 text-xs font-bold text-black/55">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
       <AnimatePresence>
         {authWarn && (
           <motion.div
@@ -802,6 +892,7 @@ export default function BrandClient({
           </button>
         </div>
       )}
+      </div>
       <style jsx>{`
         .fav-burst-layer {
           position: absolute;

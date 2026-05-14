@@ -21,7 +21,9 @@ type Brand = {
   description: string | null;
   aboutLong: string | null;
   sizeChart: string | null;
+  heroVideo: string | null;
   styleNotes?: string | null;
+  tags?: string[];
   isPremium: boolean;
   _count: { Product: number };
 };
@@ -34,6 +36,7 @@ type BrandForm = {
   description: string;
   aboutLong: string;
   sizeChart: string;
+  heroVideo: string;
   isPremium: boolean;
 };
 
@@ -45,6 +48,7 @@ const emptyForm = (): BrandForm => ({
   description: "",
   aboutLong: "",
   sizeChart: "",
+  heroVideo: "",
   isPremium: false,
 });
 
@@ -56,6 +60,14 @@ function slugify(input: string): string {
     .replace(/[^a-z0-9а-яё]+/gi, "-")
     .replace(/^-+|-+$/g, "")
     .replace(/-{2,}/g, "-");
+}
+
+function extractHeroVideo(brand: { heroVideo?: string | null; tags?: string[] }) {
+  if (brand.heroVideo) return brand.heroVideo;
+  const tag = Array.isArray(brand.tags)
+    ? brand.tags.find((value) => typeof value === "string" && /^video:/i.test(value.trim()))
+    : null;
+  return tag ? tag.replace(/^video:/i, "").trim() : "";
 }
 
 export default function AdminBrandsPage() {
@@ -100,6 +112,7 @@ export default function AdminBrandsPage() {
               ...brand,
               imageUrl: brand.imageUrl || brand.features || null,
               sizeChart: brand.sizeChart || brand.styleNotes || "",
+              heroVideo: extractHeroVideo(brand),
             }))
           : [];
         setBrands(list);
@@ -206,6 +219,7 @@ export default function AdminBrandsPage() {
           description: addForm.description || null,
           aboutLong: addForm.aboutLong || null,
           sizeChart: addForm.sizeChart || null,
+          heroVideo: addForm.heroVideo || null,
           isPremium: addForm.isPremium,
         }),
       });
@@ -235,6 +249,7 @@ export default function AdminBrandsPage() {
       description: brand.description || "",
       aboutLong: brand.aboutLong || "",
       sizeChart: brand.sizeChart || brand.styleNotes || "",
+      heroVideo: extractHeroVideo(brand),
       isPremium: brand.isPremium,
     });
     setShowAddForm(false);
@@ -262,6 +277,7 @@ export default function AdminBrandsPage() {
           description: editForm.description || null,
           aboutLong: editForm.aboutLong || null,
           sizeChart: editForm.sizeChart || null,
+          heroVideo: editForm.heroVideo || null,
           isPremium: editForm.isPremium,
         }),
       });
@@ -374,6 +390,12 @@ export default function AdminBrandsPage() {
           rows={4}
           value={form.aboutLong}
           onChange={(e) => setField("aboutLong", e.target.value)}
+        />
+        <input
+          className={inputCls + " sm:col-span-2"}
+          placeholder="URL видео-фона бренда (mp4/webm, можно оставить пустым)"
+          value={form.heroVideo}
+          onChange={(e) => setField("heroVideo", e.target.value)}
         />
         <textarea
           className={inputCls + " sm:col-span-2 font-mono"}
@@ -498,6 +520,11 @@ export default function AdminBrandsPage() {
                       {(brand.sizeChart || brand.styleNotes) && (
                         <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
                           Размерная сетка добавлена
+                        </div>
+                      )}
+                      {extractHeroVideo(brand) && (
+                        <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-700">
+                          Видео-фон добавлен
                         </div>
                       )}
                     </div>

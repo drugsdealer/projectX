@@ -60,6 +60,7 @@ type BrandMeta = {
   logo?: string;
   about?: string;
   aboutLong?: string;
+  heroVideo?: string;
   tags?: string[];
 };
 
@@ -165,6 +166,9 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
     logo: brand.logoUrl || undefined,
     about: brand.description || undefined,
     aboutLong: brand.aboutLong || undefined,
+    heroVideo: Array.isArray(brand.tags)
+      ? brand.tags.find((tag) => typeof tag === 'string' && /^video:/i.test(tag.trim()))?.replace(/^video:/i, '').trim()
+      : undefined,
     tags: Array.isArray(brand.tags) ? brand.tags : [],
   };
 

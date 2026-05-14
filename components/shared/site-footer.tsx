@@ -44,18 +44,9 @@ const SOCIAL_LINKS = [
 ];
 
 const PAYMENT_METHODS = [
-  {
-    label: "Visa",
-    src: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1768923278/Visa_2021.svg_gtkopy.png",
-  },
-  {
-    label: "Mastercard",
-    src: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1768923314/Mastercard-logo.svg_bf68dq.png",
-  },
-  {
-    label: "МИР",
-    src: "https://res.cloudinary.com/dhufbfxcy/image/upload/v1768923362/Mir-logo.SVG.svg_fwqq8b.png",
-  },
+  { label: "Visa" },
+  { label: "Mastercard" },
+  { label: "МИР" },
 ];
 
 export function SiteFooter() {
@@ -106,7 +97,9 @@ export function SiteFooter() {
                     aria-label={item.label}
                     title={item.label}
                   >
-                    <Image src={item.src} alt={item.label} width={64} height={24} className="h-5 w-auto object-contain" />
+                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-white/75">
+                      {item.label}
+                    </span>
                   </div>
                 ))}
                 <span className="inline-flex items-center h-9 px-3 rounded-xl border border-white/15 bg-white/5 text-[11px] text-white/70">

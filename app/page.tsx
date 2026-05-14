@@ -87,7 +87,11 @@ export default function Page() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(homeJsonLd) }}
       />
-      <Suspense fallback={null}>
+      <Suspense
+        fallback={
+          <div className="hero-bleed-top min-h-[100svh] w-screen bg-black" aria-hidden="true" />
+        }
+      >
         <HomeClient />
       </Suspense>
     </>
