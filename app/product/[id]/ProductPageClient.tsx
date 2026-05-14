@@ -249,89 +249,114 @@ const ItemCheck = ({ ok, label, size }: {
 const SizeChartTable = ({
   rows,
   matchKey,
-  selectedSize
+  selectedSize,
+  availableSizes = [],
 }: {
   rows: any[];
   matchKey: string;
   selectedSize: string | number | null;
-}) => (
-  <table className="w-full text-sm text-left border border-gray-300 bg-white rounded-md shadow">
-    <thead className="bg-gray-100 text-xs uppercase text-gray-600">
-      <tr>
-        {Object.keys(rows[0]).map((key) => {
-          let label: string;
-          switch (key) {
-            case 'label':
-              label = 'РАЗМЕР';
-              break;
-            case 'ru':
-              label = '🇷🇺 RUS';
-              break;
-            case 'eu':
-              label = '🇪🇺 EU';
-              break;
-            case 'us':
-              label = '🇺🇸 US';
-              break;
-            case 'chestCm':
-              label = 'ГРУДЬ, СМ';
-              break;
-            case 'shouldersCm':
-              label = 'ПЛЕЧИ, СМ';
-              break;
-            case 'lengthCm':
-              label = 'ДЛИНА ИЗДЕЛИЯ, СМ';
-              break;
-            case 'waistCm':
-              label = 'ТАЛИЯ, СМ';
-              break;
-            case 'hipsCm':
-              label = 'БЁДРА, СМ';
-              break;
-            case 'inseamCm':
-              label = 'ДЛИНА НОГИ, СМ';
-              break;
-            case 'footCm':
-              label = 'ДЛИНА СТОПЫ, СМ';
-              break;
-            case 'wristCm':
-              label = 'ОБХВАТ ЗАПЯСТЬЯ, СМ';
-              break;
-            case 'fingerCm':
-              label = 'ОБХВАТ ПАЛЬЦА, СМ';
-              break;
-            default:
-              label = key.toUpperCase();
-          }
+  availableSizes?: Array<string | number>;
+}) => {
+  const availableSet = new Set(availableSizes.map(normalizeSizeKey).filter(Boolean));
+  const visibleRows = availableSet.size
+    ? rows.filter((row) => availableSet.has(normalizeSizeKey(row?.[matchKey])))
+    : rows;
+
+  if (!visibleRows.length) {
+    return (
+      <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500 shadow-sm">
+        Для доступных размеров товара таблица пока не заполнена.
+      </div>
+    );
+  }
+
+  return (
+    <table className="w-full text-sm text-left border border-gray-300 bg-white rounded-md shadow">
+      <thead className="bg-gray-100 text-xs uppercase text-gray-600">
+        <tr>
+          {Object.keys(visibleRows[0]).map((key) => {
+            let label: string;
+            switch (key) {
+              case 'label':
+                label = 'РАЗМЕР';
+                break;
+              case 'ru':
+                label = '🇷🇺 RUS';
+                break;
+              case 'eu':
+                label = '🇪🇺 EU';
+                break;
+              case 'us':
+                label = '🇺🇸 US';
+                break;
+              case 'chestCm':
+                label = 'ГРУДЬ, СМ';
+                break;
+              case 'shouldersCm':
+                label = 'ПЛЕЧИ, СМ';
+                break;
+              case 'lengthCm':
+                label = 'ДЛИНА ИЗДЕЛИЯ, СМ';
+                break;
+              case 'waistCm':
+                label = 'ТАЛИЯ, СМ';
+                break;
+              case 'hipsCm':
+                label = 'БЁДРА, СМ';
+                break;
+              case 'inseamCm':
+                label = 'ДЛИНА НОГИ, СМ';
+                break;
+              case 'footCm':
+                label = 'ДЛИНА СТОПЫ, СМ';
+                break;
+              case 'wristCm':
+                label = 'ОБХВАТ ЗАПЯСТЬЯ, СМ';
+                break;
+              case 'fingerCm':
+                label = 'ОБХВАТ ПАЛЬЦА, СМ';
+                break;
+              default:
+                label = key.toUpperCase();
+            }
+            return (
+              <th key={key} className="px-3 py-2 border">
+                {label}
+              </th>
+            );
+          })}
+        </tr>
+      </thead>
+      <tbody>
+        {visibleRows.map((row, i) => {
+          const isActive =
+            selectedSize != null && normalizeSizeKey(row[matchKey]) === normalizeSizeKey(selectedSize);
+
           return (
-            <th key={key} className="px-3 py-2 border">
-              {label}
-            </th>
+            <tr
+              key={i}
+              className={`transition-colors border ${
+                isActive ? 'bg-blue-100 font-semibold' : ''
+              }`}
+            >
+              {Object.values(row).map((value, j) => (
+                <td key={j} className="px-3 py-2 border">{String(value)}</td>
+              ))}
+            </tr>
           );
         })}
-      </tr>
-    </thead>
-    <tbody>
-      {rows.map((row, i) => {
-        const isActive =
-          selectedSize != null && String(row[matchKey]) === String(selectedSize);
+      </tbody>
+    </table>
+  );
+};
 
-        return (
-          <tr
-            key={i}
-            className={`transition-colors border ${
-              isActive ? 'bg-blue-100 font-semibold' : ''
-            }`}
-          >
-            {Object.values(row).map((value, j) => (
-              <td key={j} className="px-3 py-2 border">{String(value)}</td>
-            ))}
-          </tr>
-        );
-      })}
-    </tbody>
-  </table>
-);
+function normalizeSizeKey(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .replace(/,/g, ".")
+    .replace(/\s+/g, "")
+    .toUpperCase();
+}
 
 const parseBrandSizeChart = (value: unknown) => {
   const text = typeof value === "string" ? value.trim() : "";
@@ -368,9 +393,11 @@ const parseBrandSizeChart = (value: unknown) => {
 const BrandSizeChartTable = ({
   value,
   selectedSize,
+  availableSizes = [],
 }: {
   value: unknown;
   selectedSize: string | number | null;
+  availableSizes?: Array<string | number>;
 }) => {
   const parsed = parseBrandSizeChart(value);
   if (!parsed) return null;
@@ -379,6 +406,19 @@ const BrandSizeChartTable = ({
     return (
       <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm leading-6 text-gray-700 shadow-sm whitespace-pre-wrap">
         {parsed.text}
+      </div>
+    );
+  }
+
+  const availableSet = new Set(availableSizes.map(normalizeSizeKey).filter(Boolean));
+  const visibleRows = availableSet.size
+    ? parsed.rows.filter((row) => availableSet.has(normalizeSizeKey(row[0])))
+    : parsed.rows;
+
+  if (!visibleRows.length) {
+    return (
+      <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500 shadow-sm">
+        Для доступных размеров товара таблица пока не заполнена.
       </div>
     );
   }
@@ -396,9 +436,9 @@ const BrandSizeChartTable = ({
           </tr>
         </thead>
         <tbody>
-          {parsed.rows.map((row, index) => {
+          {visibleRows.map((row, index) => {
             const sizeCell = row[0] ?? "";
-            const isActive = selectedSize != null && String(sizeCell) === String(selectedSize);
+            const isActive = selectedSize != null && normalizeSizeKey(sizeCell) === normalizeSizeKey(selectedSize);
             return (
               <tr key={`${sizeCell}-${index}`} className={isActive ? "bg-blue-100 font-semibold" : ""}>
                 {parsed.headers.map((_, cellIndex) => (
@@ -1268,6 +1308,7 @@ const handleCancel = () => {
         <BrandSizeChartTable
           value={brandSizeChart}
           selectedSize={selectedSize}
+          availableSizes={availableSizes}
         />
       );
     }
@@ -1287,6 +1328,7 @@ const handleCancel = () => {
             rows={rows}
             matchKey="label"
             selectedSize={selectedSize}
+            availableSizes={availableSizes}
           />
         );
       }
@@ -1305,6 +1347,7 @@ const handleCancel = () => {
             rows={sizeCharts.shoes}
             matchKey="eu"
             selectedSize={normalizedShoesSize}
+            availableSizes={availableSizes}
           />
         );
       }
@@ -1316,6 +1359,7 @@ const handleCancel = () => {
               rows={sizeCharts.rings}
               matchKey="size"
               selectedSize={selectedSize}
+              availableSizes={availableSizes}
             />
           );
         if (type === 'bracelet')
@@ -1324,6 +1368,7 @@ const handleCancel = () => {
               rows={sizeCharts.bracelets}
               matchKey="size"
               selectedSize={selectedSize}
+              availableSizes={availableSizes}
             />
           );
         break;

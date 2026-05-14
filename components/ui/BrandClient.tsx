@@ -384,17 +384,22 @@ export default function BrandClient({
     trackAnalyticsEvent({ event: "brand_click", brandId: meta.id });
   }, [user?.id, meta?.id]);
 
-  // Initial sync: merge server favorites with localStorage and compute UI state
+  // Favorites are account-scoped. Never show stale local favorites to guests.
   useEffect(() => {
     let mounted = true;
 
+    if (!user?.id) {
+      setIsFav(false);
+      return () => {
+        mounted = false;
+      };
+    }
+
     (async () => {
       try {
-        const local = readBoth();
         const server = await loadFavoriteSlugsFromApi(); // [] when not authorized
-        const merged = Array.from(new Set([...local, ...server]));
-        writeBoth(merged);
-        if (mounted) setIsFav(merged.includes(slug));
+        writeBoth(server);
+        if (mounted) setIsFav(server.includes(slug));
       } catch {
         if (mounted) setIsFav(readBoth().includes(slug));
       }
@@ -402,6 +407,10 @@ export default function BrandClient({
 
     // listen cross-components updates (profile page etc.)
     const onFavs = (e: Event) => {
+      if (!user?.id) {
+        setIsFav(false);
+        return;
+      }
       const detail = (e as CustomEvent).detail as { slugs?: string[] } | undefined;
       const current = detail?.slugs ?? readBoth();
       setIsFav(current.includes(slug));
@@ -412,7 +421,7 @@ export default function BrandClient({
       mounted = false;
       window.removeEventListener('favorites:brands:update', onFavs as EventListener);
     };
-  }, [slug]);
+  }, [slug, user?.id]);
 
   const priceBounds = useMemo(() => {
     let min = Infinity;
@@ -614,7 +623,7 @@ export default function BrandClient({
         </div>
 
         <div className={`relative z-10 mx-auto flex min-h-[100svh] max-w-6xl flex-col px-5 py-5 sm:px-8 ${heroTextClass}`}>
-          <div className="relative z-[60] flex items-center justify-between pt-[calc(var(--header-h,72px)+8px)] md:pt-5">
+          <div className="relative z-[60] flex items-center justify-between pt-[calc(env(safe-area-inset-top)+0.5rem)] md:pt-5">
             <Link
               href="/brands"
               className={`grid h-12 w-12 place-items-center rounded-full border backdrop-blur-xl transition ${heroIconButtonClass}`}
@@ -766,9 +775,9 @@ export default function BrandClient({
         </div>
       </section>
 
-      <div className="relative z-20 -mt-28 h-32 bg-gradient-to-b from-transparent via-white/85 to-white pointer-events-none" />
+      <div className="relative z-20 -mt-36 h-40 bg-gradient-to-b from-transparent via-white/82 to-white pointer-events-none" />
 
-      <div id={productsSectionId} className="relative z-30 mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8">
+      <div id={productsSectionId} className="relative z-30 -mt-24 mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8">
         <div className="mb-6 overflow-hidden rounded-[28px] border border-black/10 bg-white shadow-[0_16px_45px_rgba(0,0,0,0.06)]">
           <div className="grid grid-cols-1 gap-0 divide-y divide-black/10 md:grid-cols-[1.1fr_0.9fr] md:divide-x md:divide-y-0">
             <div className="p-4 sm:p-5">
