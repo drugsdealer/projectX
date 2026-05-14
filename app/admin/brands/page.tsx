@@ -20,6 +20,8 @@ type Brand = {
   features?: string | null;
   description: string | null;
   aboutLong: string | null;
+  sizeChart: string | null;
+  styleNotes?: string | null;
   isPremium: boolean;
   _count: { Product: number };
 };
@@ -31,6 +33,7 @@ type BrandForm = {
   imageUrl: string;
   description: string;
   aboutLong: string;
+  sizeChart: string;
   isPremium: boolean;
 };
 
@@ -41,6 +44,7 @@ const emptyForm = (): BrandForm => ({
   imageUrl: "",
   description: "",
   aboutLong: "",
+  sizeChart: "",
   isPremium: false,
 });
 
@@ -95,6 +99,7 @@ export default function AdminBrandsPage() {
           ? data.brands.map((brand: any) => ({
               ...brand,
               imageUrl: brand.imageUrl || brand.features || null,
+              sizeChart: brand.sizeChart || brand.styleNotes || "",
             }))
           : [];
         setBrands(list);
@@ -200,6 +205,7 @@ export default function AdminBrandsPage() {
           imageUrl: addForm.imageUrl,
           description: addForm.description || null,
           aboutLong: addForm.aboutLong || null,
+          sizeChart: addForm.sizeChart || null,
           isPremium: addForm.isPremium,
         }),
       });
@@ -228,6 +234,7 @@ export default function AdminBrandsPage() {
       imageUrl: brand.imageUrl || brand.features || "",
       description: brand.description || "",
       aboutLong: brand.aboutLong || "",
+      sizeChart: brand.sizeChart || brand.styleNotes || "",
       isPremium: brand.isPremium,
     });
     setShowAddForm(false);
@@ -254,6 +261,7 @@ export default function AdminBrandsPage() {
           imageUrl: editForm.imageUrl,
           description: editForm.description || null,
           aboutLong: editForm.aboutLong || null,
+          sizeChart: editForm.sizeChart || null,
           isPremium: editForm.isPremium,
         }),
       });
@@ -367,6 +375,16 @@ export default function AdminBrandsPage() {
           value={form.aboutLong}
           onChange={(e) => setField("aboutLong", e.target.value)}
         />
+        <textarea
+          className={inputCls + " sm:col-span-2 font-mono"}
+          placeholder={"Размерная сетка бренда. Формат: Размер | EU | US | Длина стопы\\n39 | 39 | 6 | 25 см\\n40 | 40 | 7 | 25.5 см"}
+          rows={5}
+          value={form.sizeChart}
+          onChange={(e) => setField("sizeChart", e.target.value)}
+        />
+        <p className="text-xs leading-5 text-black/50 sm:col-span-2">
+          Эта сетка будет показываться на карточках товаров этого бренда вместо стандартной таблицы размеров.
+        </p>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -475,6 +493,11 @@ export default function AdminBrandsPage() {
                       {brand.description && (
                         <div className="mt-1 text-xs text-black/50 max-w-md truncate">
                           {brand.description}
+                        </div>
+                      )}
+                      {(brand.sizeChart || brand.styleNotes) && (
+                        <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                          Размерная сетка добавлена
                         </div>
                       )}
                     </div>

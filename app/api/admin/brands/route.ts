@@ -20,6 +20,7 @@ export async function GET(req: Request) {
       features: true,
       description: true,
       aboutLong: true,
+      styleNotes: true,
       isPremium: true,
       _count: {
         select: {
@@ -43,6 +44,7 @@ export async function POST(req: Request) {
   const imageUrl = String(body?.imageUrl || "").trim();
   const description = body?.description ? String(body.description).trim() : null;
   const aboutLong = body?.aboutLong ? String(body.aboutLong).trim() : null;
+  const sizeChart = body?.sizeChart ? String(body.sizeChart).trim() : null;
 
   if (!name) {
     return NextResponse.json({ success: false, message: "Название обязательно" }, { status: 400 });
@@ -71,6 +73,7 @@ export async function POST(req: Request) {
       features: imageUrl || null,
       description,
       aboutLong,
+      styleNotes: sizeChart,
     },
     select: { id: true, name: true, slug: true },
   });
@@ -130,6 +133,10 @@ export async function PATCH(req: Request) {
     data.aboutLong = body.aboutLong ? String(body.aboutLong).trim() : null;
   }
 
+  if (body?.sizeChart !== undefined) {
+    data.styleNotes = body.sizeChart ? String(body.sizeChart).trim() : null;
+  }
+
   if (body?.isPremium !== undefined) {
     data.isPremium = Boolean(body.isPremium);
   }
@@ -137,7 +144,7 @@ export async function PATCH(req: Request) {
   const brand = await prisma.brand.update({
     where: { id },
     data,
-    select: { id: true, name: true, slug: true, logoUrl: true, features: true, description: true, aboutLong: true, isPremium: true },
+    select: { id: true, name: true, slug: true, logoUrl: true, features: true, description: true, aboutLong: true, styleNotes: true, isPremium: true },
   });
 
   return NextResponse.json({ success: true, brand });

@@ -333,6 +333,88 @@ const SizeChartTable = ({
   </table>
 );
 
+const parseBrandSizeChart = (value: unknown) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text) return null;
+
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length < 2 || !lines.some((line) => line.includes("|"))) {
+    return { text, headers: [] as string[], rows: [] as string[][] };
+  }
+
+  const split = (line: string) =>
+    line
+      .split("|")
+      .map((cell) => cell.trim())
+      .filter((cell, idx, arr) => cell || idx > 0 && idx < arr.length - 1);
+
+  const headers = split(lines[0]);
+  const rows = lines
+    .slice(1)
+    .map(split)
+    .filter((row) => row.length > 0);
+
+  if (!headers.length || !rows.length) {
+    return { text, headers: [] as string[], rows: [] as string[][] };
+  }
+
+  return { text, headers, rows };
+};
+
+const BrandSizeChartTable = ({
+  value,
+  selectedSize,
+}: {
+  value: unknown;
+  selectedSize: string | number | null;
+}) => {
+  const parsed = parseBrandSizeChart(value);
+  if (!parsed) return null;
+
+  if (!parsed.headers.length) {
+    return (
+      <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm leading-6 text-gray-700 shadow-sm whitespace-pre-wrap">
+        {parsed.text}
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+      <table className="w-full min-w-[520px] text-left text-sm">
+        <thead className="bg-gray-100 text-xs uppercase tracking-[0.08em] text-gray-600">
+          <tr>
+            {parsed.headers.map((header) => (
+              <th key={header} className="border-b border-gray-200 px-3 py-2">
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {parsed.rows.map((row, index) => {
+            const sizeCell = row[0] ?? "";
+            const isActive = selectedSize != null && String(sizeCell) === String(selectedSize);
+            return (
+              <tr key={`${sizeCell}-${index}`} className={isActive ? "bg-blue-100 font-semibold" : ""}>
+                {parsed.headers.map((_, cellIndex) => (
+                  <td key={cellIndex} className="border-t border-gray-100 px-3 py-2">
+                    {row[cellIndex] ?? ""}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
 export default function ProductPage() {
   const { id } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
@@ -1176,6 +1258,19 @@ const handleCancel = () => {
 
   const renderSizeChartTable = () => {
     if (!product) return null;
+
+    const brandSizeChart =
+      (rawProduct as any)?.brandSizeChart ??
+      (product as any)?.brandSizeChart ??
+      null;
+    if (typeof brandSizeChart === "string" && brandSizeChart.trim()) {
+      return (
+        <BrandSizeChartTable
+          value={brandSizeChart}
+          selectedSize={selectedSize}
+        />
+      );
+    }
 
     switch (product.category) {
       case 'clothing':

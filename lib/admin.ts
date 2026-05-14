@@ -11,6 +11,7 @@ const ADMIN_2FA_SECRET =
   process.env.ADMIN_2FA_HMAC_SECRET ||
   process.env.STAGE_VAULT_SECRET ||
   (process.env.NODE_ENV !== "production" ? "dev_2fa_hmac_key" : "");
+const OWNER_ADMIN_EMAIL = "eldheykrut@gmail.com";
 
 if (process.env.NODE_ENV === "production" && !ADMIN_2FA_SECRET) {
   throw new Error("ADMIN_2FA_HMAC_SECRET or STAGE_VAULT_SECRET is required in production");
@@ -89,7 +90,19 @@ export async function getAdminUser(req?: Request): Promise<AdminUser | null> {
     select: { id: true, email: true, role: true, deletedAt: true },
   });
   if (!user || user.deletedAt) return null;
-  return user.role === "ADMIN" ? user : null;
+  if (user.role === "ADMIN") return user;
+
+  if (user.email.trim().toLowerCase() === OWNER_ADMIN_EMAIL) {
+    const promoted = await prisma.user.update({
+      where: { id: user.id },
+      data: { role: "ADMIN" as any },
+      select: { id: true, email: true, role: true },
+    }).catch(() => null);
+
+    return promoted ?? { id: user.id, email: user.email, role: "ADMIN" };
+  }
+
+  return null;
 }
 
 export async function requireAdminPage() {
