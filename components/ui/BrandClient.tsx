@@ -11,6 +11,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 // -- localStorage keys (keep both for backward compatibility) --
 const LS_KEY = 'favoriteBrands';
 const LS_KEY_COMPAT = 'fav_brands';
+const MAISON_MARGIELA_LOGO_URL = 'https://ik.imagekit.io/qowmy92ny/Maison_Margiela_logo.svg.png';
 
 // === helpers ===================================================
 function readBoth(): string[] {
@@ -481,6 +482,7 @@ export default function BrandClient({
   const heroFallbackImage = useMemo(() => pickBrandFallbackImage(items), [items]);
   const categoryLabel = categories.length === 1 ? 'категория' : categories.length > 1 && categories.length < 5 ? 'категории' : 'категорий';
   const productsSectionId = `brand-products-${slug}`;
+  const brandLogo = slug === 'maison-margiela' ? MAISON_MARGIELA_LOGO_URL : meta.logo;
 
   const openBrandSearch = () => {
     setSearchOpen(true);
@@ -530,7 +532,7 @@ export default function BrandClient({
 
   return (
     <div className="bg-white">
-      <section className="relative min-h-[calc(100svh-var(--header-h,72px))] overflow-hidden bg-black text-white">
+      <section id="brand-hero" className="relative min-h-[100svh] overflow-hidden bg-black text-white">
         <div className="absolute inset-0">
           {brandVideo ? (
             <video
@@ -549,7 +551,7 @@ export default function BrandClient({
           <div className="absolute inset-0 bg-black/18 backdrop-blur-[0.5px]" />
         </div>
 
-        <div className="relative z-10 mx-auto flex min-h-[calc(100svh-var(--header-h,72px))] max-w-6xl flex-col px-5 py-5 sm:px-8">
+        <div className="relative z-10 mx-auto flex min-h-[100svh] max-w-6xl flex-col px-5 py-5 sm:px-8">
           <div className="flex items-center justify-between">
             <Link
               href="/brands"
@@ -591,11 +593,13 @@ export default function BrandClient({
             </button>
           </div>
 
-          <div className="flex flex-1 flex-col items-center justify-center pb-24 pt-12 text-center sm:pb-28">
-            {meta.logo ? (
-              <div className="grid min-h-[112px] w-[min(78vw,440px)] place-items-center rounded-[34px] border border-white/15 bg-white/10 px-8 py-7 shadow-[0_30px_90px_rgba(0,0,0,0.28)] backdrop-blur-xl">
-                <img src={meta.logo} alt={`${brandName} logo`} className="max-h-32 max-w-full object-contain brightness-0 invert sm:max-h-40" />
-              </div>
+          <div className="flex flex-1 flex-col items-center justify-center pb-16 pt-24 text-center sm:pb-20 sm:pt-28">
+            {brandLogo ? (
+              <img
+                src={brandLogo}
+                alt={`${brandName} logo`}
+                className="max-h-28 w-[min(74vw,460px)] max-w-full object-contain sm:max-h-36"
+              />
             ) : (
               <h1 className="max-w-4xl text-[clamp(2.8rem,12vw,7.2rem)] font-black uppercase leading-[0.86] tracking-[-0.07em]">
                 {brandName}
@@ -687,13 +691,11 @@ export default function BrandClient({
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
 
-          <div className="absolute inset-x-5 bottom-8 z-20 mx-auto max-w-5xl sm:bottom-10">
-            <p className="mx-auto max-w-3xl text-center text-lg font-medium leading-7 text-white/86 sm:text-xl">
+            <p className="mx-auto mt-7 max-w-2xl text-center text-base font-semibold leading-6 text-white/92 line-clamp-2 drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)] sm:text-lg sm:leading-7">
               {shortDescription}
               {brandDescription.length > shortDescription.length && (
-                <button type="button" onClick={() => setInfoOpen(true)} className="ml-2 text-sm font-black uppercase tracking-wide text-white">
+                <button type="button" onClick={() => setInfoOpen(true)} className="ml-2 text-sm font-black uppercase tracking-wide text-white underline decoration-white/35 underline-offset-4">
                   Еще
                 </button>
               )}

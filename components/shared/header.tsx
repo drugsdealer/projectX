@@ -128,6 +128,7 @@ export const Header: React.FC<Props> = ({ className }) => {
   };
 
   const isHome = pathname === "/";
+  const isBrandPage = pathname?.startsWith("/brand/");
   const { user } = useUser();
   // Initialise synchronously on client to avoid white-flash before useEffect fires
   const [isAtTop, setIsAtTop] = useState(() => {
@@ -167,10 +168,10 @@ export const Header: React.FC<Props> = ({ className }) => {
   }, []);
 
 useLayoutEffect(() => {
-  if (!isHome) return;
+  if (!isHome && !isBrandPage) return;
 
   const handleScroll = () => {
-    const hero = document.getElementById("home-hero");
+    const hero = document.getElementById(isBrandPage ? "brand-hero" : "home-hero");
     if (hero) {
       const rect = hero.getBoundingClientRect();
       const h = headerRef.current?.offsetHeight ?? 80;
@@ -200,7 +201,7 @@ useLayoutEffect(() => {
     window.removeEventListener("scroll", handleScroll);
     window.removeEventListener("resize", handleScroll);
   };
-}, [isHome]);
+}, [isHome, isBrandPage]);
 
   // Discount state is restored in DiscountProvider; avoid overriding here.
 
@@ -327,16 +328,19 @@ useLayoutEffect(() => {
     return () => observer.disconnect();
   }, []);
 
+  const transparentHeader = (isHome || isBrandPage) && isAtTop;
+  const brandTransparentHeader = isBrandPage && isAtTop;
+
   return (
     <header
       ref={headerRef}
       className={cn(
-        isHome ? 'fixed top-0 left-0' : 'relative',
+        (isHome || isBrandPage) ? 'fixed top-0 left-0' : 'relative',
         'w-full z-40 transition-all duration-500',
         // when curator is open we visually push header to background
         curatorOpenRemote ? 'opacity-40 blur-sm' : '',
-        (isHome && isAtTop)
-          ? 'bg-transparent border-transparent shadow-none'
+        transparentHeader
+          ? 'bg-transparent border-transparent shadow-none text-white'
           : 'bg-white border-b border-black/10 shadow-sm',
         className
       )}
@@ -474,10 +478,10 @@ useLayoutEffect(() => {
             </motion.div>
           )}
         </AnimatePresence>
-        <div className="md:hidden px-3 py-2">
+        <div className={cn("md:hidden px-3 py-2", brandTransparentHeader ? "pointer-events-none" : "")}>
           <div className="flex items-center justify-between">
             {/* LEFT ICONS: search (toggle input), favorites */}
-            <div className="flex items-center gap-2">
+            <div className={cn("flex items-center gap-2", brandTransparentHeader ? "opacity-0" : "")}>
               <button
                 type="button"
                 aria-label="Меню и поиск"
@@ -502,7 +506,7 @@ useLayoutEffect(() => {
             </Link>
 
             {/* RIGHT ICONS: profile/login, cart */}
-            <div className="flex items-center gap-2">
+            <div className={cn("flex items-center gap-2", brandTransparentHeader ? "opacity-0" : "")}>
               {user ? (
                 <Link href="/user" aria-label="Профиль">
                   <Button variant="ghost" className="h-10 w-10 p-0 flex items-center justify-center border-none bg-transparent hover:bg-transparent focus-visible:ring-0">
@@ -729,16 +733,16 @@ useLayoutEffect(() => {
           </AnimatePresence>
         </div>
         <Container className="hidden md:flex items-center justify-between py-4 relative">
-          <div className="flex items-center gap-3">
-            <SearchBar isTransparent={isHome && isAtTop} />
+          <div className={cn("flex items-center gap-3 transition-opacity duration-300", brandTransparentHeader ? "opacity-0 pointer-events-none" : "")}>
+            <SearchBar isTransparent={transparentHeader} />
             <Link href="/search">
-              <Button variant="outline" className="flex items-center gap-1.5">
+              <Button variant="outline" className={cn("flex items-center gap-1.5", transparentHeader ? "border-white/30 bg-white/10 text-white hover:bg-white hover:text-black" : "")}>
                 <Menu size={16} />
                 <span className="hidden md:inline">Каталог</span>
               </Button>
             </Link>
             <Link href="/favorites_item">
-              <Button variant="outline" className="flex items-center gap-1.5">
+              <Button variant="outline" className={cn("flex items-center gap-1.5", transparentHeader ? "border-white/30 bg-white/10 text-white hover:bg-white hover:text-black" : "")}>
                 <Heart size={16} />
                 <span className="hidden md:inline">Избранное</span>
               </Button>
@@ -751,17 +755,17 @@ useLayoutEffect(() => {
             </Link>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className={cn("flex items-center gap-3 transition-opacity duration-300", brandTransparentHeader ? "opacity-0 pointer-events-none" : "")}>
             {user ? (
               <Link href="/user">
-                <Button variant="outline" className="flex items-center gap-1.5">
+                <Button variant="outline" className={cn("flex items-center gap-1.5", transparentHeader ? "border-white/30 bg-white/10 text-white hover:bg-white hover:text-black" : "")}>
                   <UserRound size={16} />
                   Профиль
                 </Button>
               </Link>
             ) : (
               <Link href="/register">
-                <Button variant="outline" className="flex items-center gap-1.5 group">
+                <Button variant="outline" className={cn("flex items-center gap-1.5 group", transparentHeader ? "border-white/30 bg-white/10 text-white hover:bg-white hover:text-black" : "")}>
                   <div className="relative flex items-center">
                     <DoorClosed size={16} className="group-hover:hidden transition-all duration-200" />
                     <DoorOpen size={16} className="hidden group-hover:block transition-all duration-200" />
@@ -771,7 +775,7 @@ useLayoutEffect(() => {
               </Link>
             )}
             <Link href="/cart">
-              <Button className="group relative px-5 py-3 flex items-center justify-between gap-4 min-w-[160px]">
+              <Button className={cn("group relative px-5 py-3 flex items-center justify-between gap-4 min-w-[160px]", transparentHeader ? "bg-white/10 text-white hover:bg-white hover:text-black" : "")}>
                 <div className="text-sm font-semibold leading-tight text-left">
                   <AnimatePresence mode="wait">
                     <motion.div
