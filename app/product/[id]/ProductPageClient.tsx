@@ -351,10 +351,18 @@ const SizeChartTable = ({
 };
 
 function normalizeSizeKey(value: unknown) {
-  return String(value ?? "")
+  const raw = String(value ?? "")
     .trim()
-    .replace(/,/g, ".")
+    .replace(/,/g, ".");
+
+  const numeric = raw.match(/\d+(?:\.\d+)?/);
+  if (numeric) {
+    return String(Number(numeric[0]));
+  }
+
+  return raw
     .replace(/\s+/g, "")
+    .replace(/(?:EUR|EU|US|RU|RUS)$/i, "")
     .toUpperCase();
 }
 

@@ -717,7 +717,7 @@ export default function BrandClient({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.98 }}
                     transition={{ duration: 0.18 }}
-                    className="absolute right-0 top-[76px] z-30 w-56 overflow-hidden rounded-3xl border border-white/15 bg-black/70 p-2 text-left shadow-2xl backdrop-blur-xl"
+                    className="absolute bottom-[76px] right-0 z-30 max-h-[42svh] w-56 overflow-y-auto rounded-3xl border border-white/15 bg-black/78 p-2 text-left shadow-2xl backdrop-blur-xl md:bottom-auto md:top-[76px]"
                   >
                     {(Object.keys(SORT_LABELS) as SortMode[]).map((mode) => (
                       <button
