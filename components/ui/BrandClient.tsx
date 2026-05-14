@@ -12,6 +12,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 const LS_KEY = 'favoriteBrands';
 const LS_KEY_COMPAT = 'fav_brands';
 const MAISON_MARGIELA_LOGO_URL = 'https://ik.imagekit.io/qowmy92ny/Maison_Margiela_logo.svg.png';
+const MAISON_MARGIELA_HERO_IMAGE_URL = 'https://ik.imagekit.io/qowmy92ny/MARGIELA_ARTISANAL2253_C_FINAL.jpg?updatedAt=1778774121097';
 
 // === helpers ===================================================
 function readBoth(): string[] {
@@ -479,7 +480,10 @@ export default function BrandClient({
   const brandDescription = useMemo(() => compactBrandDescription(meta, brandName), [meta, brandName]);
   const shortDescription = brandDescription.length > 170 ? `${brandDescription.slice(0, 170).trim()}...` : brandDescription;
   const brandVideo = useMemo(() => pickBrandVideo(meta), [meta]);
-  const heroFallbackImage = useMemo(() => pickBrandFallbackImage(items), [items]);
+  const heroFallbackImage = useMemo(
+    () => (slug === 'maison-margiela' ? MAISON_MARGIELA_HERO_IMAGE_URL : pickBrandFallbackImage(items)),
+    [items, slug]
+  );
   const categoryLabel = categories.length === 1 ? 'категория' : categories.length > 1 && categories.length < 5 ? 'категории' : 'категорий';
   const productsSectionId = `brand-products-${slug}`;
   const brandLogo = slug === 'maison-margiela' ? MAISON_MARGIELA_LOGO_URL : meta.logo;
