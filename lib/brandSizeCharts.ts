@@ -61,7 +61,6 @@ function normalizeCategory(input: any, fallback: BrandSizeChartCategory): BrandS
         .map((row: any[]) =>
           safeColumns.map((_column: string, index: number) => normalizeCell(row[index]))
         )
-        .filter((row: string[]) => row.some(Boolean))
     : [];
 
   const sizeMode = input?.sizeMode === "letters" || input?.sizeMode === "numbers" || input?.sizeMode === "mixed"
@@ -143,7 +142,12 @@ export function serializeBrandSizeChart(chart: BrandSizeChart): string {
     }),
   };
 
-  const hasContent = normalized.categories.some((category) => category.rows.length > 0);
+  const hasContent = normalized.categories.some((category) => {
+    const fallback = empty.categories.find((item) => item.key === category.key);
+    const columnsChanged = JSON.stringify(category.columns) !== JSON.stringify(fallback?.columns ?? []);
+    const modeChanged = category.sizeMode !== fallback?.sizeMode;
+    return columnsChanged || modeChanged || category.rows.length > 0;
+  });
 
   return hasContent ? JSON.stringify(normalized) : "";
 }

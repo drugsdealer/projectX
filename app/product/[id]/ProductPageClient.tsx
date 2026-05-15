@@ -415,9 +415,17 @@ const BrandSizeChartTable = ({
   chartCategoryKey?: ReturnType<typeof inferBrandSizeCategory>;
 }) => {
   const structured = parseStructuredBrandSizeChart(value);
-  const structuredCategory =
+  const structuredCategoryRaw =
     getBrandSizeChartCategory(structured, chartCategoryKey) ??
     structured.categories.find((category) => category.rows.length > 0);
+  const structuredCategory = structuredCategoryRaw
+    ? {
+        ...structuredCategoryRaw,
+        rows: structuredCategoryRaw.rows.filter((row) =>
+          row.some((cell) => String(cell ?? "").trim())
+        ),
+      }
+    : null;
 
   if (structuredCategory?.rows.length) {
     const availableSet = new Set(availableSizes.map(normalizeSizeKey).filter(Boolean));
