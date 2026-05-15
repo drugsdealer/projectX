@@ -46,6 +46,11 @@ import { motion, AnimatePresence, useScroll, useTransform, useDragControls } fro
 import { Heart } from "lucide-react";
 import { normalizeProduct, type NormalizedProduct } from "@/lib/normalizeProduct";
 import { getOrCreateEventsSessionId, trackShopEvent } from "@/lib/events-client";
+import {
+  getBrandSizeChartCategory,
+  inferBrandSizeCategory,
+  parseBrandSizeChart as parseStructuredBrandSizeChart,
+} from "@/lib/brandSizeCharts";
 
 
 // --- Local minimal types to replace removed "@/data/products" ---
@@ -402,11 +407,64 @@ const BrandSizeChartTable = ({
   value,
   selectedSize,
   availableSizes = [],
+  chartCategoryKey,
 }: {
   value: unknown;
   selectedSize: string | number | null;
   availableSizes?: Array<string | number>;
+  chartCategoryKey?: ReturnType<typeof inferBrandSizeCategory>;
 }) => {
+  const structured = parseStructuredBrandSizeChart(value);
+  const structuredCategory =
+    getBrandSizeChartCategory(structured, chartCategoryKey) ??
+    structured.categories.find((category) => category.rows.length > 0);
+
+  if (structuredCategory?.rows.length) {
+    const availableSet = new Set(availableSizes.map(normalizeSizeKey).filter(Boolean));
+    const visibleRows = availableSet.size
+      ? structuredCategory.rows.filter((row) => availableSet.has(normalizeSizeKey(row[0])))
+      : structuredCategory.rows;
+
+    if (!visibleRows.length) {
+      return (
+        <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500 shadow-sm">
+          Для доступных размеров товара таблица пока не заполнена.
+        </div>
+      );
+    }
+
+    return (
+      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+        <table className="w-full min-w-[560px] text-left text-sm">
+          <thead className="bg-gray-100 text-xs uppercase tracking-[0.08em] text-gray-600">
+            <tr>
+              {structuredCategory.columns.map((header, index) => (
+                <th key={`${header}-${index}`} className="border-b border-gray-200 px-3 py-2">
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {visibleRows.map((row, index) => {
+              const sizeCell = row[0] ?? "";
+              const isActive = selectedSize != null && normalizeSizeKey(sizeCell) === normalizeSizeKey(selectedSize);
+              return (
+                <tr key={`${sizeCell}-${index}`} className={isActive ? "bg-blue-100 font-semibold" : ""}>
+                  {structuredCategory.columns.map((_, cellIndex) => (
+                    <td key={cellIndex} className="border-t border-gray-100 px-3 py-2">
+                      {row[cellIndex] ?? ""}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
   const parsed = parseBrandSizeChart(value);
   if (!parsed) return null;
 
@@ -1312,11 +1370,22 @@ const handleCancel = () => {
       (product as any)?.brandSizeChart ??
       null;
     if (typeof brandSizeChart === "string" && brandSizeChart.trim()) {
+      const chartCategoryKey = inferBrandSizeCategory({
+        categoryName: (rawProduct as any)?.categoryName ?? (product as any)?.categoryName,
+        categorySlug: (rawProduct as any)?.categorySlug ?? product.category,
+        subcategory:
+          (rawProduct as any)?.subCategorySlug ??
+          (rawProduct as any)?.subcategory ??
+          (product as any)?.subcategory,
+        sizeType: (rawProduct as any)?.sizeType ?? (product as any)?.sizeType,
+      });
+
       return (
         <BrandSizeChartTable
           value={brandSizeChart}
           selectedSize={selectedSize}
           availableSizes={availableSizes}
+          chartCategoryKey={chartCategoryKey}
         />
       );
     }

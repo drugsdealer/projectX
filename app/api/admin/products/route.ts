@@ -102,9 +102,18 @@ export async function POST(req: Request) {
               const sizeClIds = Array.isArray(group?.sizeClIds)
                 ? group.sizeClIds.map(Number).filter((id: number) => Number.isFinite(id) && id > 0)
                 : [];
-              return { price: groupPrice, sizeIds, sizeClIds };
+              const sizeLabels = Array.isArray(group?.sizeLabels)
+                ? Array.from(
+                    new Set(
+                      group.sizeLabels
+                        .map((label: any) => String(label ?? "").trim())
+                        .filter(Boolean)
+                    )
+                  )
+                : [];
+              return { price: groupPrice, sizeIds, sizeClIds, sizeLabels };
             })
-            .filter((group: any) => group.price && (group.sizeIds.length || group.sizeClIds.length));
+            .filter((group: any) => group.price && (group.sizeIds.length || group.sizeClIds.length || group.sizeLabels.length));
 
     if (sizeType !== "NONE" && normalizedGroups.length === 0) {
       return NextResponse.json(
@@ -152,7 +161,10 @@ export async function POST(req: Request) {
       const sizeIds = new Set<number>();
       const sizeClIds = new Set<number>();
       const createItems = normalizedGroups.flatMap((group: any) => {
-        const rows: Array<{ price: number; productId: number; sizeId?: number; sizeClId?: number }> = [];
+        const rows: Array<{ price: number; productId: number; sizeId?: number; sizeClId?: number; sizeLabel?: string }> = [];
+        for (const label of group.sizeLabels ?? []) {
+          rows.push({ price: group.price, productId: product.id, sizeLabel: label });
+        }
         if (sizeType === "SHOE") {
           for (const id of group.sizeIds) {
             sizeIds.add(id);

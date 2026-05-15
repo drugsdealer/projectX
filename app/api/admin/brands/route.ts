@@ -47,6 +47,7 @@ export async function POST(req: Request) {
   const aboutLong = body?.aboutLong ? String(body.aboutLong).trim() : null;
   const sizeChart = body?.sizeChart ? String(body.sizeChart).trim() : null;
   const heroVideo = body?.heroVideo ? String(body.heroVideo).trim() : null;
+  const isPremium = Boolean(body?.isPremium);
 
   if (!name) {
     return NextResponse.json({ success: false, message: "Название обязательно" }, { status: 400 });
@@ -70,7 +71,7 @@ export async function POST(req: Request) {
       name,
       slug: finalSlug,
       isOfficialBrand: true,
-      isPremium: false,
+      isPremium,
       logoUrl: logoUrl || null,
       features: imageUrl || null,
       description,

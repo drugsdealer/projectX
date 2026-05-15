@@ -676,7 +676,9 @@ function buildSizesFromProductItem(
   for (const it of items) {
     let key: string | number;
 
-    if (it?.Size?.name) {
+    if (it?.sizeLabel) {
+      key = String(it.sizeLabel);
+    } else if (it?.Size?.name) {
       // размер из таблицы Size
       key = it.Size.name as string;
     } else if (it?.SizeCl?.name) {

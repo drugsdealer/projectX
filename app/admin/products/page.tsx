@@ -3,9 +3,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import ImageKitUploadField from "@/components/admin/ImageKitUploadField";
+import {
+  getBrandSizeChartCategory,
+  getPrimarySizeLabels,
+  inferBrandSizeCategory,
+  parseBrandSizeChart,
+  type BrandSizeChartCategoryKey,
+} from "@/lib/brandSizeCharts";
 
 type Category = { id: number; name: string; slug: string };
-type Brand = { id: number; name: string; slug: string };
+type Brand = { id: number; name: string; slug: string; styleNotes?: string | null; sizeChart?: string | null };
 type Subcategory = { id: number; name: string; slug: string; categoryId: number };
 type Size = { id: number; name: string };
 type SizeCl = { id: number; name: string };
@@ -16,6 +23,7 @@ type SizeGroup = {
   price: string;
   sizeIds: number[];
   sizeClIds: number[];
+  sizeLabels: string[];
 };
 
 type EditForm = {
@@ -120,6 +128,7 @@ const newGroup = (): SizeGroup => ({
   price: "",
   sizeIds: [],
   sizeClIds: [],
+  sizeLabels: [],
 });
 
 const inputCls = "w-full rounded-xl border border-black/10 px-3 py-2 text-sm";
@@ -156,6 +165,7 @@ export default function AdminProductsPage() {
   const [sizeType, setSizeType] = useState<"NONE" | "SHOE" | "CLOTH">("NONE");
   const [shoeGroups, setShoeGroups] = useState<SizeGroup[]>([newGroup()]);
   const [clothGroups, setClothGroups] = useState<SizeGroup[]>([newGroup()]);
+  const [customSizeInputs, setCustomSizeInputs] = useState<Record<string, string>>({});
   const [premium, setPremium] = useState(false);
   const [badge, setBadge] = useState("");
   const [galleryText, setGalleryText] = useState("");
@@ -234,6 +244,74 @@ export default function AdminProductsPage() {
     return subcategories.filter((s) => s.categoryId === catId);
   }, [categoryId, subcategories]);
 
+  const selectedCategory = useMemo(
+    () => categories.find((category) => String(category.id) === String(categoryId)) ?? null,
+    [categories, categoryId]
+  );
+
+  const selectedBrand = useMemo(
+    () => brands.find((brand) => String(brand.id) === String(brandId)) ?? null,
+    [brands, brandId]
+  );
+
+  const selectedBrandChartRaw = selectedBrand?.sizeChart ?? selectedBrand?.styleNotes ?? "";
+  const selectedBrandChart = useMemo(
+    () => parseBrandSizeChart(selectedBrandChartRaw),
+    [selectedBrandChartRaw]
+  );
+
+  const inferredChartCategoryKey = useMemo(
+    () =>
+      inferBrandSizeCategory({
+        categoryName: selectedCategory?.name,
+        categorySlug: selectedCategory?.slug,
+        subcategory: subcategorySlug,
+        sizeType,
+      }),
+    [selectedCategory?.name, selectedCategory?.slug, sizeType, subcategorySlug]
+  );
+
+  const activeBrandChartCategory = useMemo(() => {
+    const inferred = getBrandSizeChartCategory(selectedBrandChart, inferredChartCategoryKey);
+    if (inferred?.rows.length) return inferred;
+    return selectedBrandChart.categories.find((category) => category.rows.length > 0) ?? null;
+  }, [inferredChartCategoryKey, selectedBrandChart]);
+
+  const activeBrandSizeLabels = useMemo(
+    () => getPrimarySizeLabels(activeBrandChartCategory),
+    [activeBrandChartCategory]
+  );
+
+  const applyBrandSizeLabels = useCallback(() => {
+    if (!activeBrandChartCategory || activeBrandSizeLabels.length === 0) return;
+    const targetType = activeBrandChartCategory.key === "shoes" ? "SHOE" : "CLOTH";
+    setSizeType(targetType);
+    const group = { ...newGroup(), sizeLabels: activeBrandSizeLabels };
+    if (targetType === "SHOE") {
+      setShoeGroups([group]);
+    } else {
+      setClothGroups([group]);
+    }
+  }, [activeBrandChartCategory, activeBrandSizeLabels]);
+
+  useEffect(() => {
+    if (!activeBrandChartCategory || activeBrandSizeLabels.length === 0) return;
+    const targetType = activeBrandChartCategory.key === "shoes" ? "SHOE" : "CLOTH";
+    const targetGroups = targetType === "SHOE" ? shoeGroups : clothGroups;
+    const hasManualSizes = targetGroups.some(
+      (group) => group.sizeIds.length > 0 || group.sizeClIds.length > 0 || group.sizeLabels.length > 0
+    );
+    if (hasManualSizes) return;
+
+    setSizeType(targetType);
+    const group = { ...newGroup(), sizeLabels: activeBrandSizeLabels };
+    if (targetType === "SHOE") {
+      setShoeGroups([group]);
+    } else {
+      setClothGroups([group]);
+    }
+  }, [activeBrandChartCategory, activeBrandSizeLabels, clothGroups, shoeGroups]);
+
   const toggleSize = (groupId: string, id: number, type: "shoe" | "cloth") => {
     if (type === "shoe") {
       setShoeGroups((prev) =>
@@ -252,6 +330,33 @@ export default function AdminProductsPage() {
           : g
       )
     );
+  };
+
+  const addCustomSizeLabel = (groupId: string, type: "shoe" | "cloth") => {
+    const label = String(customSizeInputs[groupId] || "").trim();
+    if (!label) return;
+    const update = (group: SizeGroup) =>
+      group.id === groupId && !group.sizeLabels.includes(label)
+        ? { ...group, sizeLabels: [...group.sizeLabels, label] }
+        : group;
+    if (type === "shoe") {
+      setShoeGroups((prev) => prev.map(update));
+    } else {
+      setClothGroups((prev) => prev.map(update));
+    }
+    setCustomSizeInputs((prev) => ({ ...prev, [groupId]: "" }));
+  };
+
+  const removeCustomSizeLabel = (groupId: string, label: string, type: "shoe" | "cloth") => {
+    const update = (group: SizeGroup) =>
+      group.id === groupId
+        ? { ...group, sizeLabels: group.sizeLabels.filter((item) => item !== label) }
+        : group;
+    if (type === "shoe") {
+      setShoeGroups((prev) => prev.map(update));
+    } else {
+      setClothGroups((prev) => prev.map(update));
+    }
   };
 
   // --- Catalog helpers ---
@@ -327,9 +432,9 @@ export default function AdminProductsPage() {
     if (!Number.isFinite(catId) || catId <= 0) { setMsg("Выберите категорию"); return; }
     const sizeGroups =
       sizeType === "SHOE"
-        ? shoeGroups.map((g) => ({ price: Number(g.price), sizeIds: g.sizeIds }))
+        ? shoeGroups.map((g) => ({ price: Number(g.price), sizeIds: g.sizeIds, sizeLabels: g.sizeLabels }))
         : sizeType === "CLOTH"
-          ? clothGroups.map((g) => ({ price: Number(g.price), sizeClIds: g.sizeClIds }))
+          ? clothGroups.map((g) => ({ price: Number(g.price), sizeClIds: g.sizeClIds, sizeLabels: g.sizeLabels }))
           : [];
     try {
       const res = await fetch("/api/admin/products", {
@@ -364,6 +469,7 @@ export default function AdminProductsPage() {
       setName(""); setPrice(""); setImageUrl(""); setBrandId(""); setColorId("");
       setGender(""); setDescription(""); setSubcategoryId(""); setSubcategorySlug(""); setSizeType("NONE");
       setShoeGroups([newGroup()]); setClothGroups([newGroup()]);
+      setCustomSizeInputs({});
       setPremium(false); setBadge(""); setGalleryText("");
       setMaterial(""); setFeatures(""); setStyleNotes("");
       setWidthCm(""); setHeightCm(""); setDepthCm(""); setArticle(""); setNoBoxPrice(""); setModelKey("");
@@ -578,6 +684,34 @@ export default function AdminProductsPage() {
               <option value="">Бренд (необязательно)</option>
               {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
+            {selectedBrand && activeBrandChartCategory && activeBrandSizeLabels.length > 0 && (
+              <div className="sm:col-span-2 rounded-2xl border border-black/10 bg-black/[0.02] p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold">
+                      Сетка {selectedBrand.name}: {activeBrandChartCategory.label}
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-black/55">
+                      Размеры из первой колонки уже можно использовать как размеры товара. Если категория определилась не так, выбери нужную подкатегорию выше.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={applyBrandSizeLabels}
+                    className="rounded-full bg-black px-4 py-2 text-xs font-semibold text-white"
+                  >
+                    Подставить размеры
+                  </button>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {activeBrandSizeLabels.map((label) => (
+                    <span key={label} className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-semibold">
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
             <select className={inputCls} value={colorId} onChange={(e) => setColorId(e.target.value)}>
               <option value="">Цвет (необязательно)</option>
               {colors.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -664,6 +798,55 @@ export default function AdminProductsPage() {
                           </label>
                         );
                       })}
+                    </div>
+                    <div className="mt-4 rounded-2xl bg-black/[0.03] p-3">
+                      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-black/45">
+                        Свои размеры
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {group.sizeLabels.map((label) => (
+                          <button
+                            key={`${group.id}-${label}`}
+                            type="button"
+                            onClick={() => removeCustomSizeLabel(group.id, label, sizeType === "SHOE" ? "shoe" : "cloth")}
+                            className="rounded-full bg-black px-3 py-1 text-xs font-semibold text-white"
+                            title="Нажмите, чтобы убрать"
+                          >
+                            {label} ×
+                          </button>
+                        ))}
+                        {group.sizeLabels.length === 0 && (
+                          <span className="text-xs text-black/45">
+                            Можно добавить любые значения: XS/S/M, 46, 39 EUR, M/L, 17.
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                        <input
+                          className="min-w-0 flex-1 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm"
+                          placeholder="Например: XS или 46 или 39 EUR"
+                          value={customSizeInputs[group.id] ?? ""}
+                          onChange={(event) =>
+                            setCustomSizeInputs((prev) => ({
+                              ...prev,
+                              [group.id]: event.target.value,
+                            }))
+                          }
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              addCustomSizeLabel(group.id, sizeType === "SHOE" ? "shoe" : "cloth");
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => addCustomSizeLabel(group.id, sizeType === "SHOE" ? "shoe" : "cloth")}
+                          className="rounded-full border border-black/10 px-4 py-2 text-xs font-semibold transition hover:bg-black hover:text-white"
+                        >
+                          Добавить свой размер
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}

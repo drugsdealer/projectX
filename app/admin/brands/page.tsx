@@ -3,6 +3,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ImageKitUploadField from "@/components/admin/ImageKitUploadField";
+import {
+  BRAND_SIZE_CHART_CATEGORIES,
+  createEmptyBrandSizeChart,
+  parseBrandSizeChart,
+  serializeBrandSizeChart,
+  type BrandSizeChart,
+  type BrandSizeChartCategoryKey,
+  type BrandSizeMode,
+} from "@/lib/brandSizeCharts";
 
 type BrandProduct = {
   id: number;
@@ -68,6 +77,249 @@ function extractHeroVideo(brand: { heroVideo?: string | null; tags?: string[] })
     ? brand.tags.find((value) => typeof value === "string" && /^video:/i.test(value.trim()))
     : null;
   return tag ? tag.replace(/^video:/i, "").trim() : "";
+}
+
+function SizeChartEditor({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [activeKey, setActiveKey] = useState<BrandSizeChartCategoryKey>("outerwear");
+  const chart = parseBrandSizeChart(value);
+  const active = chart.categories.find((category) => category.key === activeKey) ?? chart.categories[0];
+
+  const updateChart = (next: BrandSizeChart) => {
+    onChange(serializeBrandSizeChart(next));
+  };
+
+  const updateActive = (
+    updater: (category: BrandSizeChart["categories"][number]) => BrandSizeChart["categories"][number]
+  ) => {
+    updateChart({
+      ...chart,
+      categories: chart.categories.map((category) =>
+        category.key === active.key ? updater(category) : category
+      ),
+    });
+  };
+
+  const addColumn = () => {
+    updateActive((category) => ({
+      ...category,
+      columns: [...category.columns, "Новая колонка"],
+      rows: category.rows.map((row) => [...row, ""]),
+    }));
+  };
+
+  const renameColumn = (index: number, name: string) => {
+    updateActive((category) => ({
+      ...category,
+      columns: category.columns.map((column, columnIndex) =>
+        columnIndex === index ? name : column
+      ),
+    }));
+  };
+
+  const removeColumn = (index: number) => {
+    if (active.columns.length <= 1) return;
+    updateActive((category) => ({
+      ...category,
+      columns: category.columns.filter((_, columnIndex) => columnIndex !== index),
+      rows: category.rows.map((row) => row.filter((_, columnIndex) => columnIndex !== index)),
+    }));
+  };
+
+  const addRow = () => {
+    updateActive((category) => ({
+      ...category,
+      rows: [...category.rows, category.columns.map(() => "")],
+    }));
+  };
+
+  const updateCell = (rowIndex: number, columnIndex: number, cellValue: string) => {
+    updateActive((category) => ({
+      ...category,
+      rows: category.rows.map((row, currentRowIndex) =>
+        currentRowIndex === rowIndex
+          ? category.columns.map((_, currentColumnIndex) =>
+              currentColumnIndex === columnIndex ? cellValue : row[currentColumnIndex] ?? ""
+            )
+          : row
+      ),
+    }));
+  };
+
+  const removeRow = (rowIndex: number) => {
+    updateActive((category) => ({
+      ...category,
+      rows: category.rows.filter((_, currentRowIndex) => currentRowIndex !== rowIndex),
+    }));
+  };
+
+  const clearActive = () => {
+    updateActive((category) => ({ ...category, rows: [] }));
+  };
+
+  const resetAll = () => {
+    onChange(serializeBrandSizeChart(createEmptyBrandSizeChart()));
+  };
+
+  return (
+    <div className="rounded-2xl border border-black/10 bg-white p-4 sm:col-span-2">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold">Размерная сетка бренда</div>
+          <p className="mt-1 max-w-2xl text-xs leading-5 text-black/55">
+            Таблица хранится отдельно по типам товаров. Можно писать любые буквы, цифры и региональные значения: EU, US, UK, JP, CM, замеры.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={resetAll}
+          className="rounded-full border border-black/10 px-3 py-1.5 text-xs font-semibold text-black/60 transition hover:bg-black hover:text-white"
+        >
+          Очистить всё
+        </button>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {BRAND_SIZE_CHART_CATEGORIES.map((category) => {
+          const filled = chart.categories.find((item) => item.key === category.key)?.rows.length ?? 0;
+          const activeTab = active.key === category.key;
+          return (
+            <button
+              key={category.key}
+              type="button"
+              onClick={() => setActiveKey(category.key)}
+              className={`rounded-full border px-4 py-2 text-xs font-semibold transition ${
+                activeTab
+                  ? "border-black bg-black text-white"
+                  : "border-black/10 bg-white text-black/65 hover:border-black/30"
+              }`}
+            >
+              {category.label}
+              {filled > 0 ? <span className="ml-2 opacity-60">{filled}</span> : null}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-[220px_1fr_auto_auto]">
+        <label className="text-xs font-semibold uppercase tracking-[0.16em] text-black/45">
+          Формат главного размера
+          <select
+            className="mt-2 w-full rounded-xl border border-black/10 px-3 py-2 text-sm normal-case tracking-normal text-black"
+            value={active.sizeMode}
+            onChange={(event) =>
+              updateActive((category) => ({
+                ...category,
+                sizeMode: event.target.value as BrandSizeMode,
+              }))
+            }
+          >
+            <option value="letters">Буквы: XS/S/M</option>
+            <option value="numbers">Цифры: 44/46/48</option>
+            <option value="mixed">Смешанный</option>
+          </select>
+        </label>
+        <div className="hidden sm:block" />
+        <button
+          type="button"
+          onClick={addColumn}
+          className="rounded-full border border-black/10 px-4 py-2 text-xs font-semibold transition hover:bg-black hover:text-white"
+        >
+          + Колонка
+        </button>
+        <button
+          type="button"
+          onClick={addRow}
+          className="rounded-full bg-black px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90"
+        >
+          + Размер
+        </button>
+      </div>
+
+      <div className="mt-4 overflow-x-auto rounded-2xl border border-black/10">
+        <table className="w-full min-w-[760px] border-collapse bg-white text-sm">
+          <thead className="bg-black/[0.03]">
+            <tr>
+              {active.columns.map((column, index) => (
+                <th key={`${active.key}-head-${index}`} className="border-b border-r border-black/10 p-2 text-left last:border-r-0">
+                  <div className="flex items-center gap-2">
+                    <input
+                      className="w-full rounded-lg border border-black/10 bg-white px-2 py-1 text-xs font-semibold"
+                      value={column}
+                      onChange={(event) => renameColumn(index, event.target.value)}
+                      aria-label={`Название колонки ${index + 1}`}
+                    />
+                    {index > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => removeColumn(index)}
+                        className="rounded-full px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                        aria-label="Удалить колонку"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                </th>
+              ))}
+              <th className="w-12 border-b border-black/10 p-2" />
+            </tr>
+          </thead>
+          <tbody>
+            {active.rows.length === 0 ? (
+              <tr>
+                <td colSpan={active.columns.length + 1} className="p-5 text-center text-xs text-black/45">
+                  Таблица пока пустая. Нажми “+ Размер” и заполни строки как на сайте бренда.
+                </td>
+              </tr>
+            ) : (
+              active.rows.map((row, rowIndex) => (
+                <tr key={`${active.key}-row-${rowIndex}`} className="hover:bg-black/[0.015]">
+                  {active.columns.map((_, columnIndex) => (
+                    <td key={`${active.key}-${rowIndex}-${columnIndex}`} className="border-r border-t border-black/10 p-2 last:border-r-0">
+                      <input
+                        className="w-full rounded-lg border border-transparent px-2 py-1 text-sm outline-none transition focus:border-black/20"
+                        value={row[columnIndex] ?? ""}
+                        onChange={(event) => updateCell(rowIndex, columnIndex, event.target.value)}
+                        placeholder={columnIndex === 0 ? "XS / 46 / 39 EUR" : "Значение"}
+                      />
+                    </td>
+                  ))}
+                  <td className="border-t border-black/10 p-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => removeRow(rowIndex)}
+                      className="rounded-full px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                    >
+                      Удалить
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-black/45">
+          Первая колонка считается размером товара и будет подсвечиваться на карточке товара.
+        </p>
+        <button
+          type="button"
+          onClick={clearActive}
+          className="text-xs font-semibold text-black/45 underline underline-offset-4 hover:text-black"
+        >
+          Очистить текущую категорию
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function AdminBrandsPage() {
@@ -397,16 +649,10 @@ export default function AdminBrandsPage() {
           value={form.heroVideo}
           onChange={(e) => setField("heroVideo", e.target.value)}
         />
-        <textarea
-          className={inputCls + " sm:col-span-2 font-mono"}
-          placeholder={"Размерная сетка бренда. Формат: Размер | EU | US | Длина стопы\\n39 | 39 | 6 | 25 см\\n40 | 40 | 7 | 25.5 см"}
-          rows={5}
+        <SizeChartEditor
           value={form.sizeChart}
-          onChange={(e) => setField("sizeChart", e.target.value)}
+          onChange={(next) => setField("sizeChart", next)}
         />
-        <p className="text-xs leading-5 text-black/50 sm:col-span-2">
-          Эта сетка будет показываться на карточках товаров этого бренда вместо стандартной таблицы размеров.
-        </p>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"

@@ -13,7 +13,10 @@ export async function GET(req: Request) {
 
   const [categories, brands, subcategories, sizes, sizeCls, colors] = await Promise.all([
     prisma.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, slug: true } }),
-    prisma.brand.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, slug: true } }),
+    prisma.brand.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true, styleNotes: true },
+    }),
     hasSubcategories
       ? subcategoryModel.findMany({
           orderBy: { name: "asc" },
