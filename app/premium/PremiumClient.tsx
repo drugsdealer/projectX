@@ -2018,22 +2018,37 @@ export default function PremiumPage() {
           "/premium/products?limit=500",
         ];
 
-        for (const url of tryUrls) {
-          const res = await fetch(url, { signal: controller.signal });
-          if (!res.ok) continue;
+        for (const baseUrl of tryUrls) {
+          const allItems: any[] = [];
+          let cursor: string | null = null;
+          let page = 0;
 
-          const data = await res.json();
-          const items = Array.isArray((data as any)?.products)
-            ? (data as any).products
-            : Array.isArray(data)
-            ? (data as any)
-            : [];
+          do {
+            const pageUrl: string = cursor ? `${baseUrl}&cursor=${encodeURIComponent(cursor)}` : baseUrl;
+            const res = await fetch(pageUrl, { signal: controller.signal });
+            if (!res.ok) {
+              allItems.length = 0;
+              break;
+            }
 
-          if (!cancelled) {
-            setProducts(items);
-            setProductsError(null);
+            const data = await res.json();
+            const items = Array.isArray((data as any)?.products)
+              ? (data as any).products
+              : Array.isArray(data)
+              ? (data as any)
+              : [];
+            allItems.push(...items);
+            cursor = typeof (data as any)?.nextCursor === "string" ? (data as any).nextCursor : null;
+            page += 1;
+          } while (cursor && page < 10);
+
+          if (allItems.length || page > 0) {
+            if (!cancelled) {
+              setProducts(allItems);
+              setProductsError(null);
+            }
+            return;
           }
-          return;
         }
 
         throw new Error("primary premium endpoint(s) failed");
@@ -2041,7 +2056,7 @@ export default function PremiumPage() {
         if (controller.signal.aborted) return;
         console.warn('Premium API fallback to /api/products?premium=1', e);
         try {
-          const res2 = await fetch('/api/products?premium=1&limit=500', { signal: controller.signal });
+          const res2 = await fetch('/api/products?premium=1&take=1000', { signal: controller.signal });
           if (res2.ok) {
             const data2 = await res2.json();
             const items2 = Array.isArray(data2?.products)
@@ -2658,6 +2673,13 @@ export default function PremiumPage() {
       return true;
     });
   }, [currentPremium, pickedBrands, maxPrice, priceBounds.max, normalizedBrandQuery, normalizeBrands]);
+
+  useEffect(() => {
+    const hasStoredFilter = pickedBrands.length > 0 || (maxPrice > 0 && maxPrice < priceBounds.max);
+    if (!currentPremium.length || filteredPremium.length || !hasStoredFilter) return;
+    setPickedBrands([]);
+    setMaxPrice(priceBounds.max);
+  }, [currentPremium.length, filteredPremium.length, maxPrice, pickedBrands.length, priceBounds.max]);
 
   // Динамически соберём список категорий премиум-товаров (footwear, bags, accessories, ...)
   const premiumCategories = useMemo(() => {

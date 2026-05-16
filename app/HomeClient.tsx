@@ -662,7 +662,7 @@ export default function Home() {
     const fetchProducts = async () => {
       try {
         attempts += 1;
-        const res = await fetch("/api/products?includePremium=1&take=260", {
+        const res = await fetch("/api/products?includePremium=1&take=1000", {
           cache: "no-store",
           credentials: "include",
         });

@@ -102,9 +102,31 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
   }
 
   // 2) Подтягиваем товары бренда (может быть пусто — это ок)
+  const brandNameNeedle = brand.name.trim();
+  const brandSlugNeedle = String(brand.slug ?? norm).replace(/[-_]+/g, ' ').trim();
+  const brandProductWhere: any = {
+    deletedAt: null,
+    OR: [
+      { brandId: brand.id },
+      ...(brandNameNeedle
+        ? [
+            { name: { contains: brandNameNeedle, mode: 'insensitive' } },
+            { description: { contains: brandNameNeedle, mode: 'insensitive' } },
+          ]
+        : []),
+      ...(brandSlugNeedle && brandSlugNeedle.toLowerCase() !== brandNameNeedle.toLowerCase()
+        ? [
+            { name: { contains: brandSlugNeedle, mode: 'insensitive' } },
+            { description: { contains: brandSlugNeedle, mode: 'insensitive' } },
+          ]
+        : []),
+    ],
+  };
+
   const productsRaw = await withDbRetry(
     () => prisma.product.findMany({
-      where: { brandId: brand.id, deletedAt: null },
+      where: brandProductWhere,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       select: {
         id: true,
         name: true,

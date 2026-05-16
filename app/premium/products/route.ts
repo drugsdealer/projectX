@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { normalizeProduct } from "@/lib/normalizeProduct";
+import { resolveProductTaxonomy } from "@/lib/catalog-taxonomy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -74,7 +75,7 @@ export async function GET(req: NextRequest) {
     const take = (() => {
       const n = limitParam ? Number(limitParam) : 24;
       if (Number.isNaN(n)) return 24;
-      return Math.min(Math.max(n, 1), 500);
+      return Math.min(Math.max(n, 1), 1000);
     })();
 
     const where: any = {
@@ -84,7 +85,7 @@ export async function GET(req: NextRequest) {
 
     const query: any = {
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: take + 1,
       select: {
         id: true, name: true, price: true, oldPrice: true, imageUrl: true,
@@ -175,7 +176,19 @@ export async function GET(req: NextRequest) {
         // Common fallback key some UI code expects
         brand: brandName,
       };
-      const inferred = inferCategorySlug(p, normalizedWithImages);
+      const taxonomy = resolveProductTaxonomy({
+        ...p,
+        Category: p?.Category,
+        categoryDbSlug: p?.Category?.slug ?? (normalizedWithImages as any)?.categoryDbSlug,
+        categorySlug: (normalizedWithImages as any)?.categorySlug,
+        subcategory: p?.subcategory ?? (normalizedWithImages as any)?.subcategory,
+      });
+      const inferred = taxonomy.categorySlug ?? inferCategorySlug(p, normalizedWithImages);
+      const inferredSub =
+        taxonomy.subcategorySlug ??
+        (normalizedWithImages as any)?.subCategorySlug ??
+        (normalizedWithImages as any)?.subcategory ??
+        null;
 
       const current = String(
         (normalizedWithImages as any)?.categorySlug ||
@@ -187,10 +200,18 @@ export async function GET(req: NextRequest) {
           ...normalizedWithImages,
           categorySlug: inferred,
           category: inferred,
+          subCategorySlug: inferredSub,
+          subcategory: inferredSub,
         };
       }
 
-      return normalizedWithImages;
+      return {
+        ...normalizedWithImages,
+        categorySlug: inferred || current,
+        category: inferred || current,
+        subCategorySlug: inferredSub,
+        subcategory: inferredSub,
+      };
     });
 
     const nextCursor = hasMore ? String(slice[slice.length - 1].id) : null;

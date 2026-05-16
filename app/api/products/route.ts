@@ -332,6 +332,8 @@ export async function GET(req: Request) {
     const categorySlugParam = url.searchParams.get("category");
     const includePremiumRaw = (url.searchParams.get("includePremium") || "").toLowerCase();
     const includePremium = includePremiumRaw === "1" || includePremiumRaw === "true";
+    const premiumOnlyRaw = (url.searchParams.get("premium") || "").toLowerCase();
+    const premiumOnly = premiumOnlyRaw === "1" || premiumOnlyRaw === "true";
     // Allow the client to pass EN aliases; convert to DB RU slug for filtering
     const dbCategoryFilter = mapEnToDbCategorySlug(categorySlugParam);
     const subParamRaw = url.searchParams.get("sub") ?? url.searchParams.get("subcategory");
@@ -467,11 +469,11 @@ export async function GET(req: Request) {
     // ----------------------------------------------------
     // LIST: /api/products[?take=...]
     // ----------------------------------------------------
-    const takeRaw = url.searchParams.get("take");
-    let take = 120;
+    const takeRaw = url.searchParams.get("take") ?? url.searchParams.get("limit");
+    let take = 300;
     if (takeRaw) {
       const t = Number(takeRaw);
-      take = Number.isFinite(t) && t > 0 ? Math.min(t, 200) : 120;
+      take = Number.isFinite(t) && t > 0 ? Math.min(t, 1000) : 300;
     }
 
     const saleOnly = (url.searchParams.get("sale") ?? "") === "1";
@@ -480,7 +482,7 @@ export async function GET(req: Request) {
 
     // По умолчанию из общего списка убираем премиальные товары.
     // Можно явно включить их через includePremium=1|true (для внутренних витрин/промо).
-    if (dbCategoryFilter === "premium") {
+    if (dbCategoryFilter === "premium" || premiumOnly) {
       where.premium = true;
     } else if (!includePremium) {
       where.NOT = { premium: true };
@@ -645,13 +647,14 @@ export async function GET(req: Request) {
           ?? (categorySlugParam ? categorySlugParam.toLowerCase().trim() : null));
     const subParamRaw = url.searchParams.get("sub") ?? url.searchParams.get("subcategory");
     const includePremiumRaw = (url.searchParams.get("includePremium") || "").toLowerCase();
+    const premiumOnlyRaw = (url.searchParams.get("premium") || "").toLowerCase();
 
     return NextResponse.json(
       getFallbackProducts({
         desiredUiCategory,
         subParam: subParamRaw ? normalizeSubcategorySlug(subParamRaw) : null,
         includePremium: includePremiumRaw === "1" || includePremiumRaw === "true",
-        dbCategoryFilter,
+        dbCategoryFilter: premiumOnlyRaw === "1" || premiumOnlyRaw === "true" ? "premium" : dbCategoryFilter,
         saleOnly: (url.searchParams.get("sale") ?? "") === "1",
         genderFilter: (url.searchParams.get("gender") ?? "").trim().toLowerCase(),
       }),
