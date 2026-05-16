@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, memo, type MutableRe
 import Image from 'next/image';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
-import { shouldBypassNextImageOptimization } from '@/lib/media';
+import { getOptimizedImageUrl, shouldBypassNextImageOptimization } from '@/lib/media';
 import { productPath } from '@/lib/product-url';
 
 type CategoryProduct = {
@@ -77,14 +77,18 @@ const ProductCardImage = memo(function ProductCardImage({
   }, [imagesArr]);
 
   const activeSrc = imagesArr?.[activeIdx] || imagesArr?.[0] || '/img/placeholder.svg';
+  const optimizedActiveSrc = useMemo(
+    () => getOptimizedImageUrl(activeSrc, { width: 720, quality: 78 }),
+    [activeSrc]
+  );
 
   const prefetchAround = useCallback(
     (idx: number) => {
       try {
         if (typeof window === 'undefined') return;
         if (!Array.isArray(imagesArr) || imagesArr.length <= 1) return;
-        const nextSrc = imagesArr[Math.min(idx + 1, imagesArr.length - 1)];
-        const prevSrc = imagesArr[Math.max(idx - 1, 0)];
+        const nextSrc = getOptimizedImageUrl(imagesArr[Math.min(idx + 1, imagesArr.length - 1)], { width: 720, quality: 78 });
+        const prevSrc = getOptimizedImageUrl(imagesArr[Math.max(idx - 1, 0)], { width: 720, quality: 78 });
         [nextSrc, prevSrc].forEach((src) => {
           if (!src) return;
           const img = new window.Image();
@@ -236,10 +240,10 @@ const ProductCardImage = memo(function ProductCardImage({
           style={{ willChange: 'transform, clip-path' }}
         >
           <Image
-            src={activeSrc}
+            src={optimizedActiveSrc || '/img/placeholder.svg'}
             alt={alt}
             fill
-            unoptimized={shouldBypassNextImageOptimization(activeSrc)}
+            unoptimized={shouldBypassNextImageOptimization(optimizedActiveSrc)}
             className="object-contain"
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
             priority={false}

@@ -6,6 +6,7 @@ import type { ProductWithImages } from './types';
 import { useUser } from '@/user/UserContext';
 import { trackAnalyticsEvent } from '@/lib/analytics-client';
 import { productPath } from '@/lib/product-url';
+import { getOptimizedImageUrl } from '@/lib/media';
 import { AnimatePresence, motion } from 'framer-motion';
 
 // -- localStorage keys (keep both for backward compatibility) --
@@ -206,6 +207,10 @@ function BrandCardPreview({ images, alt }: { images: string[]; alt: string }) {
   }, [imagesArr]);
 
   const activeSrc = imagesArr[activeIdx] || imagesArr[0];
+  const optimizedActiveSrc = useMemo(
+    () => getOptimizedImageUrl(activeSrc, { width: 720, quality: 78 }),
+    [activeSrc]
+  );
 
   return (
     <div
@@ -327,9 +332,11 @@ function BrandCardPreview({ images, alt }: { images: string[]; alt: string }) {
             opacity: { duration: 0.16, ease: 'linear' },
             scale: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
           }}
-          src={activeSrc}
+          src={optimizedActiveSrc || '/img/placeholder.svg'}
           alt={alt}
           className="absolute inset-0 w-full h-full object-contain"
+          loading="lazy"
+          decoding="async"
         />
       </AnimatePresence>
 
@@ -616,7 +623,13 @@ export default function BrandClient({
               poster={heroFallbackImage}
             />
           ) : (
-            <img src={heroFallbackImage} alt="" className="h-full w-full object-cover opacity-70 blur-[1px] scale-[1.03]" />
+            <img
+              src={getOptimizedImageUrl(heroFallbackImage, { width: 1600, quality: 78 }) || heroFallbackImage}
+              alt=""
+              className="h-full w-full object-cover opacity-70 blur-[1px] scale-[1.03]"
+              loading="eager"
+              decoding="async"
+            />
           )}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_34%,rgba(255,255,255,0.18),transparent_26%),linear-gradient(180deg,rgba(0,0,0,0.32)_0%,rgba(0,0,0,0.54)_48%,rgba(0,0,0,0.94)_100%)]" />
           <div className="absolute inset-0 bg-black/18 backdrop-blur-[0.5px]" />

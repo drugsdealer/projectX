@@ -33,7 +33,7 @@ import { FreeMode, Mousewheel, Navigation, Pagination } from "swiper/modules";
 import SizeSelector from '@/components/shared/SizeSelector';
 import { useToast } from "@/context/ToastContext";
 import { useCart } from "@/context/CartContext";
-import { shouldBypassNextImageOptimization } from "@/lib/media";
+import { getOptimizedImageUrl, shouldBypassNextImageOptimization } from "@/lib/media";
 import { parseProductPathId, productPath } from "@/lib/product-url";
 import { canUseOptionalClientData } from "@/lib/privacy-consent";
 import { useUser } from "@/user/UserContext";
@@ -629,6 +629,14 @@ const { addToCart } = useCart();
 const [noBox, setNoBox] = useState(false);
 const [selectedVariant, setSelectedVariant] = useState<any | null>(null);
 const [displayedImages, setDisplayedImages] = useState<string[]>([]);
+const stickyImageSrc = React.useMemo(
+  () => getOptimizedImageUrl(displayedImages[0], { width: 160, quality: 78 }) || "/img/placeholder.svg",
+  [displayedImages]
+);
+const optimizedBrandLogoSrc = React.useMemo(
+  () => getOptimizedImageUrl(brandLogoSrc, { width: 240, quality: 85 }) || brandLogoSrc,
+  [brandLogoSrc]
+);
 const [isFavProduct, setIsFavProduct] = useState(false);
 const { user } = useUser();
 
@@ -1572,10 +1580,10 @@ const handleCancel = () => {
                 <div className="flex items-center gap-3">
                   <div className="relative w-10 h-10 rounded overflow-hidden">
                     <Image
-                      src={displayedImages[0] ?? "/img/placeholder.svg"}
+                      src={stickyImageSrc}
                       alt={product.name}
                       fill
-                      unoptimized={shouldBypassNextImageOptimization(displayedImages[0])}
+                      unoptimized={shouldBypassNextImageOptimization(stickyImageSrc)}
                       className="object-cover"
                       priority
                     />
@@ -1643,7 +1651,7 @@ const handleCancel = () => {
                   >
                     {brandLogoSrc ? (
                       <div className="relative w-[140px] h-[56px]">
-                        <Image src={brandLogoSrc} alt={primaryBrand!} fill unoptimized={shouldBypassNextImageOptimization(brandLogoSrc)} className="object-contain" />
+                        <Image src={optimizedBrandLogoSrc || brandLogoSrc} alt={primaryBrand!} fill unoptimized={shouldBypassNextImageOptimization(optimizedBrandLogoSrc || brandLogoSrc)} className="object-contain" />
                       </div>
                     ) : (
                       <span className="text-sm font-semibold tracking-tight text-black">{primaryBrand}</span>
@@ -1671,7 +1679,7 @@ const handleCancel = () => {
                         <div className="flex items-center gap-3">
                           {brandLogoSrc ? (
                             <div className="relative w-9 h-6">
-                              <Image src={brandLogoSrc} alt={primaryBrand!} fill unoptimized={shouldBypassNextImageOptimization(brandLogoSrc)} className="object-contain" />
+                              <Image src={optimizedBrandLogoSrc || brandLogoSrc} alt={primaryBrand!} fill unoptimized={shouldBypassNextImageOptimization(optimizedBrandLogoSrc || brandLogoSrc)} className="object-contain" />
                             </div>
                           ) : (
                             <span className="text-sm font-semibold">{primaryBrand}</span>
@@ -1747,13 +1755,14 @@ const handleCancel = () => {
                       >
                         <div className="w-full h-full rounded-lg bg-white flex items-center justify-center overflow-hidden">
                           <Image
-                            src={url as string}
+                            src={getOptimizedImageUrl(url, { width: 1200, quality: 82 }) || "/img/placeholder.svg"}
                             alt={`Product image ${index + 1}`}
                             width={800}
                             height={800}
-                            unoptimized={shouldBypassNextImageOptimization(url)}
+                            unoptimized={shouldBypassNextImageOptimization(getOptimizedImageUrl(url, { width: 1200, quality: 82 }))}
                             className="object-contain w-full h-full select-none pointer-events-none"
                             draggable={false}
+                            priority={index === 0}
                           />
                         </div>
                       </div>
@@ -1784,12 +1793,13 @@ const handleCancel = () => {
               product.imageUrl && (
                 <div className="w-full h-[320px] sm:h-[440px] lg:h-[500px] mt-10 rounded-lg bg-white flex items-center justify-center overflow-hidden">
                   <Image
-                    src={product.imageUrl as string}
+                    src={getOptimizedImageUrl(product.imageUrl, { width: 1200, quality: 82 }) || "/img/placeholder.svg"}
                     alt={product.name}
                     width={800}
                     height={800}
-                    unoptimized={shouldBypassNextImageOptimization(product.imageUrl)}
+                    unoptimized={shouldBypassNextImageOptimization(getOptimizedImageUrl(product.imageUrl, { width: 1200, quality: 82 }))}
                     className="object-contain w-full h-full"
+                    priority
                   />
                 </div>
               )

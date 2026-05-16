@@ -22,7 +22,7 @@ import CmsPromoBlock from "@/components/home/promos/CmsPromoBlock";
 import { renderAuthorHomePromo } from "@/components/home/promos/author-promos";
 import type { HomeCmsPromoConfig, HomePromoProduct } from "@/components/home/promos/types";
 import { useMotionBudget, type MotionLevel } from "@/components/MotionBudgetProvider";
-import { shouldBypassNextImageOptimization } from "@/lib/media";
+import { getOptimizedImageUrl, shouldBypassNextImageOptimization } from "@/lib/media";
 import { productPath } from "@/lib/product-url";
 import { canUseOptionalClientData } from "@/lib/privacy-consent";
 // Локальные подписи основных категорий
@@ -235,6 +235,10 @@ const ProductCardImage = memo(function ProductCardImage({
 
   const activeSrc = stableImages?.[activeIdx] || stableImages?.[0] || "/img/placeholder.svg";
   const displaySrc = brokenSrcs.has(activeSrc) ? "/img/placeholder.svg" : activeSrc;
+  const optimizedDisplaySrc = useMemo(
+    () => getOptimizedImageUrl(displaySrc, { width: 720, quality: 78 }),
+    [displaySrc]
+  );
 
   const prefetchAround = useCallback(
     (idx: number) => {
@@ -242,8 +246,8 @@ const ProductCardImage = memo(function ProductCardImage({
         if (typeof window === 'undefined') return;
         if (!Array.isArray(stableImages) || stableImages.length <= 1) return;
         if (reduceMotion) return;
-        const nextSrc = stableImages[Math.min(idx + 1, stableImages.length - 1)];
-        const prevSrc = stableImages[Math.max(idx - 1, 0)];
+        const nextSrc = getOptimizedImageUrl(stableImages[Math.min(idx + 1, stableImages.length - 1)], { width: 720, quality: 78 });
+        const prevSrc = getOptimizedImageUrl(stableImages[Math.max(idx - 1, 0)], { width: 720, quality: 78 });
         const pool = balancedMotion ? [nextSrc] : [nextSrc, prevSrc];
         pool.forEach((src) => {
           if (!src) return;
@@ -404,10 +408,10 @@ const ProductCardImage = memo(function ProductCardImage({
           style={{ willChange: reduceMotion ? "opacity" : isTouchDevice ? "transform, opacity" : "transform, clip-path" }}
         >
           <Image
-            src={displaySrc}
+            src={optimizedDisplaySrc || "/img/placeholder.svg"}
             alt={alt}
             fill
-            unoptimized={shouldBypassNextImageOptimization(displaySrc)}
+            unoptimized={shouldBypassNextImageOptimization(optimizedDisplaySrc)}
             className="object-contain"
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
             priority={false}

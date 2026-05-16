@@ -13,6 +13,7 @@ import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { ChevronDown, Search, Filter, X, Menu, Crown } from "lucide-react";
 import { safeJsonLd } from "@/lib/json-ld";
 import { premiumProductPath } from "@/lib/product-url";
+import { getOptimizedImageUrl } from "@/lib/media";
 
 const wrapIndex = (min: number, max: number, v: number) => {
   const range = max - min;
@@ -198,8 +199,8 @@ const SwipeablePreview = React.memo(function SwipeablePreviewComponent({
         if (typeof window === "undefined") return;
         if (!Array.isArray(images) || images.length <= 1) return;
         if (reduceMotion) return;
-        const nextSrc = images[Math.min(idx + 1, images.length - 1)];
-        const prevSrc = images[Math.max(idx - 1, 0)];
+        const nextSrc = getOptimizedImageUrl(images[Math.min(idx + 1, images.length - 1)], { width: 720, quality: 78 });
+        const prevSrc = getOptimizedImageUrl(images[Math.max(idx - 1, 0)], { width: 720, quality: 78 });
         const pool = balancedMotion ? [nextSrc] : [nextSrc, prevSrc];
         pool.forEach((src) => {
           if (!src) return;
@@ -221,6 +222,10 @@ const SwipeablePreview = React.memo(function SwipeablePreviewComponent({
 
   const activeSrc = images?.[activeIdx] || images?.[0] || "/img/placeholder.svg";
   const displaySrc = brokenSrcs.has(activeSrc) ? "/img/placeholder.svg" : activeSrc;
+  const optimizedDisplaySrc = React.useMemo(
+    () => getOptimizedImageUrl(displaySrc, { width: 720, quality: 78 }),
+    [displaySrc]
+  );
 
   return (
     <div
@@ -369,9 +374,11 @@ const SwipeablePreview = React.memo(function SwipeablePreviewComponent({
           style={{ willChange: reduceMotion ? "opacity" : "transform, clip-path" }}
         >
           <img
-            src={displaySrc}
+            src={optimizedDisplaySrc || "/img/placeholder.svg"}
             alt={alt}
             className="absolute inset-0 w-full h-full object-contain"
+            loading="lazy"
+            decoding="async"
             onError={() => {
               if (!activeSrc || activeSrc === "/img/placeholder.svg") return;
               setBrokenSrcs((prev) => {
@@ -2265,15 +2272,23 @@ export default function PremiumPage() {
 
 
   // --- Gender picker (inline, no navigation) ---
-  type Gender = 'men' | 'women' | 'unisex' | null;
+  type Gender = 'men' | 'women' | 'all' | null;
+  type ProductGender = 'men' | 'women' | 'unisex';
   const [gender, setGender] = useState<Gender>(null);
-  const normalizeProductGender = useCallback((value: unknown): Exclude<Gender, null> => {
+  const normalizeProductGender = useCallback((value: unknown): ProductGender => {
     const raw = String(value ?? "").toLowerCase().trim();
     if (!raw) return "unisex";
     if (["men", "man", "male", "m", "м", "муж", "мужское", "мужской"].includes(raw)) return "men";
     if (["women", "woman", "female", "w", "ж", "жен", "женское", "женский"].includes(raw)) return "women";
     if (["unisex", "унисекс", "уни", "u"].includes(raw)) return "unisex";
     return "unisex";
+  }, []);
+  const normalizePremiumGenderMode = useCallback((value: unknown): Gender => {
+    const raw = String(value ?? "").toLowerCase().trim();
+    if (raw === "men") return "men";
+    if (raw === "women") return "women";
+    if (raw === "all" || raw === "unisex") return "all";
+    return null;
   }, []);
   // map user profile gender → product gender
   const profileGender: Gender = useMemo(() => {
@@ -2287,9 +2302,7 @@ export default function PremiumPage() {
     const fromUrl = searchParams.get('gender');
     const fromStorage = typeof window !== 'undefined' ? sessionStorage.getItem('premium_gender') : null;
     const fromProfile: Gender = profileGender;
-    const initial = (fromUrl === 'men' || fromUrl === 'women' || fromUrl === 'unisex')
-      ? (fromUrl as Gender)
-      : (fromStorage === 'men' || fromStorage === 'women' || fromStorage === 'unisex' ? (fromStorage as Gender) : fromProfile);
+    const initial = normalizePremiumGenderMode(fromUrl) ?? normalizePremiumGenderMode(fromStorage) ?? fromProfile ?? "all";
     if (initial !== null) {
       setGender(initial);
       if (!fromUrl) {
@@ -2299,7 +2312,7 @@ export default function PremiumPage() {
         window.history.replaceState({}, '', url.toString());
       }
     }
-  }, [profileGender]);
+  }, [profileGender, normalizePremiumGenderMode]);
 
   // Сохраняем выбор и обновляем URL при смене пола
   useEffect(() => {
@@ -2438,20 +2451,16 @@ export default function PremiumPage() {
     () => ({
       men: genderStats.men + genderStats.unisex,
       women: genderStats.women + genderStats.unisex,
-      unisex: genderStats.unisex,
+      all: premiumOnly.length,
     }),
-    [genderStats]
+    [genderStats, premiumOnly.length]
   );
 
   useEffect(() => {
     if (gender !== null) return;
     if (!premiumOnly.length) return;
-    const options: Array<Exclude<Gender, null>> = [];
-    if (genderStats.men > 0) options.push("men");
-    if (genderStats.women > 0) options.push("women");
-    if (genderStats.unisex > 0) options.push("unisex");
-    if (options.length === 1) setGender(options[0]);
-  }, [gender, premiumOnly.length, genderStats.men, genderStats.women, genderStats.unisex]);
+    setGender("all");
+  }, [gender, premiumOnly.length]);
 
   // Итоговый список для грида по выбранному полу
   const currentPremium = useMemo(() => {
@@ -2467,9 +2476,6 @@ export default function PremiumPage() {
         const g = normalizeProductGender((p as any)?.gender);
         return g === "women" || g === "unisex";
       });
-    }
-    if (gender === 'unisex') {
-      return premiumOnly.filter((p: any) => normalizeProductGender((p as any)?.gender) === "unisex");
     }
     return premiumOnly;
   }, [gender, premiumOnly, normalizeProductGender]);
@@ -2808,7 +2814,7 @@ export default function PremiumPage() {
   const showWomenTab = gender === null || gender === 'women' || (isDesktop && hoverTabs);
   const menDisabled = genderViewCounts.men === 0 && gender !== "men";
   const womenDisabled = genderViewCounts.women === 0 && gender !== "women";
-  const unisexDisabled = genderViewCounts.unisex === 0 && gender !== "unisex";
+  const allDisabled = genderViewCounts.all === 0 && gender !== "all";
 
   const buildProductHref = useCallback((item: { id: string | number; name?: string | null; brand?: string | null; brandName?: string | null }) => {
     const params = new URLSearchParams();
@@ -3092,15 +3098,15 @@ export default function PremiumPage() {
                 <div>
                   <h3 className="font-semibold mb-3">Пол</h3>
                   <div className="flex flex-wrap gap-2">
-                    {['men', 'women', 'unisex'].map((g) => (
+                    {(['men', 'women', 'all'] as const).map((g) => (
                       <button
                         key={g}
-                        onClick={() => setGender(g as any)}
+                        onClick={() => setGender(g)}
                         className={`px-4 py-2 rounded-full text-sm border ${
                           gender === g ? 'bg-black text-white border-black' : 'border-black/10 hover:bg-black/5'
                         }`}
                       >
-                        {g === 'men' ? 'Мужское' : g === 'women' ? 'Женское' : 'Унисекс'}
+                        {g === 'men' ? 'Мужское' : g === 'women' ? 'Женское' : 'ВСЕ'}
                       </button>
                     ))}
                   </div>
@@ -3303,10 +3309,10 @@ export default function PremiumPage() {
           <div className="md:hidden flex flex-col items-center gap-3">
             <div className="w-full flex items-center justify-center">
               <div className="flex gap-2 rounded-full border border-black/10 bg-white/70 backdrop-blur px-2 py-2 shadow-sm">
-                {(["men", "women", "unisex"] as const).map((g) => {
+                {(["men", "women", "all"] as const).map((g) => {
                   const active = gender === g;
-                  const label = g === "men" ? "Мужское" : g === "women" ? "Женское" : "Унисекс";
-                  const count = g === "men" ? genderViewCounts.men : g === "women" ? genderViewCounts.women : genderViewCounts.unisex;
+                  const label = g === "men" ? "Мужское" : g === "women" ? "Женское" : "ВСЕ";
+                  const count = g === "men" ? genderViewCounts.men : g === "women" ? genderViewCounts.women : genderViewCounts.all;
                   const disabled = count === 0;
                   return (
                     <button
@@ -3372,14 +3378,14 @@ export default function PremiumPage() {
                 transition={{ type: "spring", stiffness: 300, damping: 25 }}
                 className="text-xs text-black/50 font-medium"
               >
-                Выбрано: {gender === "men" ? "Мужское" : gender === "women" ? "Женское" : "Унисекс"}
+                Выбрано: {gender === "men" ? "Мужское" : gender === "women" ? "Женское" : "ВСЕ"}
                 <span className="ml-1">•</span>
                 <span className="ml-1">
                   {gender === "men"
                     ? genderViewCounts.men
                     : gender === "women"
                       ? genderViewCounts.women
-                      : genderViewCounts.unisex} товаров
+                      : genderViewCounts.all} товаров
                 </span>
               </motion.div>
             )}
@@ -3440,26 +3446,26 @@ export default function PremiumPage() {
                     Женская коллекция <span className="ml-2 text-xs opacity-70">({genderViewCounts.women})</span>
                   </motion.div>
                 )}
-                {/* Унисекс кнопка */}
+                {/* Все товары */}
                 <motion.div
                   layout
-                  key="unisex-tab"
+                  key="all-tab"
                   role="button"
-                  tabIndex={unisexDisabled ? -1 : 0}
-                  onClick={() => { if (!unisexDisabled) setGender('unisex'); }}
+                  tabIndex={allDisabled ? -1 : 0}
+                  onClick={() => { if (!allDisabled) setGender('all'); }}
                   onKeyDown={(e) => {
-                    if (unisexDisabled) return;
-                    if (e.key === 'Enter' || e.key === ' ') { setGender('unisex'); }
+                    if (allDisabled) return;
+                    if (e.key === 'Enter' || e.key === ' ') { setGender('all'); }
                   }}
-                  aria-disabled={unisexDisabled}
-                  className={`px-5 py-2.5 rounded-full text-sm md:text-base font-semibold transition-colors ${unisexDisabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'} ${gender==='unisex' ? 'bg-black text-white' : 'text-black hover:bg-black/5'}`}
+                  aria-disabled={allDisabled}
+                  className={`px-5 py-2.5 rounded-full text-sm md:text-base font-semibold transition-colors ${allDisabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'} ${gender==='all' ? 'bg-black text-white' : 'text-black hover:bg-black/5'}`}
                   initial={{ opacity: 0, x: 0 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={gender === 'unisex' ? { opacity: 0, x: 140, scale: 0.9, filter: 'blur(2px)' } : { opacity: 0, x: 40, scale: 0.95 }}
+                  exit={gender === 'all' ? { opacity: 0, x: 140, scale: 0.9, filter: 'blur(2px)' } : { opacity: 0, x: 40, scale: 0.95 }}
                   transition={{ duration: 0.25, ease: 'easeOut' }}
-                  aria-label="Унисекс"
+                  aria-label="Все премиум-товары"
                 >
-                  Унисекс <span className="ml-2 text-xs opacity-70">({genderViewCounts.unisex})</span>
+                  ВСЕ <span className="ml-2 text-xs opacity-70">({genderViewCounts.all})</span>
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -3469,8 +3475,8 @@ export default function PremiumPage() {
                 <button
                   onClick={() => {
                     if (gender === 'men') { setGender('women'); }
-                    else if (gender === 'women') { setGender('unisex'); }
-                    else if (gender === 'unisex') { setGender('men'); }
+                    else if (gender === 'women') { setGender('all'); }
+                    else if (gender === 'all') { setGender('men'); }
                   }}
                   className="px-4 py-2 rounded-full text-sm font-semibold bg-black text-white active:scale-[.98]"
                   aria-label="Сменить категорию"
@@ -4327,9 +4333,21 @@ export default function PremiumPage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="relative w-full aspect-[4/3] bg-white rounded-xl border border-black/10 overflow-hidden">
-                    <img src={quickItem.images?.[0] || '/img/placeholder.svg'} alt={quickItem.name} className="absolute inset-0 w-full h-full object-contain" />
+                    <img
+                      src={getOptimizedImageUrl(quickItem.images?.[0], { width: 900, quality: 80 }) || '/img/placeholder.svg'}
+                      alt={quickItem.name}
+                      className="absolute inset-0 w-full h-full object-contain"
+                      loading="lazy"
+                      decoding="async"
+                    />
                     {quickItem.images?.[1] && (
-                      <img src={quickItem.images?.[1]} alt={`${quickItem.name} preview`} className="absolute inset-0 w-full h-full object-contain opacity-0 hover:opacity-100 transition-opacity" />
+                      <img
+                        src={getOptimizedImageUrl(quickItem.images?.[1], { width: 900, quality: 80 })}
+                        alt={`${quickItem.name} preview`}
+                        className="absolute inset-0 w-full h-full object-contain opacity-0 hover:opacity-100 transition-opacity"
+                        loading="lazy"
+                        decoding="async"
+                      />
                     )}
                   </div>
                   <div>

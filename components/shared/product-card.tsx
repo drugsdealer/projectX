@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { shouldBypassNextImageOptimization } from "@/lib/media";
+import { getOptimizedImageUrl, shouldBypassNextImageOptimization } from "@/lib/media";
 import { productPath } from "@/lib/product-url";
 import { slugify } from "@/lib/slug";
 
@@ -176,6 +176,14 @@ export const ProductCard: React.FC<Props> = ({
   }, [id, imageList.length]);
 
   const displayImage = imageList[imageIndex];
+  const optimizedDisplayImage = useMemo(
+    () => getOptimizedImageUrl(displayImage, { width: 720, quality: 78 }),
+    [displayImage]
+  );
+  const optimizedBrandLogo = useMemo(
+    () => getOptimizedImageUrl(brandLogo, { width: 128, quality: 85 }),
+    [brandLogo]
+  );
 
   const bumpIndex = (dir: 1 | -1) => {
     if (imageList.length <= 1) return;
@@ -399,10 +407,10 @@ export const ProductCard: React.FC<Props> = ({
           }}
         >
           <Image
-            src={displayImage}
+            src={optimizedDisplayImage || "/img/placeholder.svg"}
             alt={name}
             fill
-            unoptimized={shouldBypassNextImageOptimization(displayImage)}
+            unoptimized={shouldBypassNextImageOptimization(optimizedDisplayImage)}
             draggable={false}
             className="object-cover transition-transform group-hover:scale-105"
             sizes="(max-width: 768px) 100vw, 33vw"
@@ -420,7 +428,7 @@ export const ProductCard: React.FC<Props> = ({
                 e.stopPropagation();
               }}
             >
-              <Image src={brandLogo} alt={brandForButton} fill unoptimized={shouldBypassNextImageOptimization(brandLogo)} className="object-contain" />
+              <Image src={optimizedBrandLogo || brandLogo} alt={brandForButton} fill unoptimized={shouldBypassNextImageOptimization(optimizedBrandLogo || brandLogo)} className="object-contain" />
             </Link>
           )}
           <h3 className="font-bold text-xs md:text-sm line-clamp-2 inline-flex items-center gap-1">

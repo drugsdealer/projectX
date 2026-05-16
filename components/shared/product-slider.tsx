@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Mousewheel } from "swiper/modules";
+import { getOptimizedImageUrl } from "@/lib/media";
 import "swiper/css";
 import "swiper/css/mousewheel";
 
@@ -53,14 +54,16 @@ export const ProductSlider: React.FC<ProductSliderProps> = ({ product, activeIma
       {slides.map((image, index) => (
         <SwiperSlide key={image ?? index} className="flex justify-center items-center">
           <img
-            src={image}
+            src={getOptimizedImageUrl(image, { width: 1200, quality: 82 }) || "/img/placeholder.svg"}
             alt={
               name
                 ? `${name} — фото ${index + 1}`
                 : `Фото товара ${index + 1}`
             }
             className="w-full h-full object-cover"
-            loading="lazy"
+            loading={index === 0 ? "eager" : "lazy"}
+            decoding="async"
+            fetchPriority={index === 0 ? "high" : "auto"}
           />
         </SwiperSlide>
       ))}
