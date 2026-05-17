@@ -4,11 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import ImageKitUploadField from "@/components/admin/ImageKitUploadField";
 import {
+  BRAND_SIZE_AUDIENCES,
+  getBrandSizeChartAudience,
   getBrandSizeChartCategory,
   getPrimarySizeLabels,
   inferBrandSizeCategory,
   parseBrandSizeChart,
-  type BrandSizeChartCategoryKey,
+  type BrandSizeAudienceKey,
 } from "@/lib/brandSizeCharts";
 
 type Category = { id: number; name: string; slug: string };
@@ -159,6 +161,7 @@ export default function AdminProductsPage() {
   const [subcategoryId, setSubcategoryId] = useState("");
   const [subcategorySlug, setSubcategorySlug] = useState("");
   const [brandId, setBrandId] = useState("");
+  const [brandSizeAudience, setBrandSizeAudience] = useState<BrandSizeAudienceKey>("all");
   const [colorId, setColorId] = useState("");
   const [gender, setGender] = useState("");
   const [description, setDescription] = useState("");
@@ -273,13 +276,18 @@ export default function AdminProductsPage() {
 
   const activeBrandChartCategory = useMemo(() => {
     const inferred = getBrandSizeChartCategory(selectedBrandChart, inferredChartCategoryKey);
-    if (inferred?.rows.length) return inferred;
-    return selectedBrandChart.categories.find((category) => category.rows.length > 0) ?? null;
+    if (inferred) return inferred;
+    return selectedBrandChart.categories.find((category) => category.audiences.some((audience) => audience.rows.length > 0)) ?? null;
   }, [inferredChartCategoryKey, selectedBrandChart]);
 
+  const activeBrandChartAudience = useMemo(
+    () => getBrandSizeChartAudience(activeBrandChartCategory, brandSizeAudience),
+    [activeBrandChartCategory, brandSizeAudience]
+  );
+
   const activeBrandSizeLabels = useMemo(
-    () => getPrimarySizeLabels(activeBrandChartCategory),
-    [activeBrandChartCategory]
+    () => getPrimarySizeLabels(activeBrandChartAudience),
+    [activeBrandChartAudience]
   );
 
   const applyBrandSizeLabels = useCallback(() => {
@@ -467,7 +475,8 @@ export default function AdminProductsPage() {
       if (!res.ok || !data?.success) { setMsg(data?.message || "Ошибка добавления"); return; }
       setMsg("Товар добавлен");
       setName(""); setPrice(""); setImageUrl(""); setBrandId(""); setColorId("");
-      setGender(""); setDescription(""); setSubcategoryId(""); setSubcategorySlug(""); setSizeType("NONE");
+    setGender(""); setDescription(""); setSubcategoryId(""); setSubcategorySlug(""); setSizeType("NONE");
+      setBrandSizeAudience("all");
       setShoeGroups([newGroup()]); setClothGroups([newGroup()]);
       setCustomSizeInputs({});
       setPremium(false); setBadge(""); setGalleryText("");
@@ -684,15 +693,26 @@ export default function AdminProductsPage() {
               <option value="">Бренд (необязательно)</option>
               {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
+            <select
+              className={inputCls}
+              value={brandSizeAudience}
+              onChange={(e) => setBrandSizeAudience(e.target.value as BrandSizeAudienceKey)}
+            >
+              {BRAND_SIZE_AUDIENCES.map((audience) => (
+                <option key={audience.key} value={audience.key}>
+                  Линейка бренда: {audience.shortLabel.toLowerCase()}
+                </option>
+              ))}
+            </select>
             {selectedBrand && activeBrandChartCategory && activeBrandSizeLabels.length > 0 && (
               <div className="sm:col-span-2 rounded-2xl border border-black/10 bg-black/[0.02] p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="text-sm font-semibold">
-                      Сетка {selectedBrand.name}: {activeBrandChartCategory.label}
+                      Сетка {selectedBrand.name}: {activeBrandChartCategory.label} · {activeBrandChartAudience?.label ?? "Общая линейка"}
                     </div>
                     <p className="mt-1 text-xs leading-5 text-black/55">
-                      Размеры из первой колонки уже можно использовать как размеры товара. Если категория определилась не так, выбери нужную подкатегорию выше.
+                      Это только линейка размеров бренда для подстановки. Мужская/женская коллекция задается отдельным полем “Пол” ниже.
                     </p>
                   </div>
                   <button

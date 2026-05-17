@@ -1,5 +1,14 @@
 export type BrandSizeChartCategoryKey = "outerwear" | "pants" | "shoes" | "jewelry";
+export type BrandSizeAudienceKey = "all" | "men" | "women";
 export type BrandSizeMode = "letters" | "numbers" | "mixed";
+
+export type BrandSizeChartAudience = {
+  key: BrandSizeAudienceKey;
+  label: string;
+  sizeMode: BrandSizeMode;
+  columns: string[];
+  rows: string[][];
+};
 
 export type BrandSizeChartCategory = {
   key: BrandSizeChartCategoryKey;
@@ -7,6 +16,7 @@ export type BrandSizeChartCategory = {
   sizeMode: BrandSizeMode;
   columns: string[];
   rows: string[][];
+  audiences: BrandSizeChartAudience[];
 };
 
 export type BrandSizeChart = {
@@ -25,6 +35,16 @@ export const BRAND_SIZE_CHART_CATEGORIES: Array<{
   { key: "jewelry", label: "Ювелирные изделия", defaultMode: "mixed" },
 ];
 
+export const BRAND_SIZE_AUDIENCES: Array<{
+  key: BrandSizeAudienceKey;
+  label: string;
+  shortLabel: string;
+}> = [
+  { key: "all", label: "Общая линейка", shortLabel: "Общая" },
+  { key: "men", label: "Мужская линейка", shortLabel: "Мужская" },
+  { key: "women", label: "Женская линейка", shortLabel: "Женская" },
+];
+
 const DEFAULT_COLUMNS: Record<BrandSizeChartCategoryKey, string[]> = {
   outerwear: ["Размер", "EU", "US", "UK", "Грудь, см", "Длина, см"],
   pants: ["Размер", "EU", "US", "UK", "Талия, см", "Бёдра, см"],
@@ -41,12 +61,47 @@ export function createEmptyBrandSizeChart(): BrandSizeChart {
       sizeMode: category.defaultMode,
       columns: DEFAULT_COLUMNS[category.key],
       rows: [],
+      audiences: BRAND_SIZE_AUDIENCES.map((audience) => ({
+        key: audience.key,
+        label: audience.label,
+        sizeMode: category.defaultMode,
+        columns: DEFAULT_COLUMNS[category.key],
+        rows: [],
+      })),
     })),
   };
 }
 
 function normalizeCell(value: unknown): string {
   return String(value ?? "").trim();
+}
+
+function normalizeAudience(input: any, fallback: BrandSizeChartCategory, audienceKey: BrandSizeAudienceKey): BrandSizeChartAudience {
+  const meta = BRAND_SIZE_AUDIENCES.find((item) => item.key === audienceKey) ?? BRAND_SIZE_AUDIENCES[0];
+  const columns: string[] = Array.isArray(input?.columns)
+    ? input.columns.map(normalizeCell).filter(Boolean)
+    : fallback.columns;
+  const safeColumns = columns.length ? columns : fallback.columns;
+
+  const rows = Array.isArray(input?.rows)
+    ? input.rows
+        .filter((row: any) => Array.isArray(row))
+        .map((row: any[]) =>
+          safeColumns.map((_column: string, index: number) => normalizeCell(row[index]))
+        )
+    : [];
+
+  const sizeMode = input?.sizeMode === "letters" || input?.sizeMode === "numbers" || input?.sizeMode === "mixed"
+    ? input.sizeMode
+    : fallback.sizeMode;
+
+  return {
+    key: audienceKey,
+    label: meta.label,
+    sizeMode,
+    columns: safeColumns,
+    rows,
+  };
 }
 
 function normalizeCategory(input: any, fallback: BrandSizeChartCategory): BrandSizeChartCategory {
@@ -67,12 +122,22 @@ function normalizeCategory(input: any, fallback: BrandSizeChartCategory): BrandS
     ? input.sizeMode
     : fallback.sizeMode;
 
+  const legacyAllInput = { sizeMode, columns: safeColumns, rows };
+  const audiences = BRAND_SIZE_AUDIENCES.map((audience) => {
+    const match = Array.isArray(input?.audiences)
+      ? input.audiences.find((item: any) => item?.key === audience.key)
+      : null;
+    return normalizeAudience(match ?? (audience.key === "all" ? legacyAllInput : null), fallback, audience.key);
+  });
+  const allAudience = audiences.find((audience) => audience.key === "all") ?? audiences[0];
+
   return {
     key: fallback.key,
     label: fallback.label,
-    sizeMode,
-    columns: safeColumns,
-    rows,
+    sizeMode: allAudience.sizeMode,
+    columns: allAudience.columns,
+    rows: allAudience.rows,
+    audiences,
   };
 }
 
@@ -105,6 +170,11 @@ function parseLegacyTable(text: string): BrandSizeChart | null {
     ...chart.categories[0],
     columns: headers,
     rows,
+    audiences: chart.categories[0].audiences.map((audience) =>
+      audience.key === "all"
+        ? { ...audience, columns: headers, rows }
+        : audience
+    ),
   };
   return chart;
 }
@@ -146,7 +216,15 @@ export function serializeBrandSizeChart(chart: BrandSizeChart): string {
     const fallback = empty.categories.find((item) => item.key === category.key);
     const columnsChanged = JSON.stringify(category.columns) !== JSON.stringify(fallback?.columns ?? []);
     const modeChanged = category.sizeMode !== fallback?.sizeMode;
-    return columnsChanged || modeChanged || category.rows.length > 0;
+    const audienceChanged = category.audiences.some((audience) => {
+      const fallbackAudience = fallback?.audiences.find((item) => item.key === audience.key);
+      return (
+        JSON.stringify(audience.columns) !== JSON.stringify(fallbackAudience?.columns ?? []) ||
+        audience.sizeMode !== fallbackAudience?.sizeMode ||
+        audience.rows.length > 0
+      );
+    });
+    return columnsChanged || modeChanged || category.rows.length > 0 || audienceChanged;
   });
 
   return hasContent ? JSON.stringify(normalized) : "";
@@ -158,6 +236,18 @@ export function getBrandSizeChartCategory(
 ) {
   if (!key) return null;
   return chart.categories.find((category) => category.key === key) ?? null;
+}
+
+export function getBrandSizeChartAudience(
+  category: BrandSizeChartCategory | null | undefined,
+  audience: BrandSizeAudienceKey | null | undefined
+) {
+  if (!category) return null;
+  const selected = category.audiences.find((item) => item.key === (audience ?? "all"));
+  const common = category.audiences.find((item) => item.key === "all");
+  if (selected?.rows.length) return selected;
+  if (common?.rows.length) return common;
+  return selected ?? common ?? null;
 }
 
 export function inferBrandSizeCategory(input: {
@@ -192,7 +282,7 @@ export function inferBrandSizeCategory(input: {
   return null;
 }
 
-export function getPrimarySizeLabels(category: BrandSizeChartCategory | null | undefined): string[] {
+export function getPrimarySizeLabels(category: Pick<BrandSizeChartCategory, "rows"> | Pick<BrandSizeChartAudience, "rows"> | null | undefined): string[] {
   if (!category) return [];
   return Array.from(
     new Set(

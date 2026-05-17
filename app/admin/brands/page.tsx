@@ -4,11 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ImageKitUploadField from "@/components/admin/ImageKitUploadField";
 import {
+  BRAND_SIZE_AUDIENCES,
   BRAND_SIZE_CHART_CATEGORIES,
   createEmptyBrandSizeChart,
   parseBrandSizeChart,
   serializeBrandSizeChart,
   type BrandSizeChart,
+  type BrandSizeAudienceKey,
   type BrandSizeChartCategoryKey,
   type BrandSizeMode,
 } from "@/lib/brandSizeCharts";
@@ -87,8 +89,12 @@ function SizeChartEditor({
   onChange: (value: string) => void;
 }) {
   const [activeKey, setActiveKey] = useState<BrandSizeChartCategoryKey>("outerwear");
+  const [activeAudienceKey, setActiveAudienceKey] = useState<BrandSizeAudienceKey>("all");
   const chart = parseBrandSizeChart(value);
   const active = chart.categories.find((category) => category.key === activeKey) ?? chart.categories[0];
+  const activeAudience =
+    active.audiences.find((audience) => audience.key === activeAudienceKey) ??
+    active.audiences[0];
 
   const updateChart = (next: BrandSizeChart) => {
     onChange(serializeBrandSizeChart(next));
@@ -105,45 +111,63 @@ function SizeChartEditor({
     });
   };
 
+  const updateActiveAudience = (
+    updater: (audience: BrandSizeChart["categories"][number]["audiences"][number]) => BrandSizeChart["categories"][number]["audiences"][number]
+  ) => {
+    updateActive((category) => {
+      const nextAudiences = category.audiences.map((audience) =>
+        audience.key === activeAudience.key ? updater(audience) : audience
+      );
+      const allAudience = nextAudiences.find((audience) => audience.key === "all") ?? nextAudiences[0];
+      return {
+        ...category,
+        sizeMode: allAudience.sizeMode,
+        columns: allAudience.columns,
+        rows: allAudience.rows,
+        audiences: nextAudiences,
+      };
+    });
+  };
+
   const addColumn = () => {
-    updateActive((category) => ({
-      ...category,
-      columns: [...category.columns, "Новая колонка"],
-      rows: category.rows.map((row) => [...row, ""]),
+    updateActiveAudience((audience) => ({
+      ...audience,
+      columns: [...audience.columns, "Новая колонка"],
+      rows: audience.rows.map((row) => [...row, ""]),
     }));
   };
 
   const renameColumn = (index: number, name: string) => {
-    updateActive((category) => ({
-      ...category,
-      columns: category.columns.map((column, columnIndex) =>
+    updateActiveAudience((audience) => ({
+      ...audience,
+      columns: audience.columns.map((column, columnIndex) =>
         columnIndex === index ? name : column
       ),
     }));
   };
 
   const removeColumn = (index: number) => {
-    if (active.columns.length <= 1) return;
-    updateActive((category) => ({
-      ...category,
-      columns: category.columns.filter((_, columnIndex) => columnIndex !== index),
-      rows: category.rows.map((row) => row.filter((_, columnIndex) => columnIndex !== index)),
+    if (activeAudience.columns.length <= 1) return;
+    updateActiveAudience((audience) => ({
+      ...audience,
+      columns: audience.columns.filter((_, columnIndex) => columnIndex !== index),
+      rows: audience.rows.map((row) => row.filter((_, columnIndex) => columnIndex !== index)),
     }));
   };
 
   const addRow = () => {
-    updateActive((category) => ({
-      ...category,
-      rows: [...category.rows, category.columns.map(() => "")],
+    updateActiveAudience((audience) => ({
+      ...audience,
+      rows: [...audience.rows, audience.columns.map(() => "")],
     }));
   };
 
   const updateCell = (rowIndex: number, columnIndex: number, cellValue: string) => {
-    updateActive((category) => ({
-      ...category,
-      rows: category.rows.map((row, currentRowIndex) =>
+    updateActiveAudience((audience) => ({
+      ...audience,
+      rows: audience.rows.map((row, currentRowIndex) =>
         currentRowIndex === rowIndex
-          ? category.columns.map((_, currentColumnIndex) =>
+          ? audience.columns.map((_, currentColumnIndex) =>
               currentColumnIndex === columnIndex ? cellValue : row[currentColumnIndex] ?? ""
             )
           : row
@@ -152,14 +176,14 @@ function SizeChartEditor({
   };
 
   const removeRow = (rowIndex: number) => {
-    updateActive((category) => ({
-      ...category,
-      rows: category.rows.filter((_, currentRowIndex) => currentRowIndex !== rowIndex),
+    updateActiveAudience((audience) => ({
+      ...audience,
+      rows: audience.rows.filter((_, currentRowIndex) => currentRowIndex !== rowIndex),
     }));
   };
 
   const clearActive = () => {
-    updateActive((category) => ({ ...category, rows: [] }));
+    updateActiveAudience((audience) => ({ ...audience, rows: [] }));
   };
 
   const resetAll = () => {
@@ -186,7 +210,10 @@ function SizeChartEditor({
 
       <div className="mt-4 flex flex-wrap gap-2">
         {BRAND_SIZE_CHART_CATEGORIES.map((category) => {
-          const filled = chart.categories.find((item) => item.key === category.key)?.rows.length ?? 0;
+          const filled =
+            chart.categories
+              .find((item) => item.key === category.key)
+              ?.audiences.reduce((sum, audience) => sum + audience.rows.length, 0) ?? 0;
           const activeTab = active.key === category.key;
           return (
             <button
@@ -206,15 +233,35 @@ function SizeChartEditor({
         })}
       </div>
 
+      <div className="mt-3 flex flex-wrap gap-2 rounded-2xl bg-black/[0.03] p-1">
+        {BRAND_SIZE_AUDIENCES.map((audience) => {
+          const selected = activeAudience.key === audience.key;
+          const rows = active.audiences.find((item) => item.key === audience.key)?.rows.length ?? 0;
+          return (
+            <button
+              key={audience.key}
+              type="button"
+              onClick={() => setActiveAudienceKey(audience.key)}
+              className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+                selected ? "bg-black text-white" : "text-black/60 hover:bg-white"
+              }`}
+            >
+              {audience.shortLabel}
+              {rows > 0 ? <span className="ml-2 opacity-60">{rows}</span> : null}
+            </button>
+          );
+        })}
+      </div>
+
       <div className="mt-4 grid gap-3 sm:grid-cols-[220px_1fr_auto_auto]">
         <label className="text-xs font-semibold uppercase tracking-[0.16em] text-black/45">
           Формат главного размера
           <select
             className="mt-2 w-full rounded-xl border border-black/10 px-3 py-2 text-sm normal-case tracking-normal text-black"
-            value={active.sizeMode}
+            value={activeAudience.sizeMode}
             onChange={(event) =>
-              updateActive((category) => ({
-                ...category,
+              updateActiveAudience((audience) => ({
+                ...audience,
                 sizeMode: event.target.value as BrandSizeMode,
               }))
             }
@@ -245,8 +292,8 @@ function SizeChartEditor({
         <table className="w-full min-w-[760px] border-collapse bg-white text-sm">
           <thead className="bg-black/[0.03]">
             <tr>
-              {active.columns.map((column, index) => (
-                <th key={`${active.key}-head-${index}`} className="border-b border-r border-black/10 p-2 text-left last:border-r-0">
+              {activeAudience.columns.map((column, index) => (
+                <th key={`${active.key}-${activeAudience.key}-head-${index}`} className="border-b border-r border-black/10 p-2 text-left last:border-r-0">
                   <div className="flex items-center gap-2">
                     <input
                       className="w-full rounded-lg border border-black/10 bg-white px-2 py-1 text-xs font-semibold"
@@ -271,17 +318,17 @@ function SizeChartEditor({
             </tr>
           </thead>
           <tbody>
-            {active.rows.length === 0 ? (
+            {activeAudience.rows.length === 0 ? (
               <tr>
-                <td colSpan={active.columns.length + 1} className="p-5 text-center text-xs text-black/45">
-                  Таблица пока пустая. Нажми “+ Размер” и заполни строки как на сайте бренда.
+                <td colSpan={activeAudience.columns.length + 1} className="p-5 text-center text-xs text-black/45">
+                  Таблица “{activeAudience.label.toLowerCase()}” пока пустая. Нажми “+ Размер” и заполни строки как на сайте бренда.
                 </td>
               </tr>
             ) : (
-              active.rows.map((row, rowIndex) => (
-                <tr key={`${active.key}-row-${rowIndex}`} className="hover:bg-black/[0.015]">
-                  {active.columns.map((_, columnIndex) => (
-                    <td key={`${active.key}-${rowIndex}-${columnIndex}`} className="border-r border-t border-black/10 p-2 last:border-r-0">
+              activeAudience.rows.map((row, rowIndex) => (
+                <tr key={`${active.key}-${activeAudience.key}-row-${rowIndex}`} className="hover:bg-black/[0.015]">
+                  {activeAudience.columns.map((_, columnIndex) => (
+                    <td key={`${active.key}-${activeAudience.key}-${rowIndex}-${columnIndex}`} className="border-r border-t border-black/10 p-2 last:border-r-0">
                       <input
                         className="w-full rounded-lg border border-transparent px-2 py-1 text-sm outline-none transition focus:border-black/20"
                         value={row[columnIndex] ?? ""}

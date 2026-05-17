@@ -1484,8 +1484,8 @@ export default function Home() {
     if (typeof window === 'undefined') return;
     let raf: number | null = null;
 
-    const compute = () => {
-      if (!isHeroInView) return;
+    const compute = (force = false) => {
+      if (!force && !isHeroInView) return;
       const y = window.scrollY || 0;
 
       // Stronger hero disappearance: 0..1 within first ~320px of scroll.
@@ -1507,14 +1507,27 @@ export default function Home() {
         raf = null;
       });
     };
+    const onPageShow = () => {
+      setIsHeroInView(true);
+      requestAnimationFrame(() => compute(true));
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        requestAnimationFrame(() => compute(true));
+      }
+    };
 
     // initial value
-    compute();
+    compute(true);
 
     window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('pageshow', onPageShow);
+    document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
       if (raf) cancelAnimationFrame(raf);
       window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('pageshow', onPageShow);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [reduceMotion, balancedMotion, isHeroInView]);
 

@@ -128,12 +128,10 @@ export default function BannerMargiela() {
             {i < index ? (
               <span className="block h-full w-full rounded-full bg-white/58" />
             ) : i === index ? (
-              <motion.span
+              <span
                 key={`mobile-progress-${index}`}
-                className="block h-full rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.82)]"
-                initial={{ width: '0%' }}
-                animate={{ width: '100%' }}
-                transition={{ duration: AUTO_MS / 1000, ease: 'linear' }}
+                className="hero-banner-progress-line block h-full rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.82)]"
+                style={{ animationDuration: `${AUTO_MS}ms` }}
               />
             ) : (
               <span className="block h-full w-0 rounded-full bg-white/58" />
@@ -239,12 +237,10 @@ export default function BannerMargiela() {
           ←
         </button>
         <div className="hidden h-px flex-1 bg-white/20 sm:block">
-          <motion.div
+          <div
             key={`progress-${index}`}
-            className="h-px bg-white"
-            initial={{ width: '0%' }}
-            animate={{ width: '100%' }}
-            transition={{ duration: AUTO_MS / 1000, ease: 'linear' }}
+            className="hero-banner-progress-line h-px bg-white"
+            style={{ animationDuration: `${AUTO_MS}ms` }}
           />
         </div>
         <button
@@ -260,6 +256,31 @@ export default function BannerMargiela() {
           →
         </button>
       </div>
+      <style jsx>{`
+        .hero-banner-progress-line {
+          width: 100%;
+          transform-origin: left center;
+          animation-name: hero-banner-progress;
+          animation-timing-function: linear;
+          animation-fill-mode: forwards;
+        }
+
+        @keyframes hero-banner-progress {
+          from {
+            transform: scaleX(0);
+          }
+          to {
+            transform: scaleX(1);
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .hero-banner-progress-line {
+            animation: none !important;
+            transform: scaleX(1);
+          }
+        }
+      `}</style>
     </section>
   );
 }
