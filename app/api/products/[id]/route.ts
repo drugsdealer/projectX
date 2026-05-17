@@ -100,6 +100,7 @@ export async function GET(
         images: true, description: true, available: true, premium: true,
         badge: true, gender: true, subcategory: true, sizeType: true,
         material: true, features: true, styleNotes: true,
+        fragranceNotes: true, sillageDescription: true,
         widthCm: true, heightCm: true, depthCm: true,
         categoryId: true, brandId: true, colorId: true, modelKey: true,
         createdAt: true, updatedAt: true,
@@ -279,24 +280,29 @@ export async function GET(
         : null;
 
     // Ноты аромата для парфюмерии (если заданы в БД)
-    const fragranceNotes =
-      (Array.isArray(pAny?.fragranceTopNotes) &&
-        pAny.fragranceTopNotes.length > 0) ||
-      (Array.isArray(pAny?.fragranceMiddleNotes) &&
-        pAny.fragranceMiddleNotes.length > 0) ||
-      (Array.isArray(pAny?.fragranceBaseNotes) &&
-        pAny.fragranceBaseNotes.length > 0)
-        ? {
-            top: Array.isArray(pAny.fragranceTopNotes)
-              ? pAny.fragranceTopNotes
-              : [],
-            middle: Array.isArray(pAny.fragranceMiddleNotes)
-              ? pAny.fragranceMiddleNotes
-              : [],
-            base: Array.isArray(pAny.fragranceBaseNotes)
-              ? pAny.fragranceBaseNotes
-              : [],
-          }
+    const normalizeNoteList = (value: unknown): string[] => {
+      if (Array.isArray(value)) {
+        return value.map((item) => String(item ?? "").trim()).filter(Boolean);
+      }
+      if (typeof value === "string") {
+        return value.split(/[,;]+/).map((item) => item.trim()).filter(Boolean);
+      }
+      return [];
+    };
+
+    const rawFragranceNotes = pAny?.fragranceNotes && typeof pAny.fragranceNotes === "object"
+      ? pAny.fragranceNotes
+      : null;
+    const fragranceNotes = rawFragranceNotes
+      ? {
+          top: normalizeNoteList(rawFragranceNotes.top ?? rawFragranceNotes.head),
+          middle: normalizeNoteList(rawFragranceNotes.middle ?? rawFragranceNotes.heart),
+          base: normalizeNoteList(rawFragranceNotes.base),
+        }
+      : null;
+    const normalizedFragranceNotes = fragranceNotes &&
+      (fragranceNotes.top.length || fragranceNotes.middle.length || fragranceNotes.base.length)
+        ? fragranceNotes
         : null;
 
     // Материалы для ювелирки / аксессуаров / сумок
@@ -392,7 +398,8 @@ export async function GET(
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
       dimensions,
-      fragranceNotes,
+      fragranceNotes: normalizedFragranceNotes,
+      sillageDescription: pAny?.sillageDescription ?? null,
       material: pAny?.material ?? null,
       features: pAny?.features ?? null,
       styleNotes: pAny?.styleNotes ?? null,

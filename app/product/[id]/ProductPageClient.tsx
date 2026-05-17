@@ -77,6 +77,66 @@ type PerfumeProduct = {
   fragranceNotes: NonNullable<NormalizedProduct["fragranceNotes"]>;
 };
 
+function cleanVisibleDescription(value?: string | null) {
+  return String(value ?? "")
+    .trim()
+    .replace(/^(?:0|o|о)(?=[\s.,;:—-])/i, "")
+    .replace(/^[\s.,;:—-]+/, "")
+    .trim();
+}
+
+function splitPerfumeNotes(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item ?? "").trim()).filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return value.split(/[,;]+/).map((item) => item.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+function extractPerfumeNotesFromDescription(description?: string | null) {
+  const text = cleanVisibleDescription(description);
+  const pick = (...patterns: RegExp[]) => {
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match?.[1]) return splitPerfumeNotes(match[1].replace(/[()]/g, ""));
+    }
+    return [];
+  };
+
+  return {
+    top: pick(
+      /верхн(?:ие|ими)?\s+нот(?:ы|ами)?\s*[:(]\s*([^).;]+)/i,
+      /верхн(?:ие|ими)?\s+нот(?:ы|ами)?\s+([^).;]+)/i
+    ),
+    middle: pick(
+      /(?:средн(?:ие|ими)?\s+нот(?:ы|ами)?|сердц(?:е|ем))\s*[:(]\s*([^).;]+)/i,
+      /(?:средн(?:ие|ими)?\s+нот(?:ы|ами)?|сердц(?:е|ем))\s+([^).;]+)/i
+    ),
+    base: pick(
+      /(?:базов(?:ые|ыми)?\s+нот(?:ы|ами)?|баз(?:а|ой|е))\s*[:(]\s*([^).;]+)/i,
+      /(?:базов(?:ые|ыми)?\s+нот(?:ы|ами)?|баз(?:а|ой|е))\s+([^).;]+)/i
+    ),
+  };
+}
+
+function getPerfumeNotes(product: Product) {
+  const notes: any = (product as any)?.fragranceNotes ?? {};
+  const fromData = {
+    top: splitPerfumeNotes(notes.top ?? notes.head),
+    middle: splitPerfumeNotes(notes.middle ?? notes.heart),
+    base: splitPerfumeNotes(notes.base),
+  };
+  const fromDescription = extractPerfumeNotesFromDescription(product.description);
+
+  return {
+    top: fromData.top.length ? fromData.top : fromDescription.top,
+    middle: fromData.middle.length ? fromData.middle : fromDescription.middle,
+    base: fromData.base.length ? fromData.base : fromDescription.base,
+  };
+}
+
 // Узкий тип для цветовых вариантов (то, что прилетает в product.colorVariants)
 type ColorVariant = {
   id: number;
@@ -816,6 +876,11 @@ const { user } = useUser();
     const src = fromProduct ?? fromRaw ?? [];
     return Array.isArray(src) ? (src as Array<string | number>) : [];
   }, [product, rawProduct]);
+
+  const visibleDescription = React.useMemo(
+    () => cleanVisibleDescription(product?.description),
+    [product?.description]
+  );
   const { showToast } = useToast();
   const [recentProducts, setRecentProducts] = useState<Product[]>([]);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
@@ -2008,10 +2073,7 @@ const handleCancel = () => {
 
                     // ---------- ДУХИ / АРОМАТЫ ----------
                     if (product.category === 'perfume' || product.category === 'fragrance') {
-                      const notes = anyProduct.fragranceNotes ?? {};
-                      const top: string[] = Array.isArray(notes.top) ? notes.top : [];
-                      const middle: string[] = Array.isArray(notes.middle) ? notes.middle : [];
-                      const base: string[] = Array.isArray(notes.base) ? notes.base : [];
+                      const { top, middle, base } = getPerfumeNotes(product);
 
                       // очень простая эвристика по времени и сезону
                       const allNotesText = [...top, ...middle, ...base].join(' ').toLowerCase();
@@ -2044,10 +2106,20 @@ const handleCancel = () => {
                             </p>
                           )}
                           {(top.length || middle.length || base.length) && (
-                            <p>
-                              <strong>• Основные ноты:</strong>{' '}
-                              {[...top, ...middle, ...base].slice(0, 6).join(', ') || 'аккуратно сбалансированная композиция'}
-                            </p>
+                            <div className="space-y-1 rounded-xl border border-black/10 bg-white/70 p-3">
+                              <p>
+                                <strong>• Верхние ноты:</strong>{' '}
+                                {top.length ? top.join(', ') : '—'}
+                              </p>
+                              <p>
+                                <strong>• Средние ноты:</strong>{' '}
+                                {middle.length ? middle.join(', ') : '—'}
+                              </p>
+                              <p>
+                                <strong>• Базовые ноты:</strong>{' '}
+                                {base.length ? base.join(', ') : '—'}
+                              </p>
+                            </div>
                           )}
                           <p>
                             <strong>• Когда носить:</strong> {dayTime}
@@ -2171,9 +2243,9 @@ const handleCancel = () => {
                     </p>
                   )}
 
-                  {product.description && (
+                  {visibleDescription && (
                     <p className="mt-2">
-                      {product.description}
+                      {visibleDescription}
                     </p>
                   )}
                 </div>
@@ -2469,12 +2541,7 @@ const handleCancel = () => {
               document.body
             )}
             {(product.category === 'perfume' || product.category === 'fragrance') && (() => {
-              const notes: any = (product as any)?.fragranceNotes ?? null;
-              if (!notes) return null;
-
-              const top: string[] = Array.isArray(notes.top) ? notes.top : [];
-              const middle: string[] = Array.isArray(notes.middle) ? notes.middle : [];
-              const base: string[] = Array.isArray(notes.base) ? notes.base : [];
+              const { top, middle, base } = getPerfumeNotes(product);
 
               if (!top.length && !middle.length && !base.length) {
                 // если ноты не заданы вообще — просто не показываем блок

@@ -52,18 +52,18 @@ export default function BrandsClient({ brands }: { brands: BrandItem[] }) {
   const previewImage = activeBrand?.imageUrl || activeBrand?.logoUrl || null;
 
   return (
-    <div className="min-h-screen bg-[#f4f4f2] text-black">
-      <div className="px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-7 flex items-end justify-between gap-5">
+    <div className="h-[calc(100svh-var(--header-h,80px))] overflow-hidden bg-[#f4f4f2] text-black">
+      <div className="flex h-full min-h-0 flex-col px-4 pt-6 sm:px-6 lg:px-8">
+        <div className="mb-5 shrink-0 flex items-end justify-between gap-5">
           <div>
             <div className="text-xs font-bold uppercase tracking-[0.24em] text-black/35">Stage Store</div>
-            <h1 className="mt-2 text-5xl font-black uppercase tracking-[-0.04em] sm:text-7xl">
+            <h1 className="mt-2 text-5xl font-black uppercase tracking-[-0.04em] sm:text-7xl lg:text-8xl">
               Бренды
             </h1>
           </div>
         </div>
 
-        <div className="sticky top-0 z-20 -mx-4 border-y border-black/10 bg-[#f4f4f2]/92 px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <div className="z-20 -mx-4 shrink-0 border-y border-black/10 bg-[#f4f4f2]/92 px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
           <div className="flex gap-5 overflow-x-auto text-sm font-bold text-black/35 [scrollbar-width:none]">
             {LETTERS.map((item) => {
               const disabled =
@@ -90,8 +90,8 @@ export default function BrandsClient({ brands }: { brands: BrandItem[] }) {
           </div>
         </div>
 
-        <div className="-mx-4 grid min-h-[680px] bg-white sm:-mx-6 lg:-mx-8 lg:grid-cols-[0.95fr_1.05fr]">
-          <div className="divide-y divide-black/10">
+        <div className="-mx-4 grid min-h-0 flex-1 bg-white sm:-mx-6 lg:-mx-8 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="min-h-0 divide-y divide-black/10 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {filtered.length > 0 ? (
               filtered.map((brand, index) => (
                 <motion.div
@@ -142,7 +142,7 @@ export default function BrandsClient({ brands }: { brands: BrandItem[] }) {
             )}
           </div>
 
-          <div className="sticky top-[58px] hidden h-[calc(100vh-58px)] min-h-[680px] overflow-hidden bg-[#e8e8e4] lg:block">
+          <div className="relative hidden h-full min-h-0 overflow-hidden bg-[#e8e8e4] lg:block">
             {previewImage ? (
               <Image
                 key={previewImage}

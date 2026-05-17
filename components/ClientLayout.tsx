@@ -34,6 +34,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     pathname.startsWith("/profile") ||
     pathname.startsWith("/user") ||
     pathname.startsWith("/login") ||
+    pathname.startsWith("/brands") ||
     pathname.startsWith("/footer");
 
   // Prefetch key pages and bootstrap data to speed up navigation
