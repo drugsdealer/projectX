@@ -63,7 +63,7 @@ function readUserFast(request: NextRequest) {
 async function fetchUser(request: NextRequest) {
   const controller = new AbortController();
   // короче таймаут, чтобы не зависать в middleware
-  const timeoutId = setTimeout(() => controller.abort(), 800);
+  const timeoutId = setTimeout(() => controller.abort(), 2500);
 
   try {
     const meUrl = new URL("/api/auth/me", request.url);
@@ -187,9 +187,9 @@ export async function middleware(request: NextRequest) {
     ? (
         fastUser ??
         (hasSessionToken
-          // Не дергаем БД на обычной странице профиля: короткий timeout мог случайно
-          // редиректить живую сессию на главную при сетевом сбое.
-          ? (pathname.startsWith("/user") ? ({ id: null } as any) : await fetchUser(request))
+          // Если fetchUser упадёт по таймауту — возвращаем {id:null} чтобы не выбрасывать
+          // живую сессию на главную из-за временного сетевого сбоя.
+          ? (await fetchUser(request) ?? ({ id: null } as any))
           : null)
       )
     : null;

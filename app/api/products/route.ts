@@ -129,7 +129,7 @@ function inferSubcategorySlug(p: any): string | null {
 export const revalidate = 60; // ISR: Vercel кэширует на 60 сек, stale-while-revalidate ещё 5 мин
 
 const PUBLIC_CACHE_HEADERS = {
-  "Cache-Control": "public, max-age=30, s-maxage=120, stale-while-revalidate=300",
+  "Cache-Control": "public, max-age=30, s-maxage=60, stale-while-revalidate=60",
 };
 
 const FALLBACK_PRODUCTS = [
@@ -637,28 +637,10 @@ export async function GET(req: Request) {
       { status: 200, headers: PUBLIC_CACHE_HEADERS }
     );
   } catch (e) {
-    console.error("[api.products] GET error");
-    const url = new URL(req.url);
-    const categorySlugParam = url.searchParams.get("category");
-    const dbCategoryFilter = mapEnToDbCategorySlug(categorySlugParam);
-    const desiredUiCategory = dbCategoryFilter === "premium"
-      ? null
-      : (mapDbToEnCategorySlug(dbCategoryFilter ?? null)
-          ?? (categorySlugParam ? categorySlugParam.toLowerCase().trim() : null));
-    const subParamRaw = url.searchParams.get("sub") ?? url.searchParams.get("subcategory");
-    const includePremiumRaw = (url.searchParams.get("includePremium") || "").toLowerCase();
-    const premiumOnlyRaw = (url.searchParams.get("premium") || "").toLowerCase();
-
+    console.error("[api.products] GET error", e);
     return NextResponse.json(
-      getFallbackProducts({
-        desiredUiCategory,
-        subParam: subParamRaw ? normalizeSubcategorySlug(subParamRaw) : null,
-        includePremium: includePremiumRaw === "1" || includePremiumRaw === "true",
-        dbCategoryFilter: premiumOnlyRaw === "1" || premiumOnlyRaw === "true" ? "premium" : dbCategoryFilter,
-        saleOnly: (url.searchParams.get("sale") ?? "") === "1",
-        genderFilter: (url.searchParams.get("gender") ?? "").trim().toLowerCase(),
-      }),
-      { status: 200, headers: PUBLIC_CACHE_HEADERS }
+      { success: false, error: "Временная ошибка. Попробуйте обновить страницу." },
+      { status: 503, headers: { "Cache-Control": "no-store", "Retry-After": "10" } }
     );
   }
 }
