@@ -489,17 +489,11 @@ const BrandSizeChartTable = ({
 
   if (structuredCategory?.rows.length) {
     const availableSet = new Set(availableSizes.map(normalizeSizeKey).filter(Boolean));
-    const visibleRows = availableSet.size
+    const filteredRows = availableSet.size
       ? structuredCategory.rows.filter((row) => availableSet.has(normalizeSizeKey(row[0])))
       : structuredCategory.rows;
-
-    if (!visibleRows.length) {
-      return (
-        <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500 shadow-sm">
-          Для доступных размеров товара таблица пока не заполнена.
-        </div>
-      );
-    }
+    // If filter produced no matches, show all rows — don't hide the chart
+    const visibleRows = filteredRows.length ? filteredRows : structuredCategory.rows;
 
     return (
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -545,16 +539,14 @@ const BrandSizeChartTable = ({
   }
 
   const availableSet = new Set(availableSizes.map(normalizeSizeKey).filter(Boolean));
-  const visibleRows = availableSet.size
+  const filteredLegacyRows = availableSet.size
     ? parsed.rows.filter((row) => availableSet.has(normalizeSizeKey(row[0])))
     : parsed.rows;
+  // If filter produced no matches, show all rows — don't hide the chart
+  const visibleRows = filteredLegacyRows.length ? filteredLegacyRows : parsed.rows;
 
   if (!visibleRows.length) {
-    return (
-      <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500 shadow-sm">
-        Для доступных размеров товара таблица пока не заполнена.
-      </div>
-    );
+    return null;
   }
 
   return (

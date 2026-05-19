@@ -27,7 +27,7 @@ export async function GET(req: Request) {
   }
 
   const { authenticator } = await import("otplib");
-  authenticator.options = { step: 30, digits: 6, window: 1 };
+  authenticator.options = { step: 30, digits: 6, window: 2 };
   const issuer = "StageStore Admin";
   const { default: QRCode } = await import("qrcode");
 
