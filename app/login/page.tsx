@@ -52,6 +52,10 @@ export default function LoginPage() {
           router.push("/verify-email");
           return;
         }
+        if (res.status >= 500) {
+          setErr("Временная ошибка сервера. Попробуйте ещё раз.");
+          return;
+        }
         setErr(data?.message || data?.error || "Неверный email или пароль");
         return;
       }

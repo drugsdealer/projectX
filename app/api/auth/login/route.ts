@@ -11,6 +11,7 @@ import { logAction } from "@/lib/logAction";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { randomBytes } from "crypto";
 import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
+import { withDbRetry } from "@/lib/db-retry";
 
 const parseUserAgentInfo = (
   uaRaw: string | null,
@@ -198,10 +199,13 @@ export async function POST(req: Request) {
       );
     }
 
-    let user = await prisma.user.findUnique({
-      where: { email },
-      select: { id: true, email: true, fullName: true, role: true, password: true, verified: true, deletedAt: true },
-    });
+    let user = await withDbRetry(
+      () => prisma.user.findUnique({
+        where: { email },
+        select: { id: true, email: true, fullName: true, role: true, password: true, verified: true, deletedAt: true },
+      }),
+      { retries: 2, baseDelayMs: 150, timeoutMs: 6000, label: "login user lookup" }
+    );
 
     if (!user || !user.password) {
       return NextResponse.json(
@@ -299,7 +303,10 @@ export async function POST(req: Request) {
 
     return res;
   } catch (error) {
-    console.error("[LOGIN] error:");
-    return handleApiError(error);
+    console.error("[LOGIN] error:", error);
+    return NextResponse.json(
+      { success: false, message: "Временная ошибка. Попробуйте ещё раз." },
+      { status: 503 }
+    );
 }
 }

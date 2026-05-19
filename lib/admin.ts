@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { enforceSameOrigin } from "@/lib/security";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { createHmac, timingSafeEqual } from "crypto";
+import { withDbRetry } from "@/lib/db-retry";
 
 const ADMIN_2FA_SECRET =
   process.env.ADMIN_2FA_HMAC_SECRET ||
@@ -60,10 +61,13 @@ async function getUserIdFromAdminRequest(req?: Request): Promise<number | null> 
   const token = readCookieFromRequest(req, "session_token");
   if (token) {
     try {
-      const session = await prisma.userSession.findUnique({
-        where: { token },
-        select: { userId: true, revokedAt: true, lastSeen: true },
-      });
+      const session = await withDbRetry(
+        () => prisma.userSession.findUnique({
+          where: { token },
+          select: { userId: true, revokedAt: true, lastSeen: true },
+        }),
+        { retries: 2, baseDelayMs: 150, timeoutMs: 5000, label: "admin session lookup" }
+      );
       if (!session || session.revokedAt) return null;
 
       const now = Date.now();
@@ -85,10 +89,13 @@ async function getUserIdFromAdminRequest(req?: Request): Promise<number | null> 
 export async function getAdminUser(req?: Request): Promise<AdminUser | null> {
   const userId = await getUserIdFromAdminRequest(req);
   if (!userId) return null;
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true, email: true, role: true, deletedAt: true },
-  });
+  const user = await withDbRetry(
+    () => prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, role: true, deletedAt: true },
+    }),
+    { retries: 2, baseDelayMs: 150, timeoutMs: 5000, label: "admin user lookup" }
+  ).catch(() => null);
   if (!user || user.deletedAt) return null;
   if (user.role === "ADMIN") return user;
 
