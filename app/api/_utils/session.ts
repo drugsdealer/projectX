@@ -2,6 +2,14 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 
+// Short-lived signed claim cookie — lets middleware verify identity without a DB round-trip.
+// Format: "<userId>.<expUnixSec>.<hmacSHA256Hex>"
+const CLAIM_SECRET =
+  process.env.STAGE_VAULT_SECRET ||
+  process.env.NEXTAUTH_SECRET ||
+  (process.env.NODE_ENV !== 'production' ? 'dev_secret_change_me' : '');
+const CLAIM_TTL_SECS = 10 * 60; // 10 minutes
+
 // Normalize Next 15 async cookies() to a plain jar
 async function getCookieJar(): Promise<any> {
   const c: any = cookies() as any;
@@ -140,12 +148,35 @@ export function clearSessionTokenOnResponse(res: NextResponse) {
   return res;
 }
 
+/** Set a short-lived signed claim cookie for fast middleware verification (no DB needed). */
+export function setSessionClaimOnResponse(res: NextResponse, userId: number | string): void {
+  if (!CLAIM_SECRET) return;
+  const exp = Math.floor(Date.now() / 1000) + CLAIM_TTL_SECS;
+  const payload = `${userId}.${exp}`;
+  const sig = createHmac('sha256', CLAIM_SECRET).update(payload).digest('hex');
+  res.cookies.set('s_uid', `${payload}.${sig}`, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: isProd,
+    path: '/',
+    maxAge: CLAIM_TTL_SECS,
+  });
+}
+
+/** Clear the fast-path claim cookie. */
+export function clearSessionClaimOnResponse(res: NextResponse): void {
+  try {
+    res.cookies.set('s_uid', '', { path: '/', maxAge: 0, httpOnly: true, sameSite: 'lax', secure: isProd });
+  } catch {}
+}
+
 /** Clear session cookies on the provided response */
 export function clearSessionOnResponse(res: NextResponse) {
   try {
     res.cookies.set(SESSION_COOKIE, '', { path: '/', maxAge: 0 });
     res.cookies.set(LEGACY_AUTH_COOKIE, '', { path: '/', maxAge: 0 });
     res.cookies.set(SESSION_TOKEN_COOKIE, '', { path: '/', maxAge: 0 });
+    res.cookies.set('s_uid', '', { path: '/', maxAge: 0 });
   } catch {}
   return res;
 }

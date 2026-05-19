@@ -4,7 +4,7 @@ export const revalidate = 0;
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { attachUiCookies, setSessionOnResponse, setSessionTokenOnResponse } from "../../_utils/session";
+import { attachUiCookies, setSessionOnResponse, setSessionTokenOnResponse, setSessionClaimOnResponse } from "../../_utils/session";
 import { cookies as nextCookies } from "next/headers";
 import { handleApiError } from "@/lib/errors";
 import { logAction } from "@/lib/logAction";
@@ -260,6 +260,7 @@ export async function POST(req: Request) {
     // Ставит основную httpOnly куку сессии (session_user_id)
     setSessionOnResponse(res, user.id);
     setSessionTokenOnResponse(res, sessionToken);
+    setSessionClaimOnResponse(res, user.id);
     attachUiCookies(res, safeUser);
 
     // Совместимость: часть кода читает `uid`. Дублируем id в эту куку.

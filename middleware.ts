@@ -1,13 +1,17 @@
 import { NextResponse, NextRequest } from "next/server";
 import { enforceSameOrigin } from "@/lib/security";
 
-// Быстрый путь: читаем id из httpOnly куки без похода к API
 const SESSION_COOKIE = 'session_user_id';
 const SESSION_TOKEN_COOKIE = 'session_token';
 const ADMIN_2FA_SECRET =
   process.env.ADMIN_2FA_HMAC_SECRET ||
   process.env.STAGE_VAULT_SECRET ||
   (process.env.NODE_ENV !== "production" ? "dev_2fa_hmac_key" : "");
+// Same secret used to sign s_uid fast-path claim cookies in API routes
+const FAST_CLAIM_SECRET =
+  process.env.STAGE_VAULT_SECRET ||
+  process.env.NEXTAUTH_SECRET ||
+  (process.env.NODE_ENV !== "production" ? "dev_secret_change_me" : "");
 
 function hexToBytes(hex: string) {
   if (!/^[a-f0-9]+$/i.test(hex) || hex.length % 2 !== 0) return null;
@@ -54,10 +58,44 @@ async function verify2FACookieInMiddleware(value: string | null, userId?: string
   return constantTimeEqual(actual, new Uint8Array(expectedBytes));
 }
 
-function readUserFast(request: NextRequest) {
-  if (process.env.NODE_ENV === "production") return null;
-  const id = request.cookies.get(SESSION_COOKIE)?.value || request.cookies.get("uid")?.value;
-  return id ? ({ id } as any) : null;
+// Verify the fast-path claim cookie (s_uid) without a DB round-trip.
+// Falls back to null if missing, expired, or signature invalid.
+async function verifyFastClaim(value: string | null): Promise<string | null> {
+  if (!value || !FAST_CLAIM_SECRET) return null;
+  const lastDot = value.lastIndexOf(".");
+  if (lastDot < 0) return null;
+  const payload = value.slice(0, lastDot);
+  const sigHex = value.slice(lastDot + 1);
+  const firstDot = payload.indexOf(".");
+  if (firstDot < 0) return null;
+  const userId = payload.slice(0, firstDot);
+  const exp = Number(payload.slice(firstDot + 1));
+  // Fast-fail before crypto
+  if (!userId || !/^\d+$/.test(userId)) return null;
+  if (!Number.isFinite(exp) || Math.floor(Date.now() / 1000) > exp) return null;
+  try {
+    const key = await crypto.subtle.importKey(
+      "raw", new TextEncoder().encode(FAST_CLAIM_SECRET),
+      { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+    );
+    const expectedBuf = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
+    const actual = hexToBytes(sigHex);
+    if (!actual) return null;
+    return constantTimeEqual(actual, new Uint8Array(expectedBuf)) ? userId : null;
+  } catch {
+    return null;
+  }
+}
+
+async function readUserFast(request: NextRequest): Promise<{ id: string } | null> {
+  if (process.env.NODE_ENV !== "production") {
+    const id = request.cookies.get(SESSION_COOKIE)?.value || request.cookies.get("uid")?.value;
+    return id ? { id } : null;
+  }
+  // In production: verify the short-lived HMAC-signed claim cookie — zero DB/network
+  const claim = request.cookies.get("s_uid")?.value ?? null;
+  const userId = await verifyFastClaim(claim);
+  return userId ? { id: userId } : null;
 }
 
 async function fetchUser(request: NextRequest) {
@@ -171,16 +209,16 @@ export async function middleware(request: NextRequest) {
       pathname === "/api/yookassa";
     const cookieHeader = request.headers.get("cookie") || "";
     const hasAuthCookie =
-      /(?:^|;\s*)(session_user_id|session_token|auth_session|sid|admin_2fa_ok)=/.test(cookieHeader);
+      /(?:^|;\s*)(session_user_id|session_token|s_uid|auth_session|sid|admin_2fa_ok)=/.test(cookieHeader);
     if (!webhookBypass && hasAuthCookie) {
       const blocked = enforceSameOrigin(request);
       if (blocked) return applySecurityHeaders(blocked);
     }
   }
 
-  // В middleware полагаемся только на httpOnly cookie, чтобы не дергать API и не ловить fetch failed
+  // s_uid claim cookie → HMAC verified locally, no DB; falls back to fetchUser() if missing/expired
   const hasSessionToken = Boolean(request.cookies.get(SESSION_TOKEN_COOKIE)?.value);
-  const fastUser = needUserFor ? readUserFast(request) : null;
+  const fastUser = needUserFor ? await readUserFast(request) : null;
   const user = isAdminArea
     ? (fastUser ?? (hasSessionToken ? ({ id: null } as any) : null))
     : needUserFor

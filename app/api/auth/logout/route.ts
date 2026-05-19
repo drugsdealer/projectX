@@ -51,6 +51,7 @@ async function doLogout() {
   unsetCookie(res, SESSION_COOKIE, true);
   unsetCookie(res, "sid", true); // legacy session cookie
   unsetCookie(res, SESSION_TOKEN_COOKIE, true);
+  unsetCookie(res, "s_uid", true); // fast-path claim cookie
   unsetCookie(res, "auth_user_id", true);
   unsetCookie(res, "vfy", true); // verification flow cookie
   for (const k of ADMIN_COOKIES) unsetCookie(res, k, true);
