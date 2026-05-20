@@ -4,7 +4,7 @@ import { normalizeCategorySlug, resolveProductTaxonomy } from "@/lib/catalog-tax
 import { parseProductPathId } from "@/lib/product-url";
 
 const PUBLIC_CACHE_HEADERS = {
-  "Cache-Control": "public, max-age=30, s-maxage=120, stale-while-revalidate=300",
+  "Cache-Control": "public, max-age=30, s-maxage=60, stale-while-revalidate=60",
 };
 
 // --- Category helpers (RU <-> EN) and inference for [id] route ---
@@ -267,17 +267,14 @@ export async function GET(
       sizes.oldPrices = oldPriceMap;
     }
 
-    // Нормализуем габариты товара (например, для сумок)
-    const dimensions =
-      typeof pAny?.widthCm === "number" &&
-      typeof pAny?.heightCm === "number" &&
-      typeof pAny?.depthCm === "number"
-        ? {
-            width: pAny.widthCm,
-            height: pAny.heightCm,
-            depth: pAny.depthCm,
-          }
-        : null;
+    // Нормализуем габариты товара (для сумок).
+    // Достаточно width + height; depth не обязателен (плоская сумка → depth = 0)
+    const _w = typeof pAny?.widthCm === "number" ? pAny.widthCm : null;
+    const _h = typeof pAny?.heightCm === "number" ? pAny.heightCm : null;
+    const _d = typeof pAny?.depthCm === "number" ? pAny.depthCm : 0;
+    const dimensions = _w !== null && _h !== null
+      ? { width: _w, height: _h, depth: _d }
+      : null;
 
     // Ноты аромата для парфюмерии (если заданы в БД)
     const normalizeNoteList = (value: unknown): string[] => {

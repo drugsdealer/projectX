@@ -1482,14 +1482,34 @@ const handleCancel = () => {
         sizeType: (rawProduct as any)?.sizeType ?? (product as any)?.sizeType,
       });
 
-      return (
-        <BrandSizeChartTable
-          value={brandSizeChart}
-          selectedSize={selectedSize}
-          availableSizes={availableSizes}
-          chartCategoryKey={chartCategoryKey}
-        />
-      );
+      // Pre-check: does the brand chart have data for this product's category?
+      // If not, fall through to the generic default chart below.
+      const hasBrandChartData = (() => {
+        try {
+          const structured = parseStructuredBrandSizeChart(brandSizeChart);
+          const matchedCat = getBrandSizeChartCategory(structured, chartCategoryKey);
+          const anyWithRows = (cat: typeof matchedCat) =>
+            cat && (cat.rows.length > 0 || (cat.audiences ?? []).some((a) => a.rows.length > 0));
+          if (anyWithRows(matchedCat)) return true;
+          // Fallback: any other category with rows
+          return structured.categories.some((c) => anyWithRows(c));
+        } catch {
+          // Legacy pipe-delimited format — just check for | character
+          return brandSizeChart.includes("|");
+        }
+      })();
+
+      if (hasBrandChartData) {
+        return (
+          <BrandSizeChartTable
+            value={brandSizeChart}
+            selectedSize={selectedSize}
+            availableSizes={availableSizes}
+            chartCategoryKey={chartCategoryKey}
+          />
+        );
+      }
+      // Brand chart exists but has no data for this product type → fall through to defaults
     }
 
     switch (product.category) {
@@ -2281,21 +2301,19 @@ const handleCancel = () => {
                   </div>
                 )}
 
-                {/* Картинка с обозначением размеров сумки */}
-                <div className="w-full overflow-hidden rounded-xl border border-gray-100">
-                  <img
-                    src="https://ik.imagekit.io/qowmy92ny/%D1%81%D1%83%D0%BC%D0%BA%D0%B0%20(1).png"
-                    alt="Размерная сетка для сумки"
-                    className="w-full object-contain"
-                    loading="lazy"
-                  />
-                </div>
-
                 {/* Ниже два блока в ряд */}
                 <div className="flex flex-col lg:flex-row gap-6">
-                  {/* Блок с анимацией размеров - занимает половину */}
-                  <div className="lg:w-1/2">
+                  {/* Левая колонка: схема + картинка с размерной сеткой */}
+                  <div className="lg:w-1/2 space-y-4">
                     {renderBagDimensions()}
+                    <div className="overflow-hidden rounded-xl border border-gray-100">
+                      <img
+                        src="https://ik.imagekit.io/qowmy92ny/%D1%81%D1%83%D0%BC%D0%BA%D0%B0%20(1).png"
+                        alt="Размерная сетка"
+                        className="w-full object-contain"
+                        loading="lazy"
+                      />
+                    </div>
                   </div>
 
                   {/* Блок "что помещается" - занимает вторую половину */}
