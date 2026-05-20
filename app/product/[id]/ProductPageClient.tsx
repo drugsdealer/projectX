@@ -251,9 +251,10 @@ const BagVisualization = ({
     <div className="relative w-full bg-white rounded-xl p-6 flex flex-col items-center gap-6">
       <div className="relative w-60 h-60 rounded-xl overflow-visible">
         <Image
-          src="/img/сумка (1).png"
+          src="https://ik.imagekit.io/qowmy92ny/%D1%81%D1%83%D0%BC%D0%BA%D0%B0%20(1).png"
           alt="Сумка"
           fill
+          unoptimized
           className="object-contain"
         />
       <div className="absolute right-[57px] top-[78px] flex flex-col items-center" style={{ transform: 'rotate(-6deg)' }}>
@@ -2303,17 +2304,9 @@ const handleCancel = () => {
 
                 {/* Ниже два блока в ряд */}
                 <div className="flex flex-col lg:flex-row gap-6">
-                  {/* Левая колонка: схема + картинка с размерной сеткой */}
-                  <div className="lg:w-1/2 space-y-4">
+                  {/* Левая колонка: схема с размерами */}
+                  <div className="lg:w-1/2">
                     {renderBagDimensions()}
-                    <div className="overflow-hidden rounded-xl border border-gray-100">
-                      <img
-                        src="https://ik.imagekit.io/qowmy92ny/%D1%81%D1%83%D0%BC%D0%BA%D0%B0%20(1).png"
-                        alt="Размерная сетка"
-                        className="w-full object-contain"
-                        loading="lazy"
-                      />
-                    </div>
                   </div>
 
                   {/* Блок "что помещается" - занимает вторую половину */}
