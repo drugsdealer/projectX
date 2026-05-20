@@ -210,7 +210,11 @@ export default async function ProductPage({
           dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
         />
       )}
-      <Suspense>
+      <Suspense fallback={
+        <div className="w-full h-screen flex items-center justify-center">
+          <p className="text-xl text-gray-400">Загрузка товара...</p>
+        </div>
+      }>
         <ProductPageClient />
       </Suspense>
     </>

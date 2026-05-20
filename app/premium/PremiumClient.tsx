@@ -3956,6 +3956,53 @@ export default function PremiumPage() {
             const rowA = top.slice(0, Math.ceil(top.length / 2));
             const rowB = top.slice(Math.ceil(top.length / 2));
 
+            // Упрощённая карточка для мобайл-скролла — без SwipeablePreview и shimmer
+            // чтобы избежать конфликта pointer-событий внутри snap-x контейнера
+            const MobileCard = ({ item }: { item: any }) => {
+              const displayBadge = getDisplayBadge(item);
+              const previewImg = getPreviewImages(item)[0] ?? null;
+              return (
+                <Link
+                  href={buildProductHref(item)}
+                  onClick={() => rememberPremiumScroll(item.id)}
+                  className={`block rounded-2xl overflow-hidden bg-white border border-black/10 shadow-sm min-w-[200px] max-w-[200px] active:scale-[0.98] transition-transform`}
+                >
+                  <div className="relative w-full h-[160px] bg-gray-50">
+                    {displayBadge && (
+                      <span
+                        className="absolute top-2 left-2 z-10 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide text-white shadow-[0_2px_10px_rgba(0,0,0,0.15)]"
+                        style={{
+                          background:
+                            displayBadge === "NEW"
+                              ? "linear-gradient(135deg,#60a5fa,#2563eb)"
+                              : displayBadge === "HIT"
+                              ? "linear-gradient(135deg,#34d399,#059669)"
+                              : "linear-gradient(135deg,#000000,#111111)",
+                        }}
+                      >
+                        {displayBadge}
+                      </span>
+                    )}
+                    {previewImg ? (
+                      <img
+                        src={getOptimizedImageUrl(previewImg, { width: 400, quality: 75 }) || previewImg}
+                        alt={item.name}
+                        className="absolute inset-0 w-full h-full object-contain"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-gray-300 text-xs">Нет фото</div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <p className="text-sm font-semibold line-clamp-2">{item.name}</p>
+                    <p className="text-xs text-gray-500 mt-1">от {item.price}₽</p>
+                  </div>
+                </Link>
+              );
+            };
+
             const Card = ({ item, index }: { item: any; index: number }) => {
               const isViewed = topViewedItem === item.id;
               const ref = useRef<HTMLDivElement | null>(null);
@@ -4043,12 +4090,12 @@ export default function PremiumPage() {
 
             return (
               <>
-                {/* mobile: inertial horizontal scroll, no marquee jank */}
+                {/* mobile: inertial horizontal scroll — simplified cards without SwipeablePreview */}
                 <div className="md:hidden -mx-4 px-4 mb-6 overflow-hidden">
                   <div className="flex overflow-x-auto gap-3 pb-3 snap-x snap-mandatory scrollbar-hide">
-                    {top.map((it, idx) => (
-                      <div key={`m-${it.id}`} className="snap-start">
-                        <Card item={it} index={idx} />
+                    {top.map((it) => (
+                      <div key={`m-${it.id}`} className="snap-start flex-none">
+                        <MobileCard item={it} />
                       </div>
                     ))}
                   </div>

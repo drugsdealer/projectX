@@ -475,32 +475,41 @@ const BrandSizeChartTable = ({
   chartCategoryKey?: ReturnType<typeof inferBrandSizeCategory>;
 }) => {
   const structured = parseStructuredBrandSizeChart(value);
+
+  // Find best category: first try the keyed category, then any category with rows in any audience
   const structuredCategoryRaw =
     getBrandSizeChartCategory(structured, chartCategoryKey) ??
-    structured.categories.find((category) => category.rows.length > 0);
-  const structuredCategory = structuredCategoryRaw
-    ? {
-        ...structuredCategoryRaw,
-        rows: structuredCategoryRaw.rows.filter((row) =>
-          row.some((cell) => String(cell ?? "").trim())
-        ),
-      }
-    : null;
+    structured.categories.find((cat) =>
+      cat.rows.length > 0 || (cat.audiences ?? []).some((a) => a.rows.length > 0)
+    );
 
-  if (structuredCategory?.rows.length) {
+  // Resolve rows: prefer category.rows, fall back to first audience with rows
+  const resolveRows = (cat: typeof structuredCategoryRaw): { rows: string[][]; columns: string[] } => {
+    if (!cat) return { rows: [], columns: [] };
+    const catRows = cat.rows.filter((row) => row.some((cell) => String(cell ?? "").trim()));
+    if (catRows.length) return { rows: catRows, columns: cat.columns };
+    for (const aud of cat.audiences ?? []) {
+      const audRows = aud.rows.filter((row) => row.some((cell) => String(cell ?? "").trim()));
+      if (audRows.length) return { rows: audRows, columns: aud.columns };
+    }
+    return { rows: [], columns: cat.columns };
+  };
+
+  const { rows: resolvedRows, columns: resolvedColumns } = resolveRows(structuredCategoryRaw);
+
+  if (resolvedRows.length) {
     const availableSet = new Set(availableSizes.map(normalizeSizeKey).filter(Boolean));
     const filteredRows = availableSet.size
-      ? structuredCategory.rows.filter((row) => availableSet.has(normalizeSizeKey(row[0])))
-      : structuredCategory.rows;
-    // If filter produced no matches, show all rows — don't hide the chart
-    const visibleRows = filteredRows.length ? filteredRows : structuredCategory.rows;
+      ? resolvedRows.filter((row) => availableSet.has(normalizeSizeKey(row[0])))
+      : resolvedRows;
+    const visibleRows = filteredRows.length ? filteredRows : resolvedRows;
 
     return (
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
         <table className="w-full min-w-[560px] text-left text-sm">
           <thead className="bg-gray-100 text-xs uppercase tracking-[0.08em] text-gray-600">
             <tr>
-              {structuredCategory.columns.map((header, index) => (
+              {resolvedColumns.map((header, index) => (
                 <th key={`${header}-${index}`} className="border-b border-gray-200 px-3 py-2">
                   {header}
                 </th>
@@ -513,7 +522,7 @@ const BrandSizeChartTable = ({
               const isActive = selectedSize != null && normalizeSizeKey(sizeCell) === normalizeSizeKey(selectedSize);
               return (
                 <tr key={`${sizeCell}-${index}`} className={isActive ? "bg-blue-100 font-semibold" : ""}>
-                  {structuredCategory.columns.map((_, cellIndex) => (
+                  {resolvedColumns.map((_, cellIndex) => (
                     <td key={cellIndex} className="border-t border-gray-100 px-3 py-2">
                       {row[cellIndex] ?? ""}
                     </td>
@@ -529,6 +538,9 @@ const BrandSizeChartTable = ({
 
   const parsed = parseBrandSizeChart(value);
   if (!parsed) return null;
+
+  // If we got here with a valid JSON (version:1) but no rows — don't render raw JSON
+  if (typeof value === "string" && value.trim().startsWith("{")) return null;
 
   if (!parsed.headers.length) {
     return (
@@ -600,11 +612,27 @@ export default function ProductPage() {
 
   useEffect(() => {
     let cancelled = false;
+    // Reset loading state each time productId changes so navigation never shows stale "not found"
+    setLoading(true);
+
+    const fetchWithRetry = async (url: string, retries = 2): Promise<Response> => {
+      for (let i = 0; i <= retries; i++) {
+        try {
+          const res = await fetch(url);
+          if (res.ok || res.status === 404) return res;
+          if (i < retries) await new Promise(r => setTimeout(r, 200 * (i + 1)));
+        } catch (e) {
+          if (i === retries) throw e;
+          await new Promise(r => setTimeout(r, 200 * (i + 1)));
+        }
+      }
+      throw new Error('fetch failed');
+    };
 
     (async () => {
       try {
         const [oneRes, listRes] = await Promise.all([
-          fetch(`/api/products/${productId}?include=relations`),
+          fetchWithRetry(`/api/products/${productId}?include=relations`),
           fetch(`/api/products`),
         ]);
         const oneJson = oneRes.ok ? await oneRes.json() : null;
@@ -641,7 +669,7 @@ export default function ProductPage() {
         }
       } catch (e) {
         console.error('[product page] load failed:', e);
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
 
@@ -1402,6 +1430,7 @@ const handleCancel = () => {
     if (product.category === "shoes") return true;
     if (product.category === "jewelry" && product.jewelryType === "ring") return true;
     if (product.category === "perfume" || product.category === "fragrance") return true;
+    if (product.category === "bags") return true;
 
     return false;
   };
@@ -1426,7 +1455,7 @@ const handleCancel = () => {
         }
       >
         <SizeSelector
-          type={(product.category === 'fragrance' ? 'perfume' : product.category) as 'clothing' | 'shoes' | 'jewelry' | 'perfume'}
+          type={(product.category === 'fragrance' ? 'perfume' : product.category) as 'clothing' | 'shoes' | 'jewelry' | 'perfume' | 'bags'}
           sizes={sizes}
           selectedSize={selectedSize}
           onSelect={handleSizeSelect}
@@ -2245,13 +2274,21 @@ const handleCancel = () => {
             )}
             {product.category === 'bags' ? (
               <div className="space-y-6 mt-4">
-                {/* Слайдер размеров - на всю ширину */}
-                <div className="w-full">
-                  {(product as unknown as BagProduct).sizes && (
-                    <div className="w-full">
-                      {renderSizeSelector()}
-                    </div>
-                  )}
+                {/* Слайдер размеров — показываем только если есть хотя бы один размер */}
+                {requiresSizeSelection() && (
+                  <div className="w-full">
+                    {renderSizeSelector()}
+                  </div>
+                )}
+
+                {/* Картинка с обозначением размеров сумки */}
+                <div className="w-full overflow-hidden rounded-xl border border-gray-100">
+                  <img
+                    src="https://ik.imagekit.io/qowmy92ny/%D1%81%D1%83%D0%BC%D0%BA%D0%B0%20(1).png"
+                    alt="Размерная сетка для сумки"
+                    className="w-full object-contain"
+                    loading="lazy"
+                  />
                 </div>
 
                 {/* Ниже два блока в ряд */}

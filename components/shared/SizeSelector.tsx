@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 type SizeValue = string | number;
 
 interface SizeSelectorProps {
-  type: 'clothing' | 'shoes' | 'jewelry' | 'perfume';
+  type: 'clothing' | 'shoes' | 'jewelry' | 'perfume' | 'bags';
   sizes: {
     available: SizeValue[];
     /**
