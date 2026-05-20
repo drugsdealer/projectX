@@ -952,7 +952,7 @@ export default function BrandClient({
               </h3>
               {!!item.description && (
                 <p className="mt-1 text-xs text-black/50 line-clamp-1 brand-desc-text">
-                  {item.description}
+                  {String(item.description).trim().replace(/^(?:0|o|о)(?=[\s.,;:—\-\n])/i, "").replace(/^[\s.,;:—\-]+/, "").trim()}
                 </p>
               )}
               <div className="mt-2 flex items-center justify-between">

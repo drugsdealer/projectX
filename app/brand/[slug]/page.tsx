@@ -108,16 +108,19 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
     deletedAt: null,
     OR: [
       { brandId: brand.id },
+      // Name/description matching is a fallback only for products that have NO brandId set.
+      // Without brandId: null guard, products from other brands whose text mentions this
+      // brand name (e.g. "Y-3" in a perfume description) would appear here incorrectly.
       ...(brandNameNeedle
         ? [
-            { name: { contains: brandNameNeedle, mode: 'insensitive' } },
-            { description: { contains: brandNameNeedle, mode: 'insensitive' } },
+            { brandId: null, name: { contains: brandNameNeedle, mode: 'insensitive' } },
+            { brandId: null, description: { contains: brandNameNeedle, mode: 'insensitive' } },
           ]
         : []),
       ...(brandSlugNeedle && brandSlugNeedle.toLowerCase() !== brandNameNeedle.toLowerCase()
         ? [
-            { name: { contains: brandSlugNeedle, mode: 'insensitive' } },
-            { description: { contains: brandSlugNeedle, mode: 'insensitive' } },
+            { brandId: null, name: { contains: brandSlugNeedle, mode: 'insensitive' } },
+            { brandId: null, description: { contains: brandSlugNeedle, mode: 'insensitive' } },
           ]
         : []),
     ],
