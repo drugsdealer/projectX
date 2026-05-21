@@ -1825,8 +1825,9 @@ const handleCancel = () => {
                 className="relative w-5 h-5 flex items-center justify-center flex-shrink-0"
               >
                 <Image
-                  src="/img/галочка 2.png"
+                  src="https://ik.imagekit.io/qowmy92ny/%D0%B3%D0%B0%D0%BB%D0%BE%D1%87%D0%BA%D0%B0%202.png"
                   alt="Оригинальный товар"
+                  unoptimized
                   width={18}
                   height={18}
                   className="block object-contain"
@@ -2105,7 +2106,7 @@ const handleCancel = () => {
             {product && (
               <div className="p-4 md:p-6 border rounded-xl bg-gray-50 mt-6 space-y-4">
                 <div className="flex items-center gap-3 mb-2">
-                  <Image src="/img/информация.png" alt="Информация" width={24} height={24} />
+                  <Image src="https://ik.imagekit.io/qowmy92ny/%D0%B3%D0%B0%D0%BB%D0%BE%D1%87%D0%BA%D0%B0%202.png" alt="Информация" width={24} height={24} unoptimized />
                   <h3 className="text-lg lg:text-xl font-semibold">Описание товара</h3>
                 </div>
 
@@ -2406,7 +2407,7 @@ const handleCancel = () => {
                   onClick={() => setShowDeliveryModal(true)}
                   className="flex items-center gap-4 p-5 md:p-6 bg-yellow-50 border border-yellow-300 rounded-lg w-full text-left hover:bg-yellow-100 transition min-h-[88px]"
                 >
-                  <Image src="/img/грузовик.png" alt="Иконка доставки" width={36} height={36} />
+                  <Image src="https://ik.imagekit.io/qowmy92ny/%D0%B3%D0%B0%D0%BB%D0%BE%D1%87%D0%BA%D0%B0%202.png" alt="Иконка доставки" width={36} height={36} unoptimized />
                   <p className="font-bold text-yellow-800 text-sm sm:text-base">
                     Доставка до 10 рабочих дней
                   </p>

@@ -649,7 +649,7 @@ const PremiumAura: React.FC = () => {
               <span className="relative inline-block">
                 Premium
                 <img
-                  src="/img/звездочка.png"
+                  src="https://ik.imagekit.io/qowmy92ny/%D0%B7%D0%B2%D0%B5%D0%B7%D0%B4%D0%BE%D1%87%D0%BA%D0%B0.png"
                   alt="Premium"
                   className="absolute -top-1 right-[-6px] md:-top-2 md:-right-3 w-5 h-5 md:w-6 md:h-6 drop-shadow-[0_0_6px_rgba(0,0,0,0.15)]"
                 />

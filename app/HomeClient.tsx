@@ -63,11 +63,11 @@ const HOME_GATEWAYS = [
 ];
 
 const HOME_CATEGORY_LINKS = [
-  { label: "Обувь", href: "/category/footwear", image: "/img/placeholder.svg" },
-  { label: "Одежда", href: "/category/clothes", image: "/img/MMbanner1.jpg" },
-  { label: "Сумки", href: "/category/bags", image: "/img/placeholder.svg" },
-  { label: "Аксессуары", href: "/category/accessories", image: "/img/placeholder.svg" },
-  { label: "Парфюм", href: "/category/fragrance", image: "/img/placeholder.svg" },
+  { label: "Обувь", href: "/category/footwear", image: "https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.44.01.jpg" },
+  { label: "Одежда", href: "/category/clothes", image: "https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.44.01.jpg" },
+  { label: "Сумки", href: "/category/bags", image: "https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.43.43.jpg" },
+  { label: "Аксессуары", href: "/category/accessories", image: "https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.43.49.jpg" },
+  { label: "Парфюм", href: "/category/fragrance", image: "https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.43.55.jpg" },
 ];
 
 const HOME_GENDER_SELECTIONS = [
