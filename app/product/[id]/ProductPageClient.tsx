@@ -2106,7 +2106,7 @@ const handleCancel = () => {
             {product && (
               <div className="p-4 md:p-6 border rounded-xl bg-gray-50 mt-6 space-y-4">
                 <div className="flex items-center gap-3 mb-2">
-                  <Image src="https://ik.imagekit.io/qowmy92ny/%D0%B3%D0%B0%D0%BB%D0%BE%D1%87%D0%BA%D0%B0%202.png" alt="Информация" width={24} height={24} unoptimized />
+                  <Image src="https://ik.imagekit.io/qowmy92ny/%D0%B8%D0%BD%D1%84%D0%BE%D1%80%D0%BC%D0%B0%D1%86%D0%B8%D1%8F.png?updatedAt=1779373444537" alt="Информация" width={24} height={24} unoptimized />
                   <h3 className="text-lg lg:text-xl font-semibold">Описание товара</h3>
                 </div>
 
@@ -2407,7 +2407,7 @@ const handleCancel = () => {
                   onClick={() => setShowDeliveryModal(true)}
                   className="flex items-center gap-4 p-5 md:p-6 bg-yellow-50 border border-yellow-300 rounded-lg w-full text-left hover:bg-yellow-100 transition min-h-[88px]"
                 >
-                  <Image src="https://ik.imagekit.io/qowmy92ny/%D0%B3%D0%B0%D0%BB%D0%BE%D1%87%D0%BA%D0%B0%202.png" alt="Иконка доставки" width={36} height={36} unoptimized />
+                  <Image src="https://ik.imagekit.io/qowmy92ny/%D0%B3%D1%80%D1%83%D0%B7%D0%BE%D0%B2%D0%B8%D0%BA.png?updatedAt=1779373447087" alt="Иконка доставки" width={36} height={36} unoptimized />
                   <p className="font-bold text-yellow-800 text-sm sm:text-base">
                     Доставка до 10 рабочих дней
                   </p>

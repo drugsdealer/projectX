@@ -19,7 +19,6 @@ import { getOrCreateEventsSessionId } from "@/lib/events-client";
 import HomeFeedInsert from "@/components/home/HomeFeedInsert";
 import HomePromoRail from "@/components/home/HomePromoRail";
 import CmsPromoBlock from "@/components/home/promos/CmsPromoBlock";
-import { renderAuthorHomePromo } from "@/components/home/promos/author-promos";
 import type { HomeCmsPromoConfig, HomePromoProduct } from "@/components/home/promos/types";
 import { useMotionBudget, type MotionLevel } from "@/components/MotionBudgetProvider";
 import { getOptimizedImageUrl, shouldBypassNextImageOptimization } from "@/lib/media";
@@ -64,7 +63,7 @@ const HOME_GATEWAYS = [
 
 const HOME_CATEGORY_LINKS = [
   { label: "Обувь", href: "/category/footwear", image: "https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.44.01.jpg" },
-  { label: "Одежда", href: "/category/clothes", image: "https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.44.01.jpg" },
+  { label: "Одежда", href: "/category/clothes", image: "https://ik.imagekit.io/qowmy92ny/2026-05-21%2017.16.01.jpg?updatedAt=1779373031270" },
   { label: "Сумки", href: "/category/bags", image: "https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.43.43.jpg" },
   { label: "Аксессуары", href: "/category/accessories", image: "https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.43.49.jpg" },
   { label: "Парфюм", href: "/category/fragrance", image: "https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.43.55.jpg" },
@@ -890,27 +889,6 @@ export default function Home() {
     };
   }, []);
 
-  const editorialCollections = useMemo(() => {
-    const SYSTEM_BADGES = new Set(["NEW", "HIT", "SALE", "EXCLUSIVE", "PREMIUM"]);
-    const grouped = new Map<string, any[]>();
-
-    for (const product of products) {
-      const rawBadge = String((product as any)?.badge || "").trim();
-      if (!rawBadge) continue;
-      const upper = rawBadge.toUpperCase();
-      if (SYSTEM_BADGES.has(upper)) continue;
-      const bucket = grouped.get(rawBadge) || [];
-      if (bucket.length < 8) bucket.push(product);
-      grouped.set(rawBadge, bucket);
-    }
-
-    return Array.from(grouped.entries())
-      .map(([title, items]) => ({ title, items }))
-      .filter((group) => group.items.length > 0)
-      .slice(0, 4);
-  }, [products]);
-
-  const activeEditorial = editorialCollections[0] || null;
   const youMayLikeItems = useMemo(() => {
     const rankedBrandIds = new Map<number, number>();
     for (let i = 0; i < topBrandSignals.length; i += 1) {
@@ -948,83 +926,6 @@ export default function Home() {
     return rows;
   }, [products, personalizedHomeItems, bestsellerHomeItems]);
 
-  const authorPromoItems = useMemo<HomePromoProduct[]>(() => {
-    const key = (v: any) => String(v || "").toLowerCase();
-    const hasFstuSignal = (p: any) => {
-      const brand = key(p?.brand || p?.brandName || extractBrand(p));
-      const name = key(p?.name);
-      return (
-        brand.includes("fstu") ||
-        brand.includes("acne") ||
-        name.includes("fstu") ||
-        name.includes("acne")
-      );
-    };
-
-    const merged = promoSourceItems.filter(hasFstuSignal);
-    const seen = new Set<number>();
-    const rows: HomePromoProduct[] = [];
-
-    for (const item of merged) {
-      const id = Number(item?.id);
-      if (!Number.isFinite(id) || id <= 0 || seen.has(id)) continue;
-      seen.add(id);
-      rows.push({
-        id,
-        name: String(item?.name || "Товар"),
-        price:
-          Number(item?.price) > 0
-            ? Number(item?.price)
-            : Number(item?.minPrice) > 0
-            ? Number(item?.minPrice)
-            : Number(item?.amount) > 0
-            ? Number(item?.amount)
-            : null,
-        imageUrl:
-          (Array.isArray(item?.images) && item.images.length
-            ? String(item.images[0] || "")
-            : String(item?.imageUrl || "")) || null,
-        brandName: String(item?.brandName || item?.brand || extractBrand(item) || "") || null,
-      });
-      if (rows.length >= 8) break;
-    }
-
-    return rows;
-  }, [promoSourceItems, extractBrand]);
-
-  const gentleMonsterPromoItems = useMemo<HomePromoProduct[]>(() => {
-    const key = (v: any) => String(v || "").toLowerCase();
-    const isGM = (p: any) => {
-      const brand = key(p?.brand || p?.brandName || extractBrand(p));
-      const name = key(p?.name);
-      return brand.includes("gentle monster") || name.includes("gentle monster");
-    };
-
-    const seen = new Set<number>();
-    const rows: HomePromoProduct[] = [];
-    for (const item of promoSourceItems.filter(isGM)) {
-      const id = Number(item?.id);
-      if (!Number.isFinite(id) || id <= 0 || seen.has(id)) continue;
-      seen.add(id);
-      rows.push({
-        id,
-        name: String(item?.name || "Товар"),
-        price:
-          Number(item?.price) > 0
-            ? Number(item?.price)
-            : Number(item?.minPrice) > 0
-            ? Number(item?.minPrice)
-            : null,
-        imageUrl:
-          (Array.isArray(item?.images) && item.images.length
-            ? String(item.images[0] || "")
-            : String(item?.imageUrl || "")) || null,
-        brandName: "Gentle Monster",
-      });
-      if (rows.length >= 8) break;
-    }
-    return rows;
-  }, [promoSourceItems, extractBrand]);
 
   const cmsPromoItemsById = useMemo<Record<string, HomePromoProduct[]>>(() => {
     const result: Record<string, HomePromoProduct[]> = {};
@@ -1983,49 +1884,18 @@ export default function Home() {
                   const canShowLess = displayLimit > DEFAULT_COUNT;
                   const hasMore = items.length > displayList.length;
                   const cmsPromosAtSection = cmsPromosByPosition[sectionIndex] || [];
-                  const authorPromoNode = renderAuthorHomePromo(sectionIndex, authorPromoItems, gentleMonsterPromoItems);
 
                   return (
                     <Fragment key={`sec-wrap-${main}`}>
-                      {sectionIndex === 1 && (
-                        <div className="px-3 sm:px-0">
-                          <HomeFeedInsert
-                            title="Бестселлеры"
-                            subtitle="Популярные товары по общей статистике пользователей."
-                            items={bestsellerHomeItems}
-                            variant="bestseller"
-                            eyebrow="Бестселлеры"
-                            emptyHint="Пока не собрали статистику бестселлеров."
-                          />
-                        </div>
-                      )}
-                      {authorPromoNode ? (
-                        <div className="px-3 sm:px-0">
-                          {authorPromoNode}
-                        </div>
-                      ) : null}
                       {cmsPromosAtSection.map((promo) => (
                         <div key={`cms-promo-${promo.id}`} className="px-3 sm:px-0">
                           <CmsPromoBlock promo={promo} items={cmsPromoItemsById[promo.id] || []} />
                         </div>
                       ))}
-                      {sectionIndex === 3 && (
-                        <div className="px-3 sm:px-0">
-                          <HomeFeedInsert
-                            title={activeEditorial ? `Авторская подборка: ${activeEditorial.title}` : "Авторские подборки"}
-                            subtitle="Темы задаются в админке через поле `badge` у товаров."
-                            items={activeEditorial?.items || []}
-                            variant="editorial"
-                            eyebrow="Авторская подборка"
-                            emptyHint="Добавьте товарам общий badge в админке, и подборка появится здесь."
-                          />
-                        </div>
-                      )}
                       {sectionIndex === 4 && (
                         <div className="px-3 sm:px-0">
                           <HomeFeedInsert
                             title="Вам может понравиться"
-                            subtitle="Подборка формируется по аналитике просмотров, поисков, кликов по брендам и добавлений в корзину."
                             items={youMayLikeItems}
                             variant="personal"
                             eyebrow="Персонально"

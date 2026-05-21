@@ -83,18 +83,18 @@ const THEMES: Record<string, Theme> = {
     motif: '[background-image:linear-gradient(90deg,rgba(154,52,18,0.09)_1px,transparent_1px),linear-gradient(180deg,rgba(154,52,18,0.09)_1px,transparent_1px)] [background-size:18px_18px]',
   },
   personal: {
-    shell: 'from-[#eef2f7] via-[#f8f9fc] to-[#edf1f7]',
-    ring: 'border-[#1f2937]/20',
-    chip: 'bg-[#1f2937]/10',
-    chipText: 'text-[#1f2937]',
-    accent: 'bg-[#1f2937]',
-    introBg: 'from-[#f9fbff] to-[#edf2fb]',
-    introRing: 'border-[#1f2937]/20',
-    cardRing: 'border-[#1f2937]/18',
-    cardBg: 'from-[#ffffff] to-[#eff4fe]',
-    badgeBg: 'bg-[#1f2937]',
+    shell: 'from-white via-gray-50 to-white',
+    ring: 'border-black/10',
+    chip: 'bg-black/8',
+    chipText: 'text-black',
+    accent: 'bg-black',
+    introBg: 'from-white to-gray-50',
+    introRing: 'border-black/10',
+    cardRing: 'border-black/10',
+    cardBg: 'from-white to-white',
+    badgeBg: 'bg-black',
     badgeText: 'text-white',
-    motif: '[background-image:radial-gradient(rgba(31,41,55,0.13)_1px,transparent_1px)] [background-size:14px_14px]',
+    motif: '',
   },
 };
 
@@ -159,9 +159,11 @@ export default function HomeFeedInsert({
                 href={productPath({ id: item.id, name: item.name, brandName: item.brandName })}
                 className={`group relative w-[168px] shrink-0 overflow-hidden rounded-2xl border bg-gradient-to-b transition hover:-translate-y-1 hover:shadow-[0_14px_28px_rgba(0,0,0,0.12)] sm:w-[190px] ${theme.cardRing} ${theme.cardBg} ${index % 2 ? 'sm:mt-3' : ''}`}
               >
-                <div className={`absolute left-2 top-2 z-10 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] ${theme.badgeBg} ${theme.badgeText}`}>
-                  {variant === 'bestseller' ? `#${index + 1}` : 'pick'}
-                </div>
+                {variant !== 'personal' && (
+                  <div className={`absolute left-2 top-2 z-10 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] ${theme.badgeBg} ${theme.badgeText}`}>
+                    {variant === 'bestseller' ? `#${index + 1}` : 'pick'}
+                  </div>
+                )}
 
                 <div className="relative aspect-[4/5] bg-white">
                   {item.imageUrl ? (
