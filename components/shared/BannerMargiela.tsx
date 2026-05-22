@@ -70,18 +70,32 @@ function SlideBackground({ slide, priority }: { slide: Slide; priority: boolean 
 
   const isRight = slide.align === 'right';
 
+  // Apply ImageKit video transformations for smaller file size
+  const applyIKVideoTransform = (url: string, mobile: boolean) => {
+    if (!url.includes('ik.imagekit.io')) return url;
+    // Insert /tr:w-{width},q-{quality}/ after the bucket path
+    // Desktop → cap at 1280px wide, quality 65
+    // Mobile  → cap at 720px wide, quality 60
+    const [base, file] = url.split('ik.imagekit.io/qowmy92ny/');
+    if (!file) return url;
+    const params = mobile ? 'tr:w-720,q-60' : 'tr:w-1280,q-65';
+    return `${base}ik.imagekit.io/qowmy92ny/${params}/${file}`;
+  };
+
   if (slide.videoSrc) {
-    const src = isMobile && slide.videoSrcMobile ? slide.videoSrcMobile : slide.videoSrc;
+    const rawSrc = isMobile && slide.videoSrcMobile ? slide.videoSrcMobile : slide.videoSrc;
+    const src = applyIKVideoTransform(rawSrc, isMobile);
     return (
       <>
         <video
           ref={videoRef}
-          key={src}
+          key={rawSrc}
           src={src}
           autoPlay
           muted
           loop
           playsInline
+          preload="auto"
           className="absolute inset-0 h-full w-full object-cover object-center opacity-90"
         />
         <div

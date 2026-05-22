@@ -191,6 +191,7 @@ export async function middleware(request: NextRequest) {
         "style-src 'self' 'unsafe-inline'",
         "font-src 'self' https: data:",
         "connect-src 'self' https://upload.imagekit.io https://ik.imagekit.io https://*.upstash.io https://mc.yandex.ru https://mc.yandex.com",
+        "media-src 'self' https://ik.imagekit.io https://res.cloudinary.com",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",
