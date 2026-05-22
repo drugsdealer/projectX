@@ -37,7 +37,6 @@ const LABELS: Record<string, string> = {
 
 const HOME_GATEWAYS = [
   {
-    eyebrow: "Premium",
     title: "Кураторская полка",
     text: "Редкие позиции, аккуратная проверка и вещи, которые не выглядят как массовая выдача каталога.",
     href: "/premium",
@@ -45,7 +44,6 @@ const HOME_GATEWAYS = [
     className: "md:col-span-2 bg-black text-white",
   },
   {
-    eyebrow: "Brands",
     title: "Все бренды в одной витрине",
     text: "Автоматический индекс брендов с отдельными страницами, логотипами и визуальными обложками.",
     href: "/brands",
@@ -53,7 +51,6 @@ const HOME_GATEWAYS = [
     className: "bg-[#e7ded0] text-black",
   },
   {
-    eyebrow: "Catalog",
     title: "Быстрый вход в категории",
     text: "Обувь, одежда, сумки, аксессуары и парфюм в одной структуре.",
     href: "/search",
@@ -72,13 +69,11 @@ const HOME_CATEGORY_LINKS = [
 
 const HOME_GENDER_SELECTIONS = [
   {
-    label: "Men selection",
     title: "Мужская селекция",
     href: "/search?gender=men",
     image: "/img/MMbanner1.jpg",
   },
   {
-    label: "Women selection",
     title: "Женская селекция",
     href: "/search?gender=women",
     image: "/img/IMG_0364.JPG",
@@ -1761,9 +1756,6 @@ export default function Home() {
               ].join(" ")}
             >
               <div className="absolute right-[-42px] top-[-42px] h-28 w-28 rounded-full border border-current opacity-15 transition duration-500 group-hover:scale-125" />
-              <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.28em] opacity-55">
-                {HOME_GATEWAYS[0].eyebrow}
-              </p>
               <h3 className="mt-4 sm:mt-8 max-w-sm text-xl sm:text-4xl font-black leading-none tracking-[-0.05em]">
                 {HOME_GATEWAYS[0].title}
               </h3>
@@ -1786,9 +1778,6 @@ export default function Home() {
                 ].join(" ")}
               >
                 <div className="absolute right-[-42px] top-[-42px] h-28 w-28 rounded-full border border-current opacity-15 transition duration-500 group-hover:scale-125" />
-                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.28em] opacity-55">
-                  {item.eyebrow}
-                </p>
                 <h3 className="mt-3 sm:mt-8 text-base sm:text-4xl font-black leading-tight sm:leading-none tracking-[-0.04em] sm:tracking-[-0.05em]">
                   {item.title}
                 </h3>
@@ -1818,9 +1807,6 @@ export default function Home() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/25 to-transparent" />
                 <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-6 md:p-8">
-                  <p className="text-[9px] sm:text-[11px] font-bold uppercase tracking-[0.32em] text-white/55">
-                    {item.label}
-                  </p>
                   <h3 className="mt-1.5 sm:mt-3 max-w-xs text-2xl sm:text-4xl md:text-6xl font-black uppercase leading-[0.9] tracking-[-0.07em]">
                     {item.title}
                   </h3>
@@ -1848,10 +1834,7 @@ export default function Home() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-5">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/55">
-                    Category
-                  </p>
-                  <h3 className="mt-1 text-xl font-black tracking-[-0.04em]">
+                  <h3 className="text-xl font-black tracking-[-0.04em]">
                     {item.label}
                   </h3>
                 </div>

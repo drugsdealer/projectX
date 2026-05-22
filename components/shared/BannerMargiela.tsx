@@ -6,7 +6,12 @@ import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 
 type Slide = {
-  src: string;
+  id: string;
+  // Image slide
+  src?: string;
+  // Video slide
+  videoSrc?: string;       // desktop video
+  videoSrcMobile?: string; // mobile video
   alt: string;
   eyebrow: string;
   title: string;
@@ -18,28 +23,103 @@ type Slide = {
 
 const SLIDES: Slide[] = [
   {
-    src: '/img/MMbanner1.jpg',
+    id: 'maison-margiela',
+    src: 'https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.43.43.jpg?updatedAt=1779373029342',
     alt: 'Maison Margiela новая коллекция',
     eyebrow: 'Maison Margiela / New collection',
     title: 'Maison',
     mutedTitle: 'Margiela',
     text: 'Новая коллекция Maison Margiela: чистые силуэты, спокойная палитра и проверенные оригинальные позиции.',
-    cta: { label: 'Смотреть коллекцию', href: '/MaisonMargiela/man-collection' },
+    cta: { label: 'Смотреть коллекцию', href: '/brand/maison-margiela' },
     align: 'left',
   },
   {
-    src: '/img/MMbanner2.jpg',
-    alt: 'Stage Store premium selection',
-    eyebrow: 'Stage Store / Premium edit',
-    title: 'Curated',
-    mutedTitle: 'Originals',
-    text: 'Премиальная подборка редких размеров, обуви и аксессуаров в одной витрине.',
-    cta: { label: 'Открыть Premium', href: '/premium' },
-    align: 'right',
+    id: 'ap-swatch',
+    videoSrc: 'https://ik.imagekit.io/qowmy92ny/swatch-x-AP_1920x917-v3.mp4',
+    videoSrcMobile: 'https://ik.imagekit.io/qowmy92ny/swatch%20x%20AP%20v7%209-16.mp4',
+    alt: 'Audemars Piguet × Swatch коллаборация',
+    eyebrow: 'Audemars Piguet × Swatch / Limited collaboration',
+    title: 'AP ×',
+    mutedTitle: 'Swatch',
+    text: 'Лимитированная коллаборация двух легенд: швейцарская точность встречает дерзкий дизайн.',
+    cta: { label: 'Смотреть коллаборацию', href: '/search' },
+    align: 'left',
   },
 ];
 
 const AUTO_MS = 7000;
+
+function SlideBackground({ slide, priority }: { slide: Slide; priority: boolean }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  // autoplay video when it becomes active
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(() => {});
+    }
+  }, []);
+
+  const isRight = slide.align === 'right';
+
+  if (slide.videoSrc) {
+    const src = isMobile && slide.videoSrcMobile ? slide.videoSrcMobile : slide.videoSrc;
+    return (
+      <>
+        <video
+          ref={videoRef}
+          key={src}
+          src={src}
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 h-full w-full object-cover object-center opacity-90"
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background: isRight
+              ? 'linear-gradient(270deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.45) 40%, rgba(0,0,0,0.08) 70%, rgba(0,0,0,0.20) 100%)'
+              : 'linear-gradient(90deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.45) 40%, rgba(0,0,0,0.08) 70%, rgba(0,0,0,0.20) 100%)',
+          }}
+        />
+        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/80 to-transparent" />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Image
+        src={slide.src!}
+        alt={slide.alt}
+        fill
+        priority={priority}
+        sizes="100vw"
+        className="object-cover object-center opacity-88"
+        unoptimized
+      />
+      <div
+        className="absolute inset-0"
+        style={{
+          background: isRight
+            ? 'radial-gradient(circle at 28% 42%, rgba(255,255,255,0.06), transparent 28%), linear-gradient(270deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.52) 38%, rgba(0,0,0,0.08) 72%, rgba(0,0,0,0.24) 100%)'
+            : 'radial-gradient(circle at 72% 42%, rgba(255,255,255,0.06), transparent 28%), linear-gradient(90deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.52) 38%, rgba(0,0,0,0.08) 72%, rgba(0,0,0,0.24) 100%)',
+        }}
+      />
+      <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/82 to-transparent" />
+    </>
+  );
+}
 
 export default function BannerMargiela() {
   const [index, setIndex] = useState(0);
@@ -57,7 +137,6 @@ export default function BannerMargiela() {
   }, []);
 
   const goNext = useCallback(() => go(index + 1, 1), [go, index]);
-  const goPrev = useCallback(() => go(index - 1, -1), [go, index]);
 
   const resetTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -110,10 +189,11 @@ export default function BannerMargiela() {
         }
       }}
     >
+      {/* Mobile progress bullets */}
       <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+18px)] left-5 right-5 z-30 flex gap-1.5 sm:hidden">
         {SLIDES.map((item, i) => (
           <button
-            key={item.src}
+            key={item.id}
             type="button"
             aria-label={`Перейти к баннеру ${i + 1}`}
             onClick={(e) => {
@@ -140,9 +220,10 @@ export default function BannerMargiela() {
         ))}
       </div>
 
+      {/* Slide background */}
       <AnimatePresence initial={false} custom={dir}>
         <motion.div
-          key={slide.src}
+          key={slide.id}
           custom={dir}
           className="absolute inset-0"
           initial={{ x: dir > 0 ? '100%' : '-100%', scale: 1.03 }}
@@ -150,26 +231,11 @@ export default function BannerMargiela() {
           exit={{ x: dir > 0 ? '-10%' : '10%', opacity: 0 }}
           transition={{ x: { type: 'spring', stiffness: 220, damping: 34 }, opacity: { duration: 0.25 }, scale: { duration: 1.2 } }}
         >
-          <Image
-            src={slide.src}
-            alt={slide.alt}
-            fill
-            priority={index === 0}
-            sizes="100vw"
-            className="object-cover object-center opacity-88"
-          />
-          <div
-            className="absolute inset-0"
-            style={{
-              background: isRight
-                ? 'radial-gradient(circle at 28% 42%, rgba(255,255,255,0.06), transparent 28%), linear-gradient(270deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.52) 38%, rgba(0,0,0,0.08) 72%, rgba(0,0,0,0.24) 100%)'
-                : 'radial-gradient(circle at 72% 42%, rgba(255,255,255,0.06), transparent 28%), linear-gradient(90deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.52) 38%, rgba(0,0,0,0.08) 72%, rgba(0,0,0,0.24) 100%)',
-            }}
-          />
-          <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/82 to-transparent" />
+          <SlideBackground slide={slide} priority={index === 0} />
         </motion.div>
       </AnimatePresence>
 
+      {/* Text content */}
       <div
         className="relative z-10 flex h-full items-end px-5 pb-16 pt-28 sm:px-8 sm:pb-20 lg:px-16"
         style={{ justifyContent: isRight ? 'flex-end' : 'flex-start' }}
@@ -217,19 +283,18 @@ export default function BannerMargiela() {
         </AnimatePresence>
       </div>
 
+      {/* Slide counter */}
       <div className="absolute bottom-6 right-5 z-20 hidden text-right text-[11px] font-semibold uppercase tracking-[0.28em] text-white/35 sm:block lg:right-16">
         {String(index + 1).padStart(2, '0')}
         <span className="mx-1 text-white/20">/</span>
         {String(SLIDES.length).padStart(2, '0')}
       </div>
 
+      {/* Desktop nav arrows */}
       <div className="absolute bottom-6 left-5 right-5 z-20 hidden items-center justify-between gap-4 sm:left-auto sm:right-40 sm:flex sm:w-[210px]">
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleNav(index - 1, -1);
-          }}
+          onClick={(e) => { e.stopPropagation(); handleNav(index - 1, -1); }}
           className="grid h-11 w-11 place-items-center rounded-full border border-white/30 bg-black/15 text-lg text-white/70 backdrop-blur transition hover:border-white hover:text-white"
           data-no-hero-tap
           aria-label="Предыдущий баннер"
@@ -245,10 +310,7 @@ export default function BannerMargiela() {
         </div>
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleNav(index + 1, 1);
-          }}
+          onClick={(e) => { e.stopPropagation(); handleNav(index + 1, 1); }}
           className="grid h-11 w-11 place-items-center rounded-full border border-white/30 bg-black/15 text-lg text-white/70 backdrop-blur transition hover:border-white hover:text-white"
           data-no-hero-tap
           aria-label="Следующий баннер"
@@ -256,6 +318,7 @@ export default function BannerMargiela() {
           →
         </button>
       </div>
+
       <style jsx>{`
         .hero-banner-progress-line {
           width: 100%;
@@ -264,21 +327,12 @@ export default function BannerMargiela() {
           animation-timing-function: linear;
           animation-fill-mode: forwards;
         }
-
         @keyframes hero-banner-progress {
-          from {
-            transform: scaleX(0);
-          }
-          to {
-            transform: scaleX(1);
-          }
+          from { transform: scaleX(0); }
+          to { transform: scaleX(1); }
         }
-
         @media (prefers-reduced-motion: reduce) {
-          .hero-banner-progress-line {
-            animation: none !important;
-            transform: scaleX(1);
-          }
+          .hero-banner-progress-line { animation: none !important; transform: scaleX(1); }
         }
       `}</style>
     </section>
