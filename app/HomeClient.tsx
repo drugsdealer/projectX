@@ -19,6 +19,7 @@ import { getOrCreateEventsSessionId } from "@/lib/events-client";
 import HomeFeedInsert from "@/components/home/HomeFeedInsert";
 import HomePromoRail from "@/components/home/HomePromoRail";
 import CmsPromoBlock from "@/components/home/promos/CmsPromoBlock";
+import GentleMonsterBanner from "@/components/home/promos/GentleMonsterBanner";
 import type { HomeCmsPromoConfig, HomePromoProduct } from "@/components/home/promos/types";
 import { useMotionBudget, type MotionLevel } from "@/components/MotionBudgetProvider";
 import { getOptimizedImageUrl, shouldBypassNextImageOptimization } from "@/lib/media";
@@ -888,6 +889,31 @@ export default function Home() {
       cancelled = true;
     };
   }, []);
+
+  const gentleMonsterItems = useMemo(() => {
+    const key = (v: any) => String(v || "").toLowerCase();
+    const isGM = (p: any) => {
+      const brand = key(p?.brand || p?.brandName || extractBrand(p));
+      const name = key(p?.name || "");
+      return brand.includes("gentle monster") || name.includes("gentle monster");
+    };
+    const seen = new Set<number>();
+    const rows: { id: number; name: string; price: number | null; imageUrl: string | null; brandName: string } [] = [];
+    for (const item of products.filter(isGM)) {
+      const id = Number(item?.id);
+      if (!Number.isFinite(id) || id <= 0 || seen.has(id)) continue;
+      seen.add(id);
+      rows.push({
+        id,
+        name: String(item?.name || ""),
+        price: Number(item?.price) > 0 ? Number(item?.price) : null,
+        imageUrl: Array.isArray(item?.images) && item.images.length ? String(item.images[0]) : (item?.imageUrl ? String(item.imageUrl) : null),
+        brandName: "Gentle Monster",
+      });
+      if (rows.length >= 4) break;
+    }
+    return rows;
+  }, [products, extractBrand]);
 
   const youMayLikeItems = useMemo(() => {
     const rankedBrandIds = new Map<number, number>();
@@ -1892,6 +1918,11 @@ export default function Home() {
                           <CmsPromoBlock promo={promo} items={cmsPromoItemsById[promo.id] || []} />
                         </div>
                       ))}
+                      {sectionIndex === 1 && gentleMonsterItems.length > 0 && (
+                        <div className="px-3 sm:px-0">
+                          <GentleMonsterBanner products={gentleMonsterItems} />
+                        </div>
+                      )}
                       {sectionIndex === 4 && (
                         <div className="px-3 sm:px-0">
                           <HomeFeedInsert
