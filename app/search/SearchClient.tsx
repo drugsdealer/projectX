@@ -83,36 +83,48 @@ const PROMOS: Promo[] = [
   { title: 'Дропы', desc: 'Подборка по свежим релизам и лимиткам.', href: '/search?tag=drops', tag: 'DROP' },
 ];
 
-const CATEGORY_VISUALS: Record<string, { icon: string; helper: string }> = {
+const CATEGORY_VISUALS: Record<string, { icon: string; helper: string; image?: string; gradient: string }> = {
   обувь: {
     icon: 'SH',
     helper: 'Кроссовки, ботинки, лоферы',
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.44.01.jpg',
+    gradient: 'from-amber-500 to-orange-600',
   },
   одежда: {
     icon: 'CL',
     helper: 'Худи, трикотаж, верхняя одежда',
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-05-21%2017.16.01.jpg?updatedAt=1779373031270',
+    gradient: 'from-slate-700 to-slate-900',
   },
   сумки: {
     icon: 'BG',
     helper: 'Tote, crossbody, shoulder bags',
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.43.43.jpg',
+    gradient: 'from-emerald-600 to-teal-800',
   },
   аксессуары: {
     icon: 'AC',
     helper: 'Очки, ремни, украшения',
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.43.49.jpg',
+    gradient: 'from-yellow-400 to-amber-600',
   },
   парфюм: {
     icon: 'PF',
     helper: 'Ниша, EDP, повседневные ароматы',
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.43.55.jpg',
+    gradient: 'from-rose-500 to-pink-700',
   },
   головные: {
     icon: 'HD',
     helper: 'Кепки, шапки, панамы',
+    gradient: 'from-stone-600 to-stone-900',
   },
 };
 
-const DEFAULT_CATEGORY_VISUAL = {
+const DEFAULT_CATEGORY_VISUAL: { icon: string; helper: string; image?: string; gradient: string } = {
   icon: 'ST',
   helper: 'Категория каталога',
+  gradient: 'from-gray-700 to-gray-900',
 };
 
 function getCategoryVisual(title: string) {
@@ -536,8 +548,6 @@ const SidebarPromos = memo(function SidebarPromos({
           </>
         )}
       </div>
-
-      <div className="mt-4 text-[11px] text-black/45">Товары, промо и скидки — в одном блоке, как кирпичики.</div>
     </div>
   );
 });
@@ -546,14 +556,6 @@ const SidebarPromos = memo(function SidebarPromos({
 
 const CategoryCard = memo(function CategoryCard({ c, meta, genderSuffix = '' }: { c: Category; meta?: string; genderSuffix?: string }) {
   const visual = getCategoryVisual(c.title);
-  const chips = c.subtitle.includes('·')
-    ? c.subtitle
-        .split('·')
-        .map((x) => x.trim())
-        .filter(Boolean)
-        .slice(0, 3)
-    : [];
-
   const href = genderSuffix
     ? `${c.href}${c.href.includes('?') ? '&' : '?'}gender=${encodeURIComponent(genderSuffix)}`
     : c.href;
@@ -561,44 +563,42 @@ const CategoryCard = memo(function CategoryCard({ c, meta, genderSuffix = '' }: 
   return (
     <Link
       href={href}
-      className="group block rounded-3xl border border-black/10 bg-white p-4 transition duration-200 hover:-translate-y-0.5 hover:border-black/20 hover:bg-[#fbfbfa] hover:shadow-[0_18px_44px_rgba(0,0,0,0.07)] sm:p-5"
+      className="group relative block overflow-hidden rounded-3xl border border-black/10 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_56px_rgba(0,0,0,0.12)]"
     >
-      <div className="flex items-center gap-3 sm:gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-black/10 bg-black/[0.035] text-[11px] font-black tracking-[0.12em] text-black/65 transition group-hover:bg-black group-hover:text-white sm:h-14 sm:w-14">
-          {visual.icon}
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="truncate text-lg font-extrabold tracking-[-0.035em] sm:text-xl">{c.title}</div>
-            {genderSuffix ? (
-              <span className="rounded-full bg-black/[0.055] px-2 py-1 text-[10px] font-bold text-black/55">
-                {genderSuffix === 'men' ? 'Мужское' : 'Женское'}
-              </span>
-            ) : null}
-          </div>
-          <div className="mt-1 text-xs font-medium leading-relaxed text-black/50 sm:text-sm">
-            {meta || visual.helper}
-          </div>
-        </div>
-
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/10 bg-white text-lg leading-none text-black/65 transition group-hover:border-black group-hover:bg-black group-hover:text-white">
-          →
+      {/* Photo / gradient banner */}
+      <div className="relative h-32 sm:h-40 overflow-hidden">
+        {visual.image ? (
+          <Image
+            src={visual.image}
+            alt={c.title}
+            fill
+            className="object-cover transition duration-500 group-hover:scale-[1.06]"
+            sizes="(max-width: 640px) 50vw, 340px"
+            unoptimized
+          />
+        ) : (
+          <div className={`absolute inset-0 bg-gradient-to-br ${visual.gradient}`} />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+        {genderSuffix ? (
+          <span className="absolute right-3 top-3 rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-white backdrop-blur-sm">
+            {genderSuffix === 'men' ? 'М' : 'Ж'}
+          </span>
+        ) : null}
+        <div className="absolute inset-x-0 bottom-0 p-3.5">
+          <h3 className="text-xl font-black leading-tight tracking-tight text-white drop-shadow-md">
+            {c.title}
+          </h3>
         </div>
       </div>
 
-      {chips.length ? (
-        <div className="mt-4 hidden flex-wrap gap-2 sm:flex">
-          {chips.map((chip) => (
-            <span
-              key={chip}
-              className="inline-flex h-7 items-center rounded-full bg-black/[0.035] px-3 text-[11px] font-semibold text-black/55"
-            >
-              {chip}
-            </span>
-          ))}
+      {/* Footer */}
+      <div className="flex items-center justify-between gap-2 px-3.5 py-3">
+        <p className="text-xs font-semibold text-black/50 leading-snug">{meta || visual.helper}</p>
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black/10 text-sm text-black/40 transition group-hover:border-black group-hover:bg-black group-hover:text-white">
+          →
         </div>
-      ) : null}
+      </div>
     </Link>
   );
 });
