@@ -665,14 +665,14 @@ export default function AdminBrandsPage() {
         </div>
         <input
           className={inputCls + " sm:col-span-2"}
-          placeholder="URL фото бренда для витрины"
+          placeholder="URL фонового фото страницы бренда"
           value={form.imageUrl}
           onChange={(e) => setField("imageUrl", e.target.value)}
         />
         <div className="sm:col-span-2">
           <ImageKitUploadField
             folder="/stage/brand-covers"
-            label="Загрузить фото бренда для витрины"
+            label="Загрузить фоновое фото страницы бренда"
             onUploaded={(url) => setField("imageUrl", url)}
           />
         </div>

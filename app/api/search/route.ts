@@ -979,9 +979,29 @@ export async function GET(req: Request) {
       .slice(0, take)
       .map((row) => row.product);
 
+    // Fetch extra images from ProductImage relation for products that lack imageUrl/images
+    const imagesByProductId: Record<number, string[]> = {};
+    try {
+      const maybePI = (prisma as any)?.productImage;
+      if (maybePI?.findMany) {
+        const productIds = rankedProducts.map((p: any) => p.id);
+        const relImgs = await maybePI.findMany({
+          where: { productId: { in: productIds } },
+          orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+          select: { productId: true, url: true },
+        });
+        for (const row of relImgs) {
+          if (!imagesByProductId[row.productId]) imagesByProductId[row.productId] = [];
+          if (row.url) imagesByProductId[row.productId].push(row.url);
+        }
+      }
+    } catch { /* productImage table may not exist yet */ }
+
     const items = rankedProducts.map((p: any) => {
-      const arrayFirst = Array.isArray(p.images) && p.images.length > 0 ? p.images[0] : null;
-      const img = typeof p.imageUrl === 'string' && p.imageUrl.length > 0 ? p.imageUrl : arrayFirst;
+      const baseImages = Array.isArray(p.images) ? (p.images as string[]).filter(Boolean) : [];
+      const relImages = imagesByProductId[p.id] || [];
+      const primary = typeof p.imageUrl === 'string' && p.imageUrl.length > 0 ? p.imageUrl : (baseImages[0] || relImages[0] || null);
+      const merged = Array.from(new Set([primary, ...baseImages, ...relImages].filter((x): x is string => typeof x === 'string' && x.length > 0)));
 
       return {
         id: String(p.id),
@@ -990,8 +1010,8 @@ export async function GET(req: Request) {
         brandName: p.Brand?.name ?? null,
         brandSlug: p.Brand?.slug ?? null,
         brandLogo: p.Brand?.logoUrl ?? null,
-        imageUrl: img,
-        images: Array.isArray(p.images) ? p.images : [],
+        imageUrl: merged[0] ?? null,
+        images: merged,
       };
     });
 

@@ -105,6 +105,7 @@ interface BrandMeta {
   aboutLong?: string;
   heroVideo?: string;
   tags?: string[];
+  heroBgImage?: string;
 }
 
 interface BrandClientProps {
@@ -502,8 +503,8 @@ export default function BrandClient({
   const shortDescription = brandDescription.length > 170 ? `${brandDescription.slice(0, 170).trim()}...` : brandDescription;
   const brandVideo = useMemo(() => pickBrandVideo(meta), [meta]);
   const heroFallbackImage = useMemo(
-    () => (slug === 'maison-margiela' ? MAISON_MARGIELA_HERO_IMAGE_URL : pickBrandFallbackImage(items)),
-    [items, slug]
+    () => slug === 'maison-margiela' ? MAISON_MARGIELA_HERO_IMAGE_URL : (meta.heroBgImage || pickBrandFallbackImage(items)),
+    [items, slug, meta.heroBgImage]
   );
   const categoryLabel = categories.length === 1 ? 'категория' : categories.length > 1 && categories.length < 5 ? 'категории' : 'категорий';
   const productsSectionId = `brand-products-${slug}`;
@@ -631,8 +632,7 @@ export default function BrandClient({
               decoding="async"
             />
           )}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_34%,rgba(255,255,255,0.18),transparent_26%),linear-gradient(180deg,rgba(0,0,0,0.32)_0%,rgba(0,0,0,0.54)_48%,rgba(0,0,0,0.94)_100%)]" />
-          <div className="absolute inset-0 bg-black/18 backdrop-blur-[0.5px]" />
+          <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-black/80 to-transparent" />
         </div>
 
         <div className={`relative z-10 mx-auto flex min-h-[100svh] max-w-6xl flex-col px-5 py-5 sm:px-8 ${heroTextClass}`}>

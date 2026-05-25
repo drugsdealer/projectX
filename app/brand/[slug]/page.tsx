@@ -62,6 +62,7 @@ type BrandMeta = {
   aboutLong?: string;
   heroVideo?: string;
   tags?: string[];
+  heroBgImage?: string;
 };
 
 export default async function BrandPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -195,6 +196,7 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
       ? brand.tags.find((tag) => typeof tag === 'string' && /^video:/i.test(tag.trim()))?.replace(/^video:/i, '').trim()
       : undefined,
     tags: Array.isArray(brand.tags) ? brand.tags : [],
+    heroBgImage: (brand as any).imageUrl || undefined,
   };
 
   const brandName = brand.name;

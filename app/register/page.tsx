@@ -383,27 +383,6 @@ export default function RegisterPage() {
             </div>
 
             <div className="mt-6 text-center">
-              <p className="mb-2">Или войдите через соцсети</p>
-              <div className="flex justify-center gap-4">
-                <img
-                  src="/img/гугл.png"
-                  alt="Google"
-                  className="h-14 w-14 cursor-pointer hover:scale-105 transition"
-                />
-                <img
-                  src="/img/яндекс.png"
-                  alt="Yandex"
-                  className="h-14 w-14 cursor-pointer hover:scale-105 transition"
-                />
-                <img
-                  src="/img/vk.png"
-                  alt="VK"
-                  className="h-14 w-14 cursor-pointer hover:scale-105 transition"
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 text-center">
               <p className="text-sm">
                 Уже зарегистрированы?{" "}
                 <button
