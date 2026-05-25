@@ -380,6 +380,7 @@ const PickCell = memo(function PickCell({ p, className = '' }: { p: ResultItem; 
                         sizes="(max-width: 1024px) 50vw, 560px"
                         className="object-contain select-none"
                         draggable={false}
+                        unoptimized={shouldBypassNextImageOptimization(main)}
                       />
                     </div>
                   </div>
@@ -393,7 +394,7 @@ const PickCell = memo(function PickCell({ p, className = '' }: { p: ResultItem; 
                     key={src}
                     className="relative h-7 w-7 sm:h-8 sm:w-8 overflow-hidden rounded-xl border border-white/60 bg-white shadow-sm"
                   >
-                    <Image src={src} alt="" fill sizes="32px" className="object-cover" />
+                    <Image src={src} alt="" fill sizes="32px" className="object-cover" unoptimized={shouldBypassNextImageOptimization(src)} />
                   </div>
                 ))}
               </div>

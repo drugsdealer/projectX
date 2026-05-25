@@ -8,9 +8,9 @@ import { shouldBypassNextImageOptimization } from '@/lib/media';
 import { productPath } from '@/lib/product-url';
 
 const BANNER =
-  'https://res.cloudinary.com/dc57mpiao/image/upload/v1774993505/plp_0_pc_3840_1800_bnvuth.avif';
+  'https://ik.imagekit.io/qowmy92ny/plp_0_pc_3840_1800.avif';
 const BANNER_MOBILE =
-  'https://res.cloudinary.com/dc57mpiao/image/upload/v1774992864/story_1_campaign_imgs_pc_1600x1080_xkwj1s.avif';
+  'https://ik.imagekit.io/qowmy92ny/pdp_1_pcmob.avif';
 
 const formatPrice = (price?: number | null) => {
   if (typeof price !== 'number' || Number.isNaN(price) || price <= 0) return 'Цена по запросу';

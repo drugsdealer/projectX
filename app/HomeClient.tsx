@@ -1823,18 +1823,18 @@ export default function Home() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="group relative min-h-[150px] overflow-hidden rounded-[26px] bg-black text-white shadow-sm"
+                className="group relative min-h-[160px] overflow-hidden rounded-[26px] bg-black text-white shadow-md"
               >
                 <Image
                   src={item.image}
                   alt=""
                   fill
                   sizes="(max-width: 1024px) 50vw, 20vw"
-                  className="object-cover opacity-45 grayscale transition duration-500 group-hover:scale-105 group-hover:opacity-65"
+                  className="object-cover opacity-80 transition duration-500 group-hover:scale-105 group-hover:opacity-100"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 p-5">
-                  <h3 className="text-xl font-black tracking-[-0.04em]">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 p-4">
+                  <h3 className="text-lg font-black tracking-[-0.03em] drop-shadow-lg">
                     {item.label}
                   </h3>
                 </div>
