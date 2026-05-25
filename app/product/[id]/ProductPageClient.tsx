@@ -229,23 +229,28 @@ const BagVisualization = ({
   dimensions: BagDimensions;
   product: Product;
 }) => {
-  const { width, height, depth } = dimensions;
+  // Sort 3 numbers descending — позволяет проверить любую ориентацию предмета
+  const sortDesc = (a: number, b: number, c: number): [number, number, number] =>
+    ([a, b, c].sort((x, y) => y - x)) as [number, number, number];
+
+  // Сортируем габариты сумки: [longest, mid, shortest]
+  const [bL, bM, bS] = sortDesc(dimensions.width, dimensions.height, dimensions.depth);
 
   // Все значения ниже — в сантиметрах!
   const items = [
-    { label: "iPhone 16", dimensions: { width: 7.15, height: 14.66, depth: 0.78 }, diagonal: 6.1 },
-    { label: "iPhone 16 Pro Max", dimensions: { width: 7.78, height: 16.07, depth: 0.83 }, diagonal: 6.7 },
-    { label: "MacBook Air 13", dimensions: { width: 30.41, height: 21.24, depth: 1.13 }, diagonal: 13.6 },
-    { label: "Косметичка", dimensions: { width: 6, height: 9, depth: 4 }, diagonal: 3.5 },
-    { label: "Книга (A5)", dimensions: { width: 14.8, height: 21, depth: 1 }, diagonal: 9.7 }
+    { label: "iPhone 16",        dimensions: { width: 7.15,  height: 14.66, depth: 0.78 }, diagonal: 6.1  },
+    { label: "iPhone 16 Pro Max",dimensions: { width: 7.78,  height: 16.07, depth: 0.83 }, diagonal: 6.7  },
+    { label: "MacBook Air 13",   dimensions: { width: 30.41, height: 21.24, depth: 1.13 }, diagonal: 13.6 },
+    { label: "Косметичка",       dimensions: { width: 6,     height: 9,     depth: 4    }, diagonal: 3.5  },
+    { label: "Книга (A5)",       dimensions: { width: 14.8,  height: 21,    depth: 1    }, diagonal: 9.7  },
   ];
 
-  const fittedItems = items.map(item => ({
-    ...item,
-    fits: item.dimensions.width <= width &&
-          item.dimensions.height <= height &&
-          item.dimensions.depth <= depth
-  }));
+  // Проверяем помещается ли предмет в оптимальной ориентации:
+  // сортируем оба набора от большего к меньшему и попарно сравниваем
+  const fittedItems = items.map(item => {
+    const [iL, iM, iS] = sortDesc(item.dimensions.width, item.dimensions.height, item.dimensions.depth);
+    return { ...item, fits: iL <= bL && iM <= bM && iS <= bS };
+  });
 
   return (
     <div className="relative w-full bg-white rounded-xl p-6 flex flex-col items-center gap-6">
@@ -1597,22 +1602,23 @@ const handleCancel = () => {
     product?.category === 'bags' && (product as any).dimensions
       ? (() => {
           const dims = (product as any).dimensions as BagDimensions;
+          // Sort descending → rotation-agnostic: [longest, mid, shortest]
+          const sortDesc3 = (a: number, b: number, c: number): [number, number, number] =>
+            ([a, b, c].sort((x, y) => y - x)) as [number, number, number];
+          const [bL, bM, bS] = sortDesc3(dims.width, dims.height, dims.depth);
 
           return [
-            { label: "iPhone 16", dimensions: { width: 7.15, height: 14.66, depth: 0.78 }, diagonal: 6.1 },
-            { label: "iPhone 16 Pro Max", dimensions: { width: 7.78, height: 16.07, depth: 0.83 }, diagonal: 6.7 },
-            { label: "MacBook Air 13", dimensions: { width: 30.41, height: 21.24, depth: 1.13 }, diagonal: 13.6 },
-            { label: "Косметичка", dimensions: { width: 6, height: 9, depth: 4 }, diagonal: 3.5 },
-            { label: "Книга (A5)", dimensions: { width: 14.8, height: 21, depth: 1 }, diagonal: 9.7 },
+            { label: "iPhone 16",         dimensions: { width: 7.15,  height: 14.66, depth: 0.78 }, diagonal: 6.1  },
+            { label: "iPhone 16 Pro Max",  dimensions: { width: 7.78,  height: 16.07, depth: 0.83 }, diagonal: 6.7  },
+            { label: "MacBook Air 13",     dimensions: { width: 30.41, height: 21.24, depth: 1.13 }, diagonal: 13.6 },
+            { label: "Косметичка",         dimensions: { width: 6,     height: 9,     depth: 4    }, diagonal: 3.5  },
+            { label: "Книга (A5)",         dimensions: { width: 14.8,  height: 21,    depth: 1    }, diagonal: 9.7  },
           ]
             .sort((a, b) => a.diagonal - b.diagonal)
-            .map((item) => ({
-              ...item,
-              fits:
-                item.dimensions.width <= dims.width &&
-                item.dimensions.height <= dims.height &&
-                item.dimensions.depth <= dims.depth,
-            }));
+            .map((item) => {
+              const [iL, iM, iS] = sortDesc3(item.dimensions.width, item.dimensions.height, item.dimensions.depth);
+              return { ...item, fits: iL <= bL && iM <= bM && iS <= bS };
+            });
         })()
       : [];
   const basePrice = getPriceBySize();
