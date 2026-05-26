@@ -28,7 +28,9 @@ type Brand = {
   slug: string;
   logoUrl: string | null;
   imageUrl: string | null;
+  coverUrl: string | null;
   features?: string | null;
+  material?: string | null;
   description: string | null;
   aboutLong: string | null;
   sizeChart: string | null;
@@ -44,6 +46,7 @@ type BrandForm = {
   slug: string;
   logoUrl: string;
   imageUrl: string;
+  coverUrl: string;
   description: string;
   aboutLong: string;
   sizeChart: string;
@@ -56,6 +59,7 @@ const emptyForm = (): BrandForm => ({
   slug: "",
   logoUrl: "",
   imageUrl: "",
+  coverUrl: "",
   description: "",
   aboutLong: "",
   sizeChart: "",
@@ -410,6 +414,7 @@ export default function AdminBrandsPage() {
           ? data.brands.map((brand: any) => ({
               ...brand,
               imageUrl: brand.imageUrl || brand.features || null,
+              coverUrl: brand.coverUrl || brand.material || null,
               sizeChart: brand.sizeChart || brand.styleNotes || "",
               heroVideo: extractHeroVideo(brand),
             }))
@@ -515,6 +520,7 @@ export default function AdminBrandsPage() {
           slug: addForm.slug,
           logoUrl: addForm.logoUrl,
           imageUrl: addForm.imageUrl,
+          coverUrl: addForm.coverUrl,
           description: addForm.description || null,
           aboutLong: addForm.aboutLong || null,
           sizeChart: addForm.sizeChart || null,
@@ -527,6 +533,11 @@ export default function AdminBrandsPage() {
         setMsg(data?.message || "Ошибка добавления бренда");
         return;
       }
+      await fetch("/api/admin/revalidate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: addForm.slug }),
+      }).catch(() => {});
       setMsg("Бренд добавлен");
       setAddForm(emptyForm());
       setShowAddForm(false);
@@ -545,6 +556,7 @@ export default function AdminBrandsPage() {
       slug: brand.slug,
       logoUrl: brand.logoUrl || "",
       imageUrl: brand.imageUrl || brand.features || "",
+      coverUrl: brand.coverUrl || brand.material || "",
       description: brand.description || "",
       aboutLong: brand.aboutLong || "",
       sizeChart: brand.sizeChart || brand.styleNotes || "",
@@ -573,6 +585,7 @@ export default function AdminBrandsPage() {
           slug: editForm.slug,
           logoUrl: editForm.logoUrl,
           imageUrl: editForm.imageUrl,
+          coverUrl: editForm.coverUrl,
           description: editForm.description || null,
           aboutLong: editForm.aboutLong || null,
           sizeChart: editForm.sizeChart || null,
@@ -585,6 +598,11 @@ export default function AdminBrandsPage() {
         setMsg(data?.message || "Ошибка обновления бренда");
         return;
       }
+      await fetch("/api/admin/revalidate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: editForm.slug }),
+      }).catch(() => {});
       setMsg("Бренд обновлён");
       setEditingId(null);
       setEditForm(emptyForm());
@@ -663,18 +681,41 @@ export default function AdminBrandsPage() {
             onUploaded={(url) => setField("logoUrl", url)}
           />
         </div>
-        <input
-          className={inputCls + " sm:col-span-2"}
-          placeholder="URL фонового фото страницы бренда"
-          value={form.imageUrl}
-          onChange={(e) => setField("imageUrl", e.target.value)}
-        />
-        <div className="sm:col-span-2">
-          <ImageKitUploadField
-            folder="/stage/brand-covers"
-            label="Загрузить фоновое фото страницы бренда"
-            onUploaded={(url) => setField("imageUrl", url)}
+        <div className="sm:col-span-2 rounded-xl border border-black/10 p-3 bg-black/[0.02]">
+          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-black/45 mb-2">
+            Фото для страницы всех брендов (/brands — правая панель)
+          </div>
+          <input
+            className={inputCls}
+            placeholder="URL фото для страницы всех брендов"
+            value={form.coverUrl}
+            onChange={(e) => setField("coverUrl", e.target.value)}
           />
+          <div className="mt-2">
+            <ImageKitUploadField
+              folder="/stage/brand-covers"
+              label="Загрузить фото для страницы всех брендов"
+              onUploaded={(url) => setField("coverUrl", url)}
+            />
+          </div>
+        </div>
+        <div className="sm:col-span-2 rounded-xl border border-black/10 p-3 bg-black/[0.02]">
+          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-black/45 mb-2">
+            Фоновое фото страницы самого бренда (/brand/slug — фон hero)
+          </div>
+          <input
+            className={inputCls}
+            placeholder="URL фонового фото страницы бренда"
+            value={form.imageUrl}
+            onChange={(e) => setField("imageUrl", e.target.value)}
+          />
+          <div className="mt-2">
+            <ImageKitUploadField
+              folder="/stage/brand-heroes"
+              label="Загрузить фоновое фото страницы бренда"
+              onUploaded={(url) => setField("imageUrl", url)}
+            />
+          </div>
         </div>
         <textarea
           className={inputCls + " sm:col-span-2"}
@@ -784,12 +825,22 @@ export default function AdminBrandsPage() {
                         ?
                       </div>
                     )}
+                    {brand.coverUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={brand.coverUrl}
+                        alt="Brands list cover"
+                        title="Фото для /brands"
+                        className="hidden h-10 w-16 rounded-xl object-cover bg-black/5 sm:block"
+                      />
+                    )}
                     {brand.imageUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={brand.imageUrl}
-                        alt=""
-                        className="hidden h-10 w-16 rounded-xl object-cover bg-black/5 sm:block"
+                        alt="Brand hero"
+                        title="Фон /brand/slug"
+                        className="hidden h-10 w-16 rounded-xl object-cover bg-black/5 sm:block opacity-60"
                       />
                     )}
                     <div>

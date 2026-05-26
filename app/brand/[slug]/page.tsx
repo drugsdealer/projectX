@@ -196,7 +196,7 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
       ? brand.tags.find((tag) => typeof tag === 'string' && /^video:/i.test(tag.trim()))?.replace(/^video:/i, '').trim()
       : undefined,
     tags: Array.isArray(brand.tags) ? brand.tags : [],
-    heroBgImage: (brand as any).imageUrl || (brand as any).features || undefined,
+    heroBgImage: brand.features || undefined,
   };
 
   const brandName = brand.name;

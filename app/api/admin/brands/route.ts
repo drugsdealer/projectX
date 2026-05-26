@@ -18,6 +18,7 @@ export async function GET(req: Request) {
       slug: true,
       logoUrl: true,
       features: true,
+      material: true,
       description: true,
       aboutLong: true,
       styleNotes: true,
@@ -43,6 +44,7 @@ export async function POST(req: Request) {
   const slug = String(body?.slug || "").trim();
   const logoUrl = String(body?.logoUrl || "").trim();
   const imageUrl = String(body?.imageUrl || "").trim();
+  const coverUrl = String(body?.coverUrl || "").trim();
   const description = body?.description ? String(body.description).trim() : null;
   const aboutLong = body?.aboutLong ? String(body.aboutLong).trim() : null;
   const sizeChart = body?.sizeChart ? String(body.sizeChart).trim() : null;
@@ -74,6 +76,7 @@ export async function POST(req: Request) {
       isPremium,
       logoUrl: logoUrl || null,
       features: imageUrl || null,
+      material: coverUrl || null,
       description,
       aboutLong,
       styleNotes: sizeChart,
@@ -129,6 +132,10 @@ export async function PATCH(req: Request) {
     data.features = String(body.imageUrl).trim() || null;
   }
 
+  if (body?.coverUrl !== undefined) {
+    data.material = String(body.coverUrl).trim() || null;
+  }
+
   if (body?.description !== undefined) {
     data.description = body.description ? String(body.description).trim() : null;
   }
@@ -157,7 +164,7 @@ export async function PATCH(req: Request) {
   const brand = await prisma.brand.update({
     where: { id },
     data,
-    select: { id: true, name: true, slug: true, logoUrl: true, features: true, description: true, aboutLong: true, styleNotes: true, tags: true, isPremium: true },
+    select: { id: true, name: true, slug: true, logoUrl: true, features: true, material: true, description: true, aboutLong: true, styleNotes: true, tags: true, isPremium: true },
   });
 
   return NextResponse.json({ success: true, brand });
