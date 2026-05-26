@@ -229,12 +229,14 @@ const BagVisualization = ({
   dimensions: BagDimensions;
   product: Product;
 }) => {
+  const { width, height, depth } = dimensions;
+
   // Sort 3 numbers descending — позволяет проверить любую ориентацию предмета
   const sortDesc = (a: number, b: number, c: number): [number, number, number] =>
     ([a, b, c].sort((x, y) => y - x)) as [number, number, number];
 
   // Сортируем габариты сумки: [longest, mid, shortest]
-  const [bL, bM, bS] = sortDesc(dimensions.width, dimensions.height, dimensions.depth);
+  const [bL, bM, bS] = sortDesc(width, height, depth);
 
   // Все значения ниже — в сантиметрах!
   const items = [
