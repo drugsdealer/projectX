@@ -138,10 +138,11 @@ const CARD_SWIPE_VARIANTS = {
   }),
 };
 
-type SortMode = 'popular' | 'priceAsc' | 'priceDesc' | 'newest';
+type SortMode = 'popular' | 'priceAsc' | 'priceDesc' | 'newest' | 'alpha';
 
 const SORT_LABELS: Record<SortMode, string> = {
   popular: 'По умолчанию',
+  alpha: 'По алфавиту',
   priceAsc: 'Сначала дешевле',
   priceDesc: 'Сначала дороже',
   newest: 'Новинки',
@@ -490,6 +491,9 @@ export default function BrandClient({
         const bDate = new Date((b as any)?.createdAt ?? 0).getTime();
         return bDate - aDate;
       }
+      if (sortMode === 'alpha') {
+        return String((a as any)?.name ?? '').localeCompare(String((b as any)?.name ?? ''), 'ru');
+      }
       return 0;
     });
   }, [items, query, activeCategory, maxPrice, sortMode]);
@@ -625,9 +629,9 @@ export default function BrandClient({
             />
           ) : (
             <img
-              src={getOptimizedImageUrl(heroFallbackImage, { width: 1600, quality: 78 }) || heroFallbackImage}
+              src={getOptimizedImageUrl(heroFallbackImage, { width: 1920, quality: 90 }) || heroFallbackImage}
               alt=""
-              className="h-full w-full object-cover opacity-70 blur-[1px] scale-[1.03]"
+              className="h-full w-full object-cover opacity-85"
               loading="eager"
               decoding="async"
             />
@@ -776,14 +780,14 @@ export default function BrandClient({
               )}
             </AnimatePresence>
 
-            <p className={`mx-auto mt-7 max-w-2xl text-center text-base font-semibold leading-6 line-clamp-2 sm:text-lg sm:leading-7 ${heroTone === 'light' ? 'text-black drop-shadow-[0_2px_10px_rgba(255,255,255,0.8)]' : 'text-white/92 drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]'}`}>
+            <p className={`mx-auto mt-7 max-w-2xl text-center text-base font-semibold leading-6 sm:text-lg sm:leading-7 ${heroTone === 'light' ? 'text-black drop-shadow-[0_2px_10px_rgba(255,255,255,0.8)]' : 'text-white/92 drop-shadow-[0_2px_10px_rgba(0,0,0,0.65)]'}`}>
               {shortDescription}
-              {brandDescription.length > shortDescription.length && (
-                <button type="button" onClick={() => setInfoOpen(true)} className={`ml-2 text-sm font-black uppercase tracking-wide underline underline-offset-4 ${heroTone === 'light' ? 'text-black decoration-black/35' : 'text-white decoration-white/35'}`}>
-                  Еще
-                </button>
-              )}
             </p>
+            {brandDescription.length > 170 && (
+              <button type="button" onClick={() => setInfoOpen(true)} className={`mt-3 text-sm font-black uppercase tracking-wide underline underline-offset-4 ${heroTone === 'light' ? 'text-black decoration-black/35' : 'text-white decoration-white/35'}`}>
+                Читать далее
+              </button>
+            )}
           </div>
         </div>
       </section>

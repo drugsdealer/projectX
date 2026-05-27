@@ -60,7 +60,19 @@ function mapProductRow(row: any, recommendation: RecommendationMeta | null) {
   };
 }
 
-async function fallbackProducts(limit: number, categoryId: number | null, exclude: number[]) {
+function seededShuffle<T>(arr: T[], seed: string): T[] {
+  const result = [...arr];
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
+  for (let i = result.length - 1; i > 0; i--) {
+    h = (Math.imul(1664525, h) + 1013904223) | 0;
+    const j = Math.abs(h) % (i + 1);
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+async function fallbackProducts(limit: number, categoryId: number | null, exclude: number[], seed?: string) {
   const rows = await prisma.product.findMany({
     where: {
       deletedAt: null,
@@ -75,10 +87,11 @@ async function fallbackProducts(limit: number, categoryId: number | null, exclud
       Brand: { select: { id: true, name: true, slug: true, logoUrl: true } },
     },
     orderBy: [{ popularity: "desc" }, { createdAt: "desc" }],
-    take: limit,
+    take: Math.min(limit * 4, 60),
   });
 
-  return rows.map((row) => mapProductRow(row, null));
+  const shuffled = seed ? seededShuffle(rows, seed) : rows;
+  return shuffled.slice(0, limit).map((row) => mapProductRow(row, null));
 }
 
 export async function GET(req: Request) {
@@ -111,7 +124,7 @@ export async function GET(req: Request) {
   });
 
   if (!apiKey || !upstreamUrl) {
-    const items = await fallbackProducts(limit, categoryId, exclude);
+    const items = await fallbackProducts(limit, categoryId, exclude, seed);
     return NextResponse.json({
       success: true,
       source: "fallback",
@@ -128,7 +141,7 @@ export async function GET(req: Request) {
     });
 
     if (!result.ok) {
-      const items = await fallbackProducts(limit, categoryId, exclude);
+      const items = await fallbackProducts(limit, categoryId, exclude, seed);
       return NextResponse.json({
         success: true,
         source: "fallback",
@@ -230,7 +243,7 @@ export async function GET(req: Request) {
     });
   } catch (error) {
     console.error("[recommendations.personal] upstream error");
-    const items = await fallbackProducts(limit, categoryId, exclude);
+    const items = await fallbackProducts(limit, categoryId, exclude, seed);
     return NextResponse.json({
       success: true,
       source: "fallback",

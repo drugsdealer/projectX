@@ -26,7 +26,19 @@ function mapProductRow(row: any) {
   };
 }
 
-async function fallbackBestsellers(limit: number, categoryId: number | null) {
+function seededShuffle<T>(arr: T[], seed: string): T[] {
+  const result = [...arr];
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
+  for (let i = result.length - 1; i > 0; i--) {
+    h = (Math.imul(1664525, h) + 1013904223) | 0;
+    const j = Math.abs(h) % (i + 1);
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+async function fallbackBestsellers(limit: number, categoryId: number | null, seed?: string) {
   const rows = await prisma.product.findMany({
     where: {
       deletedAt: null,
@@ -40,9 +52,10 @@ async function fallbackBestsellers(limit: number, categoryId: number | null) {
       Brand: { select: { id: true, name: true, slug: true, logoUrl: true } },
     },
     orderBy: [{ popularity: "desc" }, { createdAt: "desc" }],
-    take: limit,
+    take: Math.min(limit * 4, 60),
   });
-  return rows.map(mapProductRow);
+  const shuffled = seed ? seededShuffle(rows, seed) : rows;
+  return shuffled.slice(0, limit).map(mapProductRow);
 }
 
 export async function GET(req: Request) {
@@ -59,6 +72,7 @@ export async function GET(req: Request) {
   const days = Math.max(7, Math.min(365, Number.isFinite(daysRaw) ? daysRaw : 90));
   const categoryIdRaw = Number(url.searchParams.get("categoryId"));
   const categoryId = Number.isFinite(categoryIdRaw) && categoryIdRaw > 0 ? categoryIdRaw : null;
+  const seed = url.searchParams.get("seed") || String(Date.now());
 
   const to = new Date();
   const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
@@ -71,7 +85,7 @@ export async function GET(req: Request) {
   });
 
   if (!apiKey || !upstreamUrl) {
-    const items = await fallbackBestsellers(limit, categoryId);
+    const items = await fallbackBestsellers(limit, categoryId, seed);
     return NextResponse.json({ success: true, source: "fallback", items });
   }
 
@@ -83,7 +97,7 @@ export async function GET(req: Request) {
     });
 
     if (!result.ok) {
-      const items = await fallbackBestsellers(limit, categoryId);
+      const items = await fallbackBestsellers(limit, categoryId, seed);
       return NextResponse.json({ success: true, source: "fallback", items });
     }
 
@@ -130,7 +144,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: true, source: "events-service", items: items.slice(0, limit) });
   } catch (error) {
     console.error("[recommendations.bestsellers] upstream error");
-    const items = await fallbackBestsellers(limit, categoryId);
+    const items = await fallbackBestsellers(limit, categoryId, seed);
     return NextResponse.json({ success: true, source: "fallback", items });
   }
 }

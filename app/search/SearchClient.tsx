@@ -823,7 +823,7 @@ export default function SearchPage() {
     setPicksLoading(true);
     try {
       if (!canUseOptionalClientData()) {
-        const res = await fetch('/api/recommendations/bestsellers?limit=12&days=90', {
+        const res = await fetch(`/api/recommendations/bestsellers?limit=12&days=90&seed=${encodeURIComponent(String(Date.now()))}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });
