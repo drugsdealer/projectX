@@ -2728,13 +2728,13 @@ const handleCancel = () => {
                     className="block h-full group relative"
                   >
                     <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
-                      <div className="relative aspect-square w-full bg-gray-50">
+                      <div className="relative aspect-square w-full bg-white">
                         <Image
                           src={similarProduct.images[0] || "/img/placeholder.svg"}
                           alt={similarProduct.name}
                           fill
                           unoptimized={shouldBypassNextImageOptimization(similarProduct.images[0])}
-                          className="object-cover transition-transform group-hover:scale-105"
+                          className="object-contain p-3 transition-transform group-hover:scale-105"
                           sizes="(max-width: 768px) 50vw, 25vw"
                           priority
                         />
@@ -2809,13 +2809,13 @@ const handleCancel = () => {
                       className="block h-full group relative"
                   >
                     <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
-                      <div className="relative aspect-square w-full bg-gray-50">
+                      <div className="relative aspect-square w-full bg-white">
                         <Image
                           src={best.images[0] || "/img/placeholder.svg"}
                           alt={best.name}
                           fill
                           unoptimized={shouldBypassNextImageOptimization(best.images[0])}
-                          className="object-cover transition-transform group-hover:scale-105"
+                          className="object-contain p-3 transition-transform group-hover:scale-105"
                         />
                       </div>
                       <div className="p-3 sm:p-4 flex-grow">
