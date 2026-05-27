@@ -759,19 +759,19 @@ export default function AdminProductsPage() {
                   <p className="mt-1 text-xs text-black/40">Одинаковый у всех цветов одной модели → появятся как «Другие цвета» на странице товара</p>
                 </div>
                 <input className={inputCls} placeholder="Материалы" value={material} onChange={(e) => setMaterial(e.target.value)} />
-                <input className={inputCls} placeholder="Комфорт" value={features} onChange={(e) => setFeatures(e.target.value)} />
+                <input className={inputCls} placeholder="Комфорт / Габариты (для аксессуаров: длина цепи, размер и т.д.)" value={features} onChange={(e) => setFeatures(e.target.value)} />
                 <input className={inputCls} placeholder="Дизайн" value={styleNotes} onChange={(e) => setStyleNotes(e.target.value)} />
               </div>
             </div>
 
             <div className="sm:col-span-2 rounded-2xl border border-black/10 p-4">
-              <div className="text-sm font-semibold">Габариты сумки (см)</div>
+              <div className="text-sm font-semibold">Габариты товара — сумки / аксессуары (см)</div>
+              <div className="mt-1 text-xs text-black/50">Для сумок и аксессуаров. Заполни хотя бы одно поле — остальные оставь пустыми если не нужны.</div>
               <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                <input className={inputCls} placeholder="Длина / Высота" value={heightCm} onChange={(e) => setHeightCm(e.target.value)} />
+                <input className={inputCls} placeholder="Высота" value={heightCm} onChange={(e) => setHeightCm(e.target.value)} />
                 <input className={inputCls} placeholder="Ширина" value={widthCm} onChange={(e) => setWidthCm(e.target.value)} />
-                <input className={inputCls} placeholder="Глубина" value={depthCm} onChange={(e) => setDepthCm(e.target.value)} />
+                <input className={inputCls} placeholder="Глубина / Толщина" value={depthCm} onChange={(e) => setDepthCm(e.target.value)} />
               </div>
-              <div className="mt-2 text-xs text-black/60">Если не нужно — оставь пустым.</div>
             </div>
 
             <label className="sm:col-span-2 flex items-center gap-2 text-sm">
@@ -1052,7 +1052,7 @@ export default function AdminProductsPage() {
                         <p className="mt-1 text-xs text-black/40">Одинаковый у всех цветов одной модели → появятся как «Другие цвета»</p>
                       </div>
                       <input className={inputCls} placeholder="Материалы" value={editForm.material} onChange={(e) => setEditField("material", e.target.value)} />
-                      <input className={inputCls} placeholder="Комфорт" value={editForm.features} onChange={(e) => setEditField("features", e.target.value)} />
+                      <input className={inputCls} placeholder="Комфорт / Габариты (для аксессуаров: длина цепи, размер и т.д.)" value={editForm.features} onChange={(e) => setEditField("features", e.target.value)} />
                       <input className={inputCls + " sm:col-span-2"} placeholder="Дизайн" value={editForm.styleNotes} onChange={(e) => setEditField("styleNotes", e.target.value)} />
 
                       <div className="sm:col-span-2 mt-2">

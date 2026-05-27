@@ -2263,6 +2263,30 @@ const handleCancel = () => {
                       );
                     }
 
+                    // ---------- АКСЕССУАРЫ ----------
+                    if (product.category === 'accessories') {
+                      const material = anyProduct.material ?? anyProduct.outerMaterial ?? null;
+                      return (
+                        <>
+                          {material && (
+                            <p>
+                              <strong>• Материал:</strong> {material}
+                            </p>
+                          )}
+                          {anyProduct.features && (
+                            <p>
+                              <strong>• Габариты:</strong> {anyProduct.features}
+                            </p>
+                          )}
+                          {anyProduct.styleNotes && (
+                            <p>
+                              <strong>• Дизайн:</strong> {anyProduct.styleNotes}
+                            </p>
+                          )}
+                        </>
+                      );
+                    }
+
                     // ---------- ОДЕЖДА / ОБУВЬ / ДРУГОЕ ----------
                     const material =
                       anyProduct.material ?? 'натуральная кожа / премиум текстиль';
@@ -2413,10 +2437,10 @@ const handleCancel = () => {
               return (
                 <button
                   onClick={() => setShowDeliveryModal(true)}
-                  className="flex items-center gap-4 p-5 md:p-6 bg-yellow-50 border border-yellow-300 rounded-lg w-full text-left hover:bg-yellow-100 transition min-h-[88px]"
+                  className="flex items-center gap-4 p-5 md:p-6 bg-white border border-black/10 rounded-lg w-full text-left hover:bg-black/[0.03] transition min-h-[88px]"
                 >
                   <Image src="https://ik.imagekit.io/qowmy92ny/%D0%B3%D1%80%D1%83%D0%B7%D0%BE%D0%B2%D0%B8%D0%BA.png?updatedAt=1779373447087" alt="Иконка доставки" width={36} height={36} unoptimized />
-                  <p className="font-bold text-yellow-800 text-sm sm:text-base">
+                  <p className="font-bold text-black text-sm sm:text-base">
                     Доставка до 10 рабочих дней
                   </p>
                 </button>
@@ -2589,31 +2613,6 @@ const handleCancel = () => {
               </AnimatePresence>,
               document.body
             )}
-            {(product.category === 'perfume' || product.category === 'fragrance') && (() => {
-              const { top, middle, base } = getPerfumeNotes(product);
-
-              if (!top.length && !middle.length && !base.length) {
-                // если ноты не заданы вообще — просто не показываем блок
-                return null;
-              }
-
-              return (
-                <div className="mt-6 space-y-1 text-sm text-gray-700">
-                  <p>
-                    <strong>Верхние ноты:</strong>{' '}
-                    {top.length ? top.join(', ') : '—'}
-                  </p>
-                  <p>
-                    <strong>Средние ноты:</strong>{' '}
-                    {middle.length ? middle.join(', ') : '—'}
-                  </p>
-                  <p>
-                    <strong>Базовые ноты:</strong>{' '}
-                    {base.length ? base.join(', ') : '—'}
-                  </p>
-                </div>
-              );
-            })()}
             <div className="mt-6">
               <button
                 className={`relative w-full px-6 py-3 font-semibold rounded-lg transition-all duration-300 overflow-hidden ${
