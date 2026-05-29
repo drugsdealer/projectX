@@ -1844,11 +1844,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Safari / Wild Terrain promo banner */}
-        <div className="px-3 sm:px-0">
-          <SafariBanner />
-        </div>
-
         <div className="grid grid-cols-1 gap-6">
           {/* PRODUCTS BY CATEGORY */}
           <section className="space-y-10">
@@ -1910,6 +1905,11 @@ export default function Home() {
                       {sectionIndex === 1 && gentleMonsterItems.length > 0 && (
                         <div className="px-3 sm:px-0">
                           <GentleMonsterBanner products={gentleMonsterItems} />
+                        </div>
+                      )}
+                      {sectionIndex === 2 && (
+                        <div className="px-3 sm:px-0">
+                          <SafariBanner />
                         </div>
                       )}
                       {sectionIndex === 4 && (

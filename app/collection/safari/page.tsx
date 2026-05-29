@@ -110,24 +110,22 @@ async function SafariCollectionPage() {
               <Link
                 key={product.id}
                 href={href}
-                className="group relative flex flex-col rounded-2xl overflow-hidden bg-[#faf9f7] hover:shadow-lg transition-shadow duration-300"
+                className="group rounded-2xl overflow-hidden bg-white shadow-sm ring-1 ring-black/5 hover:ring-black/10 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
               >
                 {/* Image */}
-                <div className="relative aspect-square overflow-hidden bg-white">
+                <div className="relative aspect-square bg-white overflow-hidden">
                   {optimizedSrc ? (
                     <Image
                       src={optimizedSrc}
                       alt={product.name}
                       fill
                       sizes="(max-width: 640px) 50vw, 33vw"
-                      className="object-contain p-3 transition duration-500 group-hover:scale-[1.04]"
+                      className="object-contain p-3"
                       unoptimized={bypass}
                     />
                   ) : (
                     <div className="w-full h-full bg-gray-100" />
                   )}
-
-                  {/* Badge */}
                   {product.badge && (
                     <span className="absolute top-2 left-2 rounded-full bg-black px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
                       {product.badge}
@@ -136,25 +134,25 @@ async function SafariCollectionPage() {
                 </div>
 
                 {/* Info */}
-                <div className="px-3 pb-4 pt-2.5 flex flex-col gap-0.5">
+                <div className="p-3">
                   {product.Brand?.name && (
-                    <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400">
+                    <div className="text-[10px] uppercase tracking-wide text-black/50 leading-none mb-1">
                       {product.Brand.name}
-                    </p>
+                    </div>
                   )}
-                  <p className="text-sm font-semibold text-gray-900 leading-tight line-clamp-2">
+                  <h2 className="font-semibold text-sm leading-snug line-clamp-2">
                     {product.name}
-                  </p>
+                  </h2>
                   {product.price != null && (
-                    <div className="flex items-baseline gap-1.5 mt-1">
-                      <span className="text-sm font-bold text-gray-900">
-                        {product.price.toLocaleString("ru-RU")} ₽
-                      </span>
+                    <div className="mt-2 flex items-baseline gap-2">
                       {hasDiscount && (
-                        <span className="text-xs text-gray-400 line-through">
+                        <span className="text-[11px] text-gray-400 line-through">
                           {product.oldPrice!.toLocaleString("ru-RU")} ₽
                         </span>
                       )}
+                      <span className="text-sm font-semibold">
+                        от {product.price.toLocaleString("ru-RU")} ₽
+                      </span>
                     </div>
                   )}
                 </div>

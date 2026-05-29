@@ -127,6 +127,27 @@ const DEFAULT_CATEGORY_VISUAL: { icon: string; helper: string; image?: string; g
   gradient: 'from-gray-700 to-gray-900',
 };
 
+// Subcategory-level overrides (more specific than main category)
+const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string }> = {
+  кроссовки: {
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.44.01.jpg?updatedAt=1779373032045',
+    gradient: 'from-amber-500 to-orange-600',
+  },
+  худи: {
+    image: 'https://ik.imagekit.io/qowmy92ny/fd9ec34849adf62b33e919768ce99812.png',
+    gradient: 'from-slate-700 to-slate-900',
+  },
+  'дорожные сумки': {
+    image: 'https://ik.imagekit.io/qowmy92ny/BARREL040TY51CL51P_2_face_3acf.png',
+    gradient: 'from-emerald-600 to-teal-800',
+  },
+};
+
+function getSubcategoryVisual(prettyName: string) {
+  const key = prettyName.trim().toLowerCase();
+  return SUBCATEGORY_VISUALS[key] ?? null;
+}
+
 function getCategoryVisual(title: string) {
   const key = normalizeQuery(title).toLowerCase();
   if (key.includes('обув')) return CATEGORY_VISUALS.обувь;
@@ -604,10 +625,39 @@ const CategoryCard = memo(function CategoryCard({ c, meta, genderSuffix = '' }: 
 });
 
 const SubcategoryTile = memo(function SubcategoryTile({ name, count, genderSuffix = '' }: { name: string; count?: number; genderSuffix?: string }) {
-  const visual = getCategoryVisual(prettySubcategory(name));
+  const pretty = prettySubcategory(name);
+  const subVisual = getSubcategoryVisual(pretty);
+  const visual = getCategoryVisual(pretty);
+  const image = subVisual?.image ?? visual.image;
   const href = genderSuffix
     ? `/category/${encodeURIComponent(name)}?gender=${encodeURIComponent(genderSuffix)}`
     : `/category/${encodeURIComponent(name)}`;
+
+  if (image) {
+    return (
+      <Link
+        href={href}
+        className="group relative block overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(0,0,0,0.1)]"
+        title={name}
+      >
+        <div className="relative h-20 sm:h-24 overflow-hidden">
+          <img
+            src={image}
+            alt={pretty}
+            className="absolute inset-0 w-full h-full object-cover transition duration-500 group-hover:scale-[1.06]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 px-3 pb-2 flex items-end justify-between gap-1">
+            <span className="text-sm font-extrabold text-white leading-tight drop-shadow-sm truncate">{pretty}</span>
+            {typeof count === 'number' && (
+              <span className="shrink-0 text-[10px] font-semibold text-white/70">{count}</span>
+            )}
+          </div>
+        </div>
+      </Link>
+    );
+  }
+
   return (
     <Link
       href={href}
@@ -616,7 +666,7 @@ const SubcategoryTile = memo(function SubcategoryTile({ name, count, genderSuffi
     >
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <div className="truncate text-sm font-extrabold leading-snug tracking-[-0.02em]">{prettySubcategory(name)}</div>
+          <div className="truncate text-sm font-extrabold leading-snug tracking-[-0.02em]">{pretty}</div>
           {typeof count === 'number' ? <div className="mt-1 text-[11px] font-semibold text-black/45">{count} товаров</div> : null}
         </div>
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-black/[0.04] text-sm text-black/55 transition group-hover:bg-black group-hover:text-white">
