@@ -150,12 +150,17 @@ function getSubcategoryVisual(prettyName: string) {
 
 function getCategoryVisual(title: string) {
   const key = normalizeQuery(title).toLowerCase();
-  if (key.includes('обув')) return CATEGORY_VISUALS.обувь;
-  if (key.includes('одеж')) return CATEGORY_VISUALS.одежда;
-  if (key.includes('сум')) return CATEGORY_VISUALS.сумки;
-  if (key.includes('аксесс')) return CATEGORY_VISUALS.аксессуары;
-  if (key.includes('парф')) return CATEGORY_VISUALS.парфюм;
-  if (key.includes('голов')) return CATEGORY_VISUALS.головные;
+
+  // Check subcategory-specific images first (e.g. "Кроссовки", "Худи", "Дорожные сумки")
+  const subOverride = SUBCATEGORY_VISUALS[key];
+  if (subOverride) return { ...DEFAULT_CATEGORY_VISUAL, ...subOverride };
+
+  if (key.includes('обув') || key.includes('кросс') || key.includes('ботин') || key.includes('лофер') || key.includes('сандал') || key.includes('sneaker') || key.includes('boot') || key.includes('shoe')) return CATEGORY_VISUALS.обувь;
+  if (key.includes('одеж') || key.includes('худ') || key.includes('свитш') || key.includes('куртк') || key.includes('пальт') || key.includes('рубаш') || key.includes('джинс') || key.includes('шорт') || key.includes('платье') || key.includes('юбк') || key.includes('hoodie') || key.includes('jacket') || key.includes('outerwear')) return CATEGORY_VISUALS.одежда;
+  if (key.includes('сум') || key.includes('рюкзак') || key.includes('дорожн') || key.includes('bag') || key.includes('backpack')) return CATEGORY_VISUALS.сумки;
+  if (key.includes('аксесс') || key.includes('очки') || key.includes('ремн') || key.includes('украш') || key.includes('jewelry') || key.includes('belt')) return CATEGORY_VISUALS.аксессуары;
+  if (key.includes('парф') || key.includes('аромат') || key.includes('fragrance') || key.includes('perfume')) return CATEGORY_VISUALS.парфюм;
+  if (key.includes('голов') || key.includes('кепк') || key.includes('шапк') || key.includes('панам') || key.includes('cap') || key.includes('hat') || key.includes('beanie')) return CATEGORY_VISUALS.головные;
   return DEFAULT_CATEGORY_VISUAL;
 }
 

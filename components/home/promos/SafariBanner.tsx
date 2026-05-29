@@ -15,12 +15,12 @@ export default function SafariBanner() {
       href="/collection/safari"
       className="group relative block w-full overflow-hidden rounded-2xl sm:rounded-3xl"
       style={{ aspectRatio: "16/7" }}
-      aria-label="Wild Terrain — подборка с анималистичными принтами"
+      aria-label="Зов саванны — подборка с анималистичными принтами"
     >
       {/* Photo */}
       <Image
         src={optimizedSrc}
-        alt="Wild Terrain — леопардовые и зебровые принты"
+        alt="Зов саванны — леопардовые и зебровые принты"
         fill
         sizes="(max-width: 768px) 100vw, 1200px"
         priority={false}

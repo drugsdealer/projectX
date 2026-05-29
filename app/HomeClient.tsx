@@ -72,12 +72,12 @@ const HOME_GENDER_SELECTIONS = [
   {
     title: "Мужская селекция",
     href: "/search?gender=men",
-    image: "/img/MMbanner1.jpg",
+    image: "https://ik.imagekit.io/qowmy92ny/2026-05-29%2015.12.56.jpg",
   },
   {
     title: "Женская селекция",
     href: "/search?gender=women",
-    image: "/img/IMG_0364.JPG",
+    image: "https://ik.imagekit.io/qowmy92ny/2026-05-29%2015.37.51.jpg",
   },
 ];
 

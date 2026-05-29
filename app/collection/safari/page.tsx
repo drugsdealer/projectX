@@ -15,18 +15,18 @@ const SAFARI_HERO_IMAGE =
   "https://ik.imagekit.io/qowmy92ny/ChatGPT%20Image%2026%20%D0%BC%D0%B0%D1%8F%202026%20%D0%B3.,%2022_23_13.png";
 
 export const metadata: Metadata = {
-  title: "Wild Terrain — подборка Stage Store",
+  title: "Зов саванны — подборка Stage Store",
   description:
-    "Леопардовые, зебровые и анималистичные принты — подборка обуви и аксессуаров Wild Terrain в Stage Store.",
+    "Леопардовые, зебровые и анималистичные принты — подборка обуви и аксессуаров Зов саванны в Stage Store.",
   alternates: {
     canonical: `${SITE_URL}/collection/safari`,
   },
   openGraph: {
     type: "website",
     url: `${SITE_URL}/collection/safari`,
-    title: "Wild Terrain — подборка Stage Store",
+    title: "Зов саванны — подборка Stage Store",
     description: "Анималистичные принты: леопард, зебра, корова. Выбор редакции.",
-    images: [{ url: SAFARI_HERO_IMAGE, width: 1200, height: 630, alt: "Wild Terrain" }],
+    images: [{ url: SAFARI_HERO_IMAGE, width: 1200, height: 630, alt: "Зов саванны" }],
   },
 };
 
@@ -56,7 +56,7 @@ async function SafariCollectionPage() {
       <div className="relative w-full overflow-hidden" style={{ height: "56vw", maxHeight: 560, minHeight: 260 }}>
         <Image
           src={SAFARI_HERO_IMAGE}
-          alt="Wild Terrain — анималистичные принты"
+          alt="Зов саванны — анималистичные принты"
           fill
           priority
           sizes="100vw"
@@ -78,7 +78,7 @@ async function SafariCollectionPage() {
             className="text-4xl sm:text-5xl font-black tracking-[-0.03em] text-white leading-none"
             style={{ textShadow: "0 2px 12px rgba(0,0,0,0.35)" }}
           >
-            Wild Terrain
+            Зов саванны
           </h1>
           <p
             className="mt-2 text-sm sm:text-base text-white/85 max-w-md"
