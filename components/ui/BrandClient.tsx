@@ -961,7 +961,7 @@ export default function BrandClient({
               )}
               <div className="mt-2 flex items-center justify-between">
                 <span className="text-sm font-semibold transition-colors group-hover:text-black">
-                  {item.price != null ? `${Number(item.price).toLocaleString('ru-RU')}₽` : '—'}
+                  {item.price != null ? `от ${Number(item.price).toLocaleString('ru-RU')} ₽` : '—'}
                 </span>
                 <span className="text-xs text-black/40 group-hover:text-black/60 transition-colors">
                   Подробнее

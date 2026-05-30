@@ -128,7 +128,7 @@ const DEFAULT_CATEGORY_VISUAL: { icon: string; helper: string; image?: string; g
 };
 
 // Subcategory-level overrides (more specific than main category)
-const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string }> = {
+const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string; objectPosition?: string }> = {
   кроссовки: {
     image: 'https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.44.01.jpg?updatedAt=1779373032045',
     gradient: 'from-amber-500 to-orange-600',
@@ -140,6 +140,7 @@ const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string }> =
   'дорожные сумки': {
     image: 'https://ik.imagekit.io/qowmy92ny/BARREL040TY51CL51P_2_face_3acf.png',
     gradient: 'from-emerald-600 to-teal-800',
+    objectPosition: 'top',
   },
 };
 
@@ -634,6 +635,7 @@ const SubcategoryTile = memo(function SubcategoryTile({ name, count, genderSuffi
   const subVisual = getSubcategoryVisual(pretty);
   const visual = getCategoryVisual(pretty);
   const image = subVisual?.image ?? visual.image;
+  const objectPosition = subVisual?.objectPosition ?? 'center';
   const href = genderSuffix
     ? `/category/${encodeURIComponent(name)}?gender=${encodeURIComponent(genderSuffix)}`
     : `/category/${encodeURIComponent(name)}`;
@@ -650,6 +652,7 @@ const SubcategoryTile = memo(function SubcategoryTile({ name, count, genderSuffi
             src={image}
             alt={pretty}
             className="absolute inset-0 w-full h-full object-cover transition duration-500 group-hover:scale-[1.06]"
+            style={{ objectPosition }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 px-3 pb-2 flex items-end justify-between gap-1">
