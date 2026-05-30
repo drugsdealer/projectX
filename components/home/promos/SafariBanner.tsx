@@ -11,7 +11,6 @@ type SafariProduct = {
   id: number;
   name: string;
   price?: number | null;
-  oldPrice?: number | null;
   imageUrl?: string | null;
   images?: string[];
   Brand?: { id: number; name: string; slug: string } | null;
@@ -28,11 +27,6 @@ function useIsMobile(breakpoint = 768) {
   return isMobile;
 }
 
-function formatPrice(price?: number | null) {
-  if (typeof price !== "number" || price <= 0) return null;
-  return `от ${price.toLocaleString("ru-RU")} ₽`;
-}
-
 function ProductCard({ product, isMobile }: { product: SafariProduct; isMobile: boolean }) {
   const [hovered, setHovered] = useState(false);
   const href = productPath({ id: product.id, name: product.name, brandName: product.Brand?.name ?? undefined });
@@ -40,7 +34,9 @@ function ProductCard({ product, isMobile }: { product: SafariProduct; isMobile: 
     product.imageUrl ||
     (Array.isArray(product.images) ? product.images.find(Boolean) : null) ||
     null;
-  const priceStr = formatPrice(product.price);
+  const price = typeof product.price === "number" && product.price > 0
+    ? `от ${product.price.toLocaleString("ru-RU")} ₽`
+    : null;
 
   return (
     <Link
@@ -51,22 +47,20 @@ function ProductCard({ product, isMobile }: { product: SafariProduct; isMobile: 
         color: "inherit",
         background: "#fff",
         cursor: "pointer",
-        boxShadow: hovered
-          ? "0 4px 20px rgba(0,0,0,0.13)"
-          : "0 1px 4px rgba(0,0,0,0.06)",
+        boxShadow: hovered ? "0 6px 24px rgba(0,0,0,0.14)" : "0 2px 8px rgba(0,0,0,0.08)",
         transition: "box-shadow 0.2s",
-        borderRadius: 6,
+        borderRadius: 8,
         overflow: "hidden",
-        ...(isMobile && { minWidth: 148, maxWidth: 148 }),
+        ...(isMobile && { minWidth: 144, maxWidth: 144 }),
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Accent strip */}
-      <div style={{ height: 3, background: "linear-gradient(90deg, #c8a96a, #8b5e2f)" }} />
+      {/* Earthy accent line */}
+      <div style={{ height: 3, background: "linear-gradient(90deg, #c8a05a, #7a4f2a)" }} />
 
       {/* Image */}
-      <div style={{ position: "relative", background: "#faf8f5", overflow: "hidden", aspectRatio: "1/1" }}>
+      <div style={{ background: "#faf8f4", overflow: "hidden", aspectRatio: "1/1" }}>
         {imgSrc ? (
           <img
             src={imgSrc}
@@ -75,10 +69,10 @@ function ProductCard({ product, isMobile }: { product: SafariProduct; isMobile: 
               width: "100%",
               height: "100%",
               objectFit: "contain",
-              padding: "10px",
+              padding: 8,
               display: "block",
-              transition: "transform 0.4s",
-              transform: hovered ? "scale(1.04)" : "scale(1)",
+              transition: "transform 0.35s",
+              transform: hovered ? "scale(1.05)" : "scale(1)",
             }}
           />
         ) : (
@@ -87,39 +81,30 @@ function ProductCard({ product, isMobile }: { product: SafariProduct; isMobile: 
       </div>
 
       {/* Info */}
-      <div style={{ padding: isMobile ? "8px 8px 10px" : "10px 10px 14px" }}>
+      <div style={{ padding: isMobile ? "7px 8px 9px" : "9px 10px 12px" }}>
         {product.Brand?.name && (
-          <div
-            style={{
-              fontSize: 8,
-              fontWeight: 700,
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              color: "#999",
-              marginBottom: 3,
-            }}
-          >
+          <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#aaa", marginBottom: 3 }}>
             {product.Brand.name}
           </div>
         )}
         <div
           style={{
-            fontSize: isMobile ? 11 : 13,
+            fontSize: isMobile ? 11 : 12,
             fontWeight: 700,
             color: "#111",
             lineHeight: 1.3,
-            marginBottom: 5,
             display: "-webkit-box",
             WebkitLineClamp: 2,
             WebkitBoxOrient: "vertical",
             overflow: "hidden",
+            marginBottom: price ? 4 : 0,
           }}
         >
           {product.name}
         </div>
-        {priceStr && (
-          <div style={{ fontSize: isMobile ? 11 : 13, fontWeight: 700, color: "#111" }}>
-            {priceStr}
+        {price && (
+          <div style={{ fontSize: isMobile ? 11 : 12, fontWeight: 700, color: "#111" }}>
+            {price}
           </div>
         )}
       </div>
@@ -134,167 +119,121 @@ export default function SafariBanner() {
   useEffect(() => {
     fetch("/api/collection/safari")
       .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data?.items)) setProducts(data.items);
-      })
+      .then((data) => { if (Array.isArray(data?.items)) setProducts(data.items); })
       .catch(() => {});
   }, []);
 
   const displayProducts = products.slice(0, isMobile ? 4 : 6);
+  const photoHeight = isMobile ? 260 : 420;
+  // Cards overlap photo by this amount — keep photo mostly visible
+  const cardOverlap = isMobile ? 40 : 60;
 
   return (
-    <div
-      style={{
-        fontFamily: "'Nunito', sans-serif",
-        maxWidth: 1120,
-        width: "100%",
-        margin: "0 auto",
-        padding: isMobile ? "24px 0 32px" : "40px 0 48px",
-      }}
-    >
-      {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: isMobile ? 10 : 14,
-          padding: isMobile ? "0 16px" : "0",
-          gap: 10,
-        }}
-      >
-        {/* Accent paw/sun icon */}
-        <span style={{ fontSize: isMobile ? 16 : 20, lineHeight: 1 }}>🌿</span>
-        <h2
-          style={{
-            fontSize: isMobile ? 15 : 20,
-            fontWeight: 800,
-            letterSpacing: "0.08em",
-            textTransform: "uppercase",
-            textAlign: "center",
-            margin: 0,
-            color: "#111",
-          }}
-        >
-          Зов саванны
-        </h2>
-        <span style={{ fontSize: isMobile ? 16 : 20, lineHeight: 1 }}>🐆</span>
-      </div>
+    <div style={{ background: "#fff", width: "100%", paddingTop: isMobile ? 20 : 32, paddingBottom: isMobile ? 20 : 32 }}>
+      <div style={{ maxWidth: 1120, margin: "0 auto", fontFamily: "'Nunito', sans-serif" }}>
 
-      {/* Sub-label */}
-      <p
-        style={{
-          textAlign: "center",
-          fontSize: isMobile ? 11 : 13,
-          color: "#888",
-          letterSpacing: "0.04em",
-          marginBottom: isMobile ? 12 : 18,
-          padding: isMobile ? "0 16px" : 0,
-        }}
-      >
-        Анималистичные принты — леопард, зебра, корова
-      </p>
-
-      {/* Banner photo */}
-      <div
-        style={{
-          position: "relative",
-          margin: isMobile ? "0 16px" : "0",
-          borderRadius: isMobile ? 16 : 20,
-          overflow: "hidden",
-        }}
-      >
-        <img
-          src={SAFARI_IMAGE}
-          alt="Зов саванны"
-          style={{
-            width: "100%",
-            display: "block",
-            objectFit: "cover",
-            maxHeight: isMobile ? 220 : 360,
-            minHeight: isMobile ? 160 : 260,
-          }}
-        />
-        {/* Sandy gradient overlay */}
+        {/* Photo with ALL text inside */}
         <div
           style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.1) 60%, rgba(15,10,5,0.72) 100%)",
+            position: "relative",
+            height: photoHeight,
+            borderRadius: isMobile ? 16 : 22,
+            overflow: "hidden",
+            margin: isMobile ? "0 0" : "0",
+          }}
+        >
+          <img
+            src={SAFARI_IMAGE}
+            alt="Зов саванны"
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+
+          {/* Gradient: stronger on left for text, bottom for cards */}
+          <div style={{
+            position: "absolute", inset: 0,
+            background: "linear-gradient(to right, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.0) 100%)",
             pointerEvents: "none",
-          }}
-        />
-        {/* Bottom text inside photo */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: isMobile ? 12 : 16,
-            left: isMobile ? 14 : 20,
-          }}
-        >
-          <div
-            style={{
+          }} />
+          <div style={{
+            position: "absolute", inset: 0,
+            background: "linear-gradient(to top, rgba(10,6,2,0.75) 0%, rgba(0,0,0,0.0) 50%)",
+            pointerEvents: "none",
+          }} />
+
+          {/* Text overlay — top-left */}
+          <div style={{ position: "absolute", top: isMobile ? 16 : 24, left: isMobile ? 16 : 28 }}>
+            <div style={{
               fontSize: isMobile ? 9 : 11,
               fontWeight: 700,
-              letterSpacing: "0.14em",
+              letterSpacing: "0.16em",
               textTransform: "uppercase",
-              color: "rgba(255,220,160,0.9)",
-              marginBottom: 3,
-            }}
-          >
-            Подборка Stage Store
-          </div>
-          <div
-            style={{
-              fontSize: isMobile ? 18 : 26,
-              fontWeight: 900,
-              color: "#fff",
-              letterSpacing: "-0.02em",
-              textShadow: "0 2px 10px rgba(0,0,0,0.4)",
-            }}
-          >
-            Зов саванны
+              color: "rgba(255,215,140,0.88)",
+              marginBottom: 6,
+            }}>
+              Подборка Stage Store
+            </div>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: isMobile ? 6 : 8,
+              marginBottom: isMobile ? 5 : 7,
+            }}>
+              <span style={{ fontSize: isMobile ? 18 : 24 }}>🌿</span>
+              <h2 style={{
+                margin: 0,
+                fontSize: isMobile ? 22 : 32,
+                fontWeight: 900,
+                letterSpacing: "-0.02em",
+                color: "#fff",
+                textShadow: "0 2px 10px rgba(0,0,0,0.4)",
+              }}>
+                Зов саванны
+              </h2>
+              <span style={{ fontSize: isMobile ? 18 : 24 }}>🐆</span>
+            </div>
+            <p style={{
+              margin: 0,
+              fontSize: isMobile ? 11 : 13,
+              color: "rgba(255,255,255,0.75)",
+              letterSpacing: "0.02em",
+            }}>
+              Анималистичные принты — леопард, зебра, корова
+            </p>
           </div>
         </div>
-      </div>
 
-      {/* Product cards */}
-      {displayProducts.length > 0 && (
-        isMobile ? (
-          <div
-            style={{
+        {/* Product cards — sit right at the bottom edge of photo */}
+        {displayProducts.length > 0 && (
+          isMobile ? (
+            <div style={{
               overflowX: "auto",
               WebkitOverflowScrolling: "touch",
               scrollbarWidth: "none",
-              marginTop: -46,
-              paddingBottom: 8,
-            }}
-          >
-            <div style={{ display: "flex", gap: 10, padding: "0 16px", width: "max-content" }}>
-              {displayProducts.map((p) => (
-                <ProductCard key={p.id} product={p} isMobile={true} />
-              ))}
+              marginTop: -cardOverlap,
+              paddingBottom: 4,
+            }}>
+              <div style={{ display: "flex", gap: 8, padding: "0 0 0 0", width: "max-content" }}>
+                {displayProducts.map((p) => (
+                  <ProductCard key={p.id} product={p} isMobile={true} />
+                ))}
+              </div>
             </div>
-          </div>
-        ) : (
-          <div
-            style={{
+          ) : (
+            <div style={{
               display: "grid",
               gridTemplateColumns: `repeat(${displayProducts.length}, 1fr)`,
-              gap: 16,
-              paddingTop: 20,
-              marginTop: -90,
+              gap: 14,
+              marginTop: -cardOverlap,
               position: "relative",
               zIndex: 1,
-            }}
-          >
-            {displayProducts.map((p) => (
-              <ProductCard key={p.id} product={p} isMobile={false} />
-            ))}
-          </div>
-        )
-      )}
+            }}>
+              {displayProducts.map((p) => (
+                <ProductCard key={p.id} product={p} isMobile={false} />
+              ))}
+            </div>
+          )
+        )}
+      </div>
     </div>
   );
 }

@@ -73,7 +73,8 @@ const HOME_GENDER_SELECTIONS = [
     title: "Мужская селекция",
     href: "/search?gender=men",
     image: "https://ik.imagekit.io/qowmy92ny/2026-05-29%2015.12.56.jpg",
-    objectPosition: "top",
+    objectPosition: "center",
+    objectFit: "contain" as const,
   },
   {
     title: "Женская селекция",
@@ -1806,8 +1807,8 @@ export default function Home() {
                   alt=""
                   fill
                   sizes="(max-width: 768px) 50vw, 50vw"
-                  className="object-cover opacity-62 grayscale transition duration-700 group-hover:scale-105 group-hover:opacity-78"
-                  style={{ objectPosition: item.objectPosition ?? "center" }}
+                  className="opacity-75 grayscale transition duration-700 group-hover:scale-105 group-hover:opacity-90"
+                  style={{ objectFit: item.objectFit ?? "cover", objectPosition: item.objectPosition ?? "center" }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/25 to-transparent" />
                 <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-6 md:p-8">

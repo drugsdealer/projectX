@@ -128,7 +128,7 @@ const DEFAULT_CATEGORY_VISUAL: { icon: string; helper: string; image?: string; g
 };
 
 // Subcategory-level overrides (more specific than main category)
-const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string; objectPosition?: string }> = {
+const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string; objectPosition?: string; objectFit?: 'cover' | 'contain' }> = {
   кроссовки: {
     image: 'https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.44.01.jpg?updatedAt=1779373032045',
     gradient: 'from-amber-500 to-orange-600',
@@ -140,7 +140,7 @@ const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string; obj
   'дорожные сумки': {
     image: 'https://ik.imagekit.io/qowmy92ny/BARREL040TY51CL51P_2_face_3acf.png',
     gradient: 'from-emerald-600 to-teal-800',
-    objectPosition: 'top',
+    objectFit: 'contain' as const,
   },
 };
 
@@ -636,6 +636,7 @@ const SubcategoryTile = memo(function SubcategoryTile({ name, count, genderSuffi
   const visual = getCategoryVisual(pretty);
   const image = subVisual?.image ?? visual.image;
   const objectPosition = subVisual?.objectPosition ?? 'center';
+  const objectFit = subVisual?.objectFit ?? 'cover';
   const href = genderSuffix
     ? `/category/${encodeURIComponent(name)}?gender=${encodeURIComponent(genderSuffix)}`
     : `/category/${encodeURIComponent(name)}`;
@@ -651,14 +652,16 @@ const SubcategoryTile = memo(function SubcategoryTile({ name, count, genderSuffi
           <img
             src={image}
             alt={pretty}
-            className="absolute inset-0 w-full h-full object-cover transition duration-500 group-hover:scale-[1.06]"
-            style={{ objectPosition }}
+            className="absolute inset-0 w-full h-full transition duration-500 group-hover:scale-[1.06]"
+            style={{ objectFit, objectPosition }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 px-3 pb-2 flex items-end justify-between gap-1">
-            <span className="text-sm font-extrabold text-white leading-tight drop-shadow-sm truncate">{pretty}</span>
+          {objectFit !== 'contain' && (
+            <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />
+          )}
+          <div className={`absolute inset-x-0 bottom-0 px-3 pb-2 flex items-end justify-between gap-1 ${objectFit === 'contain' ? 'bg-gradient-to-t from-white/80 to-transparent pt-4' : ''}`}>
+            <span className={`text-sm font-extrabold leading-tight drop-shadow-sm truncate ${objectFit === 'contain' ? 'text-gray-900' : 'text-white'}`}>{pretty}</span>
             {typeof count === 'number' && (
-              <span className="shrink-0 text-[10px] font-semibold text-white/70">{count}</span>
+              <span className={`shrink-0 text-[10px] font-semibold ${objectFit === 'contain' ? 'text-gray-500' : 'text-white/70'}`}>{count}</span>
             )}
           </div>
         </div>
