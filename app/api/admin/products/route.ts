@@ -40,6 +40,9 @@ export async function POST(req: Request) {
     const sizeType = sizeTypeRaw === "SHOE" || sizeTypeRaw === "CLOTH" ? sizeTypeRaw : "NONE";
     const subcategoryId = body?.subcategoryId ? Number(body.subcategoryId) : null;
     const sizeGroups = Array.isArray(body?.sizeGroups) ? body.sizeGroups : [];
+    const collabBrandIds = Array.isArray(body?.collabBrandIds)
+      ? body.collabBrandIds.map(Number).filter((n: number) => Number.isFinite(n) && n > 0)
+      : [];
 
     const parsePrice = (val: any) => {
       const num = Number(val);
@@ -149,6 +152,7 @@ export async function POST(req: Request) {
         widthCm: Number.isFinite(widthCm) && widthCm > 0 ? widthCm : null,
         heightCm: Number.isFinite(heightCm) && heightCm > 0 ? heightCm : null,
         depthCm: Number.isFinite(depthCm) && depthCm > 0 ? depthCm : null,
+        collabBrandIds,
         Category: { connect: { id: categoryId } },
         ...(brandId ? { Brand: { connect: { id: brandId } } } : {}),
         ...(colorId ? { Color: { connect: { id: colorId } } } : {}),
@@ -240,6 +244,7 @@ export async function GET(req: Request) {
       widthCm: true,
       heightCm: true,
       depthCm: true,
+      collabBrandIds: true,
       categoryId: true,
       brandId: true,
       colorId: true,

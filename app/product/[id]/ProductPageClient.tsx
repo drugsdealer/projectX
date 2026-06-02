@@ -726,6 +726,8 @@ const optimizedBrandLogoSrc = React.useMemo(
   [brandLogoSrc]
 );
 const [isFavProduct, setIsFavProduct] = useState(false);
+const [collabOpen, setCollabOpen] = useState(false);
+const collabRef = useRef<HTMLDivElement | null>(null);
 const { user } = useUser();
 
   // Sticky header state and refs
@@ -1748,74 +1750,6 @@ const handleCancel = () => {
                 />
               </div>
             </button>
-            {primaryBrand && (
-              <>
-                {/* Centered brand logo overlay */}
-                <div className="pointer-events-none absolute top-6 left-1/2 -translate-x-1/2 z-20 flex items-start justify-center">
-                  <motion.button
-                    type="button"
-                    onMouseEnter={openBrandPanel}
-                    onMouseLeave={() => scheduleCloseBrandPanel(220)}
-                    onFocus={openBrandPanel}
-                    onBlur={() => scheduleCloseBrandPanel(220)}
-                    onClick={() => setBrandPanelOpen((v) => !v)}
-                    className="pointer-events-auto rounded-xl border border-gray-200 bg-white/40 backdrop-blur px-3 py-3 shadow-lg hover:shadow-xl transition-all duration-300"
-                    initial={{ scale: 0.95, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    whileHover={{ scale: 1.02 }}
-                  >
-                    {brandLogoSrc ? (
-                      <div className="relative w-[140px] h-[56px]">
-                        <Image src={optimizedBrandLogoSrc || brandLogoSrc} alt={primaryBrand!} fill unoptimized={shouldBypassNextImageOptimization(optimizedBrandLogoSrc || brandLogoSrc)} className="object-contain" />
-                      </div>
-                    ) : (
-                      <span className="text-sm font-semibold tracking-tight text-black">{primaryBrand}</span>
-                    )}
-                  </motion.button>
-                </div>
-
-                {/* Slide-up brand panel at the TOP of gallery */}
-                <AnimatePresence>
-                  {brandPanelOpen && (
-                    <motion.div
-                      key="brand-panel"
-                      initial={{ y: -40, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      exit={{ y: -40, opacity: 0 }}
-                      transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-                      className="absolute left-0 right-0 z-20 px-4 mt-2 top-[120px] pointer-events-auto"
-                      onMouseEnter={openBrandPanel}
-                      onMouseLeave={() => scheduleCloseBrandPanel(220)}
-                    >
-                      <Link
-                        href={`/brand/${encodeURIComponent(((product as any)?.brandSlug) || (primaryBrand ? brandSlugFrom(primaryBrand) : ''))}${(product as any)?.gender ? `?gender=${encodeURIComponent((product as any).gender)}` : ''}`}
-                        className="w-full overflow-hidden rounded-2xl border border-gray-200 bg-white/80 backdrop-blur shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:shadow-xl transition flex items-center justify-between gap-3 px-4 py-3"
-                      >
-                        <div className="flex items-center gap-3">
-                          {brandLogoSrc ? (
-                            <div className="relative w-9 h-6">
-                              <Image src={optimizedBrandLogoSrc || brandLogoSrc} alt={primaryBrand!} fill unoptimized={shouldBypassNextImageOptimization(optimizedBrandLogoSrc || brandLogoSrc)} className="object-contain" />
-                            </div>
-                          ) : (
-                            <span className="text-sm font-semibold">{primaryBrand}</span>
-                          )}
-                          <span className="text-sm font-medium">Ещё больше от этого бренда</span>
-                        </div>
-                        <motion.span
-                          aria-hidden
-                          initial={{ x: 0 }}
-                          animate={{ x: [0, 6, 0] }}
-                          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-                          className="text-xl leading-none pr-1"
-                        >
-                          →
-                        </motion.span>
-                      </Link>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </>
-            )}
                         <motion.div
               ref={badgeRef}
               className="absolute top-4 left-4 inline-flex items-center gap-2 rounded-full bg-white/95 backdrop-blur-sm border border-black/10 shadow-lg z-40 cursor-pointer px-2 py-1 select-none"
@@ -2446,6 +2380,121 @@ const handleCancel = () => {
                 </button>
               );
             })()}
+            {/* ── Brand block: Больше от [Brand] + collab brands ── */}
+            {(() => {
+              const collabBrands: { id: number; name: string; slug: string; logoUrl: string | null }[] =
+                Array.isArray((product as any)?.collabBrands) ? (product as any).collabBrands : [];
+              const isCollab = collabBrands.length > 0;
+              const brandHref = `/brand/${encodeURIComponent((product as any)?.brandSlug || (primaryBrand ? brandSlugFrom(primaryBrand) : ''))}`;
+
+              return (primaryBrand || isCollab) ? (
+                <div className="mt-4 space-y-3">
+                  {/* "Больше от [Brand]" row */}
+                  {primaryBrand && (
+                    <Link
+                      href={brandHref}
+                      className="group flex items-center gap-3 rounded-xl border border-black/10 bg-white px-4 py-3 hover:border-black/25 hover:bg-black/[0.02] transition-all duration-200"
+                    >
+                      {brandLogoSrc ? (
+                        <div className="relative shrink-0 w-14 h-8">
+                          <Image
+                            src={optimizedBrandLogoSrc || brandLogoSrc}
+                            alt={primaryBrand}
+                            fill
+                            className="object-contain"
+                            unoptimized={shouldBypassNextImageOptimization(optimizedBrandLogoSrc || brandLogoSrc)}
+                          />
+                        </div>
+                      ) : (
+                        <span className="shrink-0 text-xs font-bold uppercase tracking-wider text-black/60">{primaryBrand}</span>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] uppercase tracking-[0.1em] text-black/40 leading-none mb-0.5">Бренд</p>
+                        <p className="text-sm font-semibold text-black leading-tight">
+                          Больше от {primaryBrand}
+                        </p>
+                      </div>
+                      <span className="text-black/30 group-hover:text-black transition-colors text-lg leading-none">→</span>
+                    </Link>
+                  )}
+
+                  {/* Collab brands block */}
+                  {isCollab && (
+                    <div className="relative" ref={collabRef}>
+                      <button
+                        type="button"
+                        onClick={() => setCollabOpen((v) => !v)}
+                        className="group flex w-full items-center gap-3 rounded-xl border border-black/10 bg-white px-4 py-3 hover:border-black/25 hover:bg-black/[0.02] transition-all duration-200 text-left"
+                      >
+                        {/* Overlapping logos */}
+                        <div className="flex shrink-0 items-center">
+                          {[...(brandLogoSrc ? [{ logoUrl: brandLogoSrc, name: primaryBrand ?? '' }] : []), ...collabBrands]
+                            .slice(0, 4)
+                            .map((b, i) => (
+                              <div
+                                key={i}
+                                className="relative w-8 h-8 rounded-full border-2 border-white bg-white shadow-sm overflow-hidden"
+                                style={{ marginLeft: i === 0 ? 0 : -10, zIndex: 10 - i }}
+                              >
+                                {b.logoUrl ? (
+                                  <Image src={b.logoUrl} alt={b.name} fill className="object-contain p-0.5" unoptimized={shouldBypassNextImageOptimization(b.logoUrl)} />
+                                ) : (
+                                  <span className="flex items-center justify-center w-full h-full text-[8px] font-black text-black/60">{b.name.charAt(0)}</span>
+                                )}
+                              </div>
+                            ))}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] uppercase tracking-[0.1em] text-black/40 leading-none mb-0.5">Коллаборация</p>
+                          <p className="text-sm font-semibold text-black leading-tight">
+                            {[primaryBrand, ...collabBrands.map((b) => b.name)].filter(Boolean).join(' × ')}
+                          </p>
+                        </div>
+                        <span className={`text-black/30 group-hover:text-black transition-all duration-200 text-lg leading-none ${collabOpen ? 'rotate-90' : ''}`}>→</span>
+                      </button>
+
+                      {/* Dropdown */}
+                      {collabOpen && (
+                        <div className="absolute left-0 right-0 top-full mt-1.5 z-30 rounded-xl border border-black/10 bg-white shadow-xl overflow-hidden">
+                          {primaryBrand && (
+                            <Link
+                              href={brandHref}
+                              onClick={() => setCollabOpen(false)}
+                              className="flex items-center gap-3 px-4 py-3 hover:bg-black/[0.03] transition-colors border-b border-black/5"
+                            >
+                              {brandLogoSrc ? (
+                                <div className="relative w-10 h-6 shrink-0">
+                                  <Image src={brandLogoSrc} alt={primaryBrand} fill className="object-contain" unoptimized={shouldBypassNextImageOptimization(brandLogoSrc)} />
+                                </div>
+                              ) : null}
+                              <span className="text-sm font-semibold">{primaryBrand}</span>
+                              <span className="ml-auto text-xs text-black/40">Страница бренда →</span>
+                            </Link>
+                          )}
+                          {collabBrands.map((b) => (
+                            <Link
+                              key={b.id}
+                              href={`/brand/${encodeURIComponent(b.slug)}`}
+                              onClick={() => setCollabOpen(false)}
+                              className="flex items-center gap-3 px-4 py-3 hover:bg-black/[0.03] transition-colors border-b border-black/5 last:border-0"
+                            >
+                              {b.logoUrl ? (
+                                <div className="relative w-10 h-6 shrink-0">
+                                  <Image src={b.logoUrl} alt={b.name} fill className="object-contain" unoptimized={shouldBypassNextImageOptimization(b.logoUrl)} />
+                                </div>
+                              ) : null}
+                              <span className="text-sm font-semibold">{b.name}</span>
+                              <span className="ml-auto text-xs text-black/40">Страница бренда →</span>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : null;
+            })()}
+
             {relatedColorProducts.length > 0 && (
               <div className="my-6">
                 <p className="text-xs uppercase tracking-widest text-gray-400 mb-3">Другие расцветки</p>

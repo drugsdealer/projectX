@@ -261,6 +261,11 @@ export async function PATCH(
   if (body?.subcategory !== undefined) {
     data.subcategory = body.subcategory ? String(body.subcategory).trim().toLowerCase() : null;
   }
+  if (body?.collabBrandIds !== undefined) {
+    data.collabBrandIds = Array.isArray(body.collabBrandIds)
+      ? body.collabBrandIds.map(Number).filter((n: number) => Number.isFinite(n) && n > 0)
+      : [];
+  }
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ success: false, message: "Нет данных для обновления" }, { status: 400 });

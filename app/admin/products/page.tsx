@@ -181,6 +181,10 @@ export default function AdminProductsPage() {
   const [article, setArticle] = useState("");
   const [modelKey, setModelKey] = useState("");
   const [noBoxPrice, setNoBoxPrice] = useState("");
+  const [collabBrandIds, setCollabBrandIds] = useState<number[]>([]);
+  const [collabSearch, setCollabSearch] = useState("");
+  const [editCollabBrandIds, setEditCollabBrandIds] = useState<number[]>([]);
+  const [editCollabSearch, setEditCollabSearch] = useState("");
 
   const [newBrand, setNewBrand] = useState("");
   const [newBrandLogo, setNewBrandLogo] = useState("");
@@ -469,6 +473,7 @@ export default function AdminProductsPage() {
           heightCm: heightCm ? Number(heightCm) : null,
           depthCm: depthCm ? Number(depthCm) : null,
           article: article || null,
+          collabBrandIds,
         }),
       });
       const data = await authGuardOrData(res);
@@ -515,6 +520,8 @@ export default function AdminProductsPage() {
       depthCm: p.depthCm ? String(p.depthCm) : "",
       article: p.article || "",
     });
+    setEditCollabBrandIds(Array.isArray(p.collabBrandIds) ? p.collabBrandIds : []);
+    setEditCollabSearch("");
   };
 
   const cancelEdit = () => {
@@ -564,6 +571,7 @@ export default function AdminProductsPage() {
           noBoxPrice: editForm.noBoxPrice ? Number(editForm.noBoxPrice) : null,
           modelKey: editForm.modelKey.trim() || null,
           article: editForm.article || null,
+          collabBrandIds: editCollabBrandIds,
         }),
       });
       const data = await authGuardOrData(res);
@@ -693,6 +701,42 @@ export default function AdminProductsPage() {
               <option value="">Бренд (необязательно)</option>
               {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
+            {/* Collab brand picker (add form) */}
+            <div className="sm:col-span-2">
+              <p className="text-xs font-semibold text-black/50 mb-1">Коллаборация брендов (необязательно)</p>
+              <input
+                className={inputCls}
+                placeholder="Поиск бренда для коллаборации..."
+                value={collabSearch}
+                onChange={(e) => setCollabSearch(e.target.value)}
+              />
+              {collabSearch.trim() && (
+                <div className="mt-1 rounded-xl border border-black/10 bg-white shadow-lg max-h-48 overflow-y-auto">
+                  {brands.filter((b) => b.name.toLowerCase().includes(collabSearch.toLowerCase()) && !collabBrandIds.includes(b.id)).map((b) => (
+                    <button key={b.id} type="button"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-black/[0.04] transition-colors"
+                      onClick={() => { setCollabBrandIds((p) => [...p, b.id]); setCollabSearch(""); }}
+                    >{b.name}</button>
+                  ))}
+                  {brands.filter((b) => b.name.toLowerCase().includes(collabSearch.toLowerCase()) && !collabBrandIds.includes(b.id)).length === 0 && (
+                    <div className="px-3 py-2 text-sm text-black/40">Не найдено</div>
+                  )}
+                </div>
+              )}
+              {collabBrandIds.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {collabBrandIds.map((id) => {
+                    const b = brands.find((x) => x.id === id);
+                    return b ? (
+                      <span key={id} className="flex items-center gap-1 rounded-full bg-black text-white text-xs px-3 py-1 font-semibold">
+                        {b.name}
+                        <button type="button" className="ml-1 opacity-70 hover:opacity-100" onClick={() => setCollabBrandIds((p) => p.filter((x) => x !== id))}>✕</button>
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+              )}
+            </div>
             <select
               className={inputCls}
               value={brandSizeAudience}
@@ -1021,6 +1065,42 @@ export default function AdminProductsPage() {
                         <option value="">Бренд</option>
                         {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                       </select>
+                      {/* Collab brand picker (edit form) */}
+                      <div className="sm:col-span-2">
+                        <p className="text-xs font-semibold text-black/50 mb-1">Коллаборация брендов</p>
+                        <input
+                          className={inputCls}
+                          placeholder="Поиск бренда для коллаборации..."
+                          value={editCollabSearch}
+                          onChange={(e) => setEditCollabSearch(e.target.value)}
+                        />
+                        {editCollabSearch.trim() && (
+                          <div className="mt-1 rounded-xl border border-black/10 bg-white shadow-lg max-h-48 overflow-y-auto">
+                            {brands.filter((b) => b.name.toLowerCase().includes(editCollabSearch.toLowerCase()) && !editCollabBrandIds.includes(b.id)).map((b) => (
+                              <button key={b.id} type="button"
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-black/[0.04] transition-colors"
+                                onClick={() => { setEditCollabBrandIds((p) => [...p, b.id]); setEditCollabSearch(""); }}
+                              >{b.name}</button>
+                            ))}
+                            {brands.filter((b) => b.name.toLowerCase().includes(editCollabSearch.toLowerCase()) && !editCollabBrandIds.includes(b.id)).length === 0 && (
+                              <div className="px-3 py-2 text-sm text-black/40">Не найдено</div>
+                            )}
+                          </div>
+                        )}
+                        {editCollabBrandIds.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {editCollabBrandIds.map((id) => {
+                              const b = brands.find((x) => x.id === id);
+                              return b ? (
+                                <span key={id} className="flex items-center gap-1 rounded-full bg-black text-white text-xs px-3 py-1 font-semibold">
+                                  {b.name}
+                                  <button type="button" className="ml-1 opacity-70 hover:opacity-100" onClick={() => setEditCollabBrandIds((p) => p.filter((x) => x !== id))}>✕</button>
+                                </span>
+                              ) : null;
+                            })}
+                          </div>
+                        )}
+                      </div>
                       <select className={inputCls} value={editForm.colorId} onChange={(e) => setEditField("colorId", e.target.value)}>
                         <option value="">Цвет</option>
                         {colors.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}

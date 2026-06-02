@@ -103,6 +103,7 @@ export async function GET(
         fragranceNotes: true, sillageDescription: true,
         widthCm: true, heightCm: true, depthCm: true,
         categoryId: true, brandId: true, colorId: true, modelKey: true,
+        collabBrandIds: true,
         createdAt: true, updatedAt: true,
         Brand: { select: { id: true, name: true, slug: true, logoUrl: true, styleNotes: true } },
         Category: { select: { id: true, name: true, slug: true } },
@@ -413,7 +414,21 @@ export async function GET(
       // sizes: удобный формат для фронта (доступные размеры + цены по размерам)
       sizes,
       colorVariants,
+      collabBrands: [] as { id: number; name: string; slug: string; logoUrl: string | null }[],
     };
+
+    // Resolve collab brands
+    const collabIds: number[] = Array.isArray((pAny as any)?.collabBrandIds) ? (pAny as any).collabBrandIds : [];
+    if (collabIds.length > 0) {
+      const collabRows = await prisma.brand.findMany({
+        where: { id: { in: collabIds } },
+        select: { id: true, name: true, slug: true, logoUrl: true },
+      });
+      const collabMap = new Map(collabRows.map((b) => [b.id, b]));
+      normalized.collabBrands = collabIds
+        .map((id) => collabMap.get(id))
+        .filter(Boolean) as typeof normalized.collabBrands;
+    }
 
     // Для обратной совместимости вернём дубли в верхних полях
     return NextResponse.json(
