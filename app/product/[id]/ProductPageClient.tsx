@@ -1888,8 +1888,8 @@ const handleCancel = () => {
                 className="w-full rounded-2xl border border-gray-200 bg-white/95 backdrop-blur-sm shadow-md px-3 py-3 sm:px-5 sm:py-5 md:px-7 md:py-6 flex flex-col gap-3"
               >
                 <div className="flex items-start gap-4">
-                  <div className="w-11 h-11 rounded-full bg-green-100 flex items-center justify-center">
-                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-16 h-16 shrink-0 rounded-full bg-green-100 flex items-center justify-center">
+                    <svg className="w-9 h-9 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                         d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -2436,14 +2436,14 @@ const handleCancel = () => {
                           trackBrandClickFn(anyP.brandId, primaryBrand, anyP?.brandSlug ?? brandSlugFrom(primaryBrand), brandLogoSrc);
                         }
                       }}
-                      className="group flex items-center gap-3 rounded-xl border border-black/10 bg-white px-4 py-3 hover:border-black/25 hover:bg-black/[0.02] transition-all duration-200"
+                      className="group flex items-center gap-4 rounded-xl border border-black/10 bg-white px-5 py-4 md:py-5 min-h-[88px] hover:border-black/25 hover:bg-black/[0.02] transition-all duration-200"
                     >
                       {brandLogoSrc ? (
-                        <div className="relative shrink-0 w-14 h-8">
+                        <div className="relative shrink-0 w-20 h-10">
                           <Image src={optimizedBrandLogoSrc || brandLogoSrc} alt={primaryBrand!} fill className="object-contain" unoptimized={shouldBypassNextImageOptimization(optimizedBrandLogoSrc || brandLogoSrc)} />
                         </div>
                       ) : (
-                        <span className="shrink-0 text-xs font-bold uppercase tracking-wider text-black/60">{primaryBrand}</span>
+                        <span className="shrink-0 text-sm font-bold uppercase tracking-wider text-black/60">{primaryBrand}</span>
                       )}
                       <div className="min-w-0 flex-1">
                         <p className="text-[11px] uppercase tracking-[0.1em] text-black/40 leading-none mb-0.5">{label}</p>
@@ -2461,15 +2461,15 @@ const handleCancel = () => {
                   <button
                     type="button"
                     onClick={() => setCollabOpen((v) => !v)}
-                    className="group flex w-full items-center gap-3 rounded-xl border border-black/10 bg-white px-4 py-3 hover:border-black/25 hover:bg-black/[0.02] transition-all duration-200 text-left"
+                    className="group flex w-full items-center gap-4 rounded-xl border border-black/10 bg-white px-5 py-4 md:py-5 min-h-[88px] hover:border-black/25 hover:bg-black/[0.02] transition-all duration-200 text-left"
                   >
                     {/* Overlapping logos */}
                     <div className="flex shrink-0 items-center">
                       {allBrands.slice(0, 4).map((b, i) => (
                         <div
                           key={b.id}
-                          className="relative w-8 h-8 rounded-full border-2 border-white bg-white shadow-sm overflow-hidden"
-                          style={{ marginLeft: i === 0 ? 0 : -10, zIndex: 10 - i }}
+                          className="relative w-11 h-11 rounded-full border-2 border-white bg-white shadow-sm overflow-hidden"
+                          style={{ marginLeft: i === 0 ? 0 : -14, zIndex: 10 - i }}
                         >
                           {b.logoUrl ? (
                             <Image src={b.logoUrl} alt={b.name} fill className="object-contain p-0.5" unoptimized={shouldBypassNextImageOptimization(b.logoUrl)} />
