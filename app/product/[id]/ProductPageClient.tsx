@@ -2406,8 +2406,9 @@ const handleCancel = () => {
             })()}
             {/* ── Brand block: Больше от [Brand] + collab brands ── */}
             {(() => {
+              // rawProduct contains the unstripped API response (including collabBrands)
               const collabBrands: { id: number; name: string; slug: string; logoUrl: string | null }[] =
-                Array.isArray((product as any)?.collabBrands) ? (product as any).collabBrands : [];
+                Array.isArray((rawProduct as any)?.collabBrands) ? (rawProduct as any).collabBrands : [];
               const isCollab = collabBrands.length > 0;
               const brandHref = `/brand/${encodeURIComponent((product as any)?.brandSlug || (primaryBrand ? brandSlugFrom(primaryBrand) : ''))}`;
 
