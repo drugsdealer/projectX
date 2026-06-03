@@ -24,6 +24,7 @@ function brandSlugFrom(name: string): string {
 }
 
 const RECENT_STORAGE_KEY = "recent_products_v1";
+import { useTrackProduct, useTrackBrandClick, useTrackCartFavorite } from "@/hooks/useTrackBehavior";
 import { useParams, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -730,6 +731,26 @@ const [collabOpen, setCollabOpen] = useState(false);
 const collabRef = useRef<HTMLDivElement | null>(null);
 const { user } = useUser();
 
+// ── Behavior tracking ──
+const trackBrandClickFn = useTrackBrandClick();
+const { onAddedToCart: behaviorOnCart, onFavorited: behaviorOnFav } = useTrackCartFavorite();
+const trackInput = React.useMemo(() => {
+  if (!product?.id) return null;
+  const anyP = product as any;
+  return {
+    productId: product.id,
+    name: product.name ?? "",
+    imageUrl: anyP?.imageUrl ?? null,
+    price: typeof anyP?.price === "number" ? anyP.price : null,
+    brandId: typeof anyP?.brandId === "number" ? anyP.brandId : null,
+    brandName: anyP?.brand ?? anyP?.brandName ?? null,
+    brandSlug: anyP?.brandSlug ?? null,
+    categorySlug: anyP?.categorySlug ?? null,
+    gender: anyP?.gender ?? null,
+  };
+}, [product]);
+useTrackProduct({ product: trackInput });
+
   // Sticky header state and refs
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const titleRef = useRef<HTMLDivElement | null>(null);
@@ -1268,6 +1289,7 @@ const handleAddToCart = () => {
   if (cancelTimerRef.current) clearTimeout(cancelTimerRef.current);
 
   timerRef.current = setTimeout(() => {
+    behaviorOnCart(product.id);
     addToCart({
       id: product.id,
       productId: product.id,
@@ -1309,10 +1331,12 @@ const handleToggleFavorite = () => {
     if (exists) {
       next = next.filter((p) => String(p.id) !== String(favItem.id));
       setIsFavProduct(false);
+      behaviorOnFav(product.id, false);
       showToast({ title: "Убрано из избранного", details: favItem.name });
     } else {
       next.push(favItem);
       setIsFavProduct(true);
+      behaviorOnFav(product.id, true);
       showToast({ title: "Добавлено в избранное", details: favItem.name });
     }
     localStorage.setItem("favoriteProducts", JSON.stringify(next));
@@ -2393,6 +2417,12 @@ const handleCancel = () => {
                   {primaryBrand && (
                     <Link
                       href={brandHref}
+                      onClick={() => {
+                        const anyP = product as any;
+                        if (anyP?.brandId && primaryBrand) {
+                          trackBrandClickFn(anyP.brandId, primaryBrand, anyP?.brandSlug ?? brandSlugFrom(primaryBrand), brandLogoSrc);
+                        }
+                      }}
                       className="group flex items-center gap-3 rounded-xl border border-black/10 bg-white px-4 py-3 hover:border-black/25 hover:bg-black/[0.02] transition-all duration-200"
                     >
                       {brandLogoSrc ? (

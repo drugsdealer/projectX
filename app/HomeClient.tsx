@@ -21,6 +21,7 @@ import HomePromoRail from "@/components/home/HomePromoRail";
 import CmsPromoBlock from "@/components/home/promos/CmsPromoBlock";
 import GentleMonsterBanner from "@/components/home/promos/GentleMonsterBanner";
 import SafariBanner from "@/components/home/promos/SafariBanner";
+import { RepeatViewedSection, ForYouFeed } from "@/components/home/ForYouFeed";
 import type { HomeCmsPromoConfig, HomePromoProduct } from "@/components/home/promos/types";
 import { useMotionBudget, type MotionLevel } from "@/components/MotionBudgetProvider";
 import { getOptimizedImageUrl, shouldBypassNextImageOptimization } from "@/lib/media";
@@ -1848,6 +1849,9 @@ export default function Home() {
           </div>
         </section>
 
+        {/* ── Персонализация: "Снова смотришь" ── */}
+        <RepeatViewedSection />
+
         <div className="grid grid-cols-1 gap-6">
           {/* PRODUCTS BY CATEGORY */}
           <section className="space-y-10">
@@ -1930,6 +1934,11 @@ export default function Home() {
                             }}
                             emptyHint="Собираем персональные сигналы."
                           />
+                        </div>
+                      )}
+                      {sectionIndex === 6 && (
+                        <div className="px-3 sm:px-0">
+                          <ForYouFeed limit={12} />
                         </div>
                       )}
 

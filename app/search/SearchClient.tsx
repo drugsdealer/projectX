@@ -1330,15 +1330,6 @@ export default function SearchPage() {
                   </div>
                   <div className="mt-1 text-sm text-black/55">{loading ? 'Загрузка…' : `Найдено: ${results.length}`}</div>
                 </div>
-                <button
-                  onClick={() => {
-                    setPanelOpen(true);
-                    inputRef.current?.focus();
-                  }}
-                  className="hidden md:inline-flex h-10 px-4 rounded-full border border-black/10 hover:bg-black/[0.03] transition text-sm font-semibold shrink-0"
-                >
-                  Уточнить
-                </button>
               </div>
             </div>
 

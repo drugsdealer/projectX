@@ -279,10 +279,11 @@ export async function PATCH(
     select: PRODUCT_SELECT,
   });
 
-  // Clear ISR cache for product pages
+  // Clear ISR cache for product pages AND API route
   try {
     revalidatePath(`/product/${id}`, "page");
     revalidatePath(`/premium/product/${id}`, "page");
+    revalidatePath(`/api/products/${id}`);
   } catch {}
 
   return NextResponse.json({ success: true, product: updated });
