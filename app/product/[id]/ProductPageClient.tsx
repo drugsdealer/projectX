@@ -2439,15 +2439,15 @@ const handleCancel = () => {
                       className="group flex items-center gap-5 rounded-xl border border-black/10 bg-white px-6 py-6 md:py-7 min-h-[120px] hover:border-black/25 hover:bg-black/[0.02] transition-all duration-200"
                     >
                       {brandLogoSrc ? (
-                        <div className="relative shrink-0 w-28 h-14">
+                        <div className="relative shrink-0 w-36 h-16">
                           <Image src={optimizedBrandLogoSrc || brandLogoSrc} alt={primaryBrand!} fill className="object-contain" unoptimized={shouldBypassNextImageOptimization(optimizedBrandLogoSrc || brandLogoSrc)} />
                         </div>
                       ) : (
                         <span className="shrink-0 text-base font-bold uppercase tracking-wider text-black/60">{primaryBrand}</span>
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="text-[11px] uppercase tracking-[0.1em] text-black/40 leading-none mb-0.5">{label}</p>
-                        <p className="text-sm font-semibold text-black leading-tight">{displayText}</p>
+                        <p className="text-xs uppercase tracking-[0.12em] text-black/40 leading-none mb-1">{label}</p>
+                        <p className="text-base font-bold text-black leading-tight">{displayText}</p>
                       </div>
                       <span className="text-black/30 group-hover:text-black transition-colors text-lg leading-none">→</span>
                     </Link>
@@ -2468,8 +2468,8 @@ const handleCancel = () => {
                       {allBrands.slice(0, 4).map((b, i) => (
                         <div
                           key={b.id}
-                          className="relative w-11 h-11 rounded-full border-2 border-white bg-white shadow-sm overflow-hidden"
-                          style={{ marginLeft: i === 0 ? 0 : -14, zIndex: 10 - i }}
+                          className="relative w-14 h-14 rounded-full border-2 border-white bg-white shadow-sm overflow-hidden"
+                          style={{ marginLeft: i === 0 ? 0 : -18, zIndex: 10 - i }}
                         >
                           {b.logoUrl ? (
                             <Image src={b.logoUrl} alt={b.name} fill className="object-contain p-0.5" unoptimized={shouldBypassNextImageOptimization(b.logoUrl)} />
