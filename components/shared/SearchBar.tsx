@@ -144,11 +144,12 @@ export function SearchBar({ isTransparent = false }: Props) {
         {showDropdown && (
           <motion.div
             key="dropdown"
-            initial={{ opacity: 0, y: -8, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.97 }}
+            initial={{ y: -8, scale: 0.97 }}
+            animate={{ y: 0, scale: 1 }}
+            exit={{ y: -8, scale: 0.97 }}
             transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute left-0 top-[calc(100%+8px)] w-72 rounded-2xl border border-black/10 bg-white shadow-2xl shadow-black/8 overflow-hidden z-50"
+            className="absolute left-0 top-[calc(100%+8px)] w-72 rounded-2xl border border-black/10 shadow-2xl shadow-black/8 overflow-hidden z-50"
+            style={{ backgroundColor: '#ffffff', isolation: 'isolate' }}
           >
             {active ? (
               /* ── Live results ── */

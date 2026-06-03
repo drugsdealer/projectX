@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
@@ -56,6 +57,7 @@ const PRODUCT_SELECT = {
   colorId: true,
   modelKey: true,
   noBoxPrice: true,
+  collabBrandIds: true,
   Category: { select: { id: true, name: true } },
   Brand: { select: { id: true, name: true } },
   Color: { select: { id: true, name: true } },
@@ -276,6 +278,12 @@ export async function PATCH(
     data,
     select: PRODUCT_SELECT,
   });
+
+  // Clear ISR cache for product pages
+  try {
+    revalidatePath(`/product/${id}`, "page");
+    revalidatePath(`/premium/product/${id}`, "page");
+  } catch {}
 
   return NextResponse.json({ success: true, product: updated });
 }

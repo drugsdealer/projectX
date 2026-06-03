@@ -623,10 +623,10 @@ export default function ProductPage() {
     // Reset loading state each time productId changes so navigation never shows stale "not found"
     setLoading(true);
 
-    const fetchWithRetry = async (url: string, retries = 2): Promise<Response> => {
+    const fetchWithRetry = async (url: string, retries = 2, opts?: RequestInit): Promise<Response> => {
       for (let i = 0; i <= retries; i++) {
         try {
-          const res = await fetch(url);
+          const res = await fetch(url, opts);
           if (res.ok || res.status === 404) return res;
           if (i < retries) await new Promise(r => setTimeout(r, 200 * (i + 1)));
         } catch (e) {
@@ -640,7 +640,7 @@ export default function ProductPage() {
     (async () => {
       try {
         const [oneRes, listRes] = await Promise.all([
-          fetchWithRetry(`/api/products/${productId}?include=relations`),
+          fetchWithRetry(`/api/products/${productId}?include=relations`, 2, { cache: 'no-store' }),
           fetch(`/api/products`),
         ]);
         const oneJson = oneRes.ok ? await oneRes.json() : null;
