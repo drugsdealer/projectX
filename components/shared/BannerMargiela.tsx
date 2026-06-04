@@ -24,9 +24,9 @@ type Slide = {
 const SLIDES: Slide[] = [
   {
     id: 'maison-margiela',
-    src: 'https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.43.43.jpg?updatedAt=1779373029342',
-    alt: 'Maison Margiela новая коллекция',
-    eyebrow: 'Maison Margiela / New collection',
+    src: 'https://ik.imagekit.io/qowmy92ny/stage/products/gallery/Tabi_HeroBanner_16x9.jpg',
+    alt: 'Maison Margiela Tabi',
+    eyebrow: 'Maison Margiela / Tabi collection',
     title: 'Maison',
     mutedTitle: 'Margiela',
     text: 'Новая коллекция Maison Margiela: чистые силуэты, спокойная палитра и проверенные оригинальные позиции.',

@@ -3282,7 +3282,7 @@ export default function PremiumPage() {
       {/* Контент Premium страницы */}
       <section className="px-6 md:px-10 pb-16">
         {/* Кнопка перехода на обычный магазин */}
-        <div className="max-w-[1200px] mx-auto mb-8 flex justify-center md:justify-start">
+        <div className="max-w-[1200px] mx-auto mb-8 flex justify-center">
           <Link
             href="/"
             className="group inline-flex items-center gap-2 px-4 py-2.5 rounded-full border border-black/20 bg-white hover:bg-black hover:text-white text-black font-semibold text-sm transition-all duration-300 shadow-sm hover:shadow-lg"
@@ -3493,15 +3493,18 @@ export default function PremiumPage() {
         <motion.button
           type="button"
           onClick={() => setConciergeOpen(true)}
-          className="group fixed bottom-5 right-5 z-[60] inline-flex items-center justify-center rounded-full bg-black text-white px-5 py-2.5 font-semibold shadow-lg hover:shadow-xl"
+          className="group fixed bottom-6 right-6 z-[60] inline-flex items-center justify-center rounded-2xl bg-black text-white px-6 py-4 font-bold shadow-[0_8px_32px_rgba(0,0,0,0.28)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.38)]"
           aria-label="Открыть консьерж"
-          whileHover={{ y: -3, scale: 1.03, boxShadow: "0 12px 30px rgba(0,0,0,.25)" }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={{ y: -4, scale: 1.04 }}
+          whileTap={{ scale: 0.97 }}
           transition={{ type: "spring", stiffness: 360, damping: 20 }}
         >
-          <div className="flex items-center gap-2 text-sm">
-            <span>💬</span>
-            <span>Консьерж</span>
+          <div className="flex items-center gap-3">
+            <span className="text-xl leading-none">💬</span>
+            <div className="flex flex-col items-start">
+              <span className="text-sm font-bold leading-tight">Консьерж</span>
+              <span className="text-[11px] text-white/60 leading-tight">Найдём любой товар</span>
+            </div>
           </div>
         </motion.button>
 
@@ -4165,14 +4168,6 @@ export default function PremiumPage() {
             >
               <h3 className="text-3xl md:text-4xl font-extrabold mb-4">{LABELS[key] || String(key)}</h3>
 
-              {/* Чипы подкатегорий (Все + доступные подкатегории) - только на мобильном */}
-              <div className="md:hidden mb-4">
-                <SubcategoryChips
-                  subcategories={orderedSubs as any}
-                  active={activeSub}
-                  onChange={(sub) => setSubByMain((prev) => ({ ...prev, [key]: sub }))}
-                />
-              </div>
               {/* Показано N из M + кнопка показать ещё */}
               <div className="mt-5 mb-2 flex items-center justify-between">
                 <span className="text-sm text-gray-600">Показано <b>{visible}</b> из <b>{total}</b></span>

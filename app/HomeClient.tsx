@@ -1855,16 +1855,6 @@ export default function Home() {
         <div className="grid grid-cols-1 gap-6">
           {/* PRODUCTS BY CATEGORY */}
           <section className="space-y-10">
-            <div className="space-y-4 px-3 sm:px-0">
-              <HomePromoRail
-                promoCodes={publicPromoCodes}
-                eyebrow={promocodeSpace?.eyebrow}
-                title={promocodeSpace?.title}
-                telegramUrl={promocodeSpace?.telegramUrl}
-                telegramText={promocodeSpace?.telegramText}
-              />
-            </div>
-
             {isProductsLoading ? (
               <ProductsSkeleton />
             ) : (
