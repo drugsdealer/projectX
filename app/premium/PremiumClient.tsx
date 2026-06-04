@@ -415,6 +415,7 @@ const SwipeablePreview = React.memo(function SwipeablePreviewComponent({
 
 // Локальные подписи основных и некоторых подкатегорий, чтобы не зависеть от внешнего taxonomy
 const LABELS: Record<string, string> = {
+  // категории
   footwear: 'Обувь',
   clothes: 'Одежда',
   bags: 'Сумки',
@@ -422,26 +423,109 @@ const LABELS: Record<string, string> = {
   fragrance: 'Парфюмерия',
   headwear: 'Головные уборы',
   other: 'Другое',
-  // подкатегории
+  // обувь
   sneakers: 'Кроссовки',
+  sneaker: 'Кроссовки',
   boots: 'Ботинки',
+  boot: 'Ботинки',
   sandals: 'Сандалии',
+  sandal: 'Сандалии',
+  loafers: 'Лоферы',
+  loafer: 'Лоферы',
+  // одежда
   tshirts: 'Футболки',
+  tshirt: 'Футболки',
   hoodies: 'Худи',
+  hoodie: 'Худи',
   sweatshirts: 'Свитшоты',
+  sweatshirt: 'Свитшоты',
   pants: 'Брюки',
+  pant: 'Брюки',
+  trousers: 'Брюки',
   shorts: 'Шорты',
+  short: 'Шорты',
+  jackets: 'Куртки',
+  jacket: 'Куртки',
+  coats: 'Пальто',
+  coat: 'Пальто',
+  parkas: 'Парки',
+  parka: 'Парки',
+  cardigans: 'Кардиганы',
+  cardigan: 'Кардиганы',
+  vests: 'Жилеты',
+  vest: 'Жилеты',
+  shirts: 'Рубашки',
+  shirt: 'Рубашки',
+  polo: 'Поло',
+  suits: 'Костюмы',
+  suit: 'Костюмы',
+  dresses: 'Платья',
+  dress: 'Платья',
+  skirts: 'Юбки',
+  skirt: 'Юбки',
+  jeans: 'Джинсы',
+  jean: 'Джинсы',
+  tracksuits: 'Спортивные костюмы',
+  tracksuit: 'Спортивные костюмы',
+  outerwear: 'Верхняя одежда',
+  // украшения и аксессуары
+  jewelry: 'Украшения',
+  jewellery: 'Украшения',
   bracelets: 'Браслеты',
+  bracelet: 'Браслеты',
   necklaces: 'Подвески',
+  necklace: 'Подвески',
   rings: 'Кольца',
+  ring: 'Кольца',
   chains: 'Цепи',
+  chain: 'Цепи',
+  earrings: 'Серьги',
+  earring: 'Серьги',
   watches: 'Часы',
+  watch: 'Часы',
+  belts: 'Ремни',
+  belt: 'Ремни',
+  glasses: 'Очки',
+  sunglasses: 'Очки',
+  scarves: 'Шарфы',
+  scarf: 'Шарфы',
+  gloves: 'Перчатки',
+  socks: 'Носки',
+  keychains: 'Брелоки',
+  keychain: 'Брелоки',
+  cardholders: 'Кардхолдеры',
+  cardholder: 'Кардхолдеры',
+  wallets: 'Кошельки',
+  wallet: 'Кошельки',
+  // сумки
   tote: 'Шопперы',
+  totes: 'Шопперы',
   backpack: 'Рюкзаки',
-  crossbody: 'На плечо',
+  backpacks: 'Рюкзаки',
+  crossbody: 'Кроссбоди',
+  waistbag: 'Поясные сумки',
+  waistbags: 'Поясные сумки',
+  travelbag: 'Дорожные сумки',
+  travelbags: 'Дорожные сумки',
+  clutch: 'Клатчи',
+  clutches: 'Клатчи',
+  // парфюм
+  fragrances: 'Парфюм',
+  perfume: 'Парфюм',
+  perfumes: 'Парфюм',
   edt: 'Туалетная вода',
   edp: 'Парфюмированная вода',
   extrait: 'Экстракт',
+  niche: 'Нишевый',
+  // головные уборы
+  caps: 'Кепки',
+  cap: 'Кепки',
+  beanies: 'Шапки',
+  beanie: 'Шапки',
+  bandanas: 'Банданы',
+  bandana: 'Банданы',
+  hats: 'Шляпы',
+  hat: 'Шляпа',
 };
 
 const ORDERED_SUBS: Record<string, string[]> = {
@@ -533,6 +617,14 @@ const getProductCategoryKey = (p: any): string => {
 // Минимальный локальный компонент чипсов подкатегорий (мемоизирован)
 const SubcategoryChips: React.FC<{ subcategories: string[]; active: string | null; onChange: (sub: string | null) => void; }> = React.memo(({ subcategories, active, onChange }) => (
   <div className="flex flex-wrap gap-2">
+    <button
+      key="__all__"
+      type="button"
+      onClick={() => onChange(null)}
+      className={`px-4 py-2 rounded-full border text-sm font-semibold transition-colors ${active === null ? 'bg-black text-white border-black' : 'bg-white text-black border-black/20 hover:bg-black hover:text-white hover:border-black'}`}
+    >
+      Все
+    </button>
     {subcategories.map((sub) => (
       <button
         key={sub}
@@ -545,7 +637,7 @@ const SubcategoryChips: React.FC<{ subcategories: string[]; active: string | nul
     ))}
   </div>
 ), (prev, next) => {
-  return prev.active === next.active && 
+  return prev.active === next.active &&
          prev.subcategories.length === next.subcategories.length &&
          prev.subcategories.every((s, i) => s === next.subcategories[i]);
 });
