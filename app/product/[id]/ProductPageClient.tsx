@@ -2399,7 +2399,7 @@ const handleCancel = () => {
                 >
                   <Image src="https://ik.imagekit.io/qowmy92ny/%D0%B3%D1%80%D1%83%D0%B7%D0%BE%D0%B2%D0%B8%D0%BA.png?updatedAt=1779373447087" alt="Иконка доставки" width={36} height={36} unoptimized />
                   <p className="font-bold text-black text-sm sm:text-base">
-                    Доставка до 10 рабочих дней
+                    Доставка до 14 рабочих дней
                   </p>
                 </button>
               );
@@ -3092,7 +3092,7 @@ const handleCancel = () => {
                   <h2 className="text-lg sm:text-xl font-bold">Условия доставки Stage Store</h2>
                 </div>
                 <p className="text-gray-700 mb-6 text-sm sm:text-base text-left">
-                  Доставка осуществляется в течение <strong>5–10 рабочих дней</strong> с момента оформления заказа. В этот период включены:
+                  Доставка осуществляется в течение <strong>7–14 рабочих дней</strong> с момента оформления заказа. В этот период включены:
                 </p>
                 <ul className="text-left text-sm text-gray-700 list-disc pl-5 mb-6 space-y-2">
                   <li>Оформление и подтверждение заказа</li>
