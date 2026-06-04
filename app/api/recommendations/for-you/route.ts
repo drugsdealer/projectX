@@ -13,6 +13,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { enforceSameOrigin } from "@/lib/security";
 import { mapUiCategoryToDb } from "@/lib/catalog-taxonomy";
 
 export const runtime = "nodejs";
@@ -62,6 +63,9 @@ const PRODUCT_SELECT = {
 };
 
 export async function POST(req: Request) {
+  const csrf = enforceSameOrigin(req);
+  if (csrf) return csrf;
+
   const ip = getClientIp(req);
   const rl = await rateLimit(`recs-foryou:${ip}`, 30, 60_000);
   if (!rl.ok) return NextResponse.json({ items: [] }, { status: 429 });

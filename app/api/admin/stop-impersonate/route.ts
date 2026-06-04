@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { setSessionOnResponse } from "../../_utils/session";
+import { setSessionOnResponse, getSessionUserId } from "../../_utils/session";
 import { enforceSameOrigin } from "@/lib/security";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
@@ -18,6 +18,12 @@ export async function POST(req: Request) {
       { success: false, message: "Too many requests" },
       { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
     );
+  }
+
+  // Verify that a valid user session exists (must be logged in as the impersonated user)
+  const currentUserId = await getSessionUserId();
+  if (!currentUserId) {
+    return NextResponse.json({ success: false, message: "No active session" }, { status: 401 });
   }
 
   const jar: any = cookies() as any;

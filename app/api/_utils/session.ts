@@ -7,7 +7,9 @@ import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 const CLAIM_SECRET =
   process.env.STAGE_VAULT_SECRET ||
   process.env.NEXTAUTH_SECRET ||
-  (process.env.NODE_ENV !== 'production' ? 'dev_secret_change_me' : '');
+  (process.env.NODE_ENV === 'production'
+    ? (() => { throw new Error('STAGE_VAULT_SECRET must be set in production'); })()
+    : 'dev_secret_change_me');
 const CLAIM_TTL_SECS = 10 * 60; // 10 minutes
 
 // Normalize Next 15 async cookies() to a plain jar
