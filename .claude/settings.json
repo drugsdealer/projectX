@@ -2,8 +2,41 @@
   "permissions": {
     "allow": [
       "Bash(npx tsc:*)",
+      "Bash(npx tsc --noEmit*)",
+      "Bash(npx prisma:*)",
+      "Bash(npx next:*)",
+      "Bash(npm run lint*)",
+      "Bash(git add *)",
+      "Bash(git commit*)",
+      "Bash(git push *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
       "Bash(find /Users/papkamonterey/Downloads/java-micro-service-and-project-main -type f -name robots.ts -o -name robots.txt -o -name sitemap.ts -o -name sitemap.xml -o -name next.config.* -o -name middleware.ts)",
       "Bash(grep -r \"NEXT_PUBLIC_SITE_URL\" /Users/papkamonterey/Downloads/java-micro-service-and-project-main/.env*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=\"${CLAUDE_TOOL_INPUT_FILE_PATH:-}\"; if [[ \"$FILE\" == *.ts || \"$FILE\" == *.tsx ]]; then cd /Users/papkamonterey/Downloads/java-micro-service-and-project-main && ERRORS=$(npx tsc --noEmit 2>&1 | grep 'error TS' | head -5); if [ -n \"$ERRORS\" ]; then echo \"TypeScript errors: $ERRORS\"; fi; fi"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/papkamonterey/Downloads/java-micro-service-and-project-main && STATUS=$(git status --short 2>/dev/null | head -10); if [ -n \"$STATUS\" ]; then COUNT=$(git status --short 2>/dev/null | wc -l | tr -d ' '); echo \"UNCOMMITTED ($COUNT files): $STATUS --- Remember: git add + commit + push to deploy on stagestore.app\"; fi"
+          }
+        ]
+      }
     ]
   }
 }
