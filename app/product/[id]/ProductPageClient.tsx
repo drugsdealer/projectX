@@ -2232,22 +2232,28 @@ const handleCancel = () => {
 
                     // ---------- СУМКИ ----------
                     if (product.category === 'bags') {
-                      const outer = anyProduct.outerMaterial ?? anyProduct.material ?? 'натуральная или эко-кожа';
-                      const inner = anyProduct.innerMaterial ?? 'плотная подкладка из текстиля';
-                      const format = anyProduct.bagType ?? 'повседневная сумка';
+                      const outer = anyProduct.outerMaterial ?? anyProduct.material ?? null;
+                      const inner = anyProduct.innerMaterial ?? null;
+                      const format = anyProduct.bagType ?? null;
                       const dims = anyProduct.dimensions;
 
                       return (
                         <>
-                          <p>
-                            <strong>• Формат:</strong> {format}
-                          </p>
-                          <p>
-                            <strong>• Внешний материал:</strong> {outer}
-                          </p>
-                          <p>
-                            <strong>• Внутренняя отделка:</strong> {inner}
-                          </p>
+                          {format && (
+                            <p>
+                              <strong>• Формат:</strong> {format}
+                            </p>
+                          )}
+                          {outer && (
+                            <p>
+                              <strong>• Внешний материал:</strong> {outer}
+                            </p>
+                          )}
+                          {inner && (
+                            <p>
+                              <strong>• Внутренняя отделка:</strong> {inner}
+                            </p>
+                          )}
                           {dims && typeof dims === 'object' && (
                             <p>
                               <strong>• Габариты:</strong>{' '}
@@ -2293,26 +2299,15 @@ const handleCancel = () => {
                     }
 
                     // ---------- ОДЕЖДА / ОБУВЬ / ДРУГОЕ ----------
-                    const material =
-                      anyProduct.material ?? 'натуральная кожа / премиум текстиль';
-                    const comfort =
-                      anyProduct.features ??
-                      'лёгкость, хорошая посадка и комфорт на каждый день';
-                    const styleNotes =
-                      anyProduct.styleNotes ??
-                      'минималистичный дизайн, который просто сочетать с базовым гардеробом';
+                    const material = anyProduct.material ?? null;
+                    const comfort = anyProduct.features ?? null;
+                    const styleNotes = anyProduct.styleNotes ?? null;
 
                     return (
                       <>
-                        <p>
-                          <strong>• Материалы:</strong> {material}
-                        </p>
-                        <p>
-                          <strong>• Комфорт:</strong> {comfort}
-                        </p>
-                        <p>
-                          <strong>• Дизайн:</strong> {styleNotes}
-                        </p>
+                        {material && <p><strong>• Материалы:</strong> {material}</p>}
+                        {comfort && <p><strong>• Комфорт:</strong> {comfort}</p>}
+                        {styleNotes && <p><strong>• Дизайн:</strong> {styleNotes}</p>}
                       </>
                     );
                   })()}
