@@ -25,6 +25,7 @@ function brandSlugFrom(name: string): string {
 
 const RECENT_STORAGE_KEY = "recent_products_v1";
 import { useTrackProduct, useTrackBrandClick, useTrackCartFavorite } from "@/hooks/useTrackBehavior";
+import { PremiumConcierge } from "@/components/PremiumConcierge";
 import { useParams, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -729,6 +730,7 @@ const optimizedBrandLogoSrc = React.useMemo(
 const [isFavProduct, setIsFavProduct] = useState(false);
 const [collabOpen, setCollabOpen] = useState(false);
 const collabRef = useRef<HTMLDivElement | null>(null);
+const [conciergeOpen, setConciergeOpen] = useState(false);
 const { user } = useUser();
 
 // ── Behavior tracking ──
@@ -1878,54 +1880,8 @@ const handleCancel = () => {
                 </div>
               )
             )}
-            {/* Concierge CTA — desktop left column */}
-            <div className="hidden lg:block w-full mt-6 px-2">
-              <motion.button
-                type="button"
-                onClick={() => {
-                  try { window.dispatchEvent(new CustomEvent("open-concierge")); } catch {}
-                  window.open("https://t.me/i_like_drugs", "_blank");
-                }}
-                className="group relative w-full overflow-hidden rounded-2xl bg-[#0c0c0c] text-white px-6 py-5 text-left"
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5 }}
-                whileHover="hover"
-              >
-                {/* Animated shimmer */}
-                <motion.div
-                  className="pointer-events-none absolute inset-0"
-                  variants={{
-                    hover: { background: "linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.06) 50%, transparent 70%)", backgroundSize: "200% 100%", backgroundPositionX: "200%" },
-                  }}
-                  animate={{ backgroundPositionX: ["200%", "-200%"] }}
-                  transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
-                  style={{ background: "linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.04) 50%, transparent 70%)", backgroundSize: "200% 100%" }}
-                />
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-lg">💬</span>
-                      <span className="text-sm font-bold tracking-tight">Консьерж-поиск</span>
-                    </div>
-                    <p className="text-xs text-white/55 leading-snug max-w-[220px]">
-                      Не нашли нужный размер или цвет? Найдём под ваш запрос.
-                    </p>
-                  </div>
-                  <motion.div
-                    className="shrink-0 w-9 h-9 rounded-full border border-white/20 flex items-center justify-center text-white/60 group-hover:border-white/50 group-hover:text-white transition-colors"
-                    variants={{ hover: { x: 3 } }}
-                    transition={{ type: "spring", stiffness: 400, damping: 20 }}
-                  >
-                    →
-                  </motion.div>
-                </div>
-              </motion.button>
-            </div>
-
             {/* Trust Block — под слайдером (desktop) */}
-            <div className="hidden lg:block w-full mt-6 mb-10 px-2">
+            <div className="hidden lg:block w-full mt-10 mb-10 px-2">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -2007,7 +1963,52 @@ const handleCancel = () => {
                 </div>
               </motion.div>
             </div>
+
+            {/* Concierge CTA — ПОСЛЕ блока гарантий */}
+            <div className="hidden lg:block w-full px-2 mb-10">
+              <motion.button
+                type="button"
+                onClick={() => setConciergeOpen(true)}
+                className="group relative w-full overflow-hidden rounded-2xl bg-[#0c0c0c] text-white px-6 py-5 text-left"
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.45 }}
+                whileHover="hover"
+              >
+                {/* Shimmer sweep */}
+                <motion.div
+                  className="pointer-events-none absolute inset-0"
+                  style={{ background: "linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.05) 50%, transparent 65%)", backgroundSize: "200% 100%" }}
+                  animate={{ backgroundPositionX: ["200%", "-200%"] }}
+                  transition={{ duration: 2.8, repeat: Infinity, ease: "linear" }}
+                />
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-lg">💬</span>
+                      <span className="text-sm font-bold tracking-tight">Консьерж-поиск</span>
+                    </div>
+                    <p className="text-xs text-white/55 leading-snug max-w-[240px]">
+                      Не нашли нужный размер или цвет? Оставьте заявку — найдём под ваш запрос.
+                    </p>
+                  </div>
+                  <motion.div
+                    className="shrink-0 w-9 h-9 rounded-full border border-white/20 flex items-center justify-center text-white/60 group-hover:border-white/50 group-hover:text-white transition-colors"
+                    variants={{ hover: { x: 3 } }}
+                    transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                  >
+                    →
+                  </motion.div>
+                </div>
+              </motion.button>
+            </div>
+
           </motion.div>
+
+          {/* Concierge modal */}
+          <PremiumConcierge open={conciergeOpen} setOpen={setConciergeOpen} />
+
           <motion.div
             className="lg:sticky lg:top-8 space-y-8"
             initial={{ opacity: 0, y: 40 }}
