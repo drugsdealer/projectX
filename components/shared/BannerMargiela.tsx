@@ -96,17 +96,9 @@ function SlideBackground({ slide, priority }: { slide: Slide; priority: boolean 
           loop
           playsInline
           preload="auto"
-          className="absolute inset-0 h-full w-full object-cover object-center opacity-90"
+          className="absolute inset-0 h-full w-full object-cover object-center"
         />
-        <div
-          className="absolute inset-0"
-          style={{
-            background: isRight
-              ? 'linear-gradient(270deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.45) 40%, rgba(0,0,0,0.08) 70%, rgba(0,0,0,0.20) 100%)'
-              : 'linear-gradient(90deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.45) 40%, rgba(0,0,0,0.08) 70%, rgba(0,0,0,0.20) 100%)',
-          }}
-        />
-        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/80 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/60 to-transparent" />
       </>
     );
   }
@@ -119,18 +111,10 @@ function SlideBackground({ slide, priority }: { slide: Slide; priority: boolean 
         fill
         priority={priority}
         sizes="100vw"
-        className="object-cover object-center opacity-88"
+        className="object-cover object-center"
         unoptimized
       />
-      <div
-        className="absolute inset-0"
-        style={{
-          background: isRight
-            ? 'radial-gradient(circle at 28% 42%, rgba(255,255,255,0.06), transparent 28%), linear-gradient(270deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.52) 38%, rgba(0,0,0,0.08) 72%, rgba(0,0,0,0.24) 100%)'
-            : 'radial-gradient(circle at 72% 42%, rgba(255,255,255,0.06), transparent 28%), linear-gradient(90deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.52) 38%, rgba(0,0,0,0.08) 72%, rgba(0,0,0,0.24) 100%)',
-        }}
-      />
-      <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/82 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/60 to-transparent" />
     </>
   );
 }

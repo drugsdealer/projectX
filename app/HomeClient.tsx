@@ -1758,14 +1758,23 @@ export default function Home() {
                 HOME_GATEWAYS[0].className,
               ].join(" ")}
             >
+              {/* Background photo */}
+              <Image
+                src="https://ik.imagekit.io/qowmy92ny/stage/products/gallery/2026-06-05%2017.18.55.jpg"
+                alt=""
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover opacity-30 transition duration-500 group-hover:opacity-40 group-hover:scale-105"
+                unoptimized
+              />
               <div className="absolute right-[-42px] top-[-42px] h-28 w-28 rounded-full border border-current opacity-15 transition duration-500 group-hover:scale-125" />
-              <h3 className="mt-4 sm:mt-8 max-w-sm text-xl sm:text-4xl font-black leading-none tracking-[-0.05em]">
+              <h3 className="mt-4 sm:mt-8 max-w-sm text-xl sm:text-4xl font-black leading-none tracking-[-0.05em] relative">
                 {HOME_GATEWAYS[0].title}
               </h3>
-              <p className="mt-2 sm:mt-4 max-w-md text-xs sm:text-sm leading-5 sm:leading-6 opacity-65 line-clamp-2 sm:line-clamp-none">
+              <p className="mt-2 sm:mt-4 max-w-md text-xs sm:text-sm leading-5 sm:leading-6 opacity-65 line-clamp-2 sm:line-clamp-none relative">
                 {HOME_GATEWAYS[0].text}
               </p>
-              <span className="mt-4 sm:mt-8 inline-flex rounded-full border border-current px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.16em] opacity-80 transition group-hover:opacity-100">
+              <span className="mt-4 sm:mt-8 inline-flex rounded-full border border-current px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.16em] opacity-80 transition group-hover:opacity-100 relative">
                 {HOME_GATEWAYS[0].cta}
               </span>
             </Link>
