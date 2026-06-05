@@ -58,6 +58,7 @@ const PRODUCT_SELECT = {
   modelKey: true,
   noBoxPrice: true,
   collabBrandIds: true,
+  customFeatures: true,
   Category: { select: { id: true, name: true } },
   Brand: { select: { id: true, name: true } },
   Color: { select: { id: true, name: true } },
@@ -262,6 +263,12 @@ export async function PATCH(
   }
   if (body?.subcategory !== undefined) {
     data.subcategory = body.subcategory ? String(body.subcategory).trim().toLowerCase() : null;
+  }
+  if (body?.customFeatures !== undefined) {
+    data.customFeatures = Array.isArray(body.customFeatures)
+      ? body.customFeatures.filter((f: any) => f && (String(f.label || "").trim() || String(f.value || "").trim()))
+          .map((f: any) => ({ label: String(f.label || "").trim(), value: String(f.value || "").trim() }))
+      : [];
   }
   if (body?.collabBrandIds !== undefined) {
     data.collabBrandIds = Array.isArray(body.collabBrandIds)

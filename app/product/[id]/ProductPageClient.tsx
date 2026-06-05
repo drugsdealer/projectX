@@ -2317,6 +2317,19 @@ const handleCancel = () => {
                     );
                   })()}
 
+                  {/* Кастомные характеристики из админки */}
+                  {(() => {
+                    const cf: {label: string; value: string}[] = Array.isArray((rawProduct as any)?.customFeatures)
+                      ? (rawProduct as any).customFeatures
+                      : [];
+                    if (!cf.length) return null;
+                    return cf.map((f, i) => (
+                      <p key={i}>
+                        <strong>• {f.label}:</strong> {f.value}
+                      </p>
+                    ));
+                  })()}
+
                   {product.article && (
                     <p className="mt-2">
                       <strong>• Артикул:</strong> {product.article}

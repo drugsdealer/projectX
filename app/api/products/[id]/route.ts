@@ -104,6 +104,7 @@ export async function GET(
         widthCm: true, heightCm: true, depthCm: true,
         categoryId: true, brandId: true, colorId: true, modelKey: true,
         collabBrandIds: true,
+        customFeatures: true,
         createdAt: true, updatedAt: true,
         Brand: { select: { id: true, name: true, slug: true, logoUrl: true, styleNotes: true } },
         Category: { select: { id: true, name: true, slug: true } },
@@ -414,6 +415,7 @@ export async function GET(
       // sizes: удобный формат для фронта (доступные размеры + цены по размерам)
       sizes,
       colorVariants,
+      customFeatures: Array.isArray((pAny as any)?.customFeatures) ? (pAny as any).customFeatures : [],
       collabBrands: [] as { id: number; name: string; slug: string; logoUrl: string | null }[],
     };
 

@@ -248,6 +248,7 @@ model Product {
   stock       Int?
   subcategory String?
   collabBrandIds Int[]     @default([])
+  customFeatures Json?                       // [{label: string, value: string}]
   deletedAt   DateTime?     @db.Timestamp(6)
   OrderItem   OrderItem[]
   FavoriteProduct FavoriteProduct[]

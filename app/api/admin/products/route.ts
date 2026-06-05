@@ -43,6 +43,10 @@ export async function POST(req: Request) {
     const collabBrandIds = Array.isArray(body?.collabBrandIds)
       ? body.collabBrandIds.map(Number).filter((n: number) => Number.isFinite(n) && n > 0)
       : [];
+    const customFeatures = Array.isArray(body?.customFeatures)
+      ? body.customFeatures.filter((f: any) => f && (String(f.label || "").trim() || String(f.value || "").trim()))
+          .map((f: any) => ({ label: String(f.label || "").trim(), value: String(f.value || "").trim() }))
+      : [];
 
     const parsePrice = (val: any) => {
       const num = Number(val);
@@ -153,6 +157,7 @@ export async function POST(req: Request) {
         heightCm: Number.isFinite(heightCm) && heightCm > 0 ? heightCm : null,
         depthCm: Number.isFinite(depthCm) && depthCm > 0 ? depthCm : null,
         collabBrandIds,
+        customFeatures,
         Category: { connect: { id: categoryId } },
         ...(brandId ? { Brand: { connect: { id: brandId } } } : {}),
         ...(colorId ? { Color: { connect: { id: colorId } } } : {}),
@@ -245,6 +250,7 @@ export async function GET(req: Request) {
       heightCm: true,
       depthCm: true,
       collabBrandIds: true,
+      customFeatures: true,
       categoryId: true,
       brandId: true,
       colorId: true,
