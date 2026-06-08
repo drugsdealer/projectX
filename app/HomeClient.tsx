@@ -21,6 +21,7 @@ import HomePromoRail from "@/components/home/HomePromoRail";
 import CmsPromoBlock from "@/components/home/promos/CmsPromoBlock";
 import GentleMonsterBanner from "@/components/home/promos/GentleMonsterBanner";
 import SafariBanner from "@/components/home/promos/SafariBanner";
+import StoneIslandBanner from "@/components/promos/StoneIslandBanner";
 import { RepeatViewedSection, ForYouFeed } from "@/components/home/ForYouFeed";
 import type { HomeCmsPromoConfig, HomePromoProduct } from "@/components/home/promos/types";
 import { useMotionBudget, type MotionLevel } from "@/components/MotionBudgetProvider";
@@ -1917,6 +1918,11 @@ export default function Home() {
                       {sectionIndex === 2 && (
                         <div className="px-3 sm:px-0">
                           <SafariBanner />
+                        </div>
+                      )}
+                      {sectionIndex === 3 && (
+                        <div className="w-full">
+                          <StoneIslandBanner />
                         </div>
                       )}
                       {sectionIndex === 4 && (
