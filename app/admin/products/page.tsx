@@ -150,6 +150,7 @@ export default function AdminProductsPage() {
   const [sizeCls, setSizeCls] = useState<SizeCl[]>([]);
   const [colors, setColors] = useState<Color[]>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [productSearch, setProductSearch] = useState("");
   const [subcategoriesEnabled, setSubcategoriesEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
@@ -217,7 +218,7 @@ export default function AdminProductsPage() {
     try {
       const [catalogRes, productsRes] = await Promise.all([
         fetch("/api/admin/catalog", { cache: "no-store" }),
-        fetch("/api/admin/products?take=80", { cache: "no-store" }),
+        fetch("/api/admin/products?take=200", { cache: "no-store" }),
       ]);
       const catalogData = await authGuardOrData(catalogRes);
       if (catalogRes.ok && catalogData?.success) {
@@ -644,6 +645,27 @@ export default function AdminProductsPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // Поиск товаров по названию, бренду, артикулу, категории/подкатегории
+  const filteredProducts = useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p: any) => {
+      const haystack = [
+        p.name,
+        p.Brand?.name,
+        p.Category?.name,
+        p.subcategory,
+        p.article,
+        p.modelKey,
+        p.id != null ? String(p.id) : "",
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [products, productSearch]);
+
   // Уникальные modelKey из всех товаров — для автокомплита
   const modelKeySuggestions = Array.from(
     new Set(products.map((p: any) => p.modelKey).filter(Boolean))
@@ -1002,13 +1024,36 @@ export default function AdminProductsPage() {
 
       {/* Product list */}
       <section>
-        <h2 className="text-lg font-semibold">Товары</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Товары</h2>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              placeholder="Поиск по названию, бренду, артикулу, категории..."
+              className={`${inputCls} sm:w-80`}
+            />
+            {productSearch && (
+              <button onClick={() => setProductSearch("")} className={btnSecondary}>
+                Сбросить
+              </button>
+            )}
+          </div>
+        </div>
+        {productSearch && (
+          <div className="mt-2 text-xs text-black/50">
+            Найдено: {filteredProducts.length} из {products.length}
+          </div>
+        )}
         {msg && editingId !== null && <div className="mt-2 text-sm">{msg}</div>}
         <div className="mt-4 grid gap-3">
-          {products.length === 0 ? (
-            <div className="text-sm text-black/60">Нет товаров для отображения.</div>
+          {filteredProducts.length === 0 ? (
+            <div className="text-sm text-black/60">
+              {productSearch ? "Ничего не найдено по вашему запросу." : "Нет товаров для отображения."}
+            </div>
           ) : (
-            products.map((p) => (
+            filteredProducts.map((p) => (
               <div key={p.id}>
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-black/10 p-4">
                   <div className="flex items-center gap-3">
