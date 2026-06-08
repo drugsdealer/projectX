@@ -610,6 +610,40 @@ export default function AdminProductsPage() {
     } catch (e: any) { setMsg(e?.message || "Ошибка удаления"); }
   };
 
+  // Дублировать товар — заполнить форму создания данными существующего товара
+  const duplicateProduct = (p: any) => {
+    setMsg(null);
+    setName(p.name ? `${p.name} (копия)` : "");
+    setPrice(p.price != null ? String(p.price) : "");
+    setImageUrl(p.imageUrl || "");
+    setGalleryText(Array.isArray(p.images) ? p.images.join("\n") : "");
+    setCategoryId(p.categoryId ? String(p.categoryId) : "");
+    setSubcategoryId("");
+    setSubcategorySlug(p.subcategory || "");
+    setBrandId(p.brandId ? String(p.brandId) : "");
+    setColorId(p.colorId ? String(p.colorId) : "");
+    setGender(p.gender || "");
+    setDescription(p.description || "");
+    setPremium(Boolean(p.premium));
+    setBadge(p.badge || "");
+    setMaterial(p.material || "");
+    setFeatures(p.features || "");
+    setStyleNotes(p.styleNotes || "");
+    setWidthCm(p.widthCm != null ? String(p.widthCm) : "");
+    setHeightCm(p.heightCm != null ? String(p.heightCm) : "");
+    setDepthCm(p.depthCm != null ? String(p.depthCm) : "");
+    setArticle(p.article || "");
+    setModelKey("");
+    setNoBoxPrice("");
+    setCollabBrandIds(Array.isArray(p.collabBrandIds) ? p.collabBrandIds : []);
+    setCustomFeatures(Array.isArray(p.customFeatures) ? p.customFeatures.map((f: any) => ({ label: f?.label || "", value: f?.value || "" })) : []);
+    setSizeType("NONE");
+    setShoeGroups([newGroup()]);
+    setClothGroups([newGroup()]);
+    setMsg("Данные товара скопированы в форму добавления выше — поменяйте название, цену, фото и размеры");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   // Уникальные modelKey из всех товаров — для автокомплита
   const modelKeySuggestions = Array.from(
     new Set(products.map((p: any) => p.modelKey).filter(Boolean))
@@ -1010,6 +1044,9 @@ export default function AdminProductsPage() {
                       className="text-xs text-black/70 hover:text-black transition"
                     >
                       {editingId === p.id ? "Отмена" : "Редактировать"}
+                    </button>
+                    <button onClick={() => duplicateProduct(p)} className="text-xs text-black/70 hover:text-black transition">
+                      Дублировать
                     </button>
                     <button onClick={() => removeProduct(p.id)} className="text-xs text-red-600 hover:text-red-800 transition">
                       Удалить
