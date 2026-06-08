@@ -67,8 +67,8 @@ export function SiteFooter() {
             <NewsletterForm
               source="footer"
               variant="dark"
-              title="Новинки первыми"
-              subtitle="Подпишитесь и узнавайте о новых дропах, акциях и эксклюзивных предложениях раньше всех."
+              title="Дропы — первыми"
+              subtitle="Подпишитесь и получайте уведомления о Premium-новинках и закрытых акциях раньше всех."
             />
             <div className="hidden sm:flex flex-col gap-3 text-white/30 text-xs">
               <span className="whitespace-nowrap">✦ Только важное</span>

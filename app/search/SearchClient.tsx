@@ -142,6 +142,22 @@ const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string; obj
     gradient: 'from-emerald-600 to-teal-800',
     objectFit: 'contain' as const,
   },
+  футболки: {
+    image: 'https://ik.imagekit.io/qowmy92ny/pngwing.com%20(15).png',
+    gradient: 'from-slate-700 to-slate-900',
+  },
+  куртки: {
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-06-08%2012.09.18.png',
+    gradient: 'from-slate-700 to-slate-900',
+  },
+  кепки: {
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-06-08%2012.11.44.png',
+    gradient: 'from-stone-600 to-stone-900',
+  },
+  подвески: {
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-06-08%2012.11.57.jpg',
+    gradient: 'from-yellow-400 to-amber-600',
+  },
 };
 
 function getSubcategoryVisual(prettyName: string) {
@@ -316,7 +332,8 @@ function prettySubcategory(raw: string) {
     rings: 'Кольца',
     earring: 'Серьги',
     earrings: 'Серьги',
-    necklace: 'Колье',
+    necklace: 'Подвески',
+    necklaces: 'Подвески',
     bracelet: 'Браслеты',
     bracelets: 'Браслеты',
     watch: 'Часы',

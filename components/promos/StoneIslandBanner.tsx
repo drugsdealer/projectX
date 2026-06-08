@@ -22,7 +22,7 @@ function CompassBadge({ size = 48, color = "#fff", opacity = 1 }) {
 }
 
 const BANNER = "https://ik.imagekit.io/qowmy92ny/53faf8c56abbe89ac97550a20101dc00%20(2).jpg";
-const LOGO = "https://ik.imagekit.io/qowmy92ny/stage/brands/stone-island-logo.png";
+const LOGO = "https://ik.imagekit.io/qowmy92ny/pngwing.com%20(15).png";
 
 export default function StoneIslandBanner() {
   const [loaded, setLoaded] = useState(false);
