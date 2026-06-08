@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // Компас Stone Island
 function CompassBadge({ size = 48, color = "#fff", opacity = 1 }) {
@@ -21,16 +21,31 @@ function CompassBadge({ size = 48, color = "#fff", opacity = 1 }) {
   );
 }
 
-const BANNER = "https://ik.imagekit.io/qowmy92ny/stage/banners/stone-island-aw.jpg";
+const BANNER = "https://ik.imagekit.io/qowmy92ny/53faf8c56abbe89ac97550a20101dc00%20(2).jpg";
 const LOGO = "https://ik.imagekit.io/qowmy92ny/stage/brands/stone-island-logo.png";
 
 export default function StoneIslandBanner() {
   const [loaded, setLoaded] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ x: number; y: number; px: number; py: number } | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setLoaded(true), 100);
     return () => clearTimeout(t);
   }, []);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = wrapRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setCoords({
+      x,
+      y,
+      px: Math.round((x / rect.width) * 100),
+      py: Math.round((y / rect.height) * 100),
+    });
+  };
 
   return (
     <>
@@ -160,9 +175,67 @@ export default function StoneIslandBanner() {
           border-color: rgba(240,236,227,1);
           color: #fff;
         }
+
+        /* координатный crosshair */
+        .si-crosshair-x,
+        .si-crosshair-y {
+          position: absolute;
+          background: rgba(255,255,255,0.35);
+          pointer-events: none;
+          z-index: 5;
+        }
+        .si-crosshair-x { left: 0; right: 0; height: 1px; }
+        .si-crosshair-y { top: 0; bottom: 0; width: 1px; }
+
+        .si-coord-label {
+          position: absolute;
+          font-family: 'Space Mono', monospace;
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.12em;
+          color: rgba(255,255,255,0.85);
+          background: rgba(0,0,0,0.45);
+          backdrop-filter: blur(2px);
+          padding: 3px 7px;
+          border: 1px solid rgba(255,255,255,0.25);
+          pointer-events: none;
+          z-index: 6;
+          white-space: nowrap;
+          transform: translate(10px, 10px);
+        }
+
+        .si-coord-tick {
+          position: absolute;
+          font-family: 'Space Mono', monospace;
+          font-size: 8px;
+          letter-spacing: 0.1em;
+          color: rgba(255,255,255,0.55);
+          pointer-events: none;
+          z-index: 6;
+        }
       `}</style>
 
-      <div className="si-wrap">
+      <div
+        className="si-wrap"
+        ref={wrapRef}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setCoords(null)}
+      >
+        {coords && (
+          <>
+            <div className="si-crosshair-x" style={{ top: coords.y }} />
+            <div className="si-crosshair-y" style={{ left: coords.x }} />
+            <div className="si-coord-tick" style={{ top: coords.y, left: 8, transform: "translateY(-100%)" }}>
+              Y {coords.py}%
+            </div>
+            <div className="si-coord-tick" style={{ left: coords.x, top: 8, transform: "translateX(-100%)" }}>
+              X {coords.px}%
+            </div>
+            <div className="si-coord-label" style={{ left: coords.x, top: coords.y }}>
+              X {coords.px} · Y {coords.py}
+            </div>
+          </>
+        )}
         <img
           className="si-img"
           src={BANNER}
