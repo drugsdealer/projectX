@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { setSessionOnResponse, getSessionUserId } from "../../_utils/session";
 import { enforceSameOrigin } from "@/lib/security";
+import { verifyImpersonatorCookie } from "@/lib/admin";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
@@ -29,9 +30,9 @@ export async function POST(req: Request) {
   const jar: any = cookies() as any;
   const c = typeof jar?.then === "function" ? await jar : jar;
   const adminIdRaw = c.get("admin_impersonator")?.value || null;
-  const adminId = Number(adminIdRaw);
+  const adminId = adminIdRaw ? verifyImpersonatorCookie(adminIdRaw) : null;
 
-  if (!adminIdRaw || !Number.isFinite(adminId)) {
+  if (!adminId) {
     return NextResponse.json({ success: false, message: "Not impersonating" }, { status: 400 });
   }
 

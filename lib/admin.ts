@@ -43,6 +43,34 @@ export function verify2FACookie(value: string, userId: number): boolean {
   }
 }
 
+// Signed cookie identifying which admin is impersonating a user (prevents forging the cookie value)
+export function signImpersonatorCookie(adminId: number): string {
+  const payload = `imp:${adminId}:${Math.floor(Date.now() / 1000)}`;
+  const sig = createHmac("sha256", ADMIN_2FA_SECRET).update(payload).digest("hex");
+  return `${payload}.${sig}`;
+}
+
+export function verifyImpersonatorCookie(value: string): number | null {
+  const dot = value.lastIndexOf(".");
+  if (dot < 0) return null;
+  const payload = value.slice(0, dot);
+  const sig = value.slice(dot + 1);
+  const parts = payload.split(":");
+  if (parts[0] !== "imp") return null;
+  const adminId = Number(parts[1]);
+  const ts = Number(parts[2]);
+  if (!Number.isFinite(adminId) || !Number.isFinite(ts)) return null;
+  // Impersonation cookie expires after 24 hours (matches cookie maxAge)
+  if (Math.floor(Date.now() / 1000) - ts > 24 * 60 * 60) return null;
+  const expected = createHmac("sha256", ADMIN_2FA_SECRET).update(payload).digest("hex");
+  try {
+    if (!timingSafeEqual(Buffer.from(sig, "hex"), Buffer.from(expected, "hex"))) return null;
+  } catch {
+    return null;
+  }
+  return adminId;
+}
+
 export type AdminUser = {
   id: number;
   email: string;

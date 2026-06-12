@@ -5,6 +5,7 @@ import { timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getUserIdFromRequest } from "@/lib/session";
 import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   try {
@@ -12,6 +13,15 @@ export async function POST(req: Request) {
     if (csrfBlocked) return csrfBlocked;
     const jsonBlocked = requireJsonRequest(req);
     if (jsonBlocked) return jsonBlocked;
+
+    const ip = getClientIp(req);
+    const rl = await rateLimit(`password-reset-validate:${ip}`, 10, 60_000);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { success: false, message: "Слишком много попыток. Попробуйте позже." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+      );
+    }
 
     const userId = await getUserIdFromRequest();
     if (!userId) {

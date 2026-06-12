@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
-import { requireAdminApi } from "@/lib/admin";
+import { requireAdminApi, signImpersonatorCookie } from "@/lib/admin";
 import { setSessionOnResponse } from "../../_utils/session";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
 
   const res = NextResponse.json({ success: true });
   setSessionOnResponse(res, target.id);
-  res.cookies.set("admin_impersonator", String(admin.id), {
+  res.cookies.set("admin_impersonator", signImpersonatorCookie(admin.id), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
