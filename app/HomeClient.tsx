@@ -23,6 +23,7 @@ import GentleMonsterBanner from "@/components/home/promos/GentleMonsterBanner";
 import SafariBanner from "@/components/home/promos/SafariBanner";
 import StoneIslandBanner from "@/components/promos/StoneIslandBanner";
 import { RepeatViewedSection, ForYouFeed } from "@/components/home/ForYouFeed";
+import BrandSpotlightCard from "@/components/home/BrandSpotlightCard";
 import type { HomeCmsPromoConfig, HomePromoProduct } from "@/components/home/promos/types";
 import { useMotionBudget, type MotionLevel } from "@/components/MotionBudgetProvider";
 import { getOptimizedImageUrl, shouldBypassNextImageOptimization } from "@/lib/media";
@@ -1939,6 +1940,11 @@ export default function Home() {
                             }}
                             emptyHint="Собираем персональные сигналы."
                           />
+                        </div>
+                      )}
+                      {sectionIndex === 5 && (
+                        <div className="px-3 sm:px-0">
+                          <BrandSpotlightCard />
                         </div>
                       )}
                       {sectionIndex === 6 && (
