@@ -52,6 +52,11 @@ type EditForm = {
   heightCm: string;
   depthCm: string;
   article: string;
+  fragranceTop: string;
+  fragranceMiddle: string;
+  fragranceBase: string;
+  fragranceSillage: string;
+  fragranceVolume: string;
 };
 
 const SUBCATEGORY_OPTIONS: { slug: string; label: string }[] = [
@@ -105,8 +110,19 @@ const SUBCATEGORY_OPTIONS: { slug: string; label: string }[] = [
   { slug: 'caps', label: 'Кепки' },
   { slug: 'beanies', label: 'Шапки' },
   { slug: 'hats', label: 'Панамы/Шляпы' },
-  { slug: 'fragrances', label: 'Парфюмерия' },
+  { slug: 'fragrances', label: 'Парфюмерия (общее)' },
+  { slug: 'parfum', label: 'Духи (Extrait de Parfum)' },
+  { slug: 'eau-de-parfum', label: 'Парфюмерная вода' },
+  { slug: 'eau-de-toilette', label: 'Туалетная вода' },
+  { slug: 'eau-de-cologne', label: 'Одеколон' },
+  { slug: 'body-mist', label: 'Дымка / Мист' },
+  { slug: 'aftershave', label: 'Лосьон после бритья' },
 ];
+
+const FRAGRANCE_SLUGS = new Set([
+  'fragrances', 'parfum', 'eau-de-parfum', 'eau-de-toilette',
+  'eau-de-cologne', 'body-mist', 'aftershave',
+]);
 
 const emptyEditForm = (): EditForm => ({
   name: "",
@@ -132,6 +148,11 @@ const emptyEditForm = (): EditForm => ({
   heightCm: "",
   depthCm: "",
   article: "",
+  fragranceTop: "",
+  fragranceMiddle: "",
+  fragranceBase: "",
+  fragranceSillage: "",
+  fragranceVolume: "",
 });
 
 const newGroup = (): SizeGroup => ({
@@ -191,6 +212,12 @@ export default function AdminProductsPage() {
   const [article, setArticle] = useState("");
   const [modelKey, setModelKey] = useState("");
   const [noBoxPrice, setNoBoxPrice] = useState("");
+  const [fragranceTop, setFragranceTop] = useState("");
+  const [fragranceMiddle, setFragranceMiddle] = useState("");
+  const [fragranceBase, setFragranceBase] = useState("");
+  const [fragranceSillage, setFragranceSillage] = useState("");
+  const [fragranceVolume, setFragranceVolume] = useState("");
+
   const [collabBrandIds, setCollabBrandIds] = useState<number[]>([]);
   const [collabSearch, setCollabSearch] = useState("");
   const [customFeatures, setCustomFeatures] = useState<{label: string; value: string}[]>([]);
@@ -256,6 +283,9 @@ export default function AdminProductsPage() {
   useEffect(() => {
     loadCatalog();
   }, [loadCatalog]);
+
+  const isFragrance = useMemo(() => FRAGRANCE_SLUGS.has(subcategorySlug), [subcategorySlug]);
+  const isEditFragrance = useMemo(() => FRAGRANCE_SLUGS.has(editForm.subcategory), [editForm.subcategory]);
 
   const filteredSubcategories = useMemo(() => {
     const catId = Number(categoryId);
@@ -487,6 +517,11 @@ export default function AdminProductsPage() {
           depthCm: depthCm ? Number(depthCm) : null,
           article: article || null,
           collabBrandIds,
+          fragranceNotes: (fragranceTop || fragranceMiddle || fragranceBase)
+            ? { top: fragranceTop || null, middle: fragranceMiddle || null, base: fragranceBase || null }
+            : null,
+          sillageDescription: fragranceSillage || null,
+          volume: fragranceVolume ? Number(fragranceVolume) : null,
         }),
       });
       const data = await authGuardOrData(res);
@@ -500,6 +535,7 @@ export default function AdminProductsPage() {
       setPremium(false); setBadge(""); setGalleryText("");
       setMaterial(""); setFeatures(""); setStyleNotes("");
       setWidthCm(""); setHeightCm(""); setDepthCm(""); setArticle(""); setNoBoxPrice(""); setModelKey("");
+      setFragranceTop(""); setFragranceMiddle(""); setFragranceBase(""); setFragranceSillage(""); setFragranceVolume("");
       await loadCatalog();
     } catch (e: any) { setMsg(e?.message || "Ошибка добавления"); }
   };
@@ -532,6 +568,11 @@ export default function AdminProductsPage() {
       heightCm: p.heightCm ? String(p.heightCm) : "",
       depthCm: p.depthCm ? String(p.depthCm) : "",
       article: p.article || "",
+      fragranceTop: (p.fragranceNotes as any)?.top || "",
+      fragranceMiddle: (p.fragranceNotes as any)?.middle || "",
+      fragranceBase: (p.fragranceNotes as any)?.base || "",
+      fragranceSillage: p.sillageDescription || "",
+      fragranceVolume: p.volume ? String(p.volume) : "",
     });
     setEditCollabBrandIds(Array.isArray(p.collabBrandIds) ? p.collabBrandIds : []);
     setEditCollabSearch("");
@@ -587,6 +628,11 @@ export default function AdminProductsPage() {
           article: editForm.article || null,
           collabBrandIds: editCollabBrandIds,
           customFeatures: editCustomFeatures.filter(f => f.label.trim() || f.value.trim()),
+          fragranceNotes: (editForm.fragranceTop || editForm.fragranceMiddle || editForm.fragranceBase)
+            ? { top: editForm.fragranceTop || null, middle: editForm.fragranceMiddle || null, base: editForm.fragranceBase || null }
+            : null,
+          sillageDescription: editForm.fragranceSillage || null,
+          volume: editForm.fragranceVolume ? Number(editForm.fragranceVolume) : null,
         }),
       });
       const data = await authGuardOrData(res);
@@ -862,6 +908,20 @@ export default function AdminProductsPage() {
               <option value="CLOTH">Одежда</option>
             </select>
             <textarea className={inputCls + " sm:col-span-2"} placeholder="Описание" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+
+            {isFragrance && (
+              <div className="sm:col-span-2 rounded-2xl border border-[#c084fc]/40 bg-[#faf5ff] p-4">
+                <div className="text-sm font-semibold text-purple-800">Ноты аромата</div>
+                <div className="mt-1 text-xs text-purple-600">Заполните ноты — они отображаются на странице товара. Объём в мл обязателен.</div>
+                <div className="mt-3 grid gap-3">
+                  <input className={inputCls} placeholder="Объём, мл (напр. 50)" value={fragranceVolume} onChange={(e) => setFragranceVolume(e.target.value)} />
+                  <input className={inputCls} placeholder="Верхние ноты (напр. Бергамот, Лимон, Грейпфрут)" value={fragranceTop} onChange={(e) => setFragranceTop(e.target.value)} />
+                  <input className={inputCls} placeholder="Средние ноты (напр. Роза, Жасмин, Пачули)" value={fragranceMiddle} onChange={(e) => setFragranceMiddle(e.target.value)} />
+                  <input className={inputCls} placeholder="Базовые ноты (напр. Сандал, Мускус, Амбра)" value={fragranceBase} onChange={(e) => setFragranceBase(e.target.value)} />
+                  <input className={inputCls} placeholder="Шлейф / стойкость (напр. 6–8 часов, умеренный шлейф)" value={fragranceSillage} onChange={(e) => setFragranceSillage(e.target.value)} />
+                </div>
+              </div>
+            )}
 
             <div className="sm:col-span-2 rounded-2xl border border-black/10 p-4">
               <div className="text-sm font-semibold">Характеристики товара</div>
@@ -1258,6 +1318,19 @@ export default function AdminProductsPage() {
                       <input className={inputCls} placeholder="Материалы" value={editForm.material} onChange={(e) => setEditField("material", e.target.value)} />
                       <input className={inputCls} placeholder="Комфорт / Габариты (для аксессуаров: длина цепи, размер и т.д.)" value={editForm.features} onChange={(e) => setEditField("features", e.target.value)} />
                       <input className={inputCls + " sm:col-span-2"} placeholder="Дизайн" value={editForm.styleNotes} onChange={(e) => setEditField("styleNotes", e.target.value)} />
+
+                      {isEditFragrance && (
+                        <div className="sm:col-span-2 rounded-2xl border border-[#c084fc]/40 bg-[#faf5ff] p-4">
+                          <div className="text-sm font-semibold text-purple-800">Ноты аромата</div>
+                          <div className="mt-3 grid gap-3">
+                            <input className={inputCls} placeholder="Объём, мл (напр. 50)" value={editForm.fragranceVolume} onChange={(e) => setEditField("fragranceVolume", e.target.value)} />
+                            <input className={inputCls} placeholder="Верхние ноты" value={editForm.fragranceTop} onChange={(e) => setEditField("fragranceTop", e.target.value)} />
+                            <input className={inputCls} placeholder="Средние ноты" value={editForm.fragranceMiddle} onChange={(e) => setEditField("fragranceMiddle", e.target.value)} />
+                            <input className={inputCls} placeholder="Базовые ноты" value={editForm.fragranceBase} onChange={(e) => setEditField("fragranceBase", e.target.value)} />
+                            <input className={inputCls} placeholder="Шлейф / стойкость" value={editForm.fragranceSillage} onChange={(e) => setEditField("fragranceSillage", e.target.value)} />
+                          </div>
+                        </div>
+                      )}
 
                       {/* Кастомные характеристики */}
                       <div className="sm:col-span-2 mt-1">

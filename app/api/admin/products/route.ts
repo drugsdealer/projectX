@@ -48,6 +48,24 @@ export async function POST(req: Request) {
           .map((f: any) => ({ label: String(f.label || "").trim(), value: String(f.value || "").trim() }))
       : [];
 
+    const fragranceNotesRaw = body?.fragranceNotes;
+    const fragranceNotesParsed =
+      fragranceNotesRaw && typeof fragranceNotesRaw === "object"
+        ? {
+            top: String(fragranceNotesRaw.top || "").trim() || null,
+            middle: String(fragranceNotesRaw.middle || "").trim() || null,
+            base: String(fragranceNotesRaw.base || "").trim() || null,
+          }
+        : null;
+    const fragranceNotes =
+      fragranceNotesParsed &&
+      (fragranceNotesParsed.top || fragranceNotesParsed.middle || fragranceNotesParsed.base)
+        ? fragranceNotesParsed
+        : null;
+    const sillageDescription = body?.sillageDescription ? String(body.sillageDescription).trim() : null;
+    const volumeRaw = body?.volume != null ? Number(body.volume) : null;
+    const volume = volumeRaw != null && Number.isFinite(volumeRaw) && volumeRaw > 0 ? Math.round(volumeRaw) : null;
+
     const parsePrice = (val: any) => {
       const num = Number(val);
       if (!Number.isFinite(num) || num <= 0) return null;
@@ -158,6 +176,9 @@ export async function POST(req: Request) {
         depthCm: Number.isFinite(depthCm) && depthCm > 0 ? depthCm : null,
         collabBrandIds,
         customFeatures,
+        ...(fragranceNotes ? { fragranceNotes } : {}),
+        sillageDescription,
+        volume,
         Category: { connect: { id: categoryId } },
         ...(brandId ? { Brand: { connect: { id: brandId } } } : {}),
         ...(colorId ? { Color: { connect: { id: colorId } } } : {}),
@@ -251,6 +272,9 @@ export async function GET(req: Request) {
       depthCm: true,
       collabBrandIds: true,
       customFeatures: true,
+      fragranceNotes: true,
+      sillageDescription: true,
+      volume: true,
       categoryId: true,
       brandId: true,
       colorId: true,

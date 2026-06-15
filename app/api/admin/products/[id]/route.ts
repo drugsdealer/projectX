@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { requireAdminApi } from "@/lib/admin";
 
 export async function DELETE(
@@ -59,6 +60,9 @@ const PRODUCT_SELECT = {
   noBoxPrice: true,
   collabBrandIds: true,
   customFeatures: true,
+  fragranceNotes: true,
+  sillageDescription: true,
+  volume: true,
   Category: { select: { id: true, name: true } },
   Brand: { select: { id: true, name: true } },
   Color: { select: { id: true, name: true } },
@@ -274,6 +278,20 @@ export async function PATCH(
     data.collabBrandIds = Array.isArray(body.collabBrandIds)
       ? body.collabBrandIds.map(Number).filter((n: number) => Number.isFinite(n) && n > 0)
       : [];
+  }
+  if (body?.fragranceNotes !== undefined) {
+    const fn = body.fragranceNotes;
+    data.fragranceNotes =
+      fn && typeof fn === "object"
+        ? { top: String(fn.top || "").trim() || null, middle: String(fn.middle || "").trim() || null, base: String(fn.base || "").trim() || null }
+        : Prisma.JsonNull;
+  }
+  if (body?.sillageDescription !== undefined) {
+    data.sillageDescription = body.sillageDescription ? String(body.sillageDescription).trim() : null;
+  }
+  if (body?.volume !== undefined) {
+    const v = body.volume != null ? Number(body.volume) : null;
+    data.volume = v != null && Number.isFinite(v) && v > 0 ? Math.round(v) : null;
   }
 
   if (Object.keys(data).length === 0) {
