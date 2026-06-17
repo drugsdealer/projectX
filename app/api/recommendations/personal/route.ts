@@ -1,17 +1,22 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { buildEventsServiceUrl, fetchEventsServiceJson, getEventsServiceApiKey } from "@/lib/events-upstream";
 import { getViewerIdentity } from "@/lib/session";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type RecommendationMeta = {
-  productId: number;
-  score: number;
-  reason: string;
-};
+// Баланс персонализации: 70% — под интересы пользователя, 30% — глобальные тренды.
+const PERSONAL_RATIO = 0.7;
+// Окно, за которое считаем интересы пользователя.
+const AFFINITY_WINDOW_DAYS = 60;
+// Веса сигналов вовлечённости (как в админ-аналитике топ-брендов).
+const W = { view: 1, addToCart: 4, brandClick: 2, purchase: 10 };
+
+type RecommendationReason =
+  | "brand_affinity"
+  | "category_affinity"
+  | "global_trending";
 
 type TopBrand = {
   brandId: number;
@@ -25,6 +30,23 @@ type TopBrand = {
   logoUrl?: string | null;
 };
 
+const PRODUCT_SELECT = {
+  id: true,
+  name: true,
+  price: true,
+  oldPrice: true,
+  imageUrl: true,
+  images: true,
+  premium: true,
+  badge: true,
+  gender: true,
+  categoryId: true,
+  brandId: true,
+  popularity: true,
+  createdAt: true,
+  Brand: { select: { id: true, name: true, slug: true, logoUrl: true } },
+} as const;
+
 function parseCsvIds(raw: string | null): number[] {
   if (!raw) return [];
   return raw
@@ -33,10 +55,9 @@ function parseCsvIds(raw: string | null): number[] {
     .filter((n, i, arr) => Number.isFinite(n) && n > 0 && arr.indexOf(n) === i);
 }
 
-function mapProductRow(row: any, recommendation: RecommendationMeta | null) {
+function mapProductRow(row: any, reason: RecommendationReason, score: number) {
   const images = Array.isArray(row?.images) ? row.images.filter(Boolean) : [];
   const imageUrl = row?.imageUrl || images[0] || null;
-
   return {
     id: row.id,
     name: row.name,
@@ -51,52 +72,147 @@ function mapProductRow(row: any, recommendation: RecommendationMeta | null) {
     premium: Boolean(row?.premium),
     badge: row?.badge ?? null,
     gender: row?.gender ?? null,
-    recommendation: recommendation
-      ? {
-          score: recommendation.score,
-          reason: recommendation.reason,
-        }
-      : null,
+    recommendation: { score, reason },
   };
 }
 
-function seededShuffle<T>(arr: T[], seed: string): T[] {
-  const result = [...arr];
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
-  for (let i = result.length - 1; i > 0; i--) {
-    h = (Math.imul(1664525, h) + 1013904223) | 0;
-    const j = Math.abs(h) % (i + 1);
-    [result[i], result[j]] = [result[j], result[i]];
+/** Считает affinity пользователя по брендам и категориям из ShopEvent. */
+async function computeAffinity(identityWhere: Record<string, unknown>) {
+  const since = new Date(Date.now() - AFFINITY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const base = { ...identityWhere, createdAt: { gte: since } };
+
+  const [brandAgg, categoryAgg] = await Promise.all([
+    prisma.shopEvent.groupBy({
+      by: ["brandId", "eventType"],
+      where: {
+        ...base,
+        brandId: { not: null },
+        eventType: { in: ["PRODUCT_VIEW", "ADD_TO_CART", "PURCHASE", "BRAND_CLICK"] },
+      },
+      _count: { _all: true },
+    }),
+    prisma.shopEvent.groupBy({
+      by: ["categoryId", "eventType"],
+      where: {
+        ...base,
+        categoryId: { not: null },
+        eventType: { in: ["PRODUCT_VIEW", "ADD_TO_CART", "PURCHASE"] },
+      },
+      _count: { _all: true },
+    }),
+  ]);
+
+  type BrandAgg = { views: number; addToCart: number; purchases: number; brandClicks: number };
+  const brands = new Map<number, BrandAgg>();
+  for (const g of brandAgg) {
+    const id = g.brandId;
+    if (id == null) continue;
+    const a = brands.get(id) ?? { views: 0, addToCart: 0, purchases: 0, brandClicks: 0 };
+    const c = g._count._all;
+    if (g.eventType === "PRODUCT_VIEW") a.views += c;
+    else if (g.eventType === "ADD_TO_CART") a.addToCart += c;
+    else if (g.eventType === "PURCHASE") a.purchases += c;
+    else if (g.eventType === "BRAND_CLICK") a.brandClicks += c;
+    brands.set(id, a);
   }
-  return result;
+
+  const categories = new Map<number, number>();
+  for (const g of categoryAgg) {
+    const id = g.categoryId;
+    if (id == null) continue;
+    const c = g._count._all;
+    const w =
+      g.eventType === "PURCHASE" ? W.purchase : g.eventType === "ADD_TO_CART" ? W.addToCart : W.view;
+    categories.set(id, (categories.get(id) ?? 0) + c * w);
+  }
+
+  const brandScores = Array.from(brands.entries())
+    .map(([brandId, a]) => ({
+      brandId,
+      agg: a,
+      score:
+        a.views * W.view +
+        a.addToCart * W.addToCart +
+        a.brandClicks * W.brandClick +
+        a.purchases * W.purchase,
+    }))
+    .sort((x, y) => y.score - x.score);
+
+  const categoryIds = Array.from(categories.entries())
+    .sort((x, y) => y[1] - x[1])
+    .map(([id]) => id);
+
+  return { brandScores, categoryIds };
 }
 
-async function fallbackProducts(limit: number, categoryId: number | null, exclude: number[], seed?: string) {
-  const rows = await prisma.product.findMany({
+/** Топ-бренды для всплытия (с именем/лого). Cold start → премиальные бренды. */
+async function buildTopBrands(
+  brandScores: { brandId: number; agg: any; score: number }[]
+): Promise<TopBrand[]> {
+  if (brandScores.length) {
+    const ids = brandScores.slice(0, 12).map((b) => b.brandId);
+    const meta = await prisma.brand.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, name: true, slug: true, logoUrl: true },
+    });
+    const byId = new Map(meta.map((m) => [m.id, m]));
+    return brandScores
+      .slice(0, 12)
+      .map((b) => {
+        const m = byId.get(b.brandId);
+        if (!m) return null;
+        return {
+          brandId: b.brandId,
+          brandName: m.name,
+          views: b.agg.views,
+          addToCart: b.agg.addToCart,
+          purchases: b.agg.purchases,
+          brandClicks: b.agg.brandClicks,
+          weightedScore: b.score,
+          slug: m.slug ?? null,
+          logoUrl: m.logoUrl ?? null,
+        } as TopBrand;
+      })
+      .filter((b): b is TopBrand => b !== null);
+  }
+
+  // Cold start: показываем сильные бренды каталога.
+  const fallback = await prisma.brand.findMany({
+    where: { logoUrl: { not: null } },
+    orderBy: [{ isPremium: "desc" }, { updatedAt: "desc" }],
+    select: { id: true, name: true, slug: true, logoUrl: true },
+    take: 12,
+  });
+  return fallback.map((m) => ({
+    brandId: m.id,
+    brandName: m.name,
+    views: 0,
+    addToCart: 0,
+    purchases: 0,
+    brandClicks: 0,
+    weightedScore: 0,
+    slug: m.slug ?? null,
+    logoUrl: m.logoUrl ?? null,
+  }));
+}
+
+async function trendingProducts(limit: number, categoryId: number | null, exclude: number[]) {
+  return prisma.product.findMany({
     where: {
       deletedAt: null,
-      id: { notIn: exclude.length ? exclude : undefined },
+      available: true,
+      ...(exclude.length ? { id: { notIn: exclude } } : {}),
       ...(categoryId ? { categoryId } : {}),
     },
-    select: {
-      id: true, name: true, price: true, oldPrice: true, imageUrl: true,
-      images: true, description: true, available: true, premium: true,
-      badge: true, gender: true, subcategory: true, categoryId: true,
-      brandId: true, createdAt: true, popularity: true,
-      Brand: { select: { id: true, name: true, slug: true, logoUrl: true } },
-    },
+    select: PRODUCT_SELECT,
     orderBy: [{ popularity: "desc" }, { createdAt: "desc" }],
-    take: Math.min(limit * 4, 60),
+    take: Math.min(limit * 4, 80),
   });
-
-  const shuffled = seed ? seededShuffle(rows, seed) : rows;
-  return shuffled.slice(0, limit).map((row) => mapProductRow(row, null));
 }
 
 export async function GET(req: Request) {
   const ip = getClientIp(req);
-  const rl = await rateLimit(`recs-personal:${ip}`, 20, 60_000);
+  const rl = await rateLimit(`recs-personal:${ip}`, 30, 60_000);
   if (!rl.ok) {
     return NextResponse.json({ items: [] }, { status: 429 });
   }
@@ -107,148 +223,117 @@ export async function GET(req: Request) {
   const categoryIdRaw = Number(url.searchParams.get("categoryId"));
   const categoryId = Number.isFinite(categoryIdRaw) && categoryIdRaw > 0 ? categoryIdRaw : null;
   const exclude = parseCsvIds(url.searchParams.get("exclude"));
-  const seed = url.searchParams.get("seed") || String(Date.now());
   const sessionOverride = url.searchParams.get("sessionId");
 
   const { userId, guestToken } = await getViewerIdentity();
   const sessionId = sessionOverride || guestToken || null;
 
-  const apiKey = getEventsServiceApiKey();
-  const upstreamUrl = buildEventsServiceUrl("/api/v1/analytics/recommendations", {
-    userId: userId ?? undefined,
-    sessionId: sessionId ?? undefined,
-    categoryId: categoryId ?? undefined,
-    excludeProductIds: exclude.length ? exclude.join(",") : undefined,
-    limit,
-    seed,
-  });
-
-  if (!apiKey || !upstreamUrl) {
-    const items = await fallbackProducts(limit, categoryId, exclude, seed);
-    return NextResponse.json({
-      success: true,
-      source: "fallback",
-      items,
-      topBrands: [],
-    });
-  }
+  // Идентичность для выборки событий: приоритет — userId, иначе sessionId.
+  const identityWhere: Record<string, unknown> | null = userId
+    ? { userId }
+    : sessionId
+      ? { sessionId }
+      : null;
 
   try {
-    const result = await fetchEventsServiceJson(upstreamUrl, {
-      apiKey,
-      timeoutMs: 5000,
-      retries: 1,
-    });
+    const { brandScores, categoryIds } = identityWhere
+      ? await computeAffinity(identityWhere)
+      : { brandScores: [], categoryIds: [] };
 
-    if (!result.ok) {
-      const items = await fallbackProducts(limit, categoryId, exclude, seed);
-      return NextResponse.json({
-        success: true,
-        source: "fallback",
-        message: "recommendations upstream unavailable",
-        items,
-        topBrands: [],
-      });
-    }
+    const topBrandIds = brandScores.slice(0, 8).map((b) => b.brandId);
+    const brandRank = new Map(topBrandIds.map((id, i) => [id, i]));
+    const topCategoryIds = categoryIds.slice(0, 6);
 
-    const data = result.data ?? {};
-    const recItemsRaw = Array.isArray(data?.items) ? data.items : [];
-    const recommendationMeta: RecommendationMeta[] = (recItemsRaw as any[])
-      .map((item: any): RecommendationMeta => ({
-        productId: Number(item?.productId),
-        score: Number(item?.score ?? 0),
-        reason: String(item?.reason ?? "global_trending"),
-      }))
-      .filter((item) => Number.isFinite(item.productId) && item.productId > 0);
+    // ── Персональный пул (по любимым брендам/категориям) ──
+    let personalItems: ReturnType<typeof mapProductRow>[] = [];
+    if (topBrandIds.length || topCategoryIds.length) {
+      const orClauses: any[] = [];
+      if (topBrandIds.length) orClauses.push({ brandId: { in: topBrandIds } });
+      if (topCategoryIds.length) orClauses.push({ categoryId: { in: topCategoryIds } });
 
-    const ids = recommendationMeta.map((item) => item.productId);
-    const metaById = new Map(recommendationMeta.map((item) => [item.productId, item]));
-
-    const fromRecommendations = ids.length
-      ? await prisma.product.findMany({
-          where: {
-            deletedAt: null,
-            id: { in: ids },
-            ...(categoryId ? { categoryId } : {}),
-          },
-          select: {
-            id: true, name: true, price: true, oldPrice: true, imageUrl: true,
-            images: true, description: true, available: true, premium: true,
-            badge: true, gender: true, subcategory: true, categoryId: true,
-            brandId: true, createdAt: true, popularity: true,
-            Brand: { select: { id: true, name: true, slug: true, logoUrl: true } },
-          },
-        })
-      : [];
-
-    const rowById = new Map(fromRecommendations.map((row: any) => [row.id, row]));
-    const ordered = ids
-      .map((id) => rowById.get(id))
-      .filter(Boolean)
-      .slice(0, limit)
-      .map((row: any) => mapProductRow(row, metaById.get(row.id) || null));
-
-    if (ordered.length < limit) {
-      const missing = limit - ordered.length;
-      const existingIds = [
-        ...exclude,
-        ...ordered.map((x) => x.id),
-      ];
-      const topup = await fallbackProducts(missing, categoryId, existingIds);
-      ordered.push(...topup);
-    }
-
-    const topBrandsRaw: TopBrand[] = Array.isArray(data?.topBrands)
-      ? (data.topBrands as any[])
-          .map((row: any): TopBrand => ({
-            brandId: Number(row?.brandId),
-            brandName: String(row?.brandName ?? ""),
-            views: Number(row?.views ?? 0),
-            addToCart: Number(row?.addToCart ?? 0),
-            purchases: Number(row?.purchases ?? 0),
-            brandClicks: Number(row?.brandClicks ?? 0),
-            weightedScore: Number(row?.weightedScore ?? 0),
-          }))
-          .filter((row) => Number.isFinite(row.brandId) && row.brandId > 0 && row.brandName)
-      : [];
-
-    let topBrands = topBrandsRaw;
-    if (topBrandsRaw.length) {
-      const brandMetaRows = await prisma.brand.findMany({
+      const pool = await prisma.product.findMany({
         where: {
-          id: { in: topBrandsRaw.map((row) => row.brandId) },
+          deletedAt: null,
+          available: true,
+          ...(exclude.length ? { id: { notIn: exclude } } : {}),
+          ...(categoryId ? { categoryId } : {}),
+          OR: orClauses,
         },
-        select: {
-          id: true,
-          slug: true,
-          logoUrl: true,
-        },
+        select: PRODUCT_SELECT,
+        orderBy: [{ popularity: "desc" }, { createdAt: "desc" }],
+        take: Math.min(limit * 6, 120),
       });
-      const metaById = new Map(brandMetaRows.map((row) => [row.id, row]));
-      topBrands = topBrandsRaw.map((row) => {
-        const meta = metaById.get(row.brandId);
-        return {
-          ...row,
-          slug: meta?.slug ?? null,
-          logoUrl: meta?.logoUrl ?? null,
-        };
-      });
+
+      personalItems = pool
+        .map((row) => {
+          const bRank =
+            row.brandId != null && brandRank.has(row.brandId) ? brandRank.get(row.brandId)! : null;
+          const inCategory = row.categoryId != null && topCategoryIds.includes(row.categoryId);
+          // Чем выше бренд в affinity и больше популярность — тем выше score.
+          const brandBoost = bRank != null ? Math.max(0, 1 - bRank * 0.1) : 0;
+          const catBoost = inCategory ? 0.3 : 0;
+          const popBoost = Math.min(0.4, (row.popularity ?? 0) / 1000);
+          const reason: RecommendationReason =
+            bRank != null ? "brand_affinity" : "category_affinity";
+          return { row, reason, score: 0.5 + brandBoost + catBoost + popBoost };
+        })
+        .sort((a, b) => b.score - a.score)
+        .map((e) => mapProductRow(e.row, e.reason, e.score));
     }
+
+    // ── Трендовый пул (глобальная популярность) ──
+    const trendingRows = await trendingProducts(limit, categoryId, exclude);
+    const trendingItems = trendingRows.map((row, i) =>
+      mapProductRow(row, "global_trending", 0.3 - Math.min(0.25, i * 0.01))
+    );
+
+    // ── Смешиваем 70/30, дедуп по id ──
+    const personalTarget = Math.round(limit * PERSONAL_RATIO);
+    const seen = new Set<number>(exclude);
+    const result: ReturnType<typeof mapProductRow>[] = [];
+
+    for (const it of personalItems) {
+      if (result.length >= personalTarget) break;
+      if (seen.has(it.id)) continue;
+      seen.add(it.id);
+      result.push(it);
+    }
+    for (const it of trendingItems) {
+      if (result.length >= limit) break;
+      if (seen.has(it.id)) continue;
+      seen.add(it.id);
+      result.push(it);
+    }
+    // Добиваем остатком персонального пула, если трендов не хватило.
+    if (result.length < limit) {
+      for (const it of personalItems) {
+        if (result.length >= limit) break;
+        if (seen.has(it.id)) continue;
+        seen.add(it.id);
+        result.push(it);
+      }
+    }
+
+    const topBrands = await buildTopBrands(brandScores);
 
     return NextResponse.json({
       success: true,
-      source: "events-service",
-      items: ordered.slice(0, limit),
+      source: identityWhere ? "db-personal" : "db-trending",
+      items: result.slice(0, limit),
       topBrands,
     });
   } catch (error) {
-    console.error("[recommendations.personal] upstream error");
-    const items = await fallbackProducts(limit, categoryId, exclude, seed);
-    return NextResponse.json({
-      success: true,
-      source: "fallback",
-      items,
-      topBrands: [],
-    });
+    console.error("[recommendations.personal] db error");
+    // Безопасный фолбэк: тренды + сильные бренды.
+    try {
+      const trendingRows = await trendingProducts(limit, categoryId, exclude);
+      const items = trendingRows
+        .slice(0, limit)
+        .map((row) => mapProductRow(row, "global_trending", 0.3));
+      const topBrands = await buildTopBrands([]);
+      return NextResponse.json({ success: true, source: "fallback", items, topBrands });
+    } catch {
+      return NextResponse.json({ success: true, source: "fallback", items: [], topBrands: [] });
+    }
   }
 }
