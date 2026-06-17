@@ -304,6 +304,30 @@ model PerfumeVariant {
   @@index([productId])
 }
 
+// Нативная аналитика поведения (заменяет внешний Java events-service).
+// Пишется из /api/events/track (клиент) и lib/events-server (сервер: корзина, покупки).
+model ShopEvent {
+  id         Int      @id @default(autoincrement())
+  eventType  String   @db.VarChar(40)
+  userId     Int?
+  sessionId  String?  @db.VarChar(80)
+  productId  Int?
+  brandId    Int?
+  categoryId Int?
+  orderId    Int?
+  query      String?  @db.VarChar(200)
+  pageUrl    String?  @db.VarChar(300)
+  source     String?  @db.VarChar(50)
+  deviceType String?  @db.VarChar(40)
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([eventType, createdAt])
+  @@index([productId, eventType])
+  @@index([brandId, eventType])
+  @@index([createdAt])
+}
+
 model PromoCode {
   id              Int               @id @default(autoincrement())
   code            String            @unique

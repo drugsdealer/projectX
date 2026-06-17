@@ -229,7 +229,8 @@ export default function AdminEventsAnalyticsPage() {
         <div>
           <h2 className="text-lg font-semibold">Аналитика событий</h2>
           <p className="mt-1 text-xs text-black/50">
-            Данные из Java event-analytics-service: воронка конверсии и топ товаров.
+            Реальные данные из БД (Neon): просмотры, корзина, оформление, покупки,
+            поиск и клики по брендам/промо.
           </p>
         </div>
 

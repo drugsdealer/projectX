@@ -11,6 +11,7 @@ import {
   requireJsonRequest,
   tooManyRequests,
 } from '@/lib/api-hardening';
+import { emitServerEvents } from '@/lib/events-server';
 
 const toNum = (v: any): number | null => {
   const n = Number(v);
@@ -556,6 +557,20 @@ export async function POST(req: Request) {
       },
       select: { id: true, token: true },
     });
+
+    // Аналитика: шаг воронки «начало оформления». По позициям — чтобы масштаб
+    // совпадал с ADD_TO_CART / PURCHASE. Fire-and-forget, не ломает оформление.
+    void emitServerEvents(
+      adjustedItems.map((i: any) => ({
+        eventType: "START_CHECKOUT",
+        userId: userId ?? undefined,
+        sessionId: token,
+        productId: i.productId ?? undefined,
+        orderId: order.id,
+        source: "next-api",
+        deviceType: "server",
+      }))
+    ).catch(() => {});
 
     const res = NextResponse.json({
       ok: true,

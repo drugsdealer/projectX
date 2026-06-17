@@ -1,46 +1,12 @@
 import { NextResponse } from "next/server";
-import { buildEventsServiceUrl, getEventsServiceApiKey } from "@/lib/events-upstream";
 import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { emitServerEvents, type ServerTrackEventPayload } from "@/lib/events-server";
+import { getUserIdFromRequest } from "@/lib/session";
 
 export const runtime = "nodejs";
 
-// Allowlisted event types — everything else is rejected
-const ALLOWED_EVENT_TYPES = new Set([
-  "PAGE_VIEW",
-  "PRODUCT_VIEW",
-  "ADD_TO_CART",
-  "REMOVE_FROM_CART",
-  "PURCHASE",
-  "SEARCH",
-  "CLICK",
-  "FAVORITE",
-  "UNFAVORITE",
-]);
-
-const MAX_STRING = 500;
 const MAX_BATCH = 20;
-
-function cleanPositiveInt(value: unknown) {
-  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : undefined;
-}
-
-function sanitizeEvent(e: unknown): Record<string, unknown> | null {
-  if (!e || typeof e !== "object") return null;
-  const ev = e as Record<string, unknown>;
-  const eventType = typeof ev.eventType === "string" ? ev.eventType.trim() : "";
-  if (!ALLOWED_EVENT_TYPES.has(eventType)) return null;
-
-  return {
-    eventType,
-    productId: cleanPositiveInt(ev.productId),
-    brandId: cleanPositiveInt(ev.brandId),
-    categoryId: cleanPositiveInt(ev.categoryId),
-    query: typeof ev.query === "string" ? ev.query.slice(0, MAX_STRING) : undefined,
-    pageUrl: typeof ev.pageUrl === "string" ? ev.pageUrl.slice(0, MAX_STRING) : undefined,
-    source: typeof ev.source === "string" ? ev.source.slice(0, 50) : undefined,
-  };
-}
 
 export async function POST(req: Request) {
   const csrf = blockIfCsrf(req);
@@ -49,14 +15,9 @@ export async function POST(req: Request) {
   if (json) return json;
 
   const ip = getClientIp(req);
-  const rl = await rateLimit(`events-track:${ip}`, 30, 60_000);
+  const rl = await rateLimit(`events-track:${ip}`, 60, 60_000);
   if (!rl.ok) {
     return NextResponse.json({ success: false }, { status: 429 });
-  }
-
-  const apiKey = getEventsServiceApiKey();
-  if (!apiKey) {
-    return NextResponse.json({ success: false }, { status: 503 });
   }
 
   const body = await req.json().catch(() => null);
@@ -64,41 +25,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false }, { status: 400 });
   }
 
-  // Sanitize: only allow known event types with known fields
-  let sanitized: Record<string, unknown>[];
-  const raw = Array.isArray((body as any).events)
+  const raw: unknown[] = Array.isArray((body as any).events)
     ? (body as any).events.slice(0, MAX_BATCH)
     : [body];
-  sanitized = raw.map(sanitizeEvent).filter(Boolean) as Record<string, unknown>[];
 
-  if (sanitized.length === 0) {
+  // userId всегда берём с сервера (никогда не доверяем клиентскому значению).
+  let userId: number | null = null;
+  try {
+    userId = await getUserIdFromRequest();
+  } catch {}
+
+  const payloads: ServerTrackEventPayload[] = raw
+    .filter((e): e is Record<string, unknown> => Boolean(e) && typeof e === "object")
+    .map((e) => ({
+      ...(e as ServerTrackEventPayload),
+      userId: userId ?? undefined,
+    }));
+
+  if (payloads.length === 0) {
     return NextResponse.json({ success: false }, { status: 400 });
   }
 
-  const isBatch = sanitized.length > 1;
-  const upstreamUrl = buildEventsServiceUrl(
-    isBatch ? "/api/v1/events/batch" : "/api/v1/events"
-  );
-
-  if (!upstreamUrl) {
-    return NextResponse.json({ success: false }, { status: 503 });
-  }
-
-  try {
-    const payload = isBatch ? { events: sanitized } : sanitized[0];
-    await fetch(upstreamUrl.toString(), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Events-Api-Key": apiKey,
-      },
-      body: JSON.stringify(payload),
-      cache: "no-store",
-    });
-
-    // Never return upstream response to client
-    return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ success: false }, { status: 502 });
-  }
+  // Валидация/нормализация и запись происходят внутри emitServerEvents.
+  const ok = await emitServerEvents(payloads);
+  // Не считаем ошибкой, если событие отфильтровано — клиенту это знать не нужно.
+  return NextResponse.json({ success: ok });
 }
