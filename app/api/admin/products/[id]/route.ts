@@ -62,7 +62,10 @@ const PRODUCT_SELECT = {
   customFeatures: true,
   fragranceNotes: true,
   sillageDescription: true,
+  occasion: true,
+  season: true,
   volume: true,
+  PerfumeVariant: { select: { id: true, volumeMl: true, price: true, oldPrice: true } },
   Category: { select: { id: true, name: true } },
   Brand: { select: { id: true, name: true } },
   Color: { select: { id: true, name: true } },
@@ -289,18 +292,66 @@ export async function PATCH(
   if (body?.sillageDescription !== undefined) {
     data.sillageDescription = body.sillageDescription ? String(body.sillageDescription).trim() : null;
   }
+  if (body?.occasion !== undefined) {
+    data.occasion = body.occasion ? String(body.occasion).trim().slice(0, 300) : null;
+  }
+  if (body?.season !== undefined) {
+    data.season = body.season ? String(body.season).trim().slice(0, 300) : null;
+  }
   if (body?.volume !== undefined) {
     const v = body.volume != null ? Number(body.volume) : null;
     data.volume = v != null && Number.isFinite(v) && v > 0 ? Math.round(v) : null;
   }
 
-  if (Object.keys(data).length === 0) {
+  // Парфюм: цены по объёму (PerfumeVariant). Если массив передан — полностью пересоздаём.
+  let perfumeVariants: { volumeMl: number; price: number; oldPrice: number | null }[] | null = null;
+  if (body?.perfumeVariants !== undefined) {
+    perfumeVariants = Array.isArray(body.perfumeVariants)
+      ? body.perfumeVariants
+          .map((v: any) => {
+            const volMl = Number(v?.volumeMl);
+            const vPrice = Number(v?.price);
+            const vOld = v?.oldPrice != null && v?.oldPrice !== "" ? Number(v.oldPrice) : null;
+            return {
+              volumeMl: Number.isFinite(volMl) && volMl > 0 ? Math.round(volMl) : NaN,
+              price: Number.isFinite(vPrice) && vPrice > 0 ? Math.round(vPrice) : NaN,
+              oldPrice: vOld != null && Number.isFinite(vOld) && vOld > 0 ? Math.round(vOld) : null,
+            };
+          })
+          .filter((v: any) => Number.isFinite(v.volumeMl) && Number.isFinite(v.price))
+      : [];
+    if (perfumeVariants && perfumeVariants.length) {
+      // цена товара = минимальный вариант; один объём → проставим volume для отображения
+      data.price = Math.min(...perfumeVariants.map((v) => v.price));
+      if (perfumeVariants.length === 1) data.volume = perfumeVariants[0].volumeMl;
+    }
+  }
+
+  if (Object.keys(data).length === 0 && perfumeVariants === null) {
     return NextResponse.json({ success: false, message: "Нет данных для обновления" }, { status: 400 });
   }
 
-  const updated = await prisma.product.update({
+  if (Object.keys(data).length > 0) {
+    await prisma.product.update({ where: { id }, data });
+  }
+
+  // Пересоздаём варианты объёма, если они были переданы.
+  if (perfumeVariants !== null) {
+    await prisma.perfumeVariant.deleteMany({ where: { productId: id } });
+    if (perfumeVariants.length) {
+      await prisma.perfumeVariant.createMany({
+        data: perfumeVariants.map((v) => ({
+          productId: id,
+          volumeMl: v.volumeMl,
+          price: v.price,
+          oldPrice: v.oldPrice,
+        })),
+      });
+    }
+  }
+
+  const updated = await prisma.product.findUnique({
     where: { id },
-    data,
     select: PRODUCT_SELECT,
   });
 

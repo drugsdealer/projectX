@@ -219,6 +219,7 @@ model Product {
   // Ароматы / духи
   fragranceNotes      Json?
   sillageDescription  String?
+  season              String?   // парфюм: «Сезон» (управляется из админки; occasion = «Когда носить»)
 
   // Ювелирные изделия
   metal           String?

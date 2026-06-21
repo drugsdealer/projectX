@@ -100,7 +100,7 @@ export async function GET(
         images: true, description: true, available: true, premium: true,
         badge: true, gender: true, subcategory: true, sizeType: true,
         material: true, features: true, styleNotes: true,
-        fragranceNotes: true, sillageDescription: true,
+        fragranceNotes: true, sillageDescription: true, occasion: true, season: true,
         widthCm: true, heightCm: true, depthCm: true,
         categoryId: true, brandId: true, colorId: true, modelKey: true,
         collabBrandIds: true,
@@ -329,6 +329,15 @@ export async function GET(
         categorySlug === "perfumery" ||
         categorySlug === "fragrance" ||
         categorySlug === "perfume" ||
+        [
+          "fragrances",
+          "parfum",
+          "eau-de-parfum",
+          "eau-de-toilette",
+          "eau-de-cologne",
+          "body-mist",
+          "aftershave",
+        ].includes(subCategorySlug ?? "") ||
         /(парфюмер|духи|fragrance|perfume)/.test(
           `${pAny?.name ?? ""} ${pAny?.description ?? ""}`.toLowerCase()
         );
@@ -399,6 +408,8 @@ export async function GET(
       dimensions,
       fragranceNotes: normalizedFragranceNotes,
       sillageDescription: pAny?.sillageDescription ?? null,
+      occasion: pAny?.occasion ?? null,
+      season: pAny?.season ?? null,
       material: pAny?.material ?? null,
       features: pAny?.features ?? null,
       styleNotes: pAny?.styleNotes ?? null,

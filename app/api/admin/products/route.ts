@@ -63,8 +63,30 @@ export async function POST(req: Request) {
         ? fragranceNotesParsed
         : null;
     const sillageDescription = body?.sillageDescription ? String(body.sillageDescription).trim() : null;
+    const occasion = body?.occasion ? String(body.occasion).trim().slice(0, 300) : null;
+    const season = body?.season ? String(body.season).trim().slice(0, 300) : null;
     const volumeRaw = body?.volume != null ? Number(body.volume) : null;
-    const volume = volumeRaw != null && Number.isFinite(volumeRaw) && volumeRaw > 0 ? Math.round(volumeRaw) : null;
+    let volume = volumeRaw != null && Number.isFinite(volumeRaw) && volumeRaw > 0 ? Math.round(volumeRaw) : null;
+
+    // Парфюм: цены по объёму (PerfumeVariant). [{volumeMl, price, oldPrice}]
+    const perfumeVariants: { volumeMl: number; price: number; oldPrice: number | null }[] = Array.isArray(
+      body?.perfumeVariants
+    )
+      ? body.perfumeVariants
+          .map((v: any) => {
+            const volMl = Number(v?.volumeMl);
+            const vPrice = Number(v?.price);
+            const vOld = v?.oldPrice != null && v?.oldPrice !== "" ? Number(v.oldPrice) : null;
+            return {
+              volumeMl: Number.isFinite(volMl) && volMl > 0 ? Math.round(volMl) : NaN,
+              price: Number.isFinite(vPrice) && vPrice > 0 ? Math.round(vPrice) : NaN,
+              oldPrice: vOld != null && Number.isFinite(vOld) && vOld > 0 ? Math.round(vOld) : null,
+            };
+          })
+          .filter((v: any) => Number.isFinite(v.volumeMl) && Number.isFinite(v.price))
+      : [];
+    // если объём один — продублируем его в product.volume для отображения «Объём флакона»
+    if (perfumeVariants.length === 1) volume = perfumeVariants[0].volumeMl;
 
     const parsePrice = (val: any) => {
       const num = Number(val);
@@ -76,8 +98,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Название обязательно" }, { status: 400 });
     }
     const basePrice = parsePrice(price);
-    if (sizeType === "NONE" && !basePrice) {
-      return NextResponse.json({ success: false, message: "Цена должна быть больше 0" }, { status: 400 });
+    // Для парфюма с ценами по объёму цена берётся из минимального варианта.
+    const minVariantPrice = perfumeVariants.length
+      ? Math.min(...perfumeVariants.map((v) => v.price))
+      : null;
+    if (sizeType === "NONE" && !basePrice && !minVariantPrice) {
+      return NextResponse.json({ success: false, message: "Укажите цену или добавьте хотя бы один объём с ценой" }, { status: 400 });
     }
     if (!Number.isFinite(categoryId) || categoryId <= 0) {
       return NextResponse.json({ success: false, message: "Категория обязательна" }, { status: 400 });
@@ -149,7 +175,8 @@ export async function POST(req: Request) {
 
     const minGroupPrice =
       normalizedGroups.length > 0 ? Math.min(...normalizedGroups.map((g: any) => Number(g.price))) : null;
-    const finalPrice = sizeType === "NONE" ? basePrice : minGroupPrice;
+    // Парфюм с объёмами: цена = минимальный вариант; иначе обычная логика.
+    const finalPrice = sizeType === "NONE" ? (minVariantPrice ?? basePrice) : minGroupPrice;
 
     const primaryImage = imageUrlInput || gallery[0] || "/img/placeholder.svg";
     const images = gallery.filter((item: string) => item !== primaryImage);
@@ -178,6 +205,8 @@ export async function POST(req: Request) {
         customFeatures,
         ...(fragranceNotes ? { fragranceNotes } : {}),
         sillageDescription,
+        occasion,
+        season,
         volume,
         Category: { connect: { id: categoryId } },
         ...(brandId ? { Brand: { connect: { id: brandId } } } : {}),
@@ -228,6 +257,18 @@ export async function POST(req: Request) {
       }
     }
 
+    // Парфюм: создаём варианты по объёму с индивидуальными ценами.
+    if (perfumeVariants.length) {
+      await prisma.perfumeVariant.createMany({
+        data: perfumeVariants.map((v) => ({
+          productId: product.id,
+          volumeMl: v.volumeMl,
+          price: v.price,
+          oldPrice: v.oldPrice,
+        })),
+      });
+    }
+
     return NextResponse.json({ success: true, product });
   } catch (err) {
     console.error("[admin.products.POST] failed");
@@ -274,12 +315,15 @@ export async function GET(req: Request) {
       customFeatures: true,
       fragranceNotes: true,
       sillageDescription: true,
+      occasion: true,
+      season: true,
       volume: true,
       categoryId: true,
       brandId: true,
       colorId: true,
       modelKey: true,
       noBoxPrice: true,
+      PerfumeVariant: { select: { id: true, volumeMl: true, price: true, oldPrice: true } },
       Category: { select: { id: true, name: true } },
       Brand: { select: { id: true, name: true } },
       Color: { select: { id: true, name: true } },

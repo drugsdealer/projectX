@@ -2140,12 +2140,16 @@ const handleCancel = () => {
                       const isWarm =
                         /уд|амбра|мускус|сэндал|кедр|дерев|прян/.test(allNotesText);
 
+                      // Значения из админки имеют приоритет; эвристика — только как запасной вариант.
                       let dayTime = 'подходит и для дня, и для вечера';
                       if (isFresh && !isWarm && !isSweet) {
                         dayTime = 'идеален для дневного ношения, офиса и повседневных выходов';
                       } else if (isWarm || isSweet) {
                         dayTime = 'лучше всего раскрывается вечером и на особых случаях';
                       }
+                      const wearTimeManual =
+                        typeof anyProduct.occasion === 'string' ? anyProduct.occasion.trim() : '';
+                      if (wearTimeManual) dayTime = wearTimeManual;
 
                       let season = 'круглогодичный аромат';
                       if (isFresh && !isWarm) {
@@ -2153,6 +2157,9 @@ const handleCancel = () => {
                       } else if (isWarm || isSweet) {
                         season = 'максимально комфортен осенью и зимой';
                       }
+                      const seasonManual =
+                        typeof anyProduct.season === 'string' ? anyProduct.season.trim() : '';
+                      if (seasonManual) season = seasonManual;
 
                       return (
                         <>

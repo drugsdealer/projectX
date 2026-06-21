@@ -32,6 +32,7 @@ export type NormalizedProduct = {
     base: string[];
   } | null;
   sillageDescription?: string | null;
+  season?: string | null;
   jewelryType?: 'ring' | 'bracelet' | 'necklace' | string;
   metal?: string | null;
   stones?: string | null;
@@ -322,6 +323,9 @@ export function normalizeProduct(raw: any): NormalizedProduct {
   const sillageDescription =
     safeString(raw?.sillageDescription || raw?.sillage || raw?.projection) || null;
 
+  const season =
+    safeString(raw?.season || raw?.seasonality) || null;
+
   const metal =
     safeString(raw?.metal || raw?.metalType) || null;
 
@@ -390,6 +394,7 @@ export function normalizeProduct(raw: any): NormalizedProduct {
     dimensions,
     fragranceNotes,
     sillageDescription,
+    season,
     jewelryType,
     metal,
     stones,
