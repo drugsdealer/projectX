@@ -995,21 +995,24 @@ export default function AdminProductsPage() {
                       + Добавить объём
                     </button>
                   </div>
-                  <div className="mt-2 space-y-2">
+                  <div className="mt-2 grid grid-cols-[88px_1fr_1fr_28px] gap-2 text-[10px] font-semibold uppercase tracking-wide text-purple-500">
+                    <span>Объём, мл</span><span>Цена ₽</span><span>Старая ₽ (опц.)</span><span />
+                  </div>
+                  <div className="mt-1 space-y-2">
                     {perfumeVariants.map((v) => (
-                      <div key={v.id} className="flex gap-2 items-center">
-                        <input className={inputCls + " w-24"} placeholder="мл (50)" value={v.volumeMl}
+                      <div key={v.id} className="grid grid-cols-[88px_1fr_1fr_28px] gap-2 items-center">
+                        <input className={inputCls} placeholder="50" value={v.volumeMl}
                           onChange={(e) => setPerfumeVariants((p) => p.map((x) => x.id === v.id ? { ...x, volumeMl: e.target.value } : x))} />
-                        <input className={inputCls + " flex-1"} placeholder="Цена ₽" value={v.price}
+                        <input className={inputCls} placeholder="25000" value={v.price}
                           onChange={(e) => setPerfumeVariants((p) => p.map((x) => x.id === v.id ? { ...x, price: e.target.value } : x))} />
-                        <input className={inputCls + " flex-1"} placeholder="Старая цена ₽ (опц.)" value={v.oldPrice}
+                        <input className={inputCls} placeholder="—" value={v.oldPrice}
                           onChange={(e) => setPerfumeVariants((p) => p.map((x) => x.id === v.id ? { ...x, oldPrice: e.target.value } : x))} />
                         <button type="button" onClick={() => setPerfumeVariants((p) => p.length > 1 ? p.filter((x) => x.id !== v.id) : p)}
                           className="shrink-0 w-7 h-7 rounded-full bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center font-bold text-sm transition">✕</button>
                       </div>
                     ))}
                   </div>
-                  <p className="mt-1 text-xs text-purple-500">Напр. 50 мл — 8000 ₽, 100 мл — 12000 ₽. Цена товара = минимальный объём.</p>
+                  <p className="mt-1 text-xs text-purple-500">Напр. 50 мл — 25000 ₽, 100 мл — 38000 ₽. Цена товара в каталоге = минимальный объём.</p>
                 </div>
 
                 <div className="mt-4 text-xs font-semibold text-purple-700">Ноты и описание</div>
@@ -1434,14 +1437,19 @@ export default function AdminProductsPage() {
                                 + Добавить объём
                               </button>
                             </div>
-                            <div className="mt-2 space-y-2">
+                            {editPerfumeVariants.length > 0 && (
+                              <div className="mt-2 grid grid-cols-[88px_1fr_1fr_28px] gap-2 text-[10px] font-semibold uppercase tracking-wide text-purple-500">
+                                <span>Объём, мл</span><span>Цена ₽</span><span>Старая ₽ (опц.)</span><span />
+                              </div>
+                            )}
+                            <div className="mt-1 space-y-2">
                               {editPerfumeVariants.map((v) => (
-                                <div key={v.id} className="flex gap-2 items-center">
-                                  <input className={inputCls + " w-24"} placeholder="мл (50)" value={v.volumeMl}
+                                <div key={v.id} className="grid grid-cols-[88px_1fr_1fr_28px] gap-2 items-center">
+                                  <input className={inputCls} placeholder="50" value={v.volumeMl}
                                     onChange={(e) => setEditPerfumeVariants((p) => p.map((x) => x.id === v.id ? { ...x, volumeMl: e.target.value } : x))} />
-                                  <input className={inputCls + " flex-1"} placeholder="Цена ₽" value={v.price}
+                                  <input className={inputCls} placeholder="25000" value={v.price}
                                     onChange={(e) => setEditPerfumeVariants((p) => p.map((x) => x.id === v.id ? { ...x, price: e.target.value } : x))} />
-                                  <input className={inputCls + " flex-1"} placeholder="Старая цена ₽ (опц.)" value={v.oldPrice}
+                                  <input className={inputCls} placeholder="—" value={v.oldPrice}
                                     onChange={(e) => setEditPerfumeVariants((p) => p.map((x) => x.id === v.id ? { ...x, oldPrice: e.target.value } : x))} />
                                   <button type="button" onClick={() => setEditPerfumeVariants((p) => p.length > 1 ? p.filter((x) => x.id !== v.id) : p)}
                                     className="shrink-0 w-7 h-7 rounded-full bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center font-bold text-sm transition">✕</button>
