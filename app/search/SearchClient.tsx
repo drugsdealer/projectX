@@ -130,7 +130,7 @@ const DEFAULT_CATEGORY_VISUAL: { icon: string; helper: string; image?: string; g
 // Subcategory-level overrides (more specific than main category)
 const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string; objectPosition?: string; objectFit?: 'cover' | 'contain' }> = {
   кроссовки: {
-    image: 'https://ik.imagekit.io/qowmy92ny/2026-06-23%2017.56.16.jpg',
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-06-23%2017.56.16.png',
     gradient: 'from-amber-500 to-orange-600',
   },
   худи: {
