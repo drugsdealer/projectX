@@ -111,7 +111,7 @@ const CATEGORY_VISUALS: Record<string, { icon: string; helper: string; image?: s
   парфюм: {
     icon: 'PF',
     helper: 'Ниша, EDP, повседневные ароматы',
-    image: 'https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.43.55.jpg',
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.43.55.png',
     gradient: 'from-rose-500 to-pink-700',
   },
   головные: {
@@ -138,17 +138,25 @@ const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string; obj
     gradient: 'from-slate-700 to-slate-900',
   },
   'дорожные сумки': {
-    image: 'https://ik.imagekit.io/qowmy92ny/BARREL040TY51CL51P_2_face_3acf.png',
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-06-24%2000.54.45.png',
     gradient: 'from-emerald-600 to-teal-800',
     objectFit: 'contain' as const,
   },
   футболки: {
-    image: 'https://ik.imagekit.io/qowmy92ny/2026-06-23%2017.55.34.jpg',
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-06-23%2017.55.34.png',
     gradient: 'from-slate-700 to-slate-900',
   },
   ремни: {
-    image: 'https://ik.imagekit.io/qowmy92ny/2026-06-23%2017.56.06.jpg',
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-06-23%2017.56.06.png',
     gradient: 'from-yellow-400 to-amber-600',
+  },
+  свитшоты: {
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-06-24%2000.52.05.png',
+    gradient: 'from-slate-700 to-slate-900',
+  },
+  шорты: {
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-06-24%2000.56.00.png',
+    gradient: 'from-slate-700 to-slate-900',
   },
   куртки: {
     image: 'https://ik.imagekit.io/qowmy92ny/2026-06-08%2012.09.18.png',
