@@ -178,6 +178,26 @@ const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string; obj
     image: 'https://ik.imagekit.io/qowmy92ny/4803a3273a3e4acf4fe0d9dd3fc5262d.png',
     gradient: 'from-slate-700 to-slate-900',
   },
+  сумки: {
+    image: 'https://ik.imagekit.io/qowmy92ny/a763c0ec6a9fa2f0e741d96acf747c22.png',
+    gradient: 'from-emerald-600 to-teal-800',
+  },
+  украшения: {
+    image: 'https://ik.imagekit.io/qowmy92ny/945d568f7ca42b08281d116b1ab2dcb6.png',
+    gradient: 'from-yellow-400 to-amber-600',
+  },
+  рюкзаки: {
+    image: 'https://ik.imagekit.io/qowmy92ny/8236d4303138d7e6bf701c44b1618519.png',
+    gradient: 'from-emerald-600 to-teal-800',
+  },
+  очки: {
+    image: 'https://ik.imagekit.io/qowmy92ny/8236d4303138d7e6bf701c44b1618519.png',
+    gradient: 'from-yellow-400 to-amber-600',
+  },
+  штаны: {
+    image: 'https://ik.imagekit.io/qowmy92ny/43a81205665ec0e7e8540a22805aa1fd.png',
+    gradient: 'from-slate-700 to-slate-900',
+  },
   куртки: {
     image: 'https://ik.imagekit.io/qowmy92ny/2026-06-08%2012.09.18.png',
     gradient: 'from-slate-700 to-slate-900',
