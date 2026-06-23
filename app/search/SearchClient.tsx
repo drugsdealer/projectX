@@ -130,7 +130,7 @@ const DEFAULT_CATEGORY_VISUAL: { icon: string; helper: string; image?: string; g
 // Subcategory-level overrides (more specific than main category)
 const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string; objectPosition?: string; objectFit?: 'cover' | 'contain' }> = {
   кроссовки: {
-    image: 'https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.44.01.jpg?updatedAt=1779373032045',
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-06-23%2017.56.16.jpg',
     gradient: 'from-amber-500 to-orange-600',
   },
   худи: {
@@ -143,8 +143,12 @@ const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string; obj
     objectFit: 'contain' as const,
   },
   футболки: {
-    image: 'https://ik.imagekit.io/qowmy92ny/pngwing.com%20(15).png',
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-06-23%2017.55.34.jpg',
     gradient: 'from-slate-700 to-slate-900',
+  },
+  ремни: {
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-06-23%2017.55.34.jpg',
+    gradient: 'from-yellow-400 to-amber-600',
   },
   куртки: {
     image: 'https://ik.imagekit.io/qowmy92ny/2026-06-08%2012.09.18.png',
