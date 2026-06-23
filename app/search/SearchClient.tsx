@@ -631,38 +631,35 @@ const CategoryCard = memo(function CategoryCard({ c, meta, genderSuffix = '' }: 
       href={href}
       className="group relative block overflow-hidden rounded-3xl border border-black/10 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_56px_rgba(0,0,0,0.12)]"
     >
-      {/* Photo / gradient banner */}
+      {/* Photo — товар целиком по центру на едином фоне (витрина) */}
       <div className="relative h-32 sm:h-40 overflow-hidden bg-neutral-100">
         {visual.image ? (
           <Image
-            src={getOptimizedImageUrl(visual.image, { width: 680, height: 360, crop: "maintain_ratio", focus: "auto" })}
+            src={getOptimizedImageUrl(visual.image, { width: 680 })}
             alt={c.title}
             fill
-            className="object-cover object-center transition duration-500 group-hover:scale-[1.06]"
+            className="object-contain p-4 transition duration-500 group-hover:scale-[1.04]"
             sizes="(max-width: 640px) 50vw, 340px"
             unoptimized
           />
         ) : (
           <div className={`absolute inset-0 bg-gradient-to-br ${visual.gradient}`} />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
         {genderSuffix ? (
-          <span className="absolute right-3 top-3 rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-white backdrop-blur-sm">
+          <span className="absolute right-3 top-3 rounded-full bg-black/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-black/55 backdrop-blur-sm">
             {genderSuffix === 'men' ? 'М' : 'Ж'}
           </span>
         ) : null}
-        <div className="absolute inset-x-0 bottom-0 p-3.5">
-          <h3 className="text-xl font-black leading-tight tracking-tight text-white drop-shadow-md">
-            {c.title}
-          </h3>
-        </div>
       </div>
 
-      {/* Footer */}
-      <div className="flex items-center justify-between gap-2 px-3.5 py-3">
-        <p className="text-xs font-semibold text-black/50 leading-snug">{meta || visual.helper}</p>
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black/10 text-sm text-black/40 transition group-hover:border-black group-hover:bg-black group-hover:text-white">
-          →
+      {/* Footer — название под фото */}
+      <div className="px-3.5 py-3">
+        <h3 className="text-lg font-black leading-tight tracking-tight text-black">{c.title}</h3>
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold text-black/45 leading-snug">{meta || visual.helper}</p>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black/10 text-sm text-black/40 transition group-hover:border-black group-hover:bg-black group-hover:text-white">
+            →
+          </div>
         </div>
       </div>
     </Link>
@@ -689,7 +686,7 @@ const SubcategoryTile = memo(function SubcategoryTile({ name, count, genderSuffi
       >
         <div className="relative h-20 sm:h-24 overflow-hidden bg-neutral-100">
           <img
-            src={objectFit === 'contain' ? image : getOptimizedImageUrl(image, { width: 480, height: 280, crop: "maintain_ratio", focus: "auto" }) ?? image}
+            src={getOptimizedImageUrl(image, { width: 480 }) ?? image}
             alt={pretty}
             className="absolute inset-0 w-full h-full transition duration-500 group-hover:scale-[1.06]"
             style={{ objectFit, objectPosition }}
