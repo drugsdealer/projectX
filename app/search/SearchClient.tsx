@@ -10,7 +10,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useUser } from '@/user/UserContext';
 import { getOrCreateEventsSessionId, trackShopEvent } from '@/lib/events-client';
-import { shouldBypassNextImageOptimization } from '@/lib/media';
+import { shouldBypassNextImageOptimization, getOptimizedImageUrl } from '@/lib/media';
 import { productPath } from '@/lib/product-url';
 import { canUseOptionalClientData } from '@/lib/privacy-consent';
 
@@ -632,13 +632,13 @@ const CategoryCard = memo(function CategoryCard({ c, meta, genderSuffix = '' }: 
       className="group relative block overflow-hidden rounded-3xl border border-black/10 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_56px_rgba(0,0,0,0.12)]"
     >
       {/* Photo / gradient banner */}
-      <div className="relative h-32 sm:h-40 overflow-hidden">
+      <div className="relative h-32 sm:h-40 overflow-hidden bg-neutral-100">
         {visual.image ? (
           <Image
-            src={visual.image}
+            src={getOptimizedImageUrl(visual.image, { width: 680, height: 360, crop: "maintain_ratio", focus: "auto" })}
             alt={c.title}
             fill
-            className="object-cover transition duration-500 group-hover:scale-[1.06]"
+            className="object-cover object-center transition duration-500 group-hover:scale-[1.06]"
             sizes="(max-width: 640px) 50vw, 340px"
             unoptimized
           />
@@ -687,9 +687,9 @@ const SubcategoryTile = memo(function SubcategoryTile({ name, count, genderSuffi
         className="group relative block overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(0,0,0,0.1)]"
         title={name}
       >
-        <div className="relative h-20 sm:h-24 overflow-hidden">
+        <div className="relative h-20 sm:h-24 overflow-hidden bg-neutral-100">
           <img
-            src={image}
+            src={objectFit === 'contain' ? image : getOptimizedImageUrl(image, { width: 480, height: 280, crop: "maintain_ratio", focus: "auto" }) ?? image}
             alt={pretty}
             className="absolute inset-0 w-full h-full transition duration-500 group-hover:scale-[1.06]"
             style={{ objectFit, objectPosition }}

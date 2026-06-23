@@ -28,6 +28,9 @@ type ImageKitTransformOptions = {
   quality?: number | "auto";
   format?: "auto" | "webp" | "avif" | "jpg" | "png";
   dpr?: number | "auto";
+  // crop strategy (напр. "maintain_ratio") и фокус ("auto" — умная обрезка по объекту)
+  crop?: string;
+  focus?: string;
 };
 
 function numberParam(value?: number) {
@@ -41,6 +44,8 @@ export function imageKitTransform(options: ImageKitTransformOptions = {}) {
   const height = numberParam(options.height);
   if (width) parts.push(`w-${width}`);
   if (height) parts.push(`h-${height}`);
+  if (options.crop) parts.push(`c-${options.crop}`);
+  if (options.focus) parts.push(`fo-${options.focus}`);
   parts.push(`q-${options.quality ?? "auto"}`);
   parts.push(`f-${options.format ?? "auto"}`);
   if (options.dpr) parts.push(`dpr-${options.dpr}`);
