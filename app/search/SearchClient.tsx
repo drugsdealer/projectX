@@ -147,7 +147,7 @@ const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string; obj
     gradient: 'from-slate-700 to-slate-900',
   },
   ремни: {
-    image: 'https://ik.imagekit.io/qowmy92ny/2026-06-23%2017.55.34.jpg',
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-06-23%2017.56.06.jpg',
     gradient: 'from-yellow-400 to-amber-600',
   },
   куртки: {
