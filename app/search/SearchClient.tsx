@@ -632,14 +632,14 @@ const CategoryCard = memo(function CategoryCard({ c, meta, genderSuffix = '' }: 
       className="group relative block overflow-hidden rounded-3xl border border-black/10 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_56px_rgba(0,0,0,0.12)]"
     >
       {/* Photo — товар целиком по центру на едином фоне (витрина) */}
-      <div className="relative h-32 sm:h-40 overflow-hidden bg-neutral-100">
+      <div className="relative h-64 sm:h-80 overflow-hidden bg-neutral-100">
         {visual.image ? (
           <Image
-            src={getOptimizedImageUrl(visual.image, { width: 680 })}
+            src={getOptimizedImageUrl(visual.image, { width: 900 })}
             alt={c.title}
             fill
-            className="object-contain p-4 transition duration-500 group-hover:scale-[1.04]"
-            sizes="(max-width: 640px) 50vw, 340px"
+            className="object-contain p-2 transition duration-500 group-hover:scale-[1.04]"
+            sizes="(max-width: 640px) 50vw, 460px"
             unoptimized
           />
         ) : (
