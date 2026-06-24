@@ -87,7 +87,7 @@ const CATEGORY_VISUALS: Record<string, { icon: string; helper: string; image?: s
   обувь: {
     icon: 'SH',
     helper: 'Кроссовки, ботинки, лоферы',
-    image: 'https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.44.01.jpg',
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.44.01%20(1).png',
     gradient: 'from-amber-500 to-orange-600',
   },
   одежда: {
