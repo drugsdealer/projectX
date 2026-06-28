@@ -28,6 +28,7 @@ import { useMotionBudget, type MotionLevel } from "@/components/MotionBudgetProv
 import { getOptimizedImageUrl, shouldBypassNextImageOptimization } from "@/lib/media";
 import { productPath } from "@/lib/product-url";
 import { canUseOptionalClientData } from "@/lib/privacy-consent";
+import { getTopBrands, getTopCategories, getRepeatViewedProducts } from "@/lib/user-behavior";
 // Локальные подписи основных категорий
 const LABELS: Record<string, string> = {
   footwear: 'Обувь',
@@ -647,6 +648,13 @@ export default function Home() {
   const [personalizedHomeItems, setPersonalizedHomeItems] = useState<any[]>([]);
   const [bestsellerHomeItems, setBestsellerHomeItems] = useState<any[]>([]);
   const [topBrandSignals, setTopBrandSignals] = useState<TopBrandSignal[]>([]);
+  // Локальный профиль интересов (для персонализации ОСНОВНОЙ ленты: порядок секций + порядок товаров)
+  const [affinity, setAffinity] = useState<{
+    catSlugs: string[];             // топ-категории пользователя (сырые слуги, в порядке интереса)
+    brandRank: Map<number, number>; // brandId -> ранг (0 = самый любимый)
+    brandNames: Map<string, number>;// brandName(lowercase) -> ранг (на случай, если в товаре нет brandId)
+    repeatIds: Set<number>;         // товары, что смотрел повторно и не купил
+  } | null>(null);
   const [cmsPromos, setCmsPromos] = useState<HomeCmsPromoConfig[]>([]);
   const [publicPromoCodes, setPublicPromoCodes] = useState<any[]>([]);
   const [promocodeSpace, setPromocodeSpace] = useState<HomePromocodeSpacePayload | null>(null);
@@ -796,6 +804,48 @@ export default function Home() {
   useEffect(() => {
     fetchHomeRecommendations(false);
   }, [fetchHomeRecommendations]);
+
+  // Считаем профиль интересов (локальный + серверные топ-бренды) для персонализации основной ленты.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!canUseOptionalClientData()) { setAffinity(null); return; }
+    try {
+      const catSlugs = getTopCategories(8)
+        .map((c) => (c?.slug ? String(c.slug).toLowerCase() : ""))
+        .filter(Boolean);
+
+      const brandRank = new Map<number, number>();
+      const brandNames = new Map<string, number>();
+      let rank = 0;
+      const addBrand = (id: any, name: any) => {
+        const nid = Number(id);
+        const nm = typeof name === "string" ? name.trim().toLowerCase() : "";
+        const hasId = Number.isFinite(nid) && nid > 0 && !brandRank.has(nid);
+        const hasName = nm && !brandNames.has(nm);
+        if (!hasId && !hasName) return;
+        const r = rank++;
+        if (hasId) brandRank.set(nid, r);
+        if (hasName) brandNames.set(nm, r);
+      };
+      for (const b of getTopBrands(8)) addBrand(b?.brandId, b?.brandName);
+      // докидываем серверные топ-бренды (из /api/recommendations/personal)
+      for (const b of topBrandSignals) addBrand((b as any)?.brandId, (b as any)?.brandName);
+
+      const repeatIds = new Set<number>(
+        getRepeatViewedProducts(16)
+          .map((p) => Number(p?.productId))
+          .filter((n) => Number.isFinite(n) && n > 0)
+      );
+
+      if (catSlugs.length === 0 && brandRank.size === 0 && brandNames.size === 0 && repeatIds.size === 0) {
+        setAffinity(null);
+      } else {
+        setAffinity({ catSlugs, brandRank, brandNames, repeatIds });
+      }
+    } catch {
+      setAffinity(null);
+    }
+  }, [topBrandSignals]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1216,16 +1266,54 @@ export default function Home() {
       const main = normalizeCategory(getRawCategory(p as any));
       (result[main] ||= []).push(p);
     }
+
+    // Персонализация порядка товаров внутри секций — только для дефолтной сортировки «популярное».
+    // При явном выборе сортировки по цене уважаем выбор пользователя и не вмешиваемся.
+    if (affinity && sortKey === "popular") {
+      const scoreOf = (p: any): number => {
+        let s = 0;
+        const bid = Number(p?.brandId);
+        if (Number.isFinite(bid) && affinity.brandRank.has(bid)) {
+          s += 200 - affinity.brandRank.get(bid)! * 12;
+        } else {
+          const bn = typeof p?.brand === "string" ? p.brand.trim().toLowerCase() : "";
+          if (bn && affinity.brandNames.has(bn)) s += 200 - affinity.brandNames.get(bn)! * 12;
+        }
+        const pid = Number(p?.id);
+        if (Number.isFinite(pid) && affinity.repeatIds.has(pid)) s += 500; // «хочет, но не купил» — выше всего
+        return s;
+      };
+      for (const key of Object.keys(result)) {
+        result[key] = result[key]
+          .map((p, idx) => ({ p, idx, s: scoreOf(p) }))
+          .sort((a, b) => b.s - a.s || a.idx - b.idx) // стабильно: при равенстве — исходный порядок
+          .map((x) => x.p);
+      }
+    }
+
     return result;
-  }, [visibleProducts, normalizeCategory, getRawCategory]);
+  }, [visibleProducts, normalizeCategory, getRawCategory, affinity, sortKey]);
 
   // Порядок секций на странице (из ORDER, затем остальные по алфавиту)
   const sectionOrder = useMemo(() => {
     const present = Object.keys(groupedVisible);
     const known = ORDER.filter((k) => present.includes(k as string)) as string[];
     const rest = present.filter((k) => !(ORDER as readonly string[]).includes(k)).sort();
-    return [...known, ...rest];
-  }, [groupedVisible]);
+    const base = [...known, ...rest];
+
+    // Персонализация порядка СЕКЦИЙ: любимые категории пользователя поднимаются наверх.
+    if (affinity && affinity.catSlugs.length) {
+      const prefKeys: string[] = [];
+      for (const slug of affinity.catSlugs) {
+        const key = normalizeCategory(slug);
+        if (base.includes(key) && !prefKeys.includes(key)) prefKeys.push(key);
+      }
+      if (prefKeys.length) {
+        return [...prefKeys, ...base.filter((k) => !prefKeys.includes(k))];
+      }
+    }
+    return base;
+  }, [groupedVisible, affinity, normalizeCategory]);
 
   // --- "Показать больше" per category ---
   const DEFAULT_COUNT = 20;  // initial items shown per category (was 12)
