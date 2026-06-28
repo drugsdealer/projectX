@@ -35,12 +35,21 @@ export async function generateMetadata({
   if (!product) return {};
 
   const brandName = product.Brand?.name;
-  const title = brandName ? `${product.name} ${brandName}` : product.name;
+  // Не дублируем бренд, если он уже есть в названии («Louis Vuitton L'Immensité»).
+  const nameHasBrand =
+    !!brandName && product.name.toLowerCase().includes(brandName.toLowerCase());
+  const core = nameHasBrand
+    ? product.name
+    : brandName
+      ? `${brandName} ${product.name}`
+      : product.name;
+  // Добавляем покупательский интент — «купить». Суффикс «| Stage Store» добавит шаблон в layout.
+  const title = `${core} — купить`;
   const prettyPath = productPath({ id: productId, name: product.name, brandName });
   const price = product.price ? `${Number(product.price).toLocaleString("ru-RU")} ₽` : "";
   const description = product.description
     ? product.description.slice(0, 160)
-    : `${title}${price ? ` — ${price}` : ""} в интернет-магазине Stage Store. Оригинал с гарантией подлинности.`;
+    : `${core} — купить оригинал${price ? ` за ${price}` : ""} в интернет-магазине Stage Store. Гарантия подлинности, доставка по России.`;
 
   const images = product.imageUrl ? [{ url: product.imageUrl, width: 800, height: 800, alt: title }] : [];
 
