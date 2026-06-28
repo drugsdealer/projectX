@@ -20,7 +20,6 @@ import HomeFeedInsert from "@/components/home/HomeFeedInsert";
 import HomePromoRail from "@/components/home/HomePromoRail";
 import CmsPromoBlock from "@/components/home/promos/CmsPromoBlock";
 import GentleMonsterBanner from "@/components/home/promos/GentleMonsterBanner";
-import SafariBanner from "@/components/home/promos/SafariBanner";
 import StoneIslandBanner from "@/components/promos/StoneIslandBanner";
 import { RepeatViewedSection, ForYouFeed } from "@/components/home/ForYouFeed";
 import BrandSpotlightCard from "@/components/home/BrandSpotlightCard";
@@ -1914,11 +1913,6 @@ export default function Home() {
                       {sectionIndex === 1 && gentleMonsterItems.length > 0 && (
                         <div className="px-3 sm:px-0">
                           <GentleMonsterBanner products={gentleMonsterItems} />
-                        </div>
-                      )}
-                      {sectionIndex === 2 && (
-                        <div className="px-3 sm:px-0">
-                          <SafariBanner />
                         </div>
                       )}
                       {sectionIndex === 3 && (

@@ -183,7 +183,7 @@ const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string; obj
     gradient: 'from-emerald-600 to-teal-800',
   },
   украшения: {
-    image: 'https://ik.imagekit.io/qowmy92ny/945d568f7ca42b08281d116b1ab2dcb6.png',
+    image: 'https://ik.imagekit.io/qowmy92ny/2026-06-24%2013.14.30.png?updatedAt=1782296163720',
     gradient: 'from-yellow-400 to-amber-600',
   },
   рюкзаки: {
