@@ -38,12 +38,13 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
 
-    // Always answer success — не раскрываем, существует ли email (защита от перебора).
     if (!email || !EMAIL_RE.test(email)) {
-      return NextResponse.json({ success: true });
+      return NextResponse.json(
+        { success: false, message: "Введите корректный email." },
+        { status: 400 }
+      );
     }
 
-    // Лимит и по email (по введённому значению, не по факту существования — без утечки).
     const emailLimit = await rateLimit(`forgot:email:${email}`, 5, 15 * 60_000);
     if (!emailLimit.ok) {
       return NextResponse.json(
@@ -57,9 +58,16 @@ export async function POST(req: Request) {
       select: { id: true, email: true, deletedAt: true },
     });
 
-    // Нет пользователя / деактивирован → всё равно success (без раскрытия).
+    // По требованию: если такого аккаунта нет — прямо сообщаем и предлагаем регистрацию.
     if (!user || user.deletedAt) {
-      return NextResponse.json({ success: true });
+      return NextResponse.json(
+        {
+          success: false,
+          code: "EMAIL_NOT_FOUND",
+          message: "Аккаунта с таким email не существует. Сначала зарегистрируйтесь.",
+        },
+        { status: 404 }
+      );
     }
 
     const code = generateCode();

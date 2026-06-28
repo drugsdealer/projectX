@@ -2,8 +2,9 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Eye, EyeOff, ArrowLeft, Mail } from "lucide-react";
+import { Check, Eye, EyeOff, ArrowLeft, Mail, UserPlus } from "lucide-react";
 
 type Step = "email" | "code" | "password" | "done";
 type CodeState = "idle" | "loading" | "success" | "error";
@@ -15,6 +16,7 @@ export default function ResetPasswordPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [notFound, setNotFound] = useState(false);
 
   // OTP
   const [digits, setDigits] = useState<string[]>(Array(6).fill(""));
@@ -47,6 +49,7 @@ export default function ResetPasswordPage() {
     }
     setLoading(true);
     setMsg(null);
+    setNotFound(false);
     try {
       const res = await fetch("/api/auth/forgot-password/request", {
         method: "POST",
@@ -54,11 +57,15 @@ export default function ResetPasswordPage() {
         body: JSON.stringify({ email: mail }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.status === 429) {
-        setMsg({ text: data?.message || "Слишком много запросов. Попробуйте позже.", ok: false });
+      if (data?.code === "EMAIL_NOT_FOUND") {
+        setNotFound(true);
         return;
       }
-      // Всегда переходим к вводу кода (не раскрываем существование email).
+      if (!res.ok || !data?.success) {
+        setMsg({ text: data?.message || "Не удалось отправить код. Попробуйте позже.", ok: false });
+        return;
+      }
+      // Email найден — переходим к вводу кода.
       setEmail(mail);
       setDigits(Array(6).fill(""));
       setActiveIdx(0);
@@ -273,7 +280,11 @@ export default function ResetPasswordPage() {
                       <input
                         type="email"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          if (notFound) setNotFound(false);
+                          if (msg) setMsg(null);
+                        }}
                         placeholder="you@example.com"
                         autoComplete="email"
                         autoFocus
@@ -282,8 +293,30 @@ export default function ResetPasswordPage() {
                     </div>
 
                     <AnimatePresence>
-                      {msg && (
+                      {notFound ? (
                         <motion.div
+                          key="notfound"
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
+                        >
+                          <p className="text-sm text-amber-800 font-medium">
+                            Аккаунта с таким email не существует.
+                          </p>
+                          <p className="mt-1 text-xs text-amber-700/80">
+                            Сначала создайте аккаунт — это займёт меньше минуты.
+                          </p>
+                          <Link
+                            href="/register"
+                            className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-black text-white px-4 py-2 text-xs font-semibold hover:-translate-y-0.5 transition"
+                          >
+                            <UserPlus size={14} /> Зарегистрироваться
+                          </Link>
+                        </motion.div>
+                      ) : msg ? (
+                        <motion.div
+                          key="msg"
                           initial={{ opacity: 0, y: -4 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0 }}
@@ -291,7 +324,7 @@ export default function ResetPasswordPage() {
                         >
                           {msg.text}
                         </motion.div>
-                      )}
+                      ) : null}
                     </AnimatePresence>
 
                     <motion.button
