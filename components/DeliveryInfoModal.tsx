@@ -55,7 +55,7 @@ export const DeliveryInfoModal: React.FC<DeliveryInfoModalProps> = ({
                   </li>
                   <li>
                     <strong>Курьерская доставка</strong> по Москве —{" "}
-                    <strong>499 ₽</strong>.
+                    <strong>бесплатно</strong>, на следующий день.
                   </li>
                 </ul>
               </>
@@ -79,8 +79,8 @@ export const DeliveryInfoModal: React.FC<DeliveryInfoModalProps> = ({
                       Примерная, д. 10. График работы: 10:00–21:00.
                     </li>
                     <li>
-                      <strong>Курьерская доставка</strong> — по городу Москве.
-                      Стоимость услуги — <strong>499 ₽</strong>.
+                      <strong>Курьерская доставка</strong> по Москве —{" "}
+                      <strong>бесплатно</strong>, доставим на следующий день.
                     </li>
                   </ul>
                 </div>
@@ -90,8 +90,11 @@ export const DeliveryInfoModal: React.FC<DeliveryInfoModalProps> = ({
                     🚚 Доставка по России:
                   </h4>
                   <p>
-                    Доставляем по всей России надёжными транспортными
-                    компаниями.
+                    Доставляем по всей России надёжными транспортными компаниями
+                    (СДЭК, Почта России, Boxberry). Доставка по России —{" "}
+                    <strong>платная</strong>: стоимость рассчитывается
+                    индивидуально и согласуется с менеджером после оформления
+                    заказа.
                   </p>
                 </div>
               </>
