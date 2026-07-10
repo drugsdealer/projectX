@@ -449,6 +449,7 @@ model PasswordResetCode {
   id        Int      @id @default(autoincrement())
   userId    Int      @unique
   code      String
+  attempts  Int      @default(0) // число неверных попыток ввода — код гасится после лимита (анти-брутфорс)
   createdAt DateTime @default(now())
   User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 

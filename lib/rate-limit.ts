@@ -43,21 +43,24 @@ async function getUpstash() {
 
 export function getClientIp(req: Request): string {
   const h = req.headers;
-  // cf-connecting-ip — Cloudflare, нельзя подделать
-  const cf = h.get("cf-connecting-ip");
-  if (cf) return cf.trim();
-  // x-vercel-forwarded-for — Vercel edge, устанавливается инфраструктурой
+  // Порядок доверия для деплоя на Vercel (без Cloudflare перед сайтом):
+  // 1) x-vercel-forwarded-for — ставит инфраструктура Vercel, клиент подделать не может.
   const vercel = h.get("x-vercel-forwarded-for");
   if (vercel) return vercel.split(",")[0].trim();
-  // x-real-ip — обычно nginx, доверяем если нет вышестоящего прокси
+  // 2) x-real-ip — ставит прокси/Vercel.
   const real = h.get("x-real-ip");
   if (real) return real.trim();
-  // x-forwarded-for — последним, может быть подделан клиентом без trusted proxy
+  // 3) x-forwarded-for — Vercel подставляет реальный клиентский IP слева.
   const fwd = h.get("x-forwarded-for");
   if (fwd) {
     const first = fwd.split(",")[0]?.trim();
     if (first) return first;
   }
+  // 4) cf-connecting-ip доверяем ТОЛЬКО как последний вариант: он валиден лишь если сайт реально
+  //    стоит за Cloudflare. Сейчас Cloudflare нет, поэтому клиентский заголовок ему НЕ доверяем в начале
+  //    (иначе любой мог бы подделать IP и обойти rate-limit).
+  const cf = h.get("cf-connecting-ip");
+  if (cf) return cf.trim();
   return "unknown";
 }
 

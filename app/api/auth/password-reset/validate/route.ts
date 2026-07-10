@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
-import { timingSafeEqual } from "crypto";
-import { prisma } from "@/lib/prisma";
 import { getUserIdFromRequest } from "@/lib/session";
 import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { verifyResetCode } from "@/lib/password-reset";
 
 export async function POST(req: Request) {
   try {
@@ -34,16 +33,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: "Код должен состоять из 6 цифр." }, { status: 400 });
     }
 
-    const record = await prisma.passwordResetCode.findUnique({
-      where: { userId },
-    });
-    if (!record || !timingSafeEqual(Buffer.from(record.code), Buffer.from(code))) {
-      return NextResponse.json({ success: false, message: "Неверный код." }, { status: 400 });
-    }
-
-    const isExpired = record.createdAt.getTime() < Date.now() - 10 * 60 * 1000;
-    if (isExpired) {
-      return NextResponse.json({ success: false, message: "Срок кода истёк." }, { status: 400 });
+    const check = await verifyResetCode(userId, code);
+    if (!check.ok) {
+      return NextResponse.json({ success: false, message: check.message }, { status: 400 });
     }
 
     return NextResponse.json({ success: true });
