@@ -11,6 +11,7 @@ import { UserProvider } from "@/user/UserContext";
 import ClientLayout from "@/components/ClientLayout";
 import RouteTransitions from "@/components/RouteTransitions";
 import MotionBudgetProvider from "@/components/MotionBudgetProvider";
+import SupportWidget from "@/components/shared/SupportWidget";
 import type { Metadata } from "next";
 import { safeJsonLd } from "@/lib/json-ld";
 
@@ -258,6 +259,7 @@ export default function RootLayout({
                         <RouteTransitions>{children}</RouteTransitions>
                       </ClientLayout>
                       <ToastContainer />
+                      <SupportWidget />
                     </MotionBudgetProvider>
                   </TitleProvider>
                 </ToastProvider>
