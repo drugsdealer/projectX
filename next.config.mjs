@@ -25,4 +25,11 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+import { withSentryConfig } from "@sentry/nextjs";
+
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  // Загрузку source maps отключаем — не требует SENTRY_AUTH_TOKEN, сборка проходит без внешних зависимостей.
+  sourcemaps: { disable: true },
+  disableLogger: true,
+});
