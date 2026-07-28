@@ -37,7 +37,7 @@ const SLIDES: Slide[] = [
     id: 'ap-swatch',
     videoSrc: 'https://ik.imagekit.io/qowmy92ny/swatch-x-AP_1920x917-v3.mov',
     videoSrcMobile: 'https://ik.imagekit.io/qowmy92ny/swatch%20x%20AP%20v7%209-16.mov',
-    alt: 'Audemars Piguet × Swatch коллаборация',
+    alt: 'Audemars Piguet × Swatch коллаборация СО СПЕРМОЙ',
     eyebrow: 'Audemars Piguet × Swatch / Limited collaboration',
     title: 'AP ×',
     mutedTitle: 'Swatch',
