@@ -8,19 +8,23 @@ import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { createHmac, timingSafeEqual } from "crypto";
 import { withDbRetry } from "@/lib/db-retry";
 
-const ADMIN_2FA_SECRET =
-  process.env.ADMIN_2FA_HMAC_SECRET ||
-  process.env.STAGE_VAULT_SECRET ||
-  (process.env.NODE_ENV !== "production" ? "dev_2fa_hmac_key" : "");
 const OWNER_ADMIN_EMAIL = "eldheykrut@gmail.com";
 
-if (process.env.NODE_ENV === "production" && !ADMIN_2FA_SECRET) {
-  throw new Error("ADMIN_2FA_HMAC_SECRET or STAGE_VAULT_SECRET is required in production");
+// Ленивый геттер: проверка секрета срабатывает на рантайме (реальный запрос), а не при импорте/сборке.
+function getAdmin2FASecret(): string {
+  const secret =
+    process.env.ADMIN_2FA_HMAC_SECRET ||
+    process.env.STAGE_VAULT_SECRET ||
+    (process.env.NODE_ENV !== "production" ? "dev_2fa_hmac_key" : "");
+  if (!secret) {
+    throw new Error("ADMIN_2FA_HMAC_SECRET or STAGE_VAULT_SECRET is required in production");
+  }
+  return secret;
 }
 
 export function sign2FACookie(userId: number): string {
   const payload = `2fa:${userId}:${Math.floor(Date.now() / 1000)}`;
-  const sig = createHmac("sha256", ADMIN_2FA_SECRET).update(payload).digest("hex");
+  const sig = createHmac("sha256", getAdmin2FASecret()).update(payload).digest("hex");
   return `${payload}.${sig}`;
 }
 
@@ -35,7 +39,7 @@ export function verify2FACookie(value: string, userId: number): boolean {
   if (!Number.isFinite(ts)) return false;
   // 2FA cookie expires after 4 hours
   if (Math.floor(Date.now() / 1000) - ts > 4 * 60 * 60) return false;
-  const expected = createHmac("sha256", ADMIN_2FA_SECRET).update(payload).digest("hex");
+  const expected = createHmac("sha256", getAdmin2FASecret()).update(payload).digest("hex");
   try {
     return timingSafeEqual(Buffer.from(sig, "hex"), Buffer.from(expected, "hex"));
   } catch {
@@ -46,7 +50,7 @@ export function verify2FACookie(value: string, userId: number): boolean {
 // Signed cookie identifying which admin is impersonating a user (prevents forging the cookie value)
 export function signImpersonatorCookie(adminId: number): string {
   const payload = `imp:${adminId}:${Math.floor(Date.now() / 1000)}`;
-  const sig = createHmac("sha256", ADMIN_2FA_SECRET).update(payload).digest("hex");
+  const sig = createHmac("sha256", getAdmin2FASecret()).update(payload).digest("hex");
   return `${payload}.${sig}`;
 }
 
@@ -62,7 +66,7 @@ export function verifyImpersonatorCookie(value: string): number | null {
   if (!Number.isFinite(adminId) || !Number.isFinite(ts)) return null;
   // Impersonation cookie expires after 24 hours (matches cookie maxAge)
   if (Math.floor(Date.now() / 1000) - ts > 24 * 60 * 60) return null;
-  const expected = createHmac("sha256", ADMIN_2FA_SECRET).update(payload).digest("hex");
+  const expected = createHmac("sha256", getAdmin2FASecret()).update(payload).digest("hex");
   try {
     if (!timingSafeEqual(Buffer.from(sig, "hex"), Buffer.from(expected, "hex"))) return null;
   } catch {

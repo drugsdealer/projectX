@@ -4,12 +4,15 @@ import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 
 // Short-lived signed claim cookie — lets middleware verify identity without a DB round-trip.
 // Format: "<userId>.<expUnixSec>.<hmacSHA256Hex>"
-const CLAIM_SECRET =
-  process.env.STAGE_VAULT_SECRET ||
-  process.env.NEXTAUTH_SECRET ||
-  (process.env.NODE_ENV === 'production'
-    ? (() => { throw new Error('STAGE_VAULT_SECRET must be set in production'); })()
-    : 'dev_secret_change_me');
+// Ленивый геттер claim-секрета. В проде без секрета возвращает null → fast-path claim просто
+// не ставится (middleware падает обратно на проверку по БД), сборка при этом не падает.
+function getClaimSecret(): string | null {
+  return (
+    process.env.STAGE_VAULT_SECRET ||
+    process.env.NEXTAUTH_SECRET ||
+    (process.env.NODE_ENV !== 'production' ? 'dev_secret_change_me' : null)
+  );
+}
 const CLAIM_TTL_SECS = 10 * 60; // 10 minutes
 
 // Normalize Next 15 async cookies() to a plain jar
@@ -40,11 +43,16 @@ export const GUEST_TOKEN_COOKIE_ALT = 'guest_token';   // backward compatibility
 export const PENDING_ORDER_COOKIE = 'pending_order_id';
 
 // Secret for legacy token signature (HMAC-SHA256). Set STAGE_VAULT_SECRET in .env
-const SECRET = process.env.STAGE_VAULT_SECRET || (
-  process.env.NODE_ENV === 'production'
-    ? (() => { throw new Error('STAGE_VAULT_SECRET must be set in production'); })()
-    : 'dev_secret_change_me'
-);
+// Ленивый геттер секрета для подписи legacy-токена — проверка на рантайме, не при импорте/сборке.
+function getLegacyTokenSecret(): string {
+  const secret =
+    process.env.STAGE_VAULT_SECRET ||
+    (process.env.NODE_ENV !== 'production' ? 'dev_secret_change_me' : '');
+  if (!secret) {
+    throw new Error('STAGE_VAULT_SECRET must be set in production');
+  }
+  return secret;
+}
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 // Use secure cookies in production
@@ -59,7 +67,7 @@ function base64url(input: Buffer | string) {
 }
 
 function sign(payload: string) {
-  return base64url(createHmac('sha256', SECRET).update(payload).digest());
+  return base64url(createHmac('sha256', getLegacyTokenSecret()).update(payload).digest());
 }
 
 /** Make a signed legacy session token for given userId (used only for backward compat) */
@@ -152,10 +160,11 @@ export function clearSessionTokenOnResponse(res: NextResponse) {
 
 /** Set a short-lived signed claim cookie for fast middleware verification (no DB needed). */
 export function setSessionClaimOnResponse(res: NextResponse, userId: number | string): void {
-  if (!CLAIM_SECRET) return;
+  const claimSecret = getClaimSecret();
+  if (!claimSecret) return;
   const exp = Math.floor(Date.now() / 1000) + CLAIM_TTL_SECS;
   const payload = `${userId}.${exp}`;
-  const sig = createHmac('sha256', CLAIM_SECRET).update(payload).digest('hex');
+  const sig = createHmac('sha256', claimSecret).update(payload).digest('hex');
   res.cookies.set('s_uid', `${payload}.${sig}`, {
     httpOnly: true,
     sameSite: 'lax',
