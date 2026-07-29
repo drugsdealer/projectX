@@ -68,3 +68,6 @@ used in the project https://vercel.com / for the Postgresql database and linked 
 - `ADD_TO_CART` в `app/api/cart/route.ts` (после добавления в корзину)
 - `PURCHASE` в `app/api/order/complete/route.ts` (после подтверждения оплаты)
 
+приветик
+
+бабаблаал
