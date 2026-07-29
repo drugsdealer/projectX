@@ -136,6 +136,9 @@ export const Header: React.FC<Props> = ({ className }) => {
     return window.scrollY < 10;
   });
 
+  // Наведение мышью на хедер: в прозрачном режиме возвращаем фон, чтобы контент был читаем.
+  const [isHeaderHovered, setIsHeaderHovered] = useState(false);
+
   // React to external UI signals (e.g. Premium curator open) to blur/put header to background
   const [curatorOpenRemote, setCuratorOpenRemote] = useState(false);
   useEffect(() => {
@@ -328,12 +331,17 @@ useLayoutEffect(() => {
     return () => observer.disconnect();
   }, []);
 
-  const transparentHeader = (isHome || isBrandPage) && isAtTop;
+  // Прозрачность снимается при наведении мышью — тогда хедер обретает белый фон.
+  const transparentHeader = (isHome || isBrandPage) && isAtTop && !isHeaderHovered;
+  // Оставляем исходную логику: на странице бренда хедер наверху пропускает клики сквозь себя
+  // (pointer-events-none), поэтому hover тут не участвует — иначе события мыши не дошли бы.
   const brandTransparentHeader = isBrandPage && isAtTop;
 
   return (
     <header
       ref={headerRef}
+      onMouseEnter={() => setIsHeaderHovered(true)}
+      onMouseLeave={() => setIsHeaderHovered(false)}
       className={cn(
         (isHome || isBrandPage) ? 'fixed top-0 left-0' : 'relative',
         'w-full z-40 transition-all duration-500',

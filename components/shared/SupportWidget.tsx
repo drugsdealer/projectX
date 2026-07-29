@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, X, Send, Mail } from "lucide-react";
 
@@ -9,6 +10,10 @@ const SUPPORT_EMAIL = "info@stagestore.ru";
 
 export default function SupportWidget() {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
+  // На premium-страницах уже есть консьерж — не дублируем виджет поддержки.
+  if (pathname?.startsWith("/premium")) return null;
 
   return (
     <div className="fixed right-4 bottom-20 sm:right-6 sm:bottom-6 z-[900] flex flex-col items-end gap-3 pointer-events-none">

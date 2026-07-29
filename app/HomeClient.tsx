@@ -75,7 +75,8 @@ const HOME_GENDER_SELECTIONS = [
   {
     title: "Мужская селекция",
     href: "/search?gender=men",
-    image: null,
+    image: "https://ik.imagekit.io/qowmy92ny/2026-07-29%2015.23.32.jpg",
+    objectPosition: "center",
   },
   {
     title: "Женская селекция",

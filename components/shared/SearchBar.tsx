@@ -148,7 +148,9 @@ export function SearchBar({ isTransparent = false }: Props) {
             animate={{ y: 0, scale: 1 }}
             exit={{ y: -8, scale: 0.97 }}
             transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute left-0 top-[calc(100%+8px)] w-72 rounded-2xl border border-black/10 shadow-2xl shadow-black/8 overflow-hidden z-50"
+            // text-black обязателен: в прозрачном хедере родитель задаёт text-white,
+            // и содержимое дропдауна наследовало белый цвет на белом фоне (было не видно).
+            className="absolute left-0 top-[calc(100%+8px)] w-72 rounded-2xl border border-black/10 shadow-2xl shadow-black/8 overflow-hidden z-50 text-black"
             style={{ backgroundColor: '#ffffff', isolation: 'isolate' }}
           >
             {active ? (
