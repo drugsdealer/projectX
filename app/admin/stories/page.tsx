@@ -131,6 +131,20 @@ export default function AdminStoriesPage() {
     await load();
   };
 
+  const replaceSlideImage = async (slideId: number, imageUrl: string) => {
+    const res = await fetch(`/api/admin/stories/slides/${slideId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageUrl }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.success) {
+      setMsg(data?.message || "Не удалось заменить фото");
+      return;
+    }
+    await load();
+  };
+
   const openSlideProducts = async (slideId: number) => {
     if (openSlideId === slideId) {
       setOpenSlideId(null);
@@ -281,6 +295,15 @@ export default function AdminStoriesPage() {
                           </button>
                         </div>
                       </div>
+                    </div>
+
+                    <div className="mt-2.5">
+                      <ImageKitUploadField
+                        label="Заменить фото"
+                        hint="Заменит текущее фото слайда"
+                        folder="/stories"
+                        onUploaded={(url) => replaceSlideImage(slide.id, url)}
+                      />
                     </div>
 
                     <div className="mt-2.5 space-y-1.5">
