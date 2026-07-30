@@ -424,11 +424,7 @@ export function Stories() {
                 >
                   ←
                 </button>
-                <span className="text-xs opacity-70">Предыдущая</span>
-                <span className="text-xs opacity-70 mb-1">сторис</span>
-                <span className="text-sm font-semibold max-w-[150px] text-center leading-tight">
-                  {prev.title}
-                </span>
+               
               </div>
             ) : null;
           })()}
