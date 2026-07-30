@@ -4260,25 +4260,16 @@ export default function PremiumPage() {
             >
               <h3 className="text-3xl md:text-4xl font-extrabold mb-4">{LABELS[key] || String(key)}</h3>
 
-              {/* Показано N из M + кнопка показать ещё */}
-              <div className="mt-5 mb-2 flex items-center justify-between">
+              {/* Показано N из M */}
+              <div className="mt-5 mb-2">
                 <span className="text-sm text-gray-600">Показано <b>{visible}</b> из <b>{total}</b></span>
-                {visible < total && (
-                  <button
-                    type="button"
-                    onClick={() => showMore(key)}
-                    className="px-4 py-2 rounded-full text-sm bg-black text-white font-semibold hover:shadow-md active:scale-[.98] transition"
-                  >
-                    Показать ещё
-                  </button>
-                )}
               </div>
               <SectionMount>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6 mt-6">
                   {sliced.map((it: any, idx: number) => (
                     <AnimatedGridItem key={`grid-${it.id}`} index={idx}>
-                      <GridCard 
-                        item={it} 
+                      <GridCard
+                        item={it}
                         rememberPremiumScroll={rememberPremiumScroll}
                         buildProductHref={buildProductHref}
                         getPreviewImages={getPreviewImages}
@@ -4288,6 +4279,17 @@ export default function PremiumPage() {
                   ))}
                 </div>
               </SectionMount>
+              {visible < total && (
+                <div className="mt-6 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => showMore(key)}
+                    className="px-4 py-2 rounded-full text-sm bg-black text-white font-semibold hover:shadow-md active:scale-[.98] transition"
+                  >
+                    Показать ещё
+                  </button>
+                </div>
+              )}
               {/* JSON-LD для SEO (часть премиум-товаров) */}
               <script
                 type="application/ld+json"
