@@ -260,6 +260,7 @@ model Product {
   SizeCl      SizeCl[]      @relation("ProductSizeCls")
   Size        Size[]        @relation("ProductSizes")
   PerfumeVariant PerfumeVariant[]
+  StorySlideProduct StorySlideProduct[]
 
   @@index([brandId])
   @@index([categoryId])
@@ -271,6 +272,52 @@ model Product {
   @@index([deletedAt, available], map: "idx_product_deleted_available")
   @@index([categoryId, deletedAt, available], map: "idx_product_category_listing")
   @@index([brandId, deletedAt, available], map: "idx_product_brand_listing")
+}
+
+// Сторис на главной ("Неделя Acne", дропы и т.д.) — управляются из /admin/stories
+model Story {
+  id        Int          @id @default(autoincrement())
+  title     String
+  order     Int          @default(0)
+  isActive  Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  deletedAt DateTime?    @db.Timestamp(6)
+  Slides    StorySlide[]
+
+  @@index([isActive, order])
+}
+
+model StorySlide {
+  id          Int                 @id @default(autoincrement())
+  storyId     Int
+  imageUrl    String
+  caption     String?
+  description String?
+  order       Int                 @default(0)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  Story     Story               @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  Products  StorySlideProduct[]
+
+  @@index([storyId, order])
+}
+
+// Товары, привязанные к конкретному слайду сторис — показываются в шторке "Товары из сторис"
+model StorySlideProduct {
+  id           Int        @id @default(autoincrement())
+  storySlideId Int
+  productId    Int
+  order        Int        @default(0)
+  createdAt    DateTime   @default(now())
+
+  StorySlide   StorySlide @relation(fields: [storySlideId], references: [id], onDelete: Cascade)
+  Product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([storySlideId, productId])
+  @@index([storySlideId, order])
+  @@index([productId])
 }
 
 model ProductItem {

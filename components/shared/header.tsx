@@ -130,11 +130,9 @@ export const Header: React.FC<Props> = ({ className }) => {
   const isHome = pathname === "/";
   const isBrandPage = pathname?.startsWith("/brand/");
   const { user } = useUser();
-  // Initialise synchronously on client to avoid white-flash before useEffect fires
-  const [isAtTop, setIsAtTop] = useState(() => {
-    if (typeof window === 'undefined') return true;
-    return window.scrollY < 10;
-  });
+  // Всегда true на первом рендере — совпадает с SSR. useLayoutEffect ниже синхронно
+  // поправляет значение на isHome/isBrandPage до отрисовки, так что мигания не будет.
+  const [isAtTop, setIsAtTop] = useState(true);
 
   // Наведение мышью на хедер: в прозрачном режиме возвращаем фон, чтобы контент был читаем.
   const [isHeaderHovered, setIsHeaderHovered] = useState(false);

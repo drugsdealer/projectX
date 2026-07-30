@@ -65,6 +65,25 @@ export function getOptimizedImageUrl(url?: string | null, options: ImageKitTrans
   }
 }
 
+function isCloudinaryUrl(url?: string | null) {
+  return /^https:\/\/res\.cloudinary\.com\//i.test(normalizeMediaUrl(url));
+}
+
+function cloudinaryTransform(url: string, width: number) {
+  if (url.includes("/upload/w_")) return url;
+  return url.replace("/upload/", `/upload/w_${width},q_auto,f_auto/`);
+}
+
+// Универсальная сжатая версия картинки сторис: ImageKit — через getOptimizedImageUrl,
+// Cloudinary (старые сторис) — через нативный transform в URL, иначе — как есть.
+export function getStoryImageUrl(url?: string | null, width = 480) {
+  const src = normalizeMediaUrl(url);
+  if (!src) return src;
+  if (isImageKitUrl(src)) return getOptimizedImageUrl(src, { width, quality: "auto" });
+  if (isCloudinaryUrl(src)) return cloudinaryTransform(src, width);
+  return src;
+}
+
 export function isAllowedMediaUrl(url?: string | null) {
   const src = normalizeMediaUrl(url);
   if (!src) return false;
