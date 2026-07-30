@@ -644,12 +644,14 @@ const SubcategoryChips: React.FC<{ subcategories: string[]; active: string | nul
 
 const PremiumAura: React.FC = () => {
   const sparkles = [
-    { left: "12%", top: "22%", size: 6, delay: 0 },
-    { left: "28%", top: "62%", size: 5, delay: 1.2 },
-    { left: "46%", top: "18%", size: 4, delay: 2.1 },
-    { left: "62%", top: "52%", size: 5, delay: 0.6 },
-    { left: "78%", top: "26%", size: 6, delay: 1.8 },
-    { left: "84%", top: "68%", size: 4, delay: 2.6 },
+    { left: "12%", top: "22%", size: 15, delay: 0, dur: 3.4 },
+    { left: "26%", top: "64%", size: 10, delay: 1.1, dur: 3.8 },
+    { left: "40%", top: "14%", size: 9, delay: 2.0, dur: 3.2 },
+    { left: "58%", top: "56%", size: 13, delay: 0.5, dur: 4.0 },
+    { left: "74%", top: "22%", size: 16, delay: 1.6, dur: 3.6 },
+    { left: "88%", top: "62%", size: 10, delay: 2.4, dur: 3.0 },
+    { left: "34%", top: "80%", size: 8, delay: 0.9, dur: 3.5 },
+    { left: "66%", top: "10%", size: 11, delay: 2.8, dur: 3.9 },
   ];
   return (
     <div
@@ -689,15 +691,17 @@ const PremiumAura: React.FC = () => {
               animate={{ x: [0, 20, 0], y: [0, -24, 0], scale: [1, 1.05, 1] }}
               transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
             />
+            {/* блик — диагональная полоса света, проходящая по баннеру */}
             <motion.div
-              className="absolute -left-1/2 top-[42%] h-24 w-[200%]"
+              className="absolute -left-1/3 top-0 h-full w-1/4 -skew-x-12"
               style={{
-                background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent)",
-                filter: "blur(10px)",
-                opacity: 0.7,
+                background:
+                  "linear-gradient(90deg, transparent, rgba(255,255,255,0.9), rgba(212,175,55,0.4), transparent)",
+                mixBlendMode: "overlay",
+                filter: "blur(3px)",
               }}
-              animate={{ x: ["-12%", "12%", "-12%"] }}
-              transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+              animate={{ x: ["-20%", "480%"] }}
+              transition={{ duration: 5, repeat: Infinity, repeatDelay: 2.2, ease: "easeInOut" }}
             />
             <div
               className="absolute inset-0"
@@ -711,17 +715,25 @@ const PremiumAura: React.FC = () => {
             {sparkles.map((s, idx) => (
               <motion.span
                 key={`${s.left}-${s.top}-${idx}`}
-                className="absolute rounded-full"
+                className="absolute select-none"
                 style={{
                   left: s.left,
                   top: s.top,
-                  width: s.size,
-                  height: s.size,
-                  background: "radial-gradient(circle, rgba(212,175,55,0.85), rgba(212,175,55,0))",
+                  fontSize: s.size,
+                  lineHeight: 1,
+                  color: idx % 2 === 0 ? "rgba(212,175,55,0.95)" : "rgba(255,255,255,0.95)",
+                  textShadow:
+                    "0 0 6px rgba(212,175,55,0.7), 0 0 12px rgba(212,175,55,0.4)",
                 }}
-                animate={{ opacity: [0.2, 0.85, 0.2], scale: [0.8, 1.2, 0.8] }}
-                transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut", delay: s.delay }}
-              />
+                animate={{
+                  opacity: [0, 1, 0],
+                  scale: [0.4, 1.15, 0.4],
+                  rotate: [0, 90, 180],
+                }}
+                transition={{ duration: s.dur, repeat: Infinity, ease: "easeInOut", delay: s.delay }}
+              >
+                ✦
+              </motion.span>
             ))}
             <div
               className="absolute inset-0"
@@ -4322,7 +4334,7 @@ export default function PremiumPage() {
       </section>
         {/* Storytelling / Манифест */}
         <section className="relative w-full h-[360px] md:h-[480px] mt-20 overflow-hidden">
-          <img src="/img/гугле.webp" alt="Premium background" className="absolute inset-0 w-full h-full object-cover" />
+          <img src="/img/premium-why-bg.jpg" alt="Premium background" className="absolute inset-0 w-full h-full object-cover" />
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
             <div className="text-center text-white px-6 max-w-3xl">
               <h2 className="text-3xl md:text-5xl font-extrabold mb-4">Почему Stage Premium?</h2>
@@ -4375,7 +4387,7 @@ export default function PremiumPage() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-60px" }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          className="mt-20 relative overflow-hidden bg-[#0b0b0b] px-6 py-12 sm:px-12 sm:py-16"
+          className="relative overflow-hidden bg-[#0b0b0b] px-6 py-12 sm:px-12 sm:py-16 -mb-16"
         >
           {/* Decorative blobs */}
           <div className="pointer-events-none absolute inset-0">
