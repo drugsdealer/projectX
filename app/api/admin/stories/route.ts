@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/admin";
+import { revalidatePath } from "next/cache";
 
 export async function GET(req: Request) {
   const guard = await requireAdminApi({ require2FA: true, req });
@@ -70,5 +71,6 @@ export async function POST(req: Request) {
     data: { title, order: (last?.order ?? -1) + 1 },
   });
 
+  revalidatePath("/");
   return NextResponse.json({ success: true, story });
 }

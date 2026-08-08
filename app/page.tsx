@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import HomeClient from "./HomeClient";
 import { safeJsonLd } from "@/lib/json-ld";
+import { getActiveStories } from "@/lib/stories";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
 
@@ -80,7 +81,9 @@ const homeJsonLd = {
   },
 };
 
-export default function Page() {
+export default async function Page() {
+  const initialStories = await getActiveStories().catch(() => []);
+
   return (
     <>
       <script
@@ -92,7 +95,7 @@ export default function Page() {
           <div className="hero-bleed-top min-h-[100svh] w-screen bg-black" aria-hidden="true" />
         }
       >
-        <HomeClient />
+        <HomeClient initialStories={initialStories} />
       </Suspense>
     </>
   );

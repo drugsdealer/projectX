@@ -29,6 +29,7 @@ import { getOptimizedImageUrl, shouldBypassNextImageOptimization } from "@/lib/m
 import { productPath } from "@/lib/product-url";
 import { canUseOptionalClientData } from "@/lib/privacy-consent";
 import { getTopBrands, getTopCategories, getRepeatViewedProducts } from "@/lib/user-behavior";
+import type { ActiveStory } from "@/lib/stories";
 // Локальные подписи основных категорий
 const LABELS: Record<string, string> = {
   footwear: 'Обувь',
@@ -77,6 +78,7 @@ const HOME_GENDER_SELECTIONS = [
     href: "/search?gender=men",
     image: "https://ik.imagekit.io/qowmy92ny/2026-07-29%2015.23.32.jpg",
     objectPosition: "center",
+    imageOffsetY: 20,
   },
   {
     title: "Женская селекция",
@@ -445,7 +447,7 @@ const ProductCardImage = memo(function ProductCardImage({
   );
 });
 
-export default function Home() {
+export default function Home({ initialStories }: { initialStories?: ActiveStory[] }) {
   const { reduceMotion, motionLevel } = useMotionBudget();
   const balancedMotion = motionLevel === "balanced";
   const [isHydrated, setIsHydrated] = useState(false);
@@ -1800,7 +1802,7 @@ export default function Home() {
 
       {/* Stories bar */}
       <div className="w-full">
-        <Stories />
+        <Stories initialStories={initialStories} />
       </div>
 
       {/* Premium button under Stories (desktop + mobile) */}
@@ -1907,7 +1909,12 @@ export default function Home() {
                     fill
                     sizes="(max-width: 768px) 50vw, 50vw"
                     className="opacity-75 grayscale transition duration-700 group-hover:scale-105 group-hover:opacity-90"
-                    style={{ objectFit: "cover", objectPosition: (item as any).objectPosition ?? "center" }}
+                    style={{
+                      objectFit: "cover",
+                      objectPosition: (item as any).imageOffsetY
+                        ? `center calc(50% + ${(item as any).imageOffsetY}px)`
+                        : (item as any).objectPosition ?? "center",
+                    }}
                   />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/25 to-transparent" />

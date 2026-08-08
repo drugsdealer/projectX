@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/admin";
+import { revalidatePath } from "next/cache";
 
 export async function GET(req: Request, { params }: { params: Promise<{ slideId: string }> }) {
   const guard = await requireAdminApi({ require2FA: true, req });
@@ -68,6 +69,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slideId
     return NextResponse.json({ success: false, message: "Не удалось привязать товар" }, { status: 500 });
   }
 
+  revalidatePath("/");
   return NextResponse.json({ success: true });
 }
 
@@ -84,5 +86,6 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ slide
   }
 
   await prisma.storySlideProduct.deleteMany({ where: { storySlideId: slideId, productId } });
+  revalidatePath("/");
   return NextResponse.json({ success: true });
 }
