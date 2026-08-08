@@ -46,3 +46,4 @@ next-env.d.ts
 2025-*.jpeg
 2025-*.png
 backups/
+.env*
