@@ -78,8 +78,8 @@ const HOME_GENDER_SELECTIONS = [
     href: "/search?gender=men",
     image: "https://ik.imagekit.io/qowmy92ny/2026-07-29%2015.23.32.jpg",
     objectPosition: "center",
-    // больше значение → кадр смещается вниз по фото, человек поднимается выше в карточке
-    imageOffsetY: 55,
+    // отрицательное значение → фото уезжает вверх (человек поднимается выше в карточке)
+    imageOffsetY: -90,
   },
   {
     title: "Женская селекция",
@@ -1912,19 +1912,30 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
                     className="transition duration-700 group-hover:scale-105"
                     style={{
                       objectFit: "cover",
-                      objectPosition: (item as any).imageOffsetY
-                        ? `center calc(50% + ${(item as any).imageOffsetY}px)`
-                        : (item as any).objectPosition ?? "center",
+                      objectPosition: (() => {
+                        const off = Number((item as any).imageOffsetY);
+                        // знак выносим наружу: calc(50% + -90px) — невалидный CSS
+                        if (Number.isFinite(off) && off !== 0) {
+                          return `center calc(50% ${off < 0 ? "-" : "+"} ${Math.abs(off)}px)`;
+                        }
+                        return (item as any).objectPosition ?? "center";
+                      })(),
                     }}
                   />
                 )}
-                {/* Лёгкая подложка только снизу — фото не затемняем, но белый заголовок остаётся читаемым */}
-                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/55 to-transparent" />
+                {/* Затемнения нет — читаемость текста обеспечивает обводка (см. ниже) */}
                 <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-6 md:p-8">
-                  <h3 className="mt-1.5 sm:mt-3 max-w-xs text-2xl sm:text-4xl md:text-6xl font-black uppercase leading-[0.9] tracking-[-0.07em]">
+                  {/* Обводка вместо затемнения: paint-order рисует контур ПОД буквами,
+                      иначе штрих съедает форму шрифта. Толщина растёт вместе с кеглем. */}
+                  <h3
+                    className="mt-1.5 sm:mt-3 max-w-xs text-2xl sm:text-4xl md:text-6xl font-black uppercase leading-[0.9] tracking-[-0.07em]
+                               [paint-order:stroke_fill] [-webkit-text-stroke:2px_rgba(0,0,0,0.6)]
+                               sm:[-webkit-text-stroke:3px_rgba(0,0,0,0.6)] md:[-webkit-text-stroke:4px_rgba(0,0,0,0.6)]"
+                    style={{ textShadow: "0 2px 14px rgba(0,0,0,0.35)" }}
+                  >
                     {item.title}
                   </h3>
-                  <span className="mt-3 sm:mt-6 w-fit rounded-full border border-white/45 px-3 sm:px-4 py-1 sm:py-2 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.16em] text-white/85 transition group-hover:border-white group-hover:text-white">
+                  <span className="mt-3 sm:mt-6 w-fit rounded-full border border-white/60 bg-black/25 backdrop-blur-sm px-3 sm:px-4 py-1 sm:py-2 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.16em] text-white transition group-hover:bg-black/40 group-hover:border-white">
                     Смотреть
                   </span>
                 </div>
