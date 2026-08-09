@@ -216,6 +216,13 @@ export default function UserProfilePage() {
   const hoverTimerRef = React.useRef<number | null>(null);
   const [prevHoverIdx, setPrevHoverIdx] = useState(0);
 
+  // На тач-экранах браузер шлёт onMouseEnter при касании, а onMouseLeave часто не приходит —
+  // из-за этого перелистывание запускалось от тапа и не останавливалось. Крутим только с мышью.
+  function canHoverPointer() {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia?.("(hover: hover) and (pointer: fine)")?.matches ?? false;
+  }
+
   function startHoverCycle() {
     if (hoverTimerRef.current !== null) return;
     // rotate through presets every 1100ms (smoother and slower)
@@ -343,7 +350,11 @@ export default function UserProfilePage() {
                   tabIndex={0}
                   onClick={() => setShowAvatarPicker((v) => !v)}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowAvatarPicker((v)=>!v); } }}
-                  onMouseEnter={() => { setIsHoveringAvatar(true); startHoverCycle(); }}
+                  onMouseEnter={() => {
+                    if (!canHoverPointer()) return;
+                    setIsHoveringAvatar(true);
+                    startHoverCycle();
+                  }}
                   onMouseLeave={stopHoverCycle}
                   className="h-24 w-24 md:h-28 md:w-28 shrink-0 rounded-2xl bg-transparent grid place-items-center overflow-hidden ring-1 ring-zinc-200/60 dark:ring-zinc-800/60 cursor-pointer select-none p-1.5 md:p-2"
                 >
@@ -401,7 +412,10 @@ export default function UserProfilePage() {
                 {showAvatarPicker && (
                   <div
                     ref={avatarPopRef}
-                    className="absolute top-full z-20 mt-2 left-1/2 -translate-x-1/2 w-[288px] rounded-2xl border border-zinc-200/70 dark:border-zinc-800/70 bg-white dark:bg-zinc-900 p-3 shadow-xl"
+                    // На телефоне выравниваем по левому краю аватара и ограничиваем ширину
+                    // шириной экрана — центрирование уводило панель за левый край.
+                    // От sm и выше возвращаем центрирование по аватару.
+                    className="absolute top-full z-20 mt-2 left-0 sm:left-1/2 sm:-translate-x-1/2 w-[min(288px,calc(100vw-2.5rem))] max-w-[288px] rounded-2xl border border-zinc-200/70 dark:border-zinc-800/70 bg-white dark:bg-zinc-900 p-3 shadow-xl"
                   >
                     <div className="text-xs font-medium text-zinc-500 mb-2">Выберите эмодзи</div>
                     <div className="max-h-64 overflow-y-auto pr-1 space-y-3">
