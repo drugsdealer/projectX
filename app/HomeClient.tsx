@@ -77,9 +77,9 @@ const HOME_GENDER_SELECTIONS = [
     title: "Мужская селекция",
     href: "/search?gender=men",
     image: "https://ik.imagekit.io/qowmy92ny/2026-07-29%2015.23.32.jpg",
-    objectPosition: "center",
-    // отрицательное значение → фото уезжает вверх (человек поднимается выше в карточке)
-    imageOffsetY: -90,
+    // Проценты вместо пикселей: кадр не выходит за края фото, поэтому чёрных полос не будет.
+    // Больше процент → фото выше, меньше → ниже. 50% = центр.
+    objectPosition: "center 60%",
   },
   {
     title: "Женская селекция",
@@ -1909,7 +1909,7 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
                     alt=""
                     fill
                     sizes="(max-width: 768px) 50vw, 50vw"
-                    className="transition duration-700 group-hover:scale-105"
+                    className="opacity-75 grayscale transition duration-700 group-hover:scale-105 group-hover:opacity-90"
                     style={{
                       objectFit: "cover",
                       objectPosition: (() => {
@@ -1923,19 +1923,19 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
                     }}
                   />
                 )}
-                {/* Затемнения нет — читаемость текста обеспечивает обводка (см. ниже) */}
+                <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/25 to-transparent" />
                 <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-6 md:p-8">
-                  {/* Обводка вместо затемнения: paint-order рисует контур ПОД буквами,
-                      иначе штрих съедает форму шрифта. Толщина растёт вместе с кеглем. */}
+                  {/* Тонкая обводка + затемнение: paint-order рисует контур ПОД буквами,
+                      иначе штрих съедает форму шрифта. */}
                   <h3
                     className="mt-1.5 sm:mt-3 max-w-xs text-2xl sm:text-4xl md:text-6xl font-black uppercase leading-[0.9] tracking-[-0.07em]
-                               [paint-order:stroke_fill] [-webkit-text-stroke:2px_rgba(0,0,0,0.6)]
-                               sm:[-webkit-text-stroke:3px_rgba(0,0,0,0.6)] md:[-webkit-text-stroke:4px_rgba(0,0,0,0.6)]"
+                               [paint-order:stroke_fill] [-webkit-text-stroke:1px_rgba(0,0,0,0.55)]
+                               sm:[-webkit-text-stroke:1.5px_rgba(0,0,0,0.55)] md:[-webkit-text-stroke:2px_rgba(0,0,0,0.55)]"
                     style={{ textShadow: "0 2px 14px rgba(0,0,0,0.35)" }}
                   >
                     {item.title}
                   </h3>
-                  <span className="mt-3 sm:mt-6 w-fit rounded-full border border-white/60 bg-black/25 backdrop-blur-sm px-3 sm:px-4 py-1 sm:py-2 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.16em] text-white transition group-hover:bg-black/40 group-hover:border-white">
+                  <span className="mt-3 sm:mt-6 w-fit rounded-full border border-white/45 px-3 sm:px-4 py-1 sm:py-2 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.16em] text-white/85 transition group-hover:border-white group-hover:text-white">
                     Смотреть
                   </span>
                 </div>
