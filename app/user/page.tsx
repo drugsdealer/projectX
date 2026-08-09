@@ -23,6 +23,11 @@ type Tab =
   | "promos"
   | "loyalty";
 
+// Системный эмодзи-шрифт: на Mac/iPhone это Apple Color Emoji («эппловские» смайлы),
+// на Windows — Segoe UI Emoji, на Android — Noto Color Emoji.
+const EMOJI_FONT =
+  '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", sans-serif';
+
 export default function UserProfilePage() {
   const { user } = useUser();
   const [giftDesign, setGiftDesign] = useState("✨");
@@ -170,20 +175,38 @@ export default function UserProfilePage() {
   }, [user]);
 
   // --- Avatar picker state & helpers ---
-  const PRESET_AVATARS = useMemo(() => [
-    "/img/смайлик.png",
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f60e.svg", // 😎
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f60a.svg", // 😊
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f914.svg", // 🤔
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f525.svg", // 🔥
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f680.svg", // 🚀
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f981.svg", // 🦁
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f47b.svg", // 👻
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f984.svg", // 🦄
-    "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f352.svg", // 🍒
-  ], []);
+  // Нативные Unicode-эмодзи: на macOS/iOS система рисует их шрифтом Apple Color Emoji
+  // (именно «эппловские»), на Windows/Android — родным шрифтом платформы.
+  // Картинки Twemoji убраны: они плоские, грузились со стороннего CDN и выглядели чужеродно.
+  const DEFAULT_EMOJI = "🙂";
+  const EMOJI_GROUPS = useMemo(
+    () => [
+      {
+        label: "Смайлы",
+        items: ["🙂", "😊", "😎", "🤩", "😇", "🥳", "🤔", "😴", "🥶", "🤠", "😈", "🤖"],
+      },
+      {
+        label: "Люди и жесты",
+        items: ["👋", "🤙", "✌️", "🫶", "💪", "🧠", "👑", "🦾", "🙌", "👌", "🤌", "🫡"],
+      },
+      {
+        label: "Животные",
+        items: ["🐱", "🐶", "🦊", "🐻", "🐼", "🦁", "🐯", "🦄", "🐺", "🦈", "🐉", "🦉"],
+      },
+      {
+        label: "Стиль и вещи",
+        items: ["👟", "👕", "🧥", "👜", "🕶️", "🧢", "💎", "⌚️", "🎧", "📷", "🛍️", "🧴"],
+      },
+      {
+        label: "Символы",
+        items: ["🔥", "⚡️", "✨", "💫", "🌙", "☀️", "🌈", "❤️", "🖤", "🚀", "🏆", "🎯"],
+      },
+    ],
+    []
+  );
+  const PRESET_EMOJI = useMemo(() => EMOJI_GROUPS.flatMap((g) => g.items), [EMOJI_GROUPS]);
 
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarEmoji, setAvatarEmoji] = useState<string | null>(null);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const avatarPopRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -199,7 +222,7 @@ export default function UserProfilePage() {
     hoverTimerRef.current = window.setInterval(() => {
       setHoverIdx((i) => {
         setPrevHoverIdx(i);
-        return (i + 1) % PRESET_AVATARS.length;
+        return (i + 1) % PRESET_EMOJI.length;
       });
     }, 1100);
   }
@@ -212,16 +235,23 @@ export default function UserProfilePage() {
     setHoverIdx(0);
   }
 
-  const displayAvatar = (isHoveringAvatar && PRESET_AVATARS.length)
-    ? PRESET_AVATARS[hoverIdx % PRESET_AVATARS.length]
-    : (avatarUrl || "/img/смайлик.png");
+  const displayEmoji = (isHoveringAvatar && PRESET_EMOJI.length)
+    ? PRESET_EMOJI[hoverIdx % PRESET_EMOJI.length]
+    : (avatarEmoji || DEFAULT_EMOJI);
 
   React.useEffect(() => {
+    // 1) из аккаунта (синхронизируется между устройствами)
+    const fromAccount = (user as any)?.avatarEmoji;
+    if (typeof fromAccount === 'string' && fromAccount.trim()) {
+      setAvatarEmoji(fromAccount.trim());
+      return;
+    }
+    // 2) иначе — локально сохранённый выбор
     try {
-      const stored = localStorage.getItem('user_avatar_url');
-      if (stored) setAvatarUrl(stored);
+      const stored = localStorage.getItem('user_avatar_emoji');
+      if (stored) setAvatarEmoji(stored);
     } catch {}
-  }, []);
+  }, [user]);
 
   React.useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -234,24 +264,32 @@ export default function UserProfilePage() {
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, [showAvatarPicker]);
 
-  function persistAvatar(url: string | null) {
-    setAvatarUrl(url);
+  function persistAvatar(emoji: string | null) {
+    setAvatarEmoji(emoji);
     try {
-      if (url) localStorage.setItem('user_avatar_url', url); else localStorage.removeItem('user_avatar_url');
+      if (emoji) localStorage.setItem('user_avatar_emoji', emoji);
+      else localStorage.removeItem('user_avatar_emoji');
     } catch {}
     // notify rest of UI
     try {
-      window.dispatchEvent(new CustomEvent('profile:avatar:updated', { detail: { avatarUrl: url } }));
+      window.dispatchEvent(new CustomEvent('profile:avatar:updated', { detail: { avatarEmoji: emoji } }));
     } catch {}
+    // сохраняем в аккаунт, чтобы аватар был одинаковым на всех устройствах
+    fetch('/api/user/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ avatarEmoji: emoji ?? DEFAULT_EMOJI }),
+      credentials: 'include',
+    }).catch(() => {});
   }
 
-  function selectAvatar(src: string) {
-    persistAvatar(src);
+  function selectAvatar(emoji: string) {
+    persistAvatar(emoji);
     setShowAvatarPicker(false);
   }
 
   function resetAvatar() {
-    persistAvatar("/img/смайлик.png");
+    persistAvatar(DEFAULT_EMOJI);
   }
 
 
@@ -315,12 +353,12 @@ export default function UserProfilePage() {
                       style={{ perspective: '800px' }}
                     >
                       {/* Previous (goes back & fades) */}
-                      <img
+                      <span
                         key={`prev-${prevHoverIdx}`}
-                        src={PRESET_AVATARS[prevHoverIdx % PRESET_AVATARS.length]}
-                        alt="Prev"
-                        className="absolute inset-0 h-full w-full object-contain select-none"
+                        aria-hidden
+                        className="absolute inset-0 grid place-items-center select-none leading-none text-5xl md:text-6xl"
                         style={{
+                          fontFamily: EMOJI_FONT,
                           transition:
                             'transform 800ms cubic-bezier(0.16, 1, 0.3, 1), opacity 800ms cubic-bezier(0.16, 1, 0.3, 1), filter 800ms cubic-bezier(0.16, 1, 0.3, 1)',
                           transform: 'translateZ(-60px) scale(0.9)',
@@ -328,51 +366,73 @@ export default function UserProfilePage() {
                           filter: 'blur(2px) brightness(0.95)',
                           zIndex: 1,
                         }}
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src = "/img/смайлик.png";
-                        }}
-                      />
+                      >
+                        {PRESET_EMOJI[prevHoverIdx % PRESET_EMOJI.length]}
+                      </span>
                       {/* Current (comes forward & brightens) */}
-                      <img
+                      <span
                         key={`cur-${hoverIdx}`}
-                        src={PRESET_AVATARS[hoverIdx % PRESET_AVATARS.length]}
-                        alt="Current"
-                        className="absolute inset-0 h-full w-full object-contain select-none"
+                        aria-hidden
+                        className="absolute inset-0 grid place-items-center select-none leading-none text-5xl md:text-6xl"
                         style={{
+                          fontFamily: EMOJI_FONT,
                           transition:
                             'transform 800ms cubic-bezier(0.16, 1, 0.3, 1), opacity 800ms cubic-bezier(0.16, 1, 0.3, 1)',
                           transform: 'translateZ(0px) scale(1.06)',
                           opacity: 1,
                           zIndex: 2,
                         }}
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src = "/img/смайлик.png";
-                        }}
-                      />
+                      >
+                        {PRESET_EMOJI[hoverIdx % PRESET_EMOJI.length]}
+                      </span>
                     </div>
                   ) : (
-                    <img
-                      src={avatarUrl || "/img/смайлик.png"}
-                      alt="Avatar"
-                      width={96}
-                      height={96}
-                      className="h-full w-full object-contain select-none"
-                      onError={(e)=>{ (e.currentTarget as HTMLImageElement).src = "/img/смайлик.png"; }}
-                    />
+                    <span
+                      className="grid h-full w-full place-items-center select-none leading-none text-5xl md:text-6xl"
+                      style={{ fontFamily: EMOJI_FONT }}
+                      role="img"
+                      aria-label="Аватар"
+                    >
+                      {displayEmoji}
+                    </span>
                   )}
                 </div>
 
                 {showAvatarPicker && (
-                  <div ref={avatarPopRef} className="absolute z-20 mt-2 left-1/2 -translate-x-1/2 w-64 rounded-2xl border border-zinc-200/70 dark:border-zinc-800/70 bg-white dark:bg-zinc-900 p-3 shadow-xl backdrop-blur-sm">
-                    <div className="text-xs font-medium text-zinc-500 mb-2">Выберите аватар</div>
-                    <div className="grid grid-cols-5 gap-2">
-                      {PRESET_AVATARS.map((src) => (
-                        <button key={src} type="button" onClick={() => selectAvatar(src)} className="rounded-xl overflow-hidden ring-1 ring-transparent hover:ring-zinc-300 transition-transform hover:scale-105">
-                          <img src={src} alt="avatar" className="h-10 w-10 object-cover" />
-                        </button>
+                  <div
+                    ref={avatarPopRef}
+                    className="absolute top-full z-20 mt-2 left-1/2 -translate-x-1/2 w-[288px] rounded-2xl border border-zinc-200/70 dark:border-zinc-800/70 bg-white dark:bg-zinc-900 p-3 shadow-xl"
+                  >
+                    <div className="text-xs font-medium text-zinc-500 mb-2">Выберите эмодзи</div>
+                    <div className="max-h-64 overflow-y-auto pr-1 space-y-3">
+                      {EMOJI_GROUPS.map((group) => (
+                        <div key={group.label}>
+                          <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                            {group.label}
+                          </div>
+                          <div className="grid grid-cols-6 gap-1">
+                            {group.items.map((emoji) => {
+                              const isActive = (avatarEmoji || DEFAULT_EMOJI) === emoji;
+                              return (
+                                <button
+                                  key={emoji}
+                                  type="button"
+                                  onClick={() => selectAvatar(emoji)}
+                                  title={emoji}
+                                  className={`grid h-9 w-9 place-items-center rounded-xl text-xl leading-none transition hover:scale-110 hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
+                                    isActive ? 'bg-zinc-900 dark:bg-zinc-100 ring-2 ring-zinc-900 dark:ring-zinc-100' : ''
+                                  }`}
+                                  style={{ fontFamily: EMOJI_FONT }}
+                                >
+                                  {emoji}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                       ))}
                     </div>
-                    <div className="mt-2 flex justify-between">
+                    <div className="mt-2 flex justify-between border-t border-zinc-200/70 dark:border-zinc-800/70 pt-2">
                       <button type="button" onClick={() => { setShowAvatarPicker(false); }} className="text-xs text-zinc-500 hover:text-zinc-700">Закрыть</button>
                       <button type="button" onClick={resetAvatar} className="text-xs text-zinc-500 hover:text-zinc-700">Сбросить</button>
                     </div>

@@ -78,7 +78,8 @@ const HOME_GENDER_SELECTIONS = [
     href: "/search?gender=men",
     image: "https://ik.imagekit.io/qowmy92ny/2026-07-29%2015.23.32.jpg",
     objectPosition: "center",
-    imageOffsetY: 20,
+    // больше значение → кадр смещается вниз по фото, человек поднимается выше в карточке
+    imageOffsetY: 55,
   },
   {
     title: "Женская селекция",
@@ -1908,7 +1909,7 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
                     alt=""
                     fill
                     sizes="(max-width: 768px) 50vw, 50vw"
-                    className="opacity-75 grayscale transition duration-700 group-hover:scale-105 group-hover:opacity-90"
+                    className="transition duration-700 group-hover:scale-105"
                     style={{
                       objectFit: "cover",
                       objectPosition: (item as any).imageOffsetY
@@ -1917,7 +1918,8 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
                     }}
                   />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/25 to-transparent" />
+                {/* Лёгкая подложка только снизу — фото не затемняем, но белый заголовок остаётся читаемым */}
+                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/55 to-transparent" />
                 <div className="absolute inset-0 flex flex-col justify-end p-4 sm:p-6 md:p-8">
                   <h3 className="mt-1.5 sm:mt-3 max-w-xs text-2xl sm:text-4xl md:text-6xl font-black uppercase leading-[0.9] tracking-[-0.07em]">
                     {item.title}
