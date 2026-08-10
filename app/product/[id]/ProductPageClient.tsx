@@ -1947,7 +1947,7 @@ const handleCancel = () => {
                   <span className="text-xs text-gray-500">Нужна помощь с заказом?</span>
 
                   <a
-                    href="mailto:info@stagestore.ru"
+                    href="mailto:storestage@yandex.ru"
                     className="px-2 py-1 rounded-full border border-gray-300 bg-white text-[10px] sm:text-xs font-medium text-gray-800 hover:bg-gray-50 transition"
                   >
                     Написать на почту
@@ -2813,7 +2813,7 @@ const handleCancel = () => {
               <span className="text-[10px] text-gray-500">Нужна помощь с заказом?</span>
 
               <a
-                href="mailto:info@stagestore.ru"
+                href="mailto:storestage@yandex.ru"
                 className="px-2 py-1 rounded-full border border-gray-300 bg-white text-[10px] font-medium text-gray-800 hover:bg-gray-50 transition"
               >
                 Почта

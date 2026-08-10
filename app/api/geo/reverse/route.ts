@@ -40,7 +40,7 @@ export async function GET(req: Request) {
       // Fallback to Nominatim (may be rate-limited)
       const resp = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
-        { headers: { "User-Agent": "StageStore/1.0 (contact: info@stagestore.ru)" } }
+        { headers: { "User-Agent": "StageStore/1.0 (contact: storestage@yandex.ru)" } }
       );
       const data = await resp.json().catch(() => null);
       picked = data?.display_name || "";

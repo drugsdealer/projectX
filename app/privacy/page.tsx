@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal/LegalPage";
+import { COMPANY } from "@/lib/company";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
 
@@ -25,8 +26,8 @@ export default function PrivacyPage() {
         {
           title: "1. Кто мы",
           content: [
-            "Оператором персональных данных является ООО «Stage Store» (далее — «Мы», «Компания»), осуществляющее деятельность интернет-магазина по адресу stagestore.app.",
-            "По всем вопросам, связанным с обработкой персональных данных, обращайтесь: info@stagestore.app.",
+            `Оператором персональных данных является ${COMPANY.legalName} (ИНН ${COMPANY.inn}, ОГРНИП ${COMPANY.ogrnip}), далее — «Мы», осуществляющий деятельность интернет-магазина по адресу ${COMPANY.siteDomain}.`,
+            "По всем вопросам, связанным с обработкой персональных данных, обращайтесь: storestage@yandex.ru.",
           ],
         },
         {
@@ -66,7 +67,7 @@ export default function PrivacyPage() {
           title: "6. Ваши права",
           content: [
             "Вы вправе: получить информацию о своих данных и их обработке; потребовать исправления неточных данных; потребовать удаления данных («право на забвение»); отозвать согласие на обработку данных; обратиться с жалобой в Роскомнадзор.",
-            "Для реализации прав напишите на info@stagestore.app. Мы ответим в течение 10 рабочих дней.",
+            "Для реализации прав напишите на storestage@yandex.ru. Мы ответим в течение 10 рабочих дней.",
           ],
         },
         {
@@ -91,7 +92,7 @@ export default function PrivacyPage() {
         },
         {
           title: "10. Контакты",
-          content: "По вопросам обработки персональных данных: info@stagestore.app. Сайт: stagestore.app.",
+          content: "По вопросам обработки персональных данных: storestage@yandex.ru. Сайт: stagestore.app.",
         },
       ]}
     />

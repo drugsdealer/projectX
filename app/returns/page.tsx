@@ -40,7 +40,7 @@ export default function ReturnsPage() {
         {
           title: "Как оформить возврат",
           content: [
-            "1. Напишите на info@stagestore.app или в Telegram @stagestore с темой «Возврат заказа #XXXXX».",
+            "1. Напишите на storestage@yandex.ru или в Telegram @stagestore с темой «Возврат заказа #XXXXX».",
             "2. Укажите причину возврата и приложите фото товара.",
             "3. Мы подтвердим возврат и сообщим адрес для отправки в течение 1–2 рабочих дней.",
             "4. Отправьте товар в оригинальной упаковке. Рекомендуем использовать трекинг-номер для отслеживания.",
@@ -70,7 +70,7 @@ export default function ReturnsPage() {
         },
         {
           title: "Контакты для возврата",
-          content: "Email: info@stagestore.app. Telegram: @stagestore. Время ответа: 10:00–21:00 (МСК), в будние дни.",
+          content: "Email: storestage@yandex.ru. Telegram: @stagestore. Время ответа: 10:00–21:00 (МСК), в будние дни.",
         },
       ]}
     />

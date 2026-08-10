@@ -354,7 +354,7 @@ function SupportPanel({ orderNumber }: { orderNumber: string | number }) {
           >
             Telegram
           </a>
-          <a href={`mailto:support@stagestore.local?subject=${encodeURIComponent('Вопрос по заказу № ' + orderNumber)}`} className="px-3 py-1.5 rounded-lg border border-black/10 bg-white hover:bg-black/[0.04] text-sm">Email</a>
+          <a href={`mailto:storestage@yandex.ru?subject=${encodeURIComponent('Вопрос по заказу № ' + orderNumber)}`} className="px-3 py-1.5 rounded-lg border border-black/10 bg-white hover:bg-black/[0.04] text-sm">Email</a>
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal/LegalPage";
+import { COMPANY } from "@/lib/company";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
 
@@ -24,7 +25,7 @@ export default function PersonalDataPage() {
       sections={[
         {
           title: "Оператор персональных данных",
-          content: "ООО «Stage Store» (далее — Оператор), осуществляет деятельность через сайт stagestore.app. Контакт: info@stagestore.app.",
+          content: `${COMPANY.legalName} (ИНН ${COMPANY.inn}, ОГРНИП ${COMPANY.ogrnip}), далее — Оператор, осуществляет деятельность через сайт ${COMPANY.siteDomain}. Контакт: ${COMPANY.email}.`,
         },
         {
           title: "Согласие на обработку",
@@ -63,7 +64,7 @@ export default function PersonalDataPage() {
           title: "Ваши права",
           content: [
             "Вы вправе в любой момент: получить информацию об обработке своих персональных данных; потребовать уточнения, блокирования или уничтожения данных; отозвать согласие на обработку данных.",
-            "Отзыв согласия направляется в письменном виде на email: info@stagestore.app. Отзыв согласия не влияет на законность обработки, осуществлявшейся до момента отзыва.",
+            "Отзыв согласия направляется в письменном виде на email: storestage@yandex.ru. Отзыв согласия не влияет на законность обработки, осуществлявшейся до момента отзыва.",
             "Вы вправе обратиться с жалобой в Федеральную службу по надзору в сфере связи, информационных технологий и массовых коммуникаций (Роскомнадзор).",
           ],
         },
@@ -73,7 +74,7 @@ export default function PersonalDataPage() {
         },
         {
           title: "Контакты",
-          content: "По всем вопросам обработки персональных данных: info@stagestore.app. Ответ — в течение 10 рабочих дней.",
+          content: "По всем вопросам обработки персональных данных: storestage@yandex.ru. Ответ — в течение 10 рабочих дней.",
         },
       ]}
     />

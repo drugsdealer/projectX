@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, X, Send, Mail } from "lucide-react";
 
 const TELEGRAM_URL = "https://t.me/stagestore";
-const SUPPORT_EMAIL = "info@stagestore.ru";
+const SUPPORT_EMAIL = "storestage@yandex.ru";
 
 export default function SupportWidget() {
   const [open, setOpen] = useState(false);

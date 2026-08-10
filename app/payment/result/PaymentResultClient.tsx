@@ -190,10 +190,10 @@ export default function PaymentResultClient() {
                 Вернуться в корзину
               </Link>
               <a
-                href="mailto:support@stagestore.ru"
+                href="mailto:storestage@yandex.ru"
                 className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold hover:border-black/40 transition"
               >
-                support@stagestore.ru
+                storestage@yandex.ru
               </a>
             </>
           )}

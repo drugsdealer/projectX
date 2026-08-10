@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { COMPANY } from "@/lib/company";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
 
@@ -13,8 +14,8 @@ export const metadata: Metadata = {
 const contacts = [
   {
     label: "Email",
-    value: "info@stagestore.app",
-    href: "mailto:info@stagestore.app",
+    value: COMPANY.email,
+    href: `mailto:${COMPANY.email}`,
     desc: "Общие вопросы, возвраты, сотрудничество",
   },
   {
@@ -32,7 +33,7 @@ const faq = [
   },
   {
     q: "Как оформить возврат?",
-    a: "Напишите на info@stagestore.app с темой «Возврат заказа #XXXXX». Подробные условия — на странице Возврат и обмен.",
+    a: "Напишите на storestage@yandex.ru с темой «Возврат заказа #XXXXX». Подробные условия — на странице Возврат и обмен.",
     link: { label: "Возврат и обмен →", href: "/returns" },
   },
   {
@@ -114,6 +115,33 @@ export default function ContactsPage() {
               </Link>
             ))}
           </div>
+        </div>
+
+        {/* Реквизиты продавца */}
+        <div className="mt-12 pt-8 border-t border-black/10">
+          <div className="text-sm font-semibold text-black/50 uppercase tracking-wider mb-4">Реквизиты</div>
+          <dl className="rounded-2xl border border-black/10 bg-black/[0.02] p-5 text-sm">
+            <div className="flex flex-col gap-1 sm:flex-row sm:gap-3">
+              <dt className="w-40 shrink-0 text-black/45">Продавец</dt>
+              <dd className="font-medium text-black/80">{COMPANY.legalName}</dd>
+            </div>
+            <div className="mt-3 flex flex-col gap-1 sm:flex-row sm:gap-3">
+              <dt className="w-40 shrink-0 text-black/45">ИНН</dt>
+              <dd className="font-medium text-black/80 tabular-nums">{COMPANY.inn}</dd>
+            </div>
+            <div className="mt-3 flex flex-col gap-1 sm:flex-row sm:gap-3">
+              <dt className="w-40 shrink-0 text-black/45">ОГРНИП</dt>
+              <dd className="font-medium text-black/80 tabular-nums">{COMPANY.ogrnip}</dd>
+            </div>
+            <div className="mt-3 flex flex-col gap-1 sm:flex-row sm:gap-3">
+              <dt className="w-40 shrink-0 text-black/45">Email</dt>
+              <dd className="font-medium">
+                <a href={`mailto:${COMPANY.email}`} className="text-black/80 underline underline-offset-2 hover:text-black">
+                  {COMPANY.email}
+                </a>
+              </dd>
+            </div>
+          </dl>
         </div>
 
         <div className="mt-8 text-xs text-black/35">

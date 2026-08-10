@@ -48,7 +48,7 @@ export default function SizeGuidePage() {
         },
         {
           title: "Помощь с подбором",
-          content: "Если нужной размерной сетки нет в карточке товара, напишите нам в Telegram @stagestore или на info@stagestore.app.",
+          content: "Если нужной размерной сетки нет в карточке товара, напишите нам в Telegram @stagestore или на storestage@yandex.ru.",
         },
       ]}
     />

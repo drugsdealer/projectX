@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal/LegalPage";
+import { COMPANY } from "@/lib/company";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
 
@@ -14,7 +15,7 @@ export default function OfferPage() {
   return (
     <LegalPage
       title="Публичная оферта"
-      subtitle="Настоящий документ является публичной офертой ООО «Stage Store» и определяет условия договора розничной купли-продажи товаров через интернет-магазин stagestore.app (ст. 435, 437 ГК РФ)."
+      subtitle={`Настоящий документ является публичной офертой ${COMPANY.legalName} и определяет условия договора розничной купли-продажи товаров через интернет-магазин ${COMPANY.siteDomain} (ст. 435, 437 ГК РФ).`}
       updatedAt="23 апреля 2025 г."
       relatedLinks={[
         { label: "Доставка", href: "/shipping" },
@@ -25,7 +26,7 @@ export default function OfferPage() {
         {
           title: "1. Стороны договора",
           content: [
-            "Продавец: ООО «Stage Store», осуществляющий деятельность через сайт stagestore.app.",
+            `Продавец: ${COMPANY.legalName} (ИНН ${COMPANY.inn}, ОГРНИП ${COMPANY.ogrnip}), осуществляющий деятельность через сайт ${COMPANY.siteDomain}.`,
             "Покупатель: любое физическое лицо, акцептовавшее настоящую оферту путём оформления заказа.",
           ],
         },
@@ -92,8 +93,15 @@ export default function OfferPage() {
           content: "Оферта действует с момента публикации на сайте и до её отзыва. Продавец вправе изменить условия оферты, опубликовав новую редакцию на сайте. Действующий заказ исполняется по условиям, действовавшим на момент его оформления.",
         },
         {
-          title: "13. Контакты Продавца",
-          content: "ООО «Stage Store». Email: info@stagestore.app. Сайт: stagestore.app.",
+          title: "13. Реквизиты и контакты Продавца",
+          content: [
+            COMPANY.legalName,
+            `ИНН: ${COMPANY.inn}`,
+            `ОГРНИП: ${COMPANY.ogrnip}`,
+            `Email: ${COMPANY.email}`,
+            `Telegram: ${COMPANY.telegram}`,
+            `Сайт: ${COMPANY.siteDomain}`,
+          ],
         },
       ]}
     />

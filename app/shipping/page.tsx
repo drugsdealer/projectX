@@ -53,7 +53,7 @@ export default function ShippingPage() {
         },
         {
           title: "Если заказ не доставлен",
-          content: "Если срок доставки превысил указанный, напишите нам на info@stagestore.app или в Telegram @stagestore. Мы разберёмся и решим ситуацию.",
+          content: "Если срок доставки превысил указанный, напишите нам на storestage@yandex.ru или в Telegram @stagestore. Мы разберёмся и решим ситуацию.",
         },
         {
           title: "Важно",

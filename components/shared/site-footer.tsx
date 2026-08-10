@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { NewsletterForm } from "./NewsletterForm";
+import { COMPANY } from "@/lib/company";
 
 const SITE_LOGO_URL = "https://ik.imagekit.io/qowmy92ny/IMG_0363%20(1).PNG";
 
@@ -138,15 +139,18 @@ export function SiteFooter() {
               <div className="text-sm font-semibold">Контакты и право</div>
               <div className="mt-3 space-y-2 text-sm text-white/70">
                 <div>Москва, ул. Тверская, 12</div>
-                <a href="mailto:info@stagestore.ru" className="hover:text-white transition">
-                  info@stagestore.ru
+                <a href="mailto:storestage@yandex.ru" className="hover:text-white transition">
+                  storestage@yandex.ru
                 </a>
                 <a href="tel:+74951234567" className="hover:text-white transition">
                   +7 (495) 123-45-67
                 </a>
               </div>
-              <div className="mt-4 text-xs text-white/50">
-                ООО «Stage Store». Реквизиты и условия — в документах ниже.
+              <div className="mt-4 text-xs leading-relaxed text-white/50">
+                <div>{COMPANY.legalName}</div>
+                <div className="mt-0.5">
+                  ИНН {COMPANY.inn} · ОГРНИП {COMPANY.ogrnip}
+                </div>
               </div>
               <div className="mt-4">
                 <div className="text-xs font-semibold text-white/70">Соцсети</div>
