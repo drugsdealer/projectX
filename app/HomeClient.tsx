@@ -1815,12 +1815,12 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
         <div className="hidden sm:flex justify-center">
           <Link
             href="/premium"
-            className="inline-flex items-center justify-center gap-3 rounded-2xl bg-black text-white px-6 py-3 text-sm font-semibold shadow-sm hover:bg-white hover:text-black hover:shadow-md transition"
+            className="inline-flex items-center justify-center gap-5 rounded-[28px] bg-black text-white px-16 py-7 text-2xl font-semibold shadow-md hover:bg-white hover:text-black hover:shadow-lg transition"
             onClick={() => {
               try { sessionStorage.setItem("premiumEntry", "stories"); } catch {}
             }}
           >
-            <span className="text-xs uppercase tracking-[0.18em] opacity-70">
+            <span className="text-lg uppercase tracking-[0.18em] opacity-70">
               Premium
             </span>
             <span>Эксклюзивный раздел</span>
@@ -1829,7 +1829,7 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
         <div className="sm:hidden">
           <Link
             href="/premium"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-black text-white px-5 py-2.5 text-sm font-semibold shadow-sm hover:bg-white hover:text-black hover:shadow-md transition"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-black text-white px-5 py-4 text-sm font-semibold shadow-sm hover:bg-white hover:text-black hover:shadow-md transition"
             onClick={() => {
               try { sessionStorage.setItem("premiumEntry", "stories"); } catch {}
             }}
@@ -1851,10 +1851,7 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
             <Link
               href={HOME_GATEWAYS[0].href}
               className={[
-                // Premium — главный блок: заметно крупнее остальных на компьютере,
-                // на телефоне чуть вытянут по высоте.
-                "group relative col-span-2 flex flex-col justify-end overflow-hidden rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 md:p-12 shadow-sm transition duration-500 hover:-translate-y-1 hover:shadow-xl",
-                "min-h-[230px] sm:min-h-[380px] md:min-h-[560px]",
+                "group relative col-span-2 overflow-hidden rounded-[24px] sm:rounded-[32px] p-4 sm:p-6 shadow-sm transition duration-500 hover:-translate-y-1 hover:shadow-xl",
                 HOME_GATEWAYS[0].className,
               ].join(" ")}
             >
@@ -1863,18 +1860,18 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
                 src="https://ik.imagekit.io/qowmy92ny/stage/products/gallery/2026-06-05%2017.18.55.jpg"
                 alt=""
                 fill
-                sizes="100vw"
+                sizes="(max-width: 768px) 100vw, 50vw"
                 className="object-cover opacity-30 transition duration-500 group-hover:opacity-40 group-hover:scale-105"
                 unoptimized
               />
-              <div className="absolute right-[-42px] top-[-42px] h-28 w-28 md:h-44 md:w-44 rounded-full border border-current opacity-15 transition duration-500 group-hover:scale-125" />
-              <h3 className="max-w-sm md:max-w-2xl text-2xl sm:text-5xl md:text-7xl font-black leading-none tracking-[-0.05em] relative">
+              <div className="absolute right-[-42px] top-[-42px] h-28 w-28 rounded-full border border-current opacity-15 transition duration-500 group-hover:scale-125" />
+              <h3 className="mt-4 sm:mt-8 max-w-sm text-xl sm:text-4xl font-black leading-none tracking-[-0.05em] relative">
                 {HOME_GATEWAYS[0].title}
               </h3>
-              <p className="mt-2 sm:mt-4 max-w-md md:max-w-xl text-xs sm:text-base md:text-lg leading-5 sm:leading-6 md:leading-7 opacity-65 line-clamp-2 sm:line-clamp-none relative">
+              <p className="mt-2 sm:mt-4 max-w-md text-xs sm:text-sm leading-5 sm:leading-6 opacity-65 line-clamp-2 sm:line-clamp-none relative">
                 {HOME_GATEWAYS[0].text}
               </p>
-              <span className="mt-4 sm:mt-6 md:mt-8 w-fit inline-flex rounded-full border border-current px-3 sm:px-5 md:px-7 py-1.5 sm:py-2.5 md:py-3.5 text-[10px] sm:text-xs md:text-sm font-semibold uppercase tracking-[0.16em] opacity-80 transition group-hover:opacity-100 relative">
+              <span className="mt-4 sm:mt-8 inline-flex rounded-full border border-current px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.16em] opacity-80 transition group-hover:opacity-100 relative">
                 {HOME_GATEWAYS[0].cta}
               </span>
             </Link>
