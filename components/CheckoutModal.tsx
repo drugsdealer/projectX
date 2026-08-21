@@ -14,6 +14,8 @@ import {
   DEFAULT_DELIVERY_METHOD,
   type DeliveryMethodKey,
 } from "@/lib/delivery";
+import { PICKUP } from "@/lib/company";
+import { MetroStation } from "@/components/shared/MetroStation";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
@@ -184,8 +186,8 @@ const DeliveryInfoModal: React.FC<DeliveryInfoModalProps> = ({
                 </h3>
                 <ul className="text-sm space-y-2 list-disc pl-5 text-gray-700">
                   <li>
-                    <strong>Самовывоз</strong> доступен по адресу: Москва, ул.
-                    Примерная, д. 10. Уточните доступность по телефону.
+                    <strong>Самовывоз</strong> — {PICKUP.address} (м.{" "}
+                    {PICKUP.metro.name}), {PICKUP.hours}. {PICKUP.note}
                   </li>
                   <li>
                     <strong>Курьерская доставка</strong> по Москве —
@@ -206,7 +208,7 @@ const DeliveryInfoModal: React.FC<DeliveryInfoModalProps> = ({
                   </p>
                   <ul className="list-disc ml-5 mt-1 space-y-1">
                     <li>
-                      <strong>Самовывоз</strong> — доступен по адресу: Москва, ул. Примерная, д. 10. График работы с 10:00 до 21:00.
+                      <strong>Самовывоз</strong> — {PICKUP.address} (м. {PICKUP.metro.name}). График работы: {PICKUP.hours}. {PICKUP.note}
                     </li>
                     <li>
                       <strong>Курьерская доставка</strong> по Москве — <strong>бесплатно</strong>, доставим на следующий день.
@@ -1113,6 +1115,25 @@ export default function CheckoutModal({
                           <span className="mt-1 block text-xs leading-relaxed text-gray-500">
                             {m.description}
                           </span>
+                          {/* Для самовывоза сразу показываем адрес, метро и условие выдачи */}
+                          {m.key === "PICKUP_MSK" && (
+                            <span className="mt-2 block rounded-xl bg-black/[0.04] px-3 py-2">
+                              <span className="block text-xs font-semibold text-gray-800">
+                                {PICKUP.address}
+                              </span>
+                              <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-600">
+                                <MetroStation
+                                  name={PICKUP.metro.name}
+                                  lines={PICKUP.metro.lines}
+                                />
+                                <span className="text-gray-400">·</span>
+                                <span>{PICKUP.hours}</span>
+                              </span>
+                              <span className="mt-1.5 block text-[11px] leading-snug text-amber-700">
+                                ⚠️ {PICKUP.note}
+                              </span>
+                            </span>
+                          )}
                         </span>
                       </div>
                     </button>

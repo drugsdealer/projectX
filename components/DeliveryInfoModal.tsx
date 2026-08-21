@@ -3,6 +3,8 @@
 import React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { createPortal } from "react-dom";
+import { PICKUP } from "@/lib/company";
+import { MetroStation } from "@/components/shared/MetroStation";
 
 type DeliveryInfoModalProps = {
   open: boolean;
@@ -50,8 +52,9 @@ export const DeliveryInfoModal: React.FC<DeliveryInfoModalProps> = ({
                 </h3>
                 <ul className="list-disc pl-5 space-y-2">
                   <li>
-                    <strong>Самовывоз</strong> — Москва, ул. Примерная, д. 10.
-                    График работы: 10:00–21:00.
+                    <strong>Самовывоз</strong> — {PICKUP.address}.{" "}
+                    <MetroStation name={PICKUP.metro.name} lines={PICKUP.metro.lines} />
+                    , {PICKUP.hours}. {PICKUP.note}
                   </li>
                   <li>
                     <strong>Курьерская доставка</strong> по Москве —{" "}
@@ -75,8 +78,9 @@ export const DeliveryInfoModal: React.FC<DeliveryInfoModalProps> = ({
                   </p>
                   <ul className="list-disc ml-5 mt-1 space-y-1">
                     <li>
-                      <strong>Самовывоз</strong> — по адресу: Москва, ул.
-                      Примерная, д. 10. График работы: 10:00–21:00.
+                      <strong>Самовывоз</strong> — {PICKUP.address}.{" "}
+                      <MetroStation name={PICKUP.metro.name} lines={PICKUP.metro.lines} />
+                      , график работы: {PICKUP.hours}. {PICKUP.note}
                     </li>
                     <li>
                       <strong>Курьерская доставка</strong> по Москве —{" "}

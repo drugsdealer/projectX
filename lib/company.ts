@@ -20,5 +20,14 @@ export const COMPANY = {
   siteDomain: "stagestore.app",
 } as const;
 
+/** Пункт самовывоза */
+export const PICKUP = {
+  address: "Москва, улица Молодогвардейская, дом 15",
+  /** Кунцевская — пересадочный узел: Филёвская, Арбатско-Покровская и БКЛ */
+  metro: { name: "Кунцевская", lines: [4, 3, 11] as number[] },
+  hours: "10:00–21:00",
+  note: "Выдача без примерки по техническим причинам.",
+} as const;
+
 /** Строка реквизитов одной строкой — для футера и коротких блоков */
 export const COMPANY_REQUISITES_LINE = `${COMPANY.shortName} · ИНН ${COMPANY.inn} · ОГРНИП ${COMPANY.ogrnip}`;

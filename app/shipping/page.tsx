@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal/LegalPage";
+import { PICKUP } from "@/lib/company";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
 
@@ -26,7 +27,7 @@ export default function ShippingPage() {
           title: "Доставка по Москве — бесплатно",
           content: [
             "Курьерская доставка по Москве — бесплатно, на следующий день после подтверждения заказа.",
-            "Также доступен самовывоз по адресу магазина (график работы 10:00–21:00).",
+            `Самовывоз: ${PICKUP.address} (м. ${PICKUP.metro.name}), ${PICKUP.hours}. ${PICKUP.note}`,
           ],
         },
         {

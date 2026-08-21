@@ -27,7 +27,7 @@ export const DELIVERY_METHODS: DeliveryMethod[] = [
     key: "PICKUP_MSK",
     title: "Самовывоз в Москве",
     priceLabel: "Бесплатно",
-    description: "Заберёте сами в согласованное время. Адрес и время подтвердит менеджер.",
+    description: "Заберёте сами в удобное время — время визита согласует менеджер.",
     requiresAddress: false,
   },
   {
