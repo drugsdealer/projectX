@@ -994,8 +994,13 @@ export default function CheckoutModal({
             window.location.href = payData.paymentUrl;
             return;
           }
-        } catch {
-          // сеть недоступна — уходим на запасной сценарий ниже
+          // Не молчим: без этого причина отката на заглушку остаётся невидимой.
+          console.error(
+            `[pay] T-Bank не принял платёж — HTTP ${payRes.status}:`,
+            payData?.message || payData
+          );
+        } catch (e) {
+          console.error("[pay] запрос к /api/tbank/init не прошёл:", e);
         }
 
         router.push(`/mock-bank?orderId=${normalizedOrderId}`);
