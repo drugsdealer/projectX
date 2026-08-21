@@ -980,6 +980,24 @@ export default function CheckoutModal({
         } catch {
           // ignore
         }
+        // Пробуем оплату через T-Bank. Если эквайринг не настроен или недоступен —
+        // молча откатываемся на прежний сценарий, чтобы оформление не ломалось.
+        try {
+          const payRes = await fetch("/api/tbank/init", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ orderId: Number(normalizedOrderId) }),
+          });
+          const payData = await payRes.json().catch(() => ({} as any));
+          if (payRes.ok && payData?.success && payData?.paymentUrl) {
+            window.location.href = payData.paymentUrl;
+            return;
+          }
+        } catch {
+          // сеть недоступна — уходим на запасной сценарий ниже
+        }
+
         router.push(`/mock-bank?orderId=${normalizedOrderId}`);
         return;
       }

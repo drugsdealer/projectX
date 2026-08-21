@@ -171,6 +171,12 @@ const collabBrands = (rawProduct as any)?.collabBrands ?? [];
 - `EVENTS_SERVICE_API_KEY`
 - `NEXT_PUBLIC_SITE_URL` — https://stagestore.app
 - `IMAGEKIT_*` — ImageKit credentials
+- `TBANK_TERMINAL_KEY` — терминал эквайринга T-Bank (для теста — терминал с суффиксом DEMO)
+- `TBANK_PASSWORD` — пароль терминала T-Bank (участвует в подписи Token, наружу не отдаётся)
+
+**Оплата T-Bank (non-PCI):** `/api/tbank/init` создаёт платёж (сумма берётся из БД) → редирект
+на форму банка → `/api/tbank/notification` подтверждает оплату (проверка подписи обязательна).
+Без `TBANK_*` переменных чекаут откатывается на `/mock-bank`.
 
 ---
 

@@ -207,7 +207,10 @@ export async function middleware(request: NextRequest) {
   // Исключения: внешние вебхуки/интеграции, где Origin обычно отсутствует.
   if (isApiPath && !["GET", "HEAD", "OPTIONS"].includes(request.method.toUpperCase())) {
     const webhookBypass =
-      pathname === "/api/yookassa";
+      pathname === "/api/yookassa" ||
+      // нотификация T-Bank приходит с серверов банка: без Origin и без сессии,
+      // её подлинность проверяется подписью (Token) внутри самого роута
+      pathname === "/api/tbank/notification";
     const cookieHeader = request.headers.get("cookie") || "";
     const hasAuthCookie =
       /(?:^|;\s*)(session_user_id|session_token|s_uid|auth_session|sid|admin_2fa_ok)=/.test(cookieHeader);
