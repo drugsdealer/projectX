@@ -9,6 +9,11 @@ import React, {
   useCallback,
 } from "react";
 import { createPortal } from "react-dom";
+import {
+  DELIVERY_METHODS,
+  DEFAULT_DELIVERY_METHOD,
+  type DeliveryMethodKey,
+} from "@/lib/delivery";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
@@ -576,6 +581,10 @@ export default function CheckoutModal({
 
   const [address, setAddress] = useState("");
   const [addressError, setAddressError] = useState(false);
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethodKey>(DEFAULT_DELIVERY_METHOD);
+  // Для самовывоза адрес не нужен — он не запрашивается и не проверяется.
+  const deliveryNeedsAddress =
+    DELIVERY_METHODS.find((m) => m.key === deliveryMethod)?.requiresAddress ?? true;
   const [showMap, setShowMap] = useState(false);
   const [coordinates, setCoordinates] = useState<[number, number] | null>(null);
   const [detectedCity, setDetectedCity] = useState("");
@@ -605,20 +614,21 @@ export default function CheckoutModal({
         phone: string;
         agree: boolean;
         address: string;
+        deliveryMethod: DeliveryMethodKey;
       }>
     ) => {
       try {
         if (typeof window === "undefined") return;
         const raw = sessionStorage.getItem("checkoutState");
         const prev = raw ? JSON.parse(raw) : {};
-        const base = { step, fio, email, phone, agree, address };
+        const base = { step, fio, email, phone, agree, address, deliveryMethod };
         const next = { ...prev, ...base, ...partial };
         sessionStorage.setItem("checkoutState", JSON.stringify(next));
       } catch {
         // ignore
       }
     },
-    [step, fio, email, phone, agree, address]
+    [step, fio, email, phone, agree, address, deliveryMethod]
   );
 
   // первичное восстановление черновика
@@ -814,7 +824,8 @@ export default function CheckoutModal({
   // --- ОФОРМЛЕНИЕ / ПЕРЕХОД МЕЖДУ ШАГАМИ ---
 
   const goNext = async () => {
-    if (step === 0 && address.trim().length < 5) {
+    // Адрес обязателен только для курьера и доставки по России; для самовывоза — нет.
+    if (step === 0 && deliveryNeedsAddress && address.trim().length < 5) {
       setAddressError(true);
       return;
     } else {
@@ -927,10 +938,11 @@ export default function CheckoutModal({
 
           return base;
         }),
-        address: address || "",
+        address: deliveryNeedsAddress ? address || "" : "Самовывоз (Москва)",
         phone: phone || "",
         fullName: fio || "",
         email: email || "",
+        deliveryMethod,
         method,
         userId:
           user && !(user as any).isGuest && (user as any).id
@@ -1056,18 +1068,78 @@ export default function CheckoutModal({
                 </div>
               )}
 
+            {/* Способ получения заказа */}
+            <div className="mb-4">
+              <div className="mb-2 text-sm font-medium text-gray-700">
+                Как хотите получить заказ?
+              </div>
+              <div className="grid gap-2">
+                {DELIVERY_METHODS.map((m) => {
+                  const active = deliveryMethod === m.key;
+                  return (
+                    <button
+                      key={m.key}
+                      type="button"
+                      onClick={() => {
+                        setDeliveryMethod(m.key);
+                        setAddressError(false);
+                        saveCheckoutStatePartial({ deliveryMethod: m.key });
+                      }}
+                      className={`w-full rounded-2xl border p-3 text-left transition ${
+                        active
+                          ? "border-black bg-black/[0.03] shadow-[0_2px_10px_rgba(0,0,0,0.06)]"
+                          : "border-black/12 hover:border-black/30"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span
+                          className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border-2 ${
+                            active ? "border-black" : "border-black/25"
+                          }`}
+                        >
+                          {active && <span className="h-2 w-2 rounded-full bg-black" />}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-sm font-semibold text-gray-900">{m.title}</span>
+                            <span
+                              className={`shrink-0 text-xs font-semibold ${
+                                m.priceLabel === "Бесплатно" ? "text-green-600" : "text-gray-500"
+                              }`}
+                            >
+                              {m.priceLabel}
+                            </span>
+                          </span>
+                          <span className="mt-1 block text-xs leading-relaxed text-gray-500">
+                            {m.description}
+                          </span>
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <label
               htmlFor="address"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              Адрес доставки
+              {deliveryNeedsAddress
+                ? "Адрес доставки"
+                : "Адрес (для самовывоза не нужен)"}
             </label>
             <div className="relative w-full">
               <input
                 id="address"
                 type="text"
-                placeholder="Улица, дом, квартира"
-                value={address}
+                disabled={!deliveryNeedsAddress}
+                placeholder={
+                  deliveryNeedsAddress
+                    ? "Улица, дом, квартира"
+                    : "Заберёте сами — адрес не требуется"
+                }
+                value={deliveryNeedsAddress ? address : ""}
                 onChange={(e) => {
                   const value = e.target.value;
                   setAddress(value);
@@ -1075,7 +1147,7 @@ export default function CheckoutModal({
                 }}
                 className={`w-full p-2 pr-10 border rounded placeholder-gray-400 ${
                   addressError ? "border-red-500" : ""
-                }`}
+                } ${!deliveryNeedsAddress ? "bg-gray-100 text-gray-400 cursor-not-allowed" : ""}`}
               />
               <motion.div
                 initial={{ opacity: 0, y: -10 }}

@@ -72,6 +72,7 @@ export async function GET(req: Request) {
         fullName: true,
         phone: true,
         address: true,
+        deliveryMethod: true,
         comment: true,
         deliveryRequestedAt: true,
         deliveryScheduledAt: true,

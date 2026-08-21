@@ -12,6 +12,7 @@ import {
   tooManyRequests,
 } from '@/lib/api-hardening';
 import { emitServerEvents } from '@/lib/events-server';
+import { isValidDeliveryMethod, DEFAULT_DELIVERY_METHOD } from '@/lib/delivery';
 
 const toNum = (v: any): number | null => {
   const n = Number(v);
@@ -79,6 +80,10 @@ export async function POST(req: Request) {
     const phone: string = sanitizeString(body?.phone, 64);
     const address: string = sanitizeString(body?.address, 255);
     const comment: string = sanitizeString(body?.comment, 1000);
+    // Способ получения заказа: принимаем только известные значения, иначе — вариант по умолчанию.
+    const deliveryMethod: string = isValidDeliveryMethod(body?.deliveryMethod)
+      ? body.deliveryMethod
+      : DEFAULT_DELIVERY_METHOD;
 
     if (!rawItems.length) {
       return privateJson(
@@ -545,6 +550,7 @@ export async function POST(req: Request) {
         phone,
         address,
         comment,
+        deliveryMethod,
         ...(promoMeta
           ? {
               promoCode: promoMeta.code,

@@ -154,6 +154,7 @@ model Order {
   phone       String
   address     String
   comment     String?
+  deliveryMethod String?   // как покупатель хочет получить заказ: COURIER_MSK | PICKUP_MSK | RUSSIA
   deliveryRequestedAt DateTime?
   deliveryScheduledAt DateTime?
   deliveryAddress String?

@@ -1,5 +1,7 @@
 "use client";
 
+import { deliveryMethodLabel } from "@/lib/delivery";
+
 import { useEffect, useState } from "react";
 
 type OrderRow = {
@@ -14,6 +16,7 @@ type OrderRow = {
   email: string;
   phone: string;
   address: string;
+  deliveryMethod?: string | null;
 };
 
 const SHIPPING_LABELS: Record<string, string> = {
@@ -102,6 +105,10 @@ export default function AdminOrdersPage() {
                   <td className="py-2">
                     <div className="font-semibold">{o.fullName}</div>
                     <div className="text-xs text-black/50">{o.email}</div>
+                    <div className="mt-1 text-xs font-medium text-black/70">
+                      {deliveryMethodLabel(o.deliveryMethod)}
+                    </div>
+                    <div className="text-xs text-black/40">{o.address}</div>
                   </td>
                   <td className="py-2">{Number(o.totalAmount).toLocaleString("ru-RU")} ₽</td>
                   <td className="py-2">{o.status}</td>
