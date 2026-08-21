@@ -23,6 +23,8 @@ import GentleMonsterBanner from "@/components/home/promos/GentleMonsterBanner";
 import StoneIslandBanner from "@/components/promos/StoneIslandBanner";
 import { RepeatViewedSection, ForYouFeed } from "@/components/home/ForYouFeed";
 import BrandSpotlightCard from "@/components/home/BrandSpotlightCard";
+import { Sparkles } from "lucide-react";
+import { PremiumConcierge } from "@/components/PremiumConcierge";
 import type { HomeCmsPromoConfig, HomePromoProduct } from "@/components/home/promos/types";
 import { useMotionBudget, type MotionLevel } from "@/components/MotionBudgetProvider";
 import { getOptimizedImageUrl, shouldBypassNextImageOptimization } from "@/lib/media";
@@ -56,11 +58,11 @@ const HOME_GATEWAYS = [
     className: "bg-[#e7ded0] text-black",
   },
   {
-    title: "Быстрый вход в категории",
-    text: "Обувь, одежда, сумки, аксессуары и парфюм в одной структуре.",
-    href: "/search",
-    cta: "Перейти в каталог",
-    className: "bg-white text-black",
+    title: "Консьерж-сервис",
+    text: "Ищете конкретную вещь или размера нет в наличии? Найдём и привезём под вас.",
+    href: "#concierge",
+    cta: "Оставить запрос",
+    className: "bg-[#141414] text-white",
   },
 ];
 
@@ -659,6 +661,8 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
     brandNames: Map<string, number>;// brandName(lowercase) -> ранг (на случай, если в товаре нет brandId)
     repeatIds: Set<number>;         // товары, что смотрел повторно и не купил
   } | null>(null);
+  // Форма консьерж-сервиса открывается прямо с главной
+  const [conciergeOpen, setConciergeOpen] = useState(false);
   const [cmsPromos, setCmsPromos] = useState<HomeCmsPromoConfig[]>([]);
   const [publicPromoCodes, setPublicPromoCodes] = useState<any[]>([]);
   const [promocodeSpace, setPromocodeSpace] = useState<HomePromocodeSpacePayload | null>(null);
@@ -1847,7 +1851,10 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
             <Link
               href={HOME_GATEWAYS[0].href}
               className={[
-                "group relative col-span-2 overflow-hidden rounded-[24px] sm:rounded-[32px] p-4 sm:p-6 shadow-sm transition duration-500 hover:-translate-y-1 hover:shadow-xl",
+                // Premium — главный блок: заметно крупнее остальных на компьютере,
+                // на телефоне чуть вытянут по высоте.
+                "group relative col-span-2 flex flex-col justify-end overflow-hidden rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 md:p-12 shadow-sm transition duration-500 hover:-translate-y-1 hover:shadow-xl",
+                "min-h-[230px] sm:min-h-[380px] md:min-h-[560px]",
                 HOME_GATEWAYS[0].className,
               ].join(" ")}
             >
@@ -1856,44 +1863,66 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
                 src="https://ik.imagekit.io/qowmy92ny/stage/products/gallery/2026-06-05%2017.18.55.jpg"
                 alt=""
                 fill
-                sizes="(max-width: 768px) 100vw, 50vw"
+                sizes="100vw"
                 className="object-cover opacity-30 transition duration-500 group-hover:opacity-40 group-hover:scale-105"
                 unoptimized
               />
-              <div className="absolute right-[-42px] top-[-42px] h-28 w-28 rounded-full border border-current opacity-15 transition duration-500 group-hover:scale-125" />
-              <h3 className="mt-4 sm:mt-8 max-w-sm text-xl sm:text-4xl font-black leading-none tracking-[-0.05em] relative">
+              <div className="absolute right-[-42px] top-[-42px] h-28 w-28 md:h-44 md:w-44 rounded-full border border-current opacity-15 transition duration-500 group-hover:scale-125" />
+              <h3 className="max-w-sm md:max-w-2xl text-2xl sm:text-5xl md:text-7xl font-black leading-none tracking-[-0.05em] relative">
                 {HOME_GATEWAYS[0].title}
               </h3>
-              <p className="mt-2 sm:mt-4 max-w-md text-xs sm:text-sm leading-5 sm:leading-6 opacity-65 line-clamp-2 sm:line-clamp-none relative">
+              <p className="mt-2 sm:mt-4 max-w-md md:max-w-xl text-xs sm:text-base md:text-lg leading-5 sm:leading-6 md:leading-7 opacity-65 line-clamp-2 sm:line-clamp-none relative">
                 {HOME_GATEWAYS[0].text}
               </p>
-              <span className="mt-4 sm:mt-8 inline-flex rounded-full border border-current px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.16em] opacity-80 transition group-hover:opacity-100 relative">
+              <span className="mt-4 sm:mt-6 md:mt-8 w-fit inline-flex rounded-full border border-current px-3 sm:px-5 md:px-7 py-1.5 sm:py-2.5 md:py-3.5 text-[10px] sm:text-xs md:text-sm font-semibold uppercase tracking-[0.16em] opacity-80 transition group-hover:opacity-100 relative">
                 {HOME_GATEWAYS[0].cta}
               </span>
             </Link>
 
-            {/* Sale + Catalog — side by side on mobile, 1 col each on desktop */}
-            {HOME_GATEWAYS.slice(1).map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={[
-                  "group relative col-span-1 overflow-hidden rounded-[24px] sm:rounded-[32px] p-4 sm:p-6 shadow-sm transition duration-500 hover:-translate-y-1 hover:shadow-xl",
-                  item.className,
-                ].join(" ")}
-              >
-                <div className="absolute right-[-42px] top-[-42px] h-28 w-28 rounded-full border border-current opacity-15 transition duration-500 group-hover:scale-125" />
-                <h3 className="mt-3 sm:mt-8 text-base sm:text-4xl font-black leading-tight sm:leading-none tracking-[-0.04em] sm:tracking-[-0.05em]">
-                  {item.title}
-                </h3>
-                <p className="mt-2 sm:mt-4 text-[11px] sm:text-sm leading-5 sm:leading-6 opacity-65 line-clamp-3 sm:line-clamp-none hidden sm:block">
-                  {item.text}
-                </p>
-                <span className="mt-4 sm:mt-8 inline-flex rounded-full border border-current px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.16em] opacity-80 transition group-hover:opacity-100">
-                  {item.cta}
-                </span>
-              </Link>
-            ))}
+            {/* Бренды + Консьерж — рядом на телефоне, по колонке на компьютере */}
+            {HOME_GATEWAYS.slice(1).map((item) => {
+              const isConcierge = item.href === "#concierge";
+              const inner = (
+                <>
+                  <div className="absolute right-[-42px] top-[-42px] h-28 w-28 rounded-full border border-current opacity-15 transition duration-500 group-hover:scale-125" />
+                  {isConcierge && (
+                    <span className="relative mb-1 inline-flex w-fit items-center gap-1.5 rounded-full border border-current/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] opacity-70">
+                      <Sparkles size={10} /> Личный подбор
+                    </span>
+                  )}
+                  <h3 className="mt-3 sm:mt-8 text-base sm:text-4xl font-black leading-tight sm:leading-none tracking-[-0.04em] sm:tracking-[-0.05em] relative">
+                    {item.title}
+                  </h3>
+                  <p className="mt-2 sm:mt-4 text-[11px] sm:text-sm leading-5 sm:leading-6 opacity-65 line-clamp-3 sm:line-clamp-none hidden sm:block relative">
+                    {item.text}
+                  </p>
+                  <span className="mt-4 sm:mt-8 w-fit inline-flex rounded-full border border-current px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-semibold uppercase tracking-[0.16em] opacity-80 transition group-hover:opacity-100 relative">
+                    {item.cta}
+                  </span>
+                </>
+              );
+
+              const cls = [
+                "group relative col-span-1 flex flex-col overflow-hidden rounded-[24px] sm:rounded-[32px] p-4 sm:p-6 shadow-sm transition duration-500 hover:-translate-y-1 hover:shadow-xl",
+                item.className,
+              ].join(" ");
+
+              // Консьерж не ведёт на страницу — открывает форму запроса прямо здесь.
+              return isConcierge ? (
+                <button
+                  key={item.href}
+                  type="button"
+                  onClick={() => setConciergeOpen(true)}
+                  className={`${cls} text-left`}
+                >
+                  {inner}
+                </button>
+              ) : (
+                <Link key={item.href} href={item.href} className={cls}>
+                  {inner}
+                </Link>
+              );
+            })}
           </div>
 
           <div className="mt-2.5 sm:mt-4 grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-2">
@@ -2375,6 +2404,8 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
           </section>
         </div>
       </Container>
+
+      <PremiumConcierge open={conciergeOpen} setOpen={setConciergeOpen} />
     </>
   );
 }
