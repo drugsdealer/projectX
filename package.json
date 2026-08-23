@@ -9,7 +9,7 @@
     "seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate",
     "db:backup": "mkdir -p backups && pg_dump \"$DATABASE_URL\" > backups/backup-$(date +%F-%H%M).sql",
-    "prepare": "husky install",
+    "prepare": "husky install || true",
     "lint": "next lint",
     "prisma:gen": "prisma generate",
     "prisma:studio": "prisma studio",
