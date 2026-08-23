@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { shouldBypassNextImageOptimization } from "@/lib/media";
+import { shouldBypassNextImageOptimization, getOptimizedImageUrl } from "@/lib/media";
 
 export type BrandItem = {
   name: string;
@@ -123,7 +123,7 @@ export default function BrandsClient({ brands }: { brands: BrandItem[] }) {
                     }`}>
                       {brand.logoUrl ? (
                         <Image
-                          src={brand.logoUrl}
+                          src={getOptimizedImageUrl(brand.logoUrl, { width: 200 }) || brand.logoUrl}
                           alt={brand.name}
                           width={64}
                           height={64}
@@ -146,7 +146,7 @@ export default function BrandsClient({ brands }: { brands: BrandItem[] }) {
             {previewImage ? (
               <Image
                 key={previewImage}
-                src={previewImage}
+                src={getOptimizedImageUrl(previewImage, { width: 640 }) || previewImage}
                 alt={activeBrand?.name || "Brand preview"}
                 fill
                 priority

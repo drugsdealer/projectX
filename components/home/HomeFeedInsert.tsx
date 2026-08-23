@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { shouldBypassNextImageOptimization } from '@/lib/media';
+import { shouldBypassNextImageOptimization, getOptimizedImageUrl } from '@/lib/media';
 import { productPath } from '@/lib/product-url';
 
 type ProductItem = {
@@ -168,7 +168,7 @@ export default function HomeFeedInsert({
                 <div className="relative aspect-[4/5] bg-white">
                   {item.imageUrl ? (
                     <Image
-                      src={item.imageUrl}
+                      src={getOptimizedImageUrl(item.imageUrl, { width: 640 }) || item.imageUrl}
                       alt={item.name}
                       fill
                       unoptimized={shouldBypassNextImageOptimization(item.imageUrl)}

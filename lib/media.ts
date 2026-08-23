@@ -17,9 +17,14 @@ export function isImageKitUrl(url?: string | null) {
 
 export function shouldBypassNextImageOptimization(url?: string | null) {
   const src = normalizeMediaUrl(url);
+  // Локальные файлы из /public отдаём через оптимизатор Next — он рядом, это дёшево.
   if (!/^https?:\/\//i.test(src)) return false;
   if (isSvgUrl(src)) return true;
-  return !isImageKitUrl(src);
+  // Внешние картинки (в т.ч. ImageKit) отдаём браузеру напрямую.
+  // ImageKit уже сам режет размер и качество через параметры tr=w-..,q-..,
+  // а прогон через /_next/image заставлял бы наш сервер скачивать каждую картинку
+  // и обрабатывать её заново: лишняя нагрузка и точка отказа (ловили 504).
+  return true;
 }
 
 type ImageKitTransformOptions = {

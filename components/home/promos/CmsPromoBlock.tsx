@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { shouldBypassNextImageOptimization } from '@/lib/media';
+import { shouldBypassNextImageOptimization, getOptimizedImageUrl } from '@/lib/media';
 import { productPath } from '@/lib/product-url';
 
 import type { HomeCmsPromoConfig, HomePromoProduct } from '@/components/home/promos/types';
@@ -24,7 +24,7 @@ export default function CmsPromoBlock({ promo, items }: Props) {
     <section className="relative overflow-hidden rounded-[30px] border border-black/15 bg-[#f8f8f8] p-4 sm:p-6">
       <div className="pointer-events-none absolute inset-0">
         <Image
-          src={promo.backgroundImageUrl}
+          src={getOptimizedImageUrl(promo.backgroundImageUrl, { width: 640 }) || promo.backgroundImageUrl}
           alt=""
           fill
           unoptimized={shouldBypassNextImageOptimization(promo.backgroundImageUrl)}
@@ -50,7 +50,7 @@ export default function CmsPromoBlock({ promo, items }: Props) {
           {promo.logoImageUrl ? (
             <div className="w-[110px] sm:w-[140px]">
               <Image
-                src={promo.logoImageUrl}
+                src={getOptimizedImageUrl(promo.logoImageUrl, { width: 200 }) || promo.logoImageUrl}
                 alt={promo.name}
                 width={420}
                 height={140}
@@ -78,7 +78,7 @@ export default function CmsPromoBlock({ promo, items }: Props) {
                   style={{ backgroundColor: accent }}
                 />
                 <div className="relative aspect-[4/5] bg-black/[0.03]">
-                  {item.imageUrl ? <Image src={item.imageUrl} alt={item.name} fill unoptimized={shouldBypassNextImageOptimization(item.imageUrl)} className="object-cover" /> : null}
+                  {item.imageUrl ? <Image src={getOptimizedImageUrl(item.imageUrl, { width: 640 }) || item.imageUrl} alt={item.name} fill unoptimized={shouldBypassNextImageOptimization(item.imageUrl)} className="object-cover" /> : null}
                 </div>
                 <div className="space-y-1 p-3">
                   {item.brandName ? <p className="text-[10px] uppercase tracking-[0.12em] text-black/45">{item.brandName}</p> : null}

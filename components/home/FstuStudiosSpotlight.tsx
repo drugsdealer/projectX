@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { HomePromoProduct } from '@/components/home/promos/types';
-import { shouldBypassNextImageOptimization } from '@/lib/media';
+import { shouldBypassNextImageOptimization, getOptimizedImageUrl } from '@/lib/media';
 import { productPath } from '@/lib/product-url';
 
 type BowConfig = {
@@ -61,7 +61,7 @@ export default function FstuStudiosSpotlight({
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.6),transparent_45%),radial-gradient(circle_at_80%_85%,rgba(255,255,255,0.65),transparent_42%)]" />
       {backgroundImageUrl ? (
         <div className="pointer-events-none absolute inset-0 opacity-20">
-          <Image src={backgroundImageUrl} alt="" fill unoptimized={shouldBypassNextImageOptimization(backgroundImageUrl)} className="object-cover" aria-hidden />
+          <Image src={getOptimizedImageUrl(backgroundImageUrl, { width: 640 }) || backgroundImageUrl} alt="" fill unoptimized={shouldBypassNextImageOptimization(backgroundImageUrl)} className="object-cover" aria-hidden />
         </div>
       ) : null}
 
@@ -78,7 +78,7 @@ export default function FstuStudiosSpotlight({
             }}
           >
             <Image
-              src={bowImageUrl}
+              src={getOptimizedImageUrl(bowImageUrl, { width: 640 }) || bowImageUrl}
               alt=""
               width={bow.size}
               height={Math.round((bow.size * 104) / 140)}
@@ -95,7 +95,7 @@ export default function FstuStudiosSpotlight({
         </span>
         <div className="mt-5 w-[180px] sm:w-[230px]">
           <Image
-            src={logoImageUrl}
+            src={getOptimizedImageUrl(logoImageUrl, { width: 200 }) || logoImageUrl}
             alt="ACNE"
             width={460}
             height={138}
@@ -124,7 +124,7 @@ export default function FstuStudiosSpotlight({
                 <div className="relative aspect-[4/5] bg-black/[0.03]">
                   {item.imageUrl ? (
                     <Image
-                      src={item.imageUrl}
+                      src={getOptimizedImageUrl(item.imageUrl, { width: 640 }) || item.imageUrl}
                       alt={item.name}
                       fill
                       unoptimized={shouldBypassNextImageOptimization(item.imageUrl)}

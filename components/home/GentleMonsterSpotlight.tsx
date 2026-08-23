@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import type { HomePromoProduct } from '@/components/home/promos/types';
-import { shouldBypassNextImageOptimization } from '@/lib/media';
+import { shouldBypassNextImageOptimization, getOptimizedImageUrl } from '@/lib/media';
 import { productPath } from '@/lib/product-url';
 
 const BANNER =
@@ -110,7 +110,7 @@ export default function GentleMonsterSpotlight({ items = [] }: Props) {
         <picture>
           <source media="(max-width: 768px)" srcSet={BANNER_MOBILE} />
           <Image
-            src={BANNER}
+            src={getOptimizedImageUrl(BANNER, { width: 640 }) || BANNER}
             alt="Gentle Monster 2025 FALL"
             width={1120}
             height={525}
@@ -163,7 +163,7 @@ export default function GentleMonsterSpotlight({ items = [] }: Props) {
               >
                 <div style={{ position: 'relative', background: '#f4f4f2', overflow: 'hidden', aspectRatio: '1/1' }}>
                   {item.imageUrl
-                    ? <Image src={item.imageUrl} alt={item.name} fill unoptimized={shouldBypassNextImageOptimization(item.imageUrl)} style={{ objectFit: 'cover' }} />
+                    ? <Image src={getOptimizedImageUrl(item.imageUrl, { width: 640 }) || item.imageUrl} alt={item.name} fill unoptimized={shouldBypassNextImageOptimization(item.imageUrl)} style={{ objectFit: 'cover' }} />
                     : null}
                   <HeartButton />
                 </div>
@@ -209,7 +209,7 @@ export default function GentleMonsterSpotlight({ items = [] }: Props) {
             >
               <div style={{ position: 'relative', background: '#f4f4f2', overflow: 'hidden', aspectRatio: '1/1' }}>
                 {item.imageUrl
-                  ? <Image src={item.imageUrl} alt={item.name} fill unoptimized={shouldBypassNextImageOptimization(item.imageUrl)} style={{ objectFit: 'cover' }} />
+                  ? <Image src={getOptimizedImageUrl(item.imageUrl, { width: 640 }) || item.imageUrl} alt={item.name} fill unoptimized={shouldBypassNextImageOptimization(item.imageUrl)} style={{ objectFit: 'cover' }} />
                   : null}
                 <HeartButton />
               </div>

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { useUser } from "@/user/UserContext";
-import { shouldBypassNextImageOptimization } from "@/lib/media";
+import { shouldBypassNextImageOptimization, getOptimizedImageUrl } from "@/lib/media";
 import { productPath } from "@/lib/product-url";
 
 type SaleProduct = {
@@ -61,7 +61,7 @@ function SaleCard({ product }: { product: SaleProduct }) {
       <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-black/[0.04]">
         {img ? (
           <Image
-            src={img}
+            src={getOptimizedImageUrl(img, { width: 640 }) || img}
             alt={product.name}
             fill
             unoptimized={shouldBypassNextImageOptimization(img)}
