@@ -60,7 +60,7 @@ type BagDimensions = { width: number; height: number; depth: number };
 
 // Use the shared normalized product shape everywhere on this page
 type Product = NormalizedProduct;
-const SITE_LOGO_URL = "https://ik.imagekit.io/qowmy92ny/IMG_0363%20(1).PNG";
+const SITE_LOGO_URL = "/ik/qowmy92ny/IMG_0363%20(1).PNG";
 
 // Narrow helper type for bags (kept only for casts where needed)
 type BagProduct = {

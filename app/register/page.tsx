@@ -4,7 +4,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 
-const SITE_LOGO_URL = "https://ik.imagekit.io/qowmy92ny/IMG_0363%20(1).PNG";
+const SITE_LOGO_URL = "/ik/qowmy92ny/IMG_0363%20(1).PNG";
 
 export default function RegisterPage() {
   const readCookie = (name: string) => {

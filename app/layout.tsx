@@ -16,7 +16,7 @@ import type { Metadata } from "next";
 import { safeJsonLd } from "@/lib/json-ld";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
-const SITE_LOGO_URL = "https://ik.imagekit.io/qowmy92ny/IMG_0363%20(1).PNG";
+const SITE_LOGO_URL = `${SITE_URL}/ik/qowmy92ny/IMG_0363%20(1).PNG`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
