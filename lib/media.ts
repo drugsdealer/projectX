@@ -15,8 +15,26 @@ export function isImageKitUrl(url?: string | null) {
   return /^https:\/\/(?:[^/]+\.)?imagekit\.io\//i.test(src) || /^https:\/\/ik\.imagekit\.io\//i.test(src);
 }
 
+// Картинки ImageKit отдаём через свой домен: /ik/<путь>?<параметры>.
+// Прямой ik.imagekit.io не проходит у части российских операторов, а наш сервер
+// до него достучаться может — nginx проксирует и кэширует запросы.
+export const IMAGE_PROXY_PREFIX = "/ik";
+
+export function toProxiedImageUrl(url?: string | null) {
+  const src = normalizeMediaUrl(url);
+  if (!src || !isImageKitUrl(src)) return src;
+  try {
+    const parsed = new URL(src);
+    return `${IMAGE_PROXY_PREFIX}${parsed.pathname}${parsed.search}`;
+  } catch {
+    return src;
+  }
+}
+
 export function shouldBypassNextImageOptimization(url?: string | null) {
   const src = normalizeMediaUrl(url);
+  // Проксированные картинки уже сжаты параметрами tr= — оптимизатор Next не нужен.
+  if (src.startsWith(`${IMAGE_PROXY_PREFIX}/`)) return true;
   // Локальные файлы из /public отдаём через оптимизатор Next — он рядом, это дёшево.
   if (!/^https?:\/\//i.test(src)) return false;
   if (isSvgUrl(src)) return true;
@@ -64,7 +82,7 @@ export function getOptimizedImageUrl(url?: string | null, options: ImageKitTrans
   try {
     const parsed = new URL(src);
     parsed.searchParams.set("tr", imageKitTransform(options));
-    return parsed.toString();
+    return toProxiedImageUrl(parsed.toString());
   } catch {
     return src;
   }

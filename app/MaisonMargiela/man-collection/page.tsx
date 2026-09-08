@@ -4,6 +4,7 @@ import { Bookmark, Plus } from "lucide-react";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { productPath } from "@/lib/product-url";
+import { getOptimizedImageUrl } from "@/lib/media";
 
 export const revalidate = 300;
 
@@ -240,7 +241,7 @@ export default async function MargielaMenPage() {
                     <div className="relative flex h-[280px] items-center justify-center bg-[#f4f4f4] px-4 py-5 sm:h-[330px]">
                       {product.imageUrl ? (
                         <img
-                          src={product.imageUrl}
+                          src={getOptimizedImageUrl(product.imageUrl, { width: 660, quality: 82 })}
                           alt={product.name}
                           className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.03]"
                           loading="lazy"
