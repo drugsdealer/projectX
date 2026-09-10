@@ -435,7 +435,7 @@ export const ProductCard: React.FC<Props> = ({
             {name}
             {premium && (
               <Image
-                src={premiumBadgeIcon || "/img/star-icon.png"}
+                src={premiumBadgeIcon || "/img/star-icon.svg"}
                 alt="Premium badge"
                 width={14}
                 height={14}

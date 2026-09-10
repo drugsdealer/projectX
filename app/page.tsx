@@ -23,7 +23,7 @@ export const metadata: Metadata = {
       "Оригинальная брендовая одежда, обувь и аксессуары. Premium коллекция, Sale, категории и доставка по России.",
     images: [
       {
-        url: "/img/IMG_0364.JPG",
+        url: "https://ik.imagekit.io/qowmy92ny/stage/products/gallery/Tabi_HeroBanner_16x9.jpg",
         width: 1200,
         height: 630,
         alt: "Stage Store — Брендовая одежда и аксессуары",

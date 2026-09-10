@@ -22,7 +22,7 @@ export const metadata: Metadata = {
       "Редкая брендовая одежда, обувь, сумки и аксессуары премиального сегмента.",
     images: [
       {
-        url: "/img/IMG_0364.JPG",
+        url: "https://ik.imagekit.io/qowmy92ny/stage/products/gallery/Tabi_HeroBanner_16x9.jpg",
         width: 1200,
         height: 630,
         alt: "Premium коллекция Stage Store",
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Premium коллекция — Stage Store",
     description: "Редкие бренды, premium-позиции и эксклюзивные товары Stage Store.",
-    images: ["/img/IMG_0364.JPG"],
+    images: ["https://ik.imagekit.io/qowmy92ny/stage/products/gallery/Tabi_HeroBanner_16x9.jpg"],
   },
   robots: { index: true, follow: true },
 };

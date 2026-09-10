@@ -3,6 +3,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { getOptimizedImageUrl } from "@/lib/media";
 
 const SITE_LOGO_URL = "/ik/qowmy92ny/IMG_0363%20(1).PNG";
 
@@ -14,9 +15,9 @@ export default function RegisterPage() {
   };
 
   const benefits = [
-    { id: 1, title: "Ранний доступ к дропам", img: "/img/slider1.jpg" },
-    { id: 2, title: "Персональные подборки", img: "/img/slider2.jpg" },
-    { id: 3, title: "Отслеживание заказов", img: "/img/slider3.jpg" },
+    { id: 1, title: "Ранний доступ к дропам", img: "https://ik.imagekit.io/qowmy92ny/plp_0_pc_3840_1800.avif" },
+    { id: 2, title: "Персональные подборки", img: "https://ik.imagekit.io/qowmy92ny/stage/products/gallery/Tabi_HeroBanner_16x9.jpg" },
+    { id: 3, title: "Отслеживание заказов", img: "https://ik.imagekit.io/qowmy92ny/pdp_1_pcmob.avif" },
   ];
   const [inputError, setInputError] = React.useState(false);
   const router = useRouter();
@@ -192,7 +193,7 @@ export default function RegisterPage() {
                 className="relative h-full min-w-full flex-shrink-0 overflow-hidden lg:min-w-full lg:flex-shrink-0"
                 style={{ scrollSnapAlign: "none" }}
               >
-                <img src={b.img} alt={b.title} className="h-full w-full object-cover" />
+                <img src={getOptimizedImageUrl(b.img, { width: 1200, quality: 80 })} alt={b.title} className="h-full w-full object-cover" />
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/30" />
                 <div className="absolute bottom-6 left-6 right-6 rounded-2xl bg-white/85 p-4 shadow-lg backdrop-blur">
                   <p className="text-lg font-semibold text-slate-900">{b.title}</p>
@@ -218,7 +219,7 @@ export default function RegisterPage() {
                   transition={{ duration: 0.35, delay: idx * 0.05 }}
                   className="min-w-[200px] flex-shrink-0 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow"
                 >
-                  <img src={b.img} alt={b.title} className="h-28 w-full object-cover" />
+                  <img src={getOptimizedImageUrl(b.img, { width: 420, quality: 78 })} alt={b.title} className="h-28 w-full object-cover" />
                   <p className="px-3 py-2 text-sm font-medium text-slate-800">{b.title}</p>
                 </motion.div>
               ))}

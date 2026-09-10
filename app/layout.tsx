@@ -52,7 +52,7 @@ export const metadata: Metadata = {
       "Оригинальная брендовая одежда, обувь и аксессуары. Premium коллекция, Sale и доставка по России.",
     images: [
       {
-        url: "/img/IMG_0364.JPG",
+        url: "https://ik.imagekit.io/qowmy92ny/stage/products/gallery/Tabi_HeroBanner_16x9.jpg",
         width: 1200,
         height: 630,
         alt: "Stage Store — Брендовая одежда и аксессуары",
@@ -64,7 +64,7 @@ export const metadata: Metadata = {
     title: "Stage Store — брендовая одежда, обувь, Premium и Sale",
     description:
       "Оригинальная брендовая одежда, обувь, аксессуары, Premium коллекция и Sale.",
-    images: ["/img/IMG_0364.JPG"],
+    images: ["https://ik.imagekit.io/qowmy92ny/stage/products/gallery/Tabi_HeroBanner_16x9.jpg"],
   },
   robots: {
     index: true,
@@ -123,7 +123,7 @@ export default function RootLayout({
                   },
                   image: {
                     "@type": "ImageObject",
-                    url: `${SITE_URL}/img/IMG_0364.JPG`,
+                    url: "https://ik.imagekit.io/qowmy92ny/stage/products/gallery/Tabi_HeroBanner_16x9.jpg",
                     width: 1200,
                     height: 630,
                   },

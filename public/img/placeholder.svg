@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800" role="img" aria-label="Фото недоступно">
+  <rect width="800" height="800" fill="#f3f1ed"/>
+  <g fill="none" stroke="#c9c4bb" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="250" y="286" width="300" height="228" rx="18"/>
+    <path d="M250 452l84-78 66 58 62-52 88 74"/>
+    <circle cx="352" cy="352" r="24"/>
+  </g>
+  <text x="400" y="588" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="26" fill="#a9a297">Фото скоро появится</text>
+</svg>

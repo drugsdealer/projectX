@@ -162,7 +162,7 @@ function pickBrandFallbackImage(items: BrandClientProps['items']) {
       ((item as any).imageUrl && String((item as any).imageUrl).trim());
     if (first) return String(first);
   }
-  return '/img/IMG_0364.JPG';
+  return 'https://ik.imagekit.io/qowmy92ny/stage/products/gallery/Tabi_HeroBanner_16x9.jpg';
 }
 
 function compactBrandDescription(meta: BrandMeta, brandName: string) {

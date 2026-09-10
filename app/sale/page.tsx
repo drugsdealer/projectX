@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     description: "Скидки на брендовую одежду, обувь и аксессуары. Оригинальные товары по сниженным ценам.",
     images: [
       {
-        url: "/img/IMG_0364.JPG",
+        url: "https://ik.imagekit.io/qowmy92ny/stage/products/gallery/Tabi_HeroBanner_16x9.jpg",
         width: 1200,
         height: 630,
         alt: "Sale — Stage Store",
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Sale — Stage Store",
     description: "Скидки на оригинальную брендовую одежду, обувь и аксессуары Stage Store.",
-    images: ["/img/IMG_0364.JPG"],
+    images: ["https://ik.imagekit.io/qowmy92ny/stage/products/gallery/Tabi_HeroBanner_16x9.jpg"],
   },
   robots: { index: true, follow: true },
 };
