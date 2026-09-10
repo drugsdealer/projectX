@@ -24,7 +24,6 @@ import StoneIslandBanner from "@/components/promos/StoneIslandBanner";
 import { RepeatViewedSection, ForYouFeed } from "@/components/home/ForYouFeed";
 import BrandSpotlightCard from "@/components/home/BrandSpotlightCard";
 import { Sparkles } from "lucide-react";
-import { PremiumConcierge } from "@/components/PremiumConcierge";
 import type { HomeCmsPromoConfig, HomePromoProduct } from "@/components/home/promos/types";
 import { useMotionBudget, type MotionLevel } from "@/components/MotionBudgetProvider";
 import { getOptimizedImageUrl, shouldBypassNextImageOptimization } from "@/lib/media";
@@ -60,7 +59,7 @@ const HOME_GATEWAYS = [
   {
     title: "Консьерж-сервис",
     text: "Ищете конкретную вещь или размера нет в наличии? Найдём и привезём под вас.",
-    href: "#concierge",
+    href: "/concierge",
     cta: "Оставить запрос",
     className: "bg-[#141414] text-white",
   },
@@ -662,7 +661,6 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
     repeatIds: Set<number>;         // товары, что смотрел повторно и не купил
   } | null>(null);
   // Форма консьерж-сервиса открывается прямо с главной
-  const [conciergeOpen, setConciergeOpen] = useState(false);
   const [cmsPromos, setCmsPromos] = useState<HomeCmsPromoConfig[]>([]);
   const [publicPromoCodes, setPublicPromoCodes] = useState<any[]>([]);
   const [promocodeSpace, setPromocodeSpace] = useState<HomePromocodeSpacePayload | null>(null);
@@ -1878,7 +1876,7 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
 
             {/* Бренды + Консьерж — рядом на телефоне, по колонке на компьютере */}
             {HOME_GATEWAYS.slice(1).map((item) => {
-              const isConcierge = item.href === "#concierge";
+              const isConcierge = item.href === "/concierge";
               const inner = (
                 <>
                   <div className="absolute right-[-42px] top-[-42px] h-28 w-28 rounded-full border border-current opacity-15 transition duration-500 group-hover:scale-125" />
@@ -1904,17 +1902,8 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
                 item.className,
               ].join(" ");
 
-              // Консьерж не ведёт на страницу — открывает форму запроса прямо здесь.
-              return isConcierge ? (
-                <button
-                  key={item.href}
-                  type="button"
-                  onClick={() => setConciergeOpen(true)}
-                  className={`${cls} text-left`}
-                >
-                  {inner}
-                </button>
-              ) : (
+              // Консьерж ведёт на отдельную страницу с пошаговой заявкой.
+              return (
                 <Link key={item.href} href={item.href} className={cls}>
                   {inner}
                 </Link>
@@ -2402,7 +2391,6 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
         </div>
       </Container>
 
-      <PremiumConcierge open={conciergeOpen} setOpen={setConciergeOpen} />
     </>
   );
 }
