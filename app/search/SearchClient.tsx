@@ -10,7 +10,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useUser } from '@/user/UserContext';
 import { getOrCreateEventsSessionId, trackShopEvent } from '@/lib/events-client';
-import { shouldBypassNextImageOptimization, getOptimizedImageUrl } from '@/lib/media';
+import { shouldBypassNextImageOptimization } from '@/lib/media';
 import { productPath } from '@/lib/product-url';
 import { canUseOptionalClientData } from '@/lib/privacy-consent';
 
@@ -256,11 +256,6 @@ function pickImage<T extends { image?: string; imageMen?: string; imageWomen?: s
   return v;
 }
 
-function getSubcategoryVisual(prettyName: string, gender: GenderKey = '') {
-  const key = prettyName.trim().toLowerCase();
-  const v = SUBCATEGORY_VISUALS[key];
-  return v ? pickImage(v, gender) : null;
-}
 
 function getCategoryVisual(title: string, gender: GenderKey = '') {
   const key = normalizeQuery(title).toLowerCase();
@@ -720,106 +715,76 @@ const SidebarPromos = memo(function SidebarPromos({
 
 // -------------------- Stable category components (outside SearchPage to avoid remount on re-render) --------------------
 
-const CategoryCard = memo(function CategoryCard({ c, meta, genderSuffix = '' }: { c: Category; meta?: string; genderSuffix?: string }) {
+const CategoryCard = memo(function CategoryCard({
+  c,
+  meta,
+  genderSuffix = '',
+  index = 0,
+}: { c: Category; meta?: string; genderSuffix?: string; index?: number }) {
   const visual = getCategoryVisual(c.title, genderSuffix as GenderKey);
   const href = genderSuffix
     ? `${c.href}${c.href.includes('?') ? '&' : '?'}gender=${encodeURIComponent(genderSuffix)}`
     : c.href;
+  const num = String(index + 1).padStart(2, '0');
 
+  // Категории держатся на типографике, а не на фото: не нужно подбирать снимок
+  // под каждый раздел и следить, чтобы женская вещь не попала в мужскую витрину.
   return (
     <Link
       href={href}
-      className="group relative block overflow-hidden rounded-3xl border border-black/10 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_56px_rgba(0,0,0,0.12)]"
+      className="group relative flex h-52 flex-col justify-between overflow-hidden rounded-3xl border border-black/10 bg-[#f3f1ed] p-5 transition duration-300 hover:-translate-y-1 hover:border-black/25 hover:bg-[#eceae5] sm:h-64 sm:p-6"
     >
-      {/* Photo — товар целиком по центру на едином фоне (витрина) */}
-      <div className="relative h-64 sm:h-80 overflow-hidden bg-neutral-100">
-        {visual.image ? (
-          <Image
-            src={getOptimizedImageUrl(visual.image, { width: 900 })}
-            alt={c.title}
-            fill
-            className="object-contain p-2 transition duration-500 group-hover:scale-[1.04]"
-            sizes="(max-width: 640px) 50vw, 460px"
-            unoptimized
-          />
-        ) : (
-          <div className={`absolute inset-0 bg-gradient-to-br ${visual.gradient}`} />
-        )}
+      <div className="flex items-start justify-between">
+        <span className="text-[11px] font-semibold tracking-[0.24em] text-black/30">{num}</span>
         {genderSuffix ? (
-          <span className="absolute right-3 top-3 rounded-full bg-black/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-black/55 backdrop-blur-sm">
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-black/25">
             {genderSuffix === 'men' ? 'М' : 'Ж'}
           </span>
         ) : null}
       </div>
 
-      {/* Footer — название под фото */}
-      <div className="px-3.5 py-3">
-        <h3 className="text-lg font-black leading-tight tracking-tight text-black">{c.title}</h3>
-        <div className="mt-1.5 flex items-center justify-between gap-2">
-          <p className="text-xs font-semibold text-black/45 leading-snug">{meta || visual.helper}</p>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black/10 text-sm text-black/40 transition group-hover:border-black group-hover:bg-black group-hover:text-white">
+      <div>
+        <h3 className="text-2xl font-black leading-[1.05] tracking-[-0.045em] text-black sm:text-3xl">
+          {c.title}
+        </h3>
+        <div className="mt-3 flex items-end justify-between gap-3">
+          <p className="text-xs font-semibold leading-snug text-black/40">{meta || visual.helper}</p>
+          <span className="shrink-0 text-lg text-black/30 transition-transform duration-300 group-hover:translate-x-1 group-hover:text-black">
             →
-          </div>
+          </span>
         </div>
       </div>
     </Link>
   );
 });
 
-const SubcategoryTile = memo(function SubcategoryTile({ name, count, genderSuffix = '' }: { name: string; count?: number; genderSuffix?: string }) {
+const SubcategoryTile = memo(function SubcategoryTile({
+  name,
+  count,
+  genderSuffix = '',
+}: { name: string; count?: number; genderSuffix?: string }) {
   const pretty = prettySubcategory(name);
-  const subVisual = getSubcategoryVisual(pretty, genderSuffix as GenderKey);
-  const visual = getCategoryVisual(pretty, genderSuffix as GenderKey);
-  const image = subVisual?.image ?? visual.image;
-  const objectPosition = subVisual?.objectPosition ?? 'center';
-  const objectFit = subVisual?.objectFit ?? 'cover';
   const href = genderSuffix
     ? `/category/${encodeURIComponent(name)}?gender=${encodeURIComponent(genderSuffix)}`
     : `/category/${encodeURIComponent(name)}`;
 
-  if (image) {
-    return (
-      <Link
-        href={href}
-        className="group relative block overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(0,0,0,0.1)]"
-        title={name}
-      >
-        <div className="relative h-20 sm:h-24 overflow-hidden bg-neutral-100">
-          <img
-            src={getOptimizedImageUrl(image, { width: 480 }) ?? image}
-            alt={pretty}
-            className="absolute inset-0 w-full h-full transition duration-500 group-hover:scale-[1.06]"
-            style={{ objectFit, objectPosition }}
-          />
-          {objectFit !== 'contain' && (
-            <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />
-          )}
-          <div className={`absolute inset-x-0 bottom-0 px-3 pb-2 flex items-end justify-between gap-1 ${objectFit === 'contain' ? 'bg-gradient-to-t from-white/80 to-transparent pt-4' : ''}`}>
-            <span className={`text-sm font-extrabold leading-tight drop-shadow-sm truncate ${objectFit === 'contain' ? 'text-gray-900' : 'text-white'}`}>{pretty}</span>
-            {typeof count === 'number' && (
-              <span className={`shrink-0 text-[10px] font-semibold ${objectFit === 'contain' ? 'text-gray-500' : 'text-white/70'}`}>{count}</span>
-            )}
-          </div>
-        </div>
-      </Link>
-    );
-  }
-
   return (
     <Link
       href={href}
-      className="group block rounded-2xl border border-black/10 bg-white px-3 py-3 transition duration-200 hover:border-black/20 hover:bg-[#fbfbfa] hover:shadow-[0_12px_28px_rgba(0,0,0,0.06)]"
       title={name}
+      className="group flex items-center justify-between gap-3 rounded-2xl border border-black/10 bg-[#f3f1ed] px-4 py-3.5 transition duration-200 hover:border-black/25 hover:bg-[#eceae5]"
     >
-      <div className="flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          <div className="truncate text-sm font-extrabold leading-snug tracking-[-0.02em]">{pretty}</div>
-          {typeof count === 'number' ? <div className="mt-1 text-[11px] font-semibold text-black/45">{count} товаров</div> : null}
+      <div className="min-w-0">
+        <div className="truncate text-sm font-extrabold leading-snug tracking-[-0.02em] text-black">
+          {pretty}
         </div>
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-black/[0.04] text-sm text-black/55 transition group-hover:bg-black group-hover:text-white">
-          →
-        </span>
+        {typeof count === 'number' ? (
+          <div className="mt-0.5 text-[11px] font-semibold text-black/35">{count}</div>
+        ) : null}
       </div>
+      <span className="shrink-0 text-black/25 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-black">
+        →
+      </span>
     </Link>
   );
 });
@@ -1553,8 +1518,8 @@ export default function SearchPage() {
                 </div>
                 <div className="mt-2 sm:mt-3">
                   <div className="grid grid-cols-1 gap-3 sm:hidden">
-                    {CATEGORIES.map((c) => (
-                      <CategoryCard key={c.href} c={c} meta={mainCategoryMeta.get(normalizeQuery(c.title).toLowerCase())} genderSuffix={activeGender} />
+                    {CATEGORIES.map((c, i) => (
+                      <CategoryCard key={c.href} c={c} index={i} meta={mainCategoryMeta.get(normalizeQuery(c.title).toLowerCase())} genderSuffix={activeGender} />
                     ))}
                   </div>
 
@@ -1586,8 +1551,8 @@ export default function SearchPage() {
                         <div key={i} className="rounded-3xl border border-black/10 bg-black/[0.03] h-[132px] animate-pulse" />
                       ))
                     ) : (
-                      categoryCards.map((c) => (
-                        <CategoryCard key={c.href} c={c} meta={categoryMetaByTitle.get(c.key ?? c.title)} genderSuffix={activeGender} />
+                      categoryCards.map((c, i) => (
+                        <CategoryCard key={c.href} c={c} index={i} meta={categoryMetaByTitle.get(c.key ?? c.title)} genderSuffix={activeGender} />
                       ))
                     )}
                   </div>
@@ -1613,8 +1578,8 @@ export default function SearchPage() {
 
               <div className="mt-4 sm:mt-6">
                 <div className="grid grid-cols-1 gap-3 sm:hidden">
-                  {CATEGORIES.map((c) => (
-                    <CategoryCard key={c.href} c={c} meta={mainCategoryMeta.get(normalizeQuery(c.title).toLowerCase())} genderSuffix={activeGender} />
+                  {CATEGORIES.map((c, i) => (
+                    <CategoryCard key={c.href} c={c} index={i} meta={mainCategoryMeta.get(normalizeQuery(c.title).toLowerCase())} genderSuffix={activeGender} />
                   ))}
                 </div>
 
@@ -1646,8 +1611,8 @@ export default function SearchPage() {
                       <div key={i} className="rounded-3xl border border-black/10 bg-black/[0.03] h-[132px] animate-pulse" />
                     ))
                   ) : (
-                    categoryCards.map((c) => (
-                      <CategoryCard key={c.href} c={c} meta={categoryMetaByTitle.get(c.key ?? c.title)} genderSuffix={activeGender} />
+                    categoryCards.map((c, i) => (
+                      <CategoryCard key={c.href} c={c} index={i} meta={categoryMetaByTitle.get(c.key ?? c.title)} genderSuffix={activeGender} />
                     ))
                   )}
                 </div>
