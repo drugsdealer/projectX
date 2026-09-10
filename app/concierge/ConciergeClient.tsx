@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
+import { COMPANY } from "@/lib/company";
 
 /* Три шага вместо длинной формы: человек отвечает на один вопрос за раз,
    а справа видит, что именно уйдёт менеджеру. */
@@ -117,6 +118,13 @@ export default function ConciergeClient() {
             Ищете конкретную вещь, редкий размер или архивную позицию? Опишите запрос —
             найдём, проверим подлинность и привезём под вас.
           </p>
+          <div className="mt-8 flex flex-wrap gap-x-8 gap-y-3 text-xs text-white/45">
+            <span>Двойная проверка подлинности</span>
+            <span className="hidden sm:inline text-white/20">·</span>
+            <span>Работаем официально, {COMPANY.shortName}</span>
+            <span className="hidden sm:inline text-white/20">·</span>
+            <span>Отвечаем в течение рабочего дня</span>
+          </div>
         </header>
 
         <div className="mt-10 grid gap-8 sm:mt-14 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-12">
@@ -230,8 +238,155 @@ export default function ConciergeClient() {
 
           {!done && <Summary items={summary} />}
         </div>
+
+        <Process />
+        <Why />
+        <Examples />
+        <Faq />
+
+        <p className="mt-16 border-t border-white/10 pt-8 text-xs leading-relaxed text-white/30">
+          {COMPANY.legalName} · ОГРНИП {COMPANY.ogrnip} · ИНН {COMPANY.inn}
+          <br />
+          Запрос ни к чему не обязывает: условия и цену согласуем до оплаты.
+        </p>
       </div>
     </main>
+  );
+}
+
+function SectionTitle({ eyebrow, title }: { eyebrow: string; title: string }) {
+  return (
+    <div className="mb-8">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/35">
+        {eyebrow}
+      </span>
+      <h2 className="mt-3 text-2xl font-extrabold tracking-[-0.03em] sm:text-3xl">{title}</h2>
+    </div>
+  );
+}
+
+/* Цепочка проверки — та же, что на премиум-странице: вещь смотрят дважды,
+   до отправки и после прибытия в Россию. */
+const PROCESS = [
+  { n: "01", t: "Запрос", d: "Вы описываете вещь. Чем больше деталей — модель, цвет, ссылка на референс, — тем точнее поиск." },
+  { n: "02", t: "Поиск и варианты", d: "Проверяем наличие у байеров и на закрытых площадках. Присылаем варианты с ценой и сроком." },
+  { n: "03", t: "Проверка подлинности", d: "Эксперты смотрят вещь при выкупе, затем повторно после прибытия в Россию: материалы, фурнитура, прошивка, комплектация." },
+  { n: "04", t: "Доставка", d: "Привозим в фирменной упаковке с индивидуальной пломбой. Вручение под подпись." },
+];
+
+function Process() {
+  return (
+    <section className="mt-24 sm:mt-32">
+      <SectionTitle eyebrow="Порядок работы" title="Как проходит запрос" />
+      <div className="grid gap-px overflow-hidden rounded-3xl border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
+        {PROCESS.map((s) => (
+          <div key={s.n} className="bg-[#0a0a0b] p-6 sm:p-7">
+            <div className="text-xs font-semibold tracking-[0.2em] text-white/30">{s.n}</div>
+            <div className="mt-4 text-base font-bold">{s.t}</div>
+            <p className="mt-3 text-sm leading-relaxed text-white/50">{s.d}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+const WHY = [
+  { t: "Доступ, которого нет в рознице", d: "Архивные позиции, редкие размеры, вещи с уже закрытых дропов — то, чего не найти на витрине." },
+  { t: "Вещь смотрят дважды", d: "Проверка при выкупе и повторная экспертиза после прибытия в Россию — до того, как вещь окажется у вас." },
+  { t: "Понятные обязательства", d: `Мы не анонимный посредник: ${COMPANY.shortName}, реквизиты открыты, оферта и возврат прописаны.` },
+];
+
+function Why() {
+  return (
+    <section className="mt-24 sm:mt-32">
+      <SectionTitle eyebrow="Почему через нас" title="За что здесь платят" />
+      <div className="grid gap-4 sm:grid-cols-3">
+        {WHY.map((w) => (
+          <div key={w.t} className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-7">
+            <div className="text-base font-bold leading-snug">{w.t}</div>
+            <p className="mt-3 text-sm leading-relaxed text-white/50">{w.d}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+const EXAMPLES = [
+  "Ищу Rick Owens Geobasket, 43 EU, чёрные",
+  "Нужен пуховик Moncler, размер 2, бюджет до 180 000 ₽",
+  "Ищу Louis Vuitton Keepall 45, состояние не ниже 8/10",
+  "Maison Margiela Tabi, 39, любой цвет кроме белого",
+  "Парфюм Baccarat Rouge 540, 70 мл",
+  "Stone Island куртка, размер L, тёмная",
+];
+
+function Examples() {
+  return (
+    <section className="mt-24 sm:mt-32">
+      <SectionTitle eyebrow="Живые запросы" title="С чем к нам приходят" />
+      <div className="flex flex-wrap gap-2.5">
+        {EXAMPLES.map((e) => (
+          <span
+            key={e}
+            className="rounded-full border border-white/12 bg-white/[0.03] px-4 py-2.5 text-sm text-white/60"
+          >
+            {e}
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+const FAQ = [
+  { q: "Сколько ждать ответа?", a: "Менеджер пишет в течение рабочего дня. Варианты с ценой обычно приходят за один–три дня — зависит от того, насколько редкая вещь." },
+  { q: "Когда нужно платить?", a: "После того как вы согласуете конкретный вариант и цену. Сам запрос бесплатный и ни к чему не обязывает." },
+  { q: "А если вещь не найдётся?", a: "Скажем честно и предложим близкие альтернативы. Никаких списаний за неудачный поиск." },
+  { q: "Как убедиться в подлинности?", a: "Вещь проходит проверку дважды — при выкупе и после прибытия в Россию. Показываем фото и детали на каждом этапе." },
+];
+
+function Faq() {
+  const [open, setOpen] = useState<number | null>(0);
+  return (
+    <section className="mt-24 sm:mt-32">
+      <SectionTitle eyebrow="Вопросы" title="Коротко о главном" />
+      <div className="divide-y divide-white/10 overflow-hidden rounded-3xl border border-white/10">
+        {FAQ.map((f, i) => {
+          const isOpen = open === i;
+          return (
+            <div key={f.q}>
+              <button
+                type="button"
+                onClick={() => setOpen(isOpen ? null : i)}
+                className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left transition-colors hover:bg-white/[0.03]"
+              >
+                <span className="text-sm font-semibold sm:text-base">{f.q}</span>
+                <span
+                  className={`shrink-0 text-lg text-white/40 transition-transform duration-300 ${isOpen ? "rotate-45" : ""}`}
+                >
+                  +
+                </span>
+              </button>
+              <AnimatePresence initial={false}>
+                {isOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="overflow-hidden"
+                  >
+                    <p className="px-6 pb-5 text-sm leading-relaxed text-white/50">{f.a}</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

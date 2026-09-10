@@ -13,7 +13,7 @@ export default function SupportWidget() {
   const pathname = usePathname();
 
   // На premium-страницах уже есть консьерж — не дублируем виджет поддержки.
-  if (pathname?.startsWith("/premium")) return null;
+  if (pathname?.startsWith("/premium") || pathname?.startsWith("/concierge")) return null;
 
   return (
     <div className="fixed right-4 bottom-20 sm:right-6 sm:bottom-6 z-[900] flex flex-col items-end gap-3 pointer-events-none">
