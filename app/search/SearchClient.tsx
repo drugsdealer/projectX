@@ -88,7 +88,7 @@ const CATEGORY_VISUALS: Record<string, { icon: string; helper: string; image?: s
     icon: 'SH',
     helper: 'Кроссовки, ботинки, лоферы',
     image: 'https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.44.01%20(1).png',
-    imageMen: 'https://ik.imagekit.io/qowmy92ny/stage/products/0288766_jumbolace-sneaks_4XpcTe_Yi.webp',
+    imageMen: 'https://ik.imagekit.io/qowmy92ny/Maison_Margiela_Replica_German_Army_Trainer_GATs_3.png',
     imageWomen: 'https://ik.imagekit.io/qowmy92ny/1183C102_701_SR_LT_GLB_mzfg0G0_B.webp',
     gradient: 'from-amber-500 to-orange-600',
   },
@@ -135,6 +135,11 @@ const DEFAULT_CATEGORY_VISUAL: { icon: string; helper: string; image?: string; i
 
 // Subcategory-level overrides (more specific than main category)
 const SUBCATEGORY_VISUALS: Record<string, { image: string; imageMen?: string; imageWomen?: string; gradient: string; objectPosition?: string; objectFit?: 'cover' | 'contain' }> = {
+  туфли: {
+    image: 'https://ik.imagekit.io/qowmy92ny/image_4_00daa105-9273-481f-9648-879cc34dcdd6.png',
+    imageMen: 'https://ik.imagekit.io/qowmy92ny/image_4_00daa105-9273-481f-9648-879cc34dcdd6.png',
+    gradient: 'from-amber-500 to-orange-600',
+  },
   кроссовки: {
     image: 'https://ik.imagekit.io/qowmy92ny/2026-06-23%2017.56.16.png',
     imageMen: 'https://ik.imagekit.io/qowmy92ny/stage/products/0288766_jumbolace-sneaks_4XpcTe_Yi.webp',
@@ -320,6 +325,13 @@ function prettySubcategory(raw: string) {
     boots: 'Ботинки',
     loafer: 'Лоферы',
     loafers: 'Лоферы',
+    dressshoes: 'Туфли',
+    'dress-shoes': 'Туфли',
+    derby: 'Туфли',
+    derbies: 'Туфли',
+    oxford: 'Туфли',
+    oxfords: 'Туфли',
+    туфли: 'Туфли',
 
     hoodie: 'Худи',
     hoodies: 'Худи',
