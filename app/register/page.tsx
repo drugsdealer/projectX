@@ -15,9 +15,11 @@ export default function RegisterPage() {
   };
 
   const benefits = [
-    { id: 1, title: "Ранний доступ к дропам", img: "https://ik.imagekit.io/qowmy92ny/plp_0_pc_3840_1800.avif" },
+    // Панель слева высокая, поэтому нужны вертикальные кадры 4:5.
+    // Горизонтальные здесь режутся в полосу — им задан верхний якорь обрезки.
+    { id: 1, title: "Ранний доступ к дропам", img: "https://ik.imagekit.io/qowmy92ny/pdp_1_pcmob.avif" },
     { id: 2, title: "Персональные подборки", img: "https://ik.imagekit.io/qowmy92ny/stage/products/gallery/Tabi_HeroBanner_16x9.jpg" },
-    { id: 3, title: "Отслеживание заказов", img: "https://ik.imagekit.io/qowmy92ny/pdp_1_pcmob.avif" },
+    { id: 3, title: "Отслеживание заказов", img: "https://ik.imagekit.io/qowmy92ny/plp_0_pc_3840_1800.avif" },
   ];
   const [inputError, setInputError] = React.useState(false);
   const router = useRouter();
@@ -193,7 +195,7 @@ export default function RegisterPage() {
                 className="relative h-full min-w-full flex-shrink-0 overflow-hidden lg:min-w-full lg:flex-shrink-0"
                 style={{ scrollSnapAlign: "none" }}
               >
-                <img src={getOptimizedImageUrl(b.img, { width: 1200, quality: 80 })} alt={b.title} className="h-full w-full object-cover" />
+                <img src={getOptimizedImageUrl(b.img, { width: 1200, quality: 80 })} alt={b.title} className="h-full w-full object-cover" style={{ objectPosition: "center 35%" }} />
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/30" />
                 <div className="absolute bottom-6 left-6 right-6 rounded-2xl bg-white/85 p-4 shadow-lg backdrop-blur">
                   <p className="text-lg font-semibold text-slate-900">{b.title}</p>
