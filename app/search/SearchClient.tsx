@@ -83,23 +83,29 @@ const PROMOS: Promo[] = [
   { title: 'Дропы', desc: 'Подборка по свежим релизам и лимиткам.', href: '/search?tag=drops', tag: 'DROP' },
 ];
 
-const CATEGORY_VISUALS: Record<string, { icon: string; helper: string; image?: string; gradient: string }> = {
+const CATEGORY_VISUALS: Record<string, { icon: string; helper: string; image?: string; imageMen?: string; imageWomen?: string; gradient: string }> = {
   обувь: {
     icon: 'SH',
     helper: 'Кроссовки, ботинки, лоферы',
     image: 'https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.44.01%20(1).png',
+    imageMen: 'https://ik.imagekit.io/qowmy92ny/stage/products/0288766_jumbolace-sneaks_4XpcTe_Yi.webp',
+    imageWomen: 'https://ik.imagekit.io/qowmy92ny/1183C102_701_SR_LT_GLB_mzfg0G0_B.webp',
     gradient: 'from-amber-500 to-orange-600',
   },
   одежда: {
     icon: 'CL',
     helper: 'Худи, трикотаж, верхняя одежда',
     image: 'https://ik.imagekit.io/qowmy92ny/2026-05-21%2017.16.01.jpg?updatedAt=1779373031270',
+    imageMen: 'https://ik.imagekit.io/qowmy92ny/stage/products/0256699_mountain-hoodie_fIsJ0LTYG.webp',
+    imageWomen: 'https://ik.imagekit.io/qowmy92ny/stage/products/RP01F6701_LSV_09_01_5xDciTCyu.webp',
     gradient: 'from-slate-700 to-slate-900',
   },
   сумки: {
     icon: 'BG',
     helper: 'Tote, crossbody, shoulder bags',
     image: 'https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.43.43.jpg',
+    imageMen: 'https://ik.imagekit.io/qowmy92ny/stage/products/Y-3_Nylon_Sacoche_Black_JI9153_01_standard-no-bg_knvVzCcMM.png',
+    imageWomen: 'https://ik.imagekit.io/qowmy92ny/stage/products/s54wd0043-p4313-t8013-0_3SGHrazEk.png',
     gradient: 'from-emerald-600 to-teal-800',
   },
   аксессуары: {
@@ -121,20 +127,24 @@ const CATEGORY_VISUALS: Record<string, { icon: string; helper: string; image?: s
   },
 };
 
-const DEFAULT_CATEGORY_VISUAL: { icon: string; helper: string; image?: string; gradient: string } = {
+const DEFAULT_CATEGORY_VISUAL: { icon: string; helper: string; image?: string; imageMen?: string; imageWomen?: string; gradient: string } = {
   icon: 'ST',
   helper: 'Категория каталога',
   gradient: 'from-gray-700 to-gray-900',
 };
 
 // Subcategory-level overrides (more specific than main category)
-const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string; objectPosition?: string; objectFit?: 'cover' | 'contain' }> = {
+const SUBCATEGORY_VISUALS: Record<string, { image: string; imageMen?: string; imageWomen?: string; gradient: string; objectPosition?: string; objectFit?: 'cover' | 'contain' }> = {
   кроссовки: {
     image: 'https://ik.imagekit.io/qowmy92ny/2026-06-23%2017.56.16.png',
+    imageMen: 'https://ik.imagekit.io/qowmy92ny/stage/products/0288766_jumbolace-sneaks_4XpcTe_Yi.webp',
+    imageWomen: 'https://ik.imagekit.io/qowmy92ny/1183C102_701_SR_LT_GLB_mzfg0G0_B.webp',
     gradient: 'from-amber-500 to-orange-600',
   },
   худи: {
     image: 'https://ik.imagekit.io/qowmy92ny/fd9ec34849adf62b33e919768ce99812.png',
+    imageMen: 'https://ik.imagekit.io/qowmy92ny/stage/products/0256699_mountain-hoodie_fIsJ0LTYG.webp',
+    imageWomen: 'https://ik.imagekit.io/qowmy92ny/stage/products/DS01F4121_F_51_01_GnDMxWX-6.webp',
     gradient: 'from-slate-700 to-slate-900',
   },
   'дорожные сумки': {
@@ -144,6 +154,8 @@ const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string; obj
   },
   футболки: {
     image: 'https://ik.imagekit.io/qowmy92ny/2026-06-23%2017.55.34.png',
+    imageMen: 'https://ik.imagekit.io/qowmy92ny/stage/products/m_008496_DU01F4250_RNEP6P_0911_01_kMmVYQp8h.webp',
+    imageWomen: 'https://ik.imagekit.io/qowmy92ny/stage/products/838874_01.jpg_IWdHMv5Z_.webp',
     gradient: 'from-slate-700 to-slate-900',
   },
   ремни: {
@@ -152,10 +164,12 @@ const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string; obj
   },
   свитшоты: {
     image: 'https://ik.imagekit.io/qowmy92ny/2026-06-24%2000.52.05.png',
+    imageMen: 'https://ik.imagekit.io/qowmy92ny/stage/products/8_3dbb1ee0-9a4c-49de-914c-faf32289c9f1_i7RDauG5n.png',
     gradient: 'from-slate-700 to-slate-900',
   },
   шорты: {
     image: 'https://ik.imagekit.io/qowmy92ny/2026-06-24%2000.56.00.png',
+    imageMen: 'https://ik.imagekit.io/qowmy92ny/stage/products/kuwrvrvidwg750zu5aizxij50atr6dvn_rcW2bPIXM.png',
     gradient: 'from-slate-700 to-slate-900',
   },
   джинсы: {
@@ -168,10 +182,13 @@ const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string; obj
   },
   рубашки: {
     image: 'https://ik.imagekit.io/qowmy92ny/d75cea5af93946f8b420403e48f1ada0.png',
+    imageMen: 'https://ik.imagekit.io/qowmy92ny/stage/products/51e3880bdb094236a99d35c64dc8bff9_ZA28ouWjP.png',
     gradient: 'from-slate-700 to-slate-900',
   },
   ботинки: {
     image: 'https://ik.imagekit.io/qowmy92ny/425079258558ed03a39b70afc2565cfa.png',
+    imageMen: 'https://ik.imagekit.io/qowmy92ny/stage/products/0240916_1460-quad-sole-megalace-boot_a9192629-68e8-4b6a-920b-402ba7759023_QXVeMpybU.webp',
+    imageWomen: 'https://ik.imagekit.io/qowmy92ny/stage/products/0291551_beatle-bogun_pM20BsDSI.webp',
     gradient: 'from-amber-500 to-orange-600',
   },
   свитеры: {
@@ -180,6 +197,8 @@ const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string; obj
   },
   сумки: {
     image: 'https://ik.imagekit.io/qowmy92ny/a763c0ec6a9fa2f0e741d96acf747c22.png',
+    imageMen: 'https://ik.imagekit.io/qowmy92ny/stage/products/Y-3_Nylon_Sacoche_Black_JI9153_01_standard-no-bg_knvVzCcMM.png',
+    imageWomen: 'https://ik.imagekit.io/qowmy92ny/stage/products/s54wd0043-p4313-t8013-0_3SGHrazEk.png',
     gradient: 'from-emerald-600 to-teal-800',
   },
   украшения: {
@@ -200,10 +219,13 @@ const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string; obj
   },
   штаны: {
     image: 'https://ik.imagekit.io/qowmy92ny/43a81205665ec0e7e8540a22805aa1fd.png',
+    imageMen: 'https://ik.imagekit.io/qowmy92ny/stage/products/DU02E7398_BW_99X_01_wgdu1S0_L.webp',
     gradient: 'from-slate-700 to-slate-900',
   },
   куртки: {
     image: 'https://ik.imagekit.io/qowmy92ny/2026-06-08%2012.09.18.png',
+    imageMen: 'https://ik.imagekit.io/qowmy92ny/stage/products/______-______-2026-05-23-_-10.55.38_onl6q4e51.png',
+    imageWomen: 'https://ik.imagekit.io/qowmy92ny/stage/products/RP01F6701_LSV_09_01_5xDciTCyu.webp',
     gradient: 'from-slate-700 to-slate-900',
   },
   кепки: {
@@ -216,25 +238,39 @@ const SUBCATEGORY_VISUALS: Record<string, { image: string; gradient: string; obj
   },
 };
 
-function getSubcategoryVisual(prettyName: string) {
-  const key = prettyName.trim().toLowerCase();
-  return SUBCATEGORY_VISUALS[key] ?? null;
+// Под мужскую и женскую селекцию показываем разные вещи: женская сумка на мужской
+// витрине выглядит чужеродно и сбивает с толку. Где отдельного фото нет — общее.
+type GenderKey = 'men' | 'women' | '';
+
+function pickImage<T extends { image?: string; imageMen?: string; imageWomen?: string }>(
+  v: T,
+  gender: GenderKey
+): T {
+  if (gender === 'men' && v.imageMen) return { ...v, image: v.imageMen };
+  if (gender === 'women' && v.imageWomen) return { ...v, image: v.imageWomen };
+  return v;
 }
 
-function getCategoryVisual(title: string) {
+function getSubcategoryVisual(prettyName: string, gender: GenderKey = '') {
+  const key = prettyName.trim().toLowerCase();
+  const v = SUBCATEGORY_VISUALS[key];
+  return v ? pickImage(v, gender) : null;
+}
+
+function getCategoryVisual(title: string, gender: GenderKey = '') {
   const key = normalizeQuery(title).toLowerCase();
 
   // Check subcategory-specific images first (e.g. "Кроссовки", "Худи", "Дорожные сумки")
   const subOverride = SUBCATEGORY_VISUALS[key];
-  if (subOverride) return { ...DEFAULT_CATEGORY_VISUAL, ...subOverride };
+  if (subOverride) return pickImage({ ...DEFAULT_CATEGORY_VISUAL, ...subOverride }, gender);
 
-  if (key.includes('обув') || key.includes('кросс') || key.includes('ботин') || key.includes('лофер') || key.includes('сандал') || key.includes('sneaker') || key.includes('boot') || key.includes('shoe')) return CATEGORY_VISUALS.обувь;
-  if (key.includes('одеж') || key.includes('худ') || key.includes('свитш') || key.includes('куртк') || key.includes('пальт') || key.includes('рубаш') || key.includes('джинс') || key.includes('шорт') || key.includes('платье') || key.includes('юбк') || key.includes('hoodie') || key.includes('jacket') || key.includes('outerwear')) return CATEGORY_VISUALS.одежда;
-  if (key.includes('сум') || key.includes('рюкзак') || key.includes('дорожн') || key.includes('bag') || key.includes('backpack')) return CATEGORY_VISUALS.сумки;
-  if (key.includes('аксесс') || key.includes('очки') || key.includes('ремн') || key.includes('украш') || key.includes('jewelry') || key.includes('belt')) return CATEGORY_VISUALS.аксессуары;
-  if (key.includes('парф') || key.includes('аромат') || key.includes('fragrance') || key.includes('perfume')) return CATEGORY_VISUALS.парфюм;
-  if (key.includes('голов') || key.includes('кепк') || key.includes('шапк') || key.includes('панам') || key.includes('cap') || key.includes('hat') || key.includes('beanie')) return CATEGORY_VISUALS.головные;
-  return DEFAULT_CATEGORY_VISUAL;
+  if (key.includes('обув') || key.includes('кросс') || key.includes('ботин') || key.includes('лофер') || key.includes('сандал') || key.includes('sneaker') || key.includes('boot') || key.includes('shoe')) return pickImage(CATEGORY_VISUALS.обувь, gender);
+  if (key.includes('одеж') || key.includes('худ') || key.includes('свитш') || key.includes('куртк') || key.includes('пальт') || key.includes('рубаш') || key.includes('джинс') || key.includes('шорт') || key.includes('платье') || key.includes('юбк') || key.includes('hoodie') || key.includes('jacket') || key.includes('outerwear')) return pickImage(CATEGORY_VISUALS.одежда, gender);
+  if (key.includes('сум') || key.includes('рюкзак') || key.includes('дорожн') || key.includes('bag') || key.includes('backpack')) return pickImage(CATEGORY_VISUALS.сумки, gender);
+  if (key.includes('аксесс') || key.includes('очки') || key.includes('ремн') || key.includes('украш') || key.includes('jewelry') || key.includes('belt')) return pickImage(CATEGORY_VISUALS.аксессуары, gender);
+  if (key.includes('парф') || key.includes('аромат') || key.includes('fragrance') || key.includes('perfume')) return pickImage(CATEGORY_VISUALS.парфюм, gender);
+  if (key.includes('голов') || key.includes('кепк') || key.includes('шапк') || key.includes('панам') || key.includes('cap') || key.includes('hat') || key.includes('beanie')) return pickImage(CATEGORY_VISUALS.головные, gender);
+  return pickImage(DEFAULT_CATEGORY_VISUAL, gender);
 }
 
 function getSelectionCopy(gender: string) {
@@ -673,7 +709,7 @@ const SidebarPromos = memo(function SidebarPromos({
 // -------------------- Stable category components (outside SearchPage to avoid remount on re-render) --------------------
 
 const CategoryCard = memo(function CategoryCard({ c, meta, genderSuffix = '' }: { c: Category; meta?: string; genderSuffix?: string }) {
-  const visual = getCategoryVisual(c.title);
+  const visual = getCategoryVisual(c.title, genderSuffix as GenderKey);
   const href = genderSuffix
     ? `${c.href}${c.href.includes('?') ? '&' : '?'}gender=${encodeURIComponent(genderSuffix)}`
     : c.href;
@@ -720,8 +756,8 @@ const CategoryCard = memo(function CategoryCard({ c, meta, genderSuffix = '' }: 
 
 const SubcategoryTile = memo(function SubcategoryTile({ name, count, genderSuffix = '' }: { name: string; count?: number; genderSuffix?: string }) {
   const pretty = prettySubcategory(name);
-  const subVisual = getSubcategoryVisual(pretty);
-  const visual = getCategoryVisual(pretty);
+  const subVisual = getSubcategoryVisual(pretty, genderSuffix as GenderKey);
+  const visual = getCategoryVisual(pretty, genderSuffix as GenderKey);
   const image = subVisual?.image ?? visual.image;
   const objectPosition = subVisual?.objectPosition ?? 'center';
   const objectFit = subVisual?.objectFit ?? 'cover';
