@@ -5,6 +5,9 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { getOptimizedImageUrl } from "@/lib/media";
 
+// Кадр для страницы регистрации. Нужен вертикальный, 4:5.
+const HERO_IMAGE = "https://ik.imagekit.io/qowmy92ny/pdp_1_pcmob.avif";
+
 const SITE_LOGO_URL = "/ik/qowmy92ny/IMG_0363%20(1).PNG";
 
 export default function RegisterPage() {
@@ -15,11 +18,9 @@ export default function RegisterPage() {
   };
 
   const benefits = [
-    // Панель слева высокая, поэтому нужны вертикальные кадры 4:5.
-    // Горизонтальные здесь режутся в полосу — им задан верхний якорь обрезки.
-    { id: 1, title: "Ранний доступ к дропам", img: "https://ik.imagekit.io/qowmy92ny/pdp_1_pcmob.avif" },
-    { id: 2, title: "Персональные подборки", img: "https://ik.imagekit.io/qowmy92ny/stage/products/gallery/Tabi_HeroBanner_16x9.jpg" },
-    { id: 3, title: "Отслеживание заказов", img: "https://ik.imagekit.io/qowmy92ny/plp_0_pc_3840_1800.avif" },
+    { id: 1, title: "Ранний доступ к дропам" },
+    { id: 2, title: "Персональные подборки" },
+    { id: 3, title: "Отслеживание заказов" },
   ];
   const [inputError, setInputError] = React.useState(false);
   const router = useRouter();
@@ -186,46 +187,39 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-slate-50 to-white">
       <div className="flex min-h-screen w-full flex-col gap-6 px-3 py-6 sm:gap-8 sm:px-4 sm:py-10 lg:flex-row lg:items-stretch lg:gap-0 lg:px-0 lg:py-0">
-        {/* Левая часть с привилегиями — свободный скролл на десктопе */}
-        <div className="relative hidden h-screen w-1/2 overflow-hidden bg-gray-100 lg:block lg:rounded-none lg:shadow-none">
-          <div className="flex h-full w-full overflow-x-auto">
-            {benefits.map((b, idx) => (
-              <div
-                key={b.id}
-                className="relative h-full min-w-full flex-shrink-0 overflow-hidden lg:min-w-full lg:flex-shrink-0"
-                style={{ scrollSnapAlign: "none" }}
-              >
-                <img src={getOptimizedImageUrl(b.img, { width: 1200, quality: 80 })} alt={b.title} className="h-full w-full object-cover" style={{ objectPosition: "center 35%" }} />
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/30" />
-                <div className="absolute bottom-6 left-6 right-6 rounded-2xl bg-white/85 p-4 shadow-lg backdrop-blur">
-                  <p className="text-lg font-semibold text-slate-900">{b.title}</p>
-                  <p className="text-sm text-slate-600">Эксклюзивные привилегии для владельцев аккаунта.</p>
-                </div>
-              </div>
-            ))}
+        {/* Левая часть — один кадр, олицетворяющий магазин.
+            Панель высокая, поэтому кадр нужен вертикальный, 4:5. */}
+        <div className="relative hidden h-screen w-1/2 overflow-hidden bg-neutral-900 lg:block">
+          <img
+            src={getOptimizedImageUrl(HERO_IMAGE, { width: 1400, quality: 82 })}
+            alt="Stage Store"
+            className="h-full w-full object-cover"
+            style={{ objectPosition: "center 40%" }}
+          />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/20" />
+          <div className="absolute bottom-10 left-10 right-10 text-white">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/60">
+              Stage Store
+            </div>
+            <p className="mt-4 max-w-md text-2xl font-extrabold leading-[1.15] tracking-[-0.03em]">
+              Отобранные вещи, проверенная подлинность, доставка по России
+            </p>
           </div>
         </div>
 
         {/* Правая часть с формой */}
         <div className="w-full lg:w-1/2">
-          {/* Мобильный слайдер преимуществ */}
+          {/* На телефоне картинка не нужна — важнее сразу дойти до формы */}
           <div className="mb-5 block lg:hidden">
             <p className="mb-3 text-base font-semibold text-slate-800">Почему стоит создать аккаунт</p>
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {benefits.map((b, idx) => (
-                <motion.div
-                  key={b.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, amount: 0.4 }}
-                  transition={{ duration: 0.35, delay: idx * 0.05 }}
-                  className="min-w-[200px] flex-shrink-0 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow"
-                >
-                  <img src={getOptimizedImageUrl(b.img, { width: 420, quality: 78 })} alt={b.title} className="h-28 w-full object-cover" />
-                  <p className="px-3 py-2 text-sm font-medium text-slate-800">{b.title}</p>
-                </motion.div>
+            <ul className="space-y-2">
+              {benefits.map((b) => (
+                <li key={b.id} className="flex items-center gap-2.5 text-sm text-slate-600">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-900" />
+                  {b.title}
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
 
           <motion.div
