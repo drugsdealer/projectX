@@ -196,12 +196,18 @@ export default function RegisterPage() {
             className="h-full w-full object-cover"
             style={{ objectPosition: "center 40%" }}
           />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/20" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/25" />
+
+          {/* Логотип чёрно-красный, поэтому он вверху, на светлой части кадра —
+              внизу, на затемнении, он бы просто пропал. */}
+          <img
+            src={SITE_LOGO_URL}
+            alt="Stage Store"
+            className="absolute left-10 top-10 h-14 w-auto drop-shadow-[0_2px_10px_rgba(0,0,0,0.35)]"
+          />
+
           <div className="absolute bottom-10 left-10 right-10 text-white">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/60">
-              Stage Store
-            </div>
-            <p className="mt-4 max-w-md text-2xl font-extrabold leading-[1.15] tracking-[-0.03em]">
+            <p className="max-w-md text-2xl font-extrabold leading-[1.15] tracking-[-0.03em]">
               Отобранные вещи, проверенная подлинность, доставка по России
             </p>
           </div>
