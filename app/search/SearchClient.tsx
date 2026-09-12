@@ -744,27 +744,9 @@ const CategoryCard = memo(function CategoryCard({
       </div>
 
       <div>
-        {/* Название рисуем в SVG: оно само подгоняется под ширину карточки,
-            поэтому и короткое «Худи», и длинное «Кроссовки» смотрятся одинаково крупно. */}
-        <h3 className="sr-only">{c.title}</h3>
-        <svg
-          viewBox={`0 0 ${Math.max(6, c.title.length) * 0.56} 1`}
-          className="w-full text-black"
-          aria-hidden="true"
-        >
-          <text
-            x="0"
-            y="0.8"
-            fontSize="1"
-            fontWeight="900"
-            fill="currentColor"
-            textLength={Math.max(6, c.title.length) * 0.56}
-            lengthAdjust="spacingAndGlyphs"
-            style={{ fontFamily: 'inherit' }}
-          >
-            {c.title}
-          </text>
-        </svg>
+        <h3 className="text-2xl font-black leading-[1.05] tracking-[-0.045em] text-black sm:text-3xl">
+          {c.title}
+        </h3>
         <div className="mt-3 flex items-end justify-between gap-3">
           <p className="text-xs font-semibold leading-snug text-black/40">{meta || visual.helper}</p>
           <span className="shrink-0 text-lg text-black/30 transition-transform duration-300 group-hover:translate-x-1 group-hover:text-black">
