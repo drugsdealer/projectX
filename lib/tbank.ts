@@ -7,7 +7,25 @@ import { createHash } from "crypto";
  * Карточные данные через наш сервер НЕ проходят (поэтому non-PCI).
  */
 
-const TBANK_API = "https://securepay.tinkoff.ru/v2";
+const TBANK_API_DEFAULT = "https://securepay.tinkoff.ru/v2";
+
+/**
+ * Банк не отвечает на запросы с зарубежных адресов. Когда сайт размещён вне России,
+ * запросы идут через свой сервер-посредник в РФ: TBANK_API_BASE указывает на него,
+ * TBANK_PROXY_SECRET закрывает посредника от посторонних.
+ * Без этих переменных обращаемся в банк напрямую.
+ */
+function getTBankApi() {
+  const base = process.env.TBANK_API_BASE?.trim();
+  return (base ? base.replace(/\/+$/, "") : TBANK_API_DEFAULT);
+}
+
+function tbankHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const secret = process.env.TBANK_PROXY_SECRET?.trim();
+  if (secret) headers["X-Proxy-Secret"] = secret;
+  return headers;
+}
 
 export function getTBankConfig() {
   const terminalKey = process.env.TBANK_TERMINAL_KEY || "";
@@ -79,9 +97,9 @@ export async function tbankInit(p: InitParams): Promise<InitResult> {
   payload.Token = buildTBankToken(payload, cfg.password);
 
   try {
-    const res = await fetch(`${TBANK_API}/Init`, {
+    const res = await fetch(`${getTBankApi()}/Init`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: tbankHeaders(),
       body: JSON.stringify(payload),
       cache: "no-store",
       signal: AbortSignal.timeout(10_000),
@@ -123,9 +141,9 @@ export async function tbankGetState(paymentId: string): Promise<
   payload.Token = buildTBankToken(payload, cfg.password);
 
   try {
-    const res = await fetch(`${TBANK_API}/GetState`, {
+    const res = await fetch(`${getTBankApi()}/GetState`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: tbankHeaders(),
       body: JSON.stringify(payload),
       cache: "no-store",
       signal: AbortSignal.timeout(10_000),
