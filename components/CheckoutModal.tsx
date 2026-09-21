@@ -607,6 +607,13 @@ export default function CheckoutModal({
     return !t || t === "не указано" || t === "введите фио";
   };
 
+  // Черновик формы принадлежит конкретному пользователю. Без этого после смены
+  // аккаунта новый человек видел в полях чужие имя, телефон и адрес.
+  const checkoutOwnerId =
+    user && !(user as any).isGuest && (user as any).id
+      ? String((user as any).id)
+      : "guest";
+
   const saveCheckoutStatePartial = useCallback(
     (
       partial: Partial<{
@@ -623,14 +630,14 @@ export default function CheckoutModal({
         if (typeof window === "undefined") return;
         const raw = sessionStorage.getItem("checkoutState");
         const prev = raw ? JSON.parse(raw) : {};
-        const base = { step, fio, email, phone, agree, address, deliveryMethod };
+        const base = { step, fio, email, phone, agree, address, deliveryMethod, ownerId: checkoutOwnerId };
         const next = { ...prev, ...base, ...partial };
         sessionStorage.setItem("checkoutState", JSON.stringify(next));
       } catch {
         // ignore
       }
     },
-    [step, fio, email, phone, agree, address, deliveryMethod]
+    [step, fio, email, phone, agree, address, deliveryMethod, checkoutOwnerId]
   );
 
   // первичное восстановление черновика
@@ -652,6 +659,24 @@ export default function CheckoutModal({
       // ignore
     }
   }, []);
+
+  // Сбрасываем черновик, оставшийся от другого пользователя.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("checkoutState");
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed?.ownerId === checkoutOwnerId) return;
+      sessionStorage.removeItem("checkoutState");
+      setFio("");
+      setEmail("");
+      setPhone("");
+      setAddress("");
+      setAgree(false);
+    } catch {
+      // ignore
+    }
+  }, [checkoutOwnerId]);
 
   const formatPhone = useCallback((raw: string) => {
     let digits = raw.replace(/\D/g, "");
