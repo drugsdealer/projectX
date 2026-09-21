@@ -206,11 +206,11 @@ export async function middleware(request: NextRequest) {
   // CSRF: для мутаций API с auth cookies принимаем только same-origin/same-site запросы.
   // Исключения: внешние вебхуки/интеграции, где Origin обычно отсутствует.
   if (isApiPath && !["GET", "HEAD", "OPTIONS"].includes(request.method.toUpperCase())) {
-    const webhookBypass =
-      pathname === "/api/yookassa" ||
-      // нотификация T-Bank приходит с серверов банка: без Origin и без сессии,
-      // её подлинность проверяется подписью (Token) внутри самого роута
-      pathname === "/api/tbank/notification";
+    // Только настоящие вебхуки: приходят с серверов банка, без Origin и без сессии,
+    // подлинность проверяется подписью внутри самого роута.
+    // /api/yookassa сюда не входит — это создание платежа из браузера,
+    // оно обязано проходить проверку происхождения запроса.
+    const webhookBypass = pathname === "/api/tbank/notification";
     const cookieHeader = request.headers.get("cookie") || "";
     const hasAuthCookie =
       /(?:^|;\s*)(session_user_id|session_token|s_uid|auth_session|sid|admin_2fa_ok)=/.test(cookieHeader);
