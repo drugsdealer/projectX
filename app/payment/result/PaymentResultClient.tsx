@@ -14,12 +14,13 @@ function formatOrderNumber(val: string | number | null | undefined) {
 export default function PaymentResultClient() {
   const search = useSearchParams();
   const router = useRouter();
-  const [status, setStatus] = useState<"success" | "failed" | null>(null);
+  const [status, setStatus] = useState<"success" | "failed" | "processing" | null>(null);
   const [checking, setChecking] = useState(false);
   const orderId = search.get("orderId") || "";
   const publicNumber = search.get("publicNumber") || "";
   const isSuccess = status === "success";
   const isFail = status === "failed";
+  const isProcessing = status === "processing";
 
   const orderLabel = useMemo(() => {
     if (publicNumber) return publicNumber;
@@ -61,7 +62,7 @@ export default function PaymentResultClient() {
     // Подтверждение от банка приходит отдельным запросом и обрабатывается
     // с задержкой в секунду-другую. Одной проверки мало: успевали спросить
     // раньше, чем заказ помечался оплаченным, и показывали ложный отказ.
-    const ATTEMPTS = 10;
+    const ATTEMPTS = 30;
     const DELAY_MS = 2000;
 
     const check = async (): Promise<"success" | "pending" | "unknown"> => {
@@ -102,8 +103,9 @@ export default function PaymentResultClient() {
             await new Promise((res) => setTimeout(res, DELAY_MS));
           }
         }
-        // За отведённое время оплата так и не подтвердилась.
-        if (alive) setStatus("failed");
+        // Банк не сказал, что отказ, — значит платёж ещё в обработке.
+        // Объявлять отказ здесь нельзя: деньги могли уйти.
+        if (alive) setStatus("processing");
       } finally {
         if (alive) setChecking(false);
       }
@@ -126,19 +128,45 @@ export default function PaymentResultClient() {
     return () => clearTimeout(t);
   }, [isSuccess, isFail]);
 
+  if (isProcessing) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center px-6 py-16">
+        <div className="w-full max-w-lg rounded-3xl border border-black/10 bg-white p-8 text-center shadow-[0_30px_80px_rgba(0,0,0,0.12)]">
+          <div className="text-4xl">⏳</div>
+          <h1 className="mt-4 text-2xl font-extrabold tracking-[-0.03em]">Платёж обрабатывается</h1>
+          <p className="mt-3 text-sm leading-relaxed text-gray-600">
+            Банк ещё не прислал окончательный ответ. Если деньги списались, заказ
+            отметится оплаченным автоматически, а чек придёт на почту.
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-gray-600">
+            Повторно платить не нужно.
+          </p>
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <button
+              onClick={() => router.push("/user?tab=orders")}
+              className="rounded-xl bg-black px-5 py-2.5 font-semibold text-white"
+            >
+              Мои заказы
+            </button>
+            <Link href="/" className="rounded-xl border border-gray-200 px-5 py-2.5 text-sm font-semibold">
+              На главную
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!isSuccess && !isFail) {
     return (
-      <div className="max-w-xl mx-auto px-6 py-16 text-center">
-        <h1 className="text-2xl font-bold mb-3">Результат оплаты</h1>
-        <p className="text-gray-600">
-          {checking
-            ? "Проверяем оплату…"
-            : "Статус не найден. Вернитесь в корзину и попробуйте снова."}
-        </p>
-        <div className="mt-6 flex justify-center">
-          <Link href="/cart" className="px-4 py-2 rounded-xl bg-black text-white">
-            В корзину
-          </Link>
+      <div className="min-h-[80vh] flex items-center justify-center px-6 py-16">
+        <div className="w-full max-w-lg rounded-3xl border border-black/10 bg-white p-10 text-center shadow-[0_30px_80px_rgba(0,0,0,0.12)]">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-black/15 border-t-black" />
+          <h1 className="mt-6 text-xl font-extrabold tracking-[-0.03em]">Проверяем оплату</h1>
+          <p className="mt-3 text-sm leading-relaxed text-gray-600">
+            Ждём подтверждение от банка. Обычно это занимает несколько секунд —
+            пожалуйста, не закрывайте страницу.
+          </p>
         </div>
       </div>
     );
