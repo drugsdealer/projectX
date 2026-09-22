@@ -14,6 +14,8 @@ export const COMPANY = {
   /** 15 цифр — основной государственный регистрационный номер ИП */
   ogrnip: "326774600527711",
   email: "storestage@yandex.ru",
+  phone: "+7 995 658-04-68",
+  phoneHref: "tel:+79956580468",
   telegram: "@stagestore",
   telegramUrl: "https://t.me/stagestore",
   siteName: "Stage Store",

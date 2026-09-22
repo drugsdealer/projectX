@@ -46,7 +46,11 @@ export async function POST(req: Request) {
   // Заказ и сумму берём ТОЛЬКО из БД — клиентским значениям не доверяем.
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    select: { id: true, userId: true, totalAmount: true, status: true, publicNumber: true },
+    select: {
+      id: true, userId: true, totalAmount: true, status: true, publicNumber: true,
+      email: true, phone: true,
+      OrderItem: { select: { name: true, price: true, quantity: true } },
+    },
   });
 
   if (!order) {
@@ -72,6 +76,13 @@ export async function POST(req: Request) {
     successUrl: `${SITE_URL}/payment/result?orderId=${order.id}`,
     failUrl: `${SITE_URL}/payment/result?orderId=${order.id}&failed=1`,
     notificationUrl: `${SITE_URL}/api/tbank/notification`,
+    receiptEmail: order.email || null,
+    receiptPhone: order.phone || null,
+    receiptItems: (order.OrderItem ?? []).map((i) => ({
+      name: i.name,
+      priceKopecks: Math.round(Number(i.price) * 100),
+      quantity: i.quantity,
+    })),
     customerKey: String(userId),
   });
 

@@ -76,8 +76,9 @@ function buildReceiptHtml(params: ReceiptParams): string {
 
         <!-- Header -->
         <tr>
-          <td style="background:#1a1a1a;padding:24px 20px;text-align:center">
-            <div style="font-size:24px;font-weight:700;color:#ffffff;letter-spacing:1px">STAGE STORE</div>
+          <td style="background:#0f0f10;padding:28px 20px;text-align:center">
+            <img src="https://stagestore.app/ik/qowmy92ny/IMG_0363%20(1).PNG" width="132" alt="Stage Store" style="display:block;margin:0 auto;width:132px;max-width:60%;height:auto;border:0" />
+            <div style="margin-top:14px;font-size:10px;letter-spacing:3px;color:#8a8a8a;text-transform:uppercase">Чек об оплате</div>
           </td>
         </tr>
 
@@ -135,6 +136,24 @@ function buildReceiptHtml(params: ReceiptParams): string {
           </td>
         </tr>
 
+        <!-- Фискальный чек -->
+        <tr>
+          <td style="padding:0 20px 24px">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7f8;border:1px solid #e6e8ea;border-radius:12px">
+              <tr>
+                <td style="padding:16px 18px">
+                  <div style="font-size:13px;font-weight:700;color:#1a1a1a">Кассовый чек</div>
+                  <div style="margin-top:6px;font-size:12px;line-height:1.55;color:#5c6066">
+                    Фискальный чек по 54-ФЗ формирует банк-эквайер и отправляет отдельным
+                    письмом на этот же адрес. Он зарегистрирован в ФНС и служит документом,
+                    подтверждающим оплату. Письмо ниже — подтверждение заказа от магазина.
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
         <!-- Footer -->
         <tr>
           <td style="padding:0 40px 32px;text-align:center">
@@ -146,8 +165,9 @@ function buildReceiptHtml(params: ReceiptParams): string {
 
         <tr>
           <td style="padding:0 40px 24px;text-align:center;font-size:12px;color:#aaa;line-height:1.5">
-            Если у вас есть вопросы, напишите нам в Telegram.<br>
-            Stage Store &mdash; оригинальная одежда и аксессуары.
+            Если у вас есть вопросы, напишите нам в Telegram <a href="https://t.me/stagestore" style="color:#888">@stagestore</a><br>
+            или позвоните: <a href="tel:+79956580468" style="color:#888">+7 995 658-04-68</a><br><br>
+            ИП Кузнецов Тимофей Дмитриевич &middot; ОГРНИП 326774600527711 &middot; ИНН 774314753983
           </td>
         </tr>
 

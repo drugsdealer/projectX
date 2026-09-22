@@ -72,6 +72,10 @@ type InitParams = {
   failUrl?: string;
   notificationUrl?: string;
   customerKey?: string;
+  /** Данные для фискального чека по 54-ФЗ */
+  receiptEmail?: string | null;
+  receiptPhone?: string | null;
+  receiptItems?: TBankReceiptItem[];
 };
 
 export type InitResult =
@@ -79,6 +83,60 @@ export type InitResult =
   | { ok: false; message: string; errorCode?: string };
 
 /** Создаёт платёж и возвращает ссылку на платёжную форму банка. */
+/**
+ * Чек по 54-ФЗ. Без него боевая касса не сформирует фискальный чек,
+ * а покупатель и налоговая его не получат.
+ * Taxation берём из настройки: у ИП на УСН «Доходы» это usn_income.
+ */
+export type TBankReceiptItem = {
+  name: string;
+  priceKopecks: number;
+  quantity: number;
+};
+
+function buildReceipt(p: {
+  email?: string | null;
+  phone?: string | null;
+  items: TBankReceiptItem[];
+  totalKopecks: number;
+}) {
+  const taxation = process.env.TBANK_TAXATION?.trim() || "usn_income";
+
+  let items = p.items
+    .filter((i) => i.quantity > 0 && i.priceKopecks > 0)
+    .map((i) => ({
+      Name: i.name.slice(0, 128),
+      Price: i.priceKopecks,
+      Quantity: i.quantity,
+      Amount: i.priceKopecks * i.quantity,
+      Tax: "none",
+      PaymentMethod: "full_payment",
+      PaymentObject: "commodity",
+    }));
+
+  // Сумма позиций обязана совпадать с суммой платежа, иначе касса отклонит чек.
+  // Скидки и промокоды легко ломают это равенство — тогда пробиваем одной строкой.
+  const sum = items.reduce((acc, i) => acc + i.Amount, 0);
+  if (!items.length || sum !== p.totalKopecks) {
+    items = [
+      {
+        Name: "Оплата заказа",
+        Price: p.totalKopecks,
+        Quantity: 1,
+        Amount: p.totalKopecks,
+        Tax: "none",
+        PaymentMethod: "full_payment",
+        PaymentObject: "commodity",
+      },
+    ];
+  }
+
+  const receipt: Record<string, unknown> = { Taxation: taxation, Items: items };
+  if (p.email) receipt.Email = p.email;
+  if (p.phone) receipt.Phone = p.phone;
+  return receipt;
+}
+
 export async function tbankInit(p: InitParams): Promise<InitResult> {
   const cfg = getTBankConfig();
   if (!cfg) return { ok: false, message: "T-Bank credentials are not configured" };
@@ -94,7 +152,17 @@ export async function tbankInit(p: InitParams): Promise<InitResult> {
     ...(p.customerKey ? { CustomerKey: p.customerKey } : {}),
   };
 
+  // Подпись считается ДО добавления чека: вложенные объекты в неё не входят.
   payload.Token = buildTBankToken(payload, cfg.password);
+
+  if (p.receiptItems || p.receiptEmail || p.receiptPhone) {
+    payload.Receipt = buildReceipt({
+      email: p.receiptEmail,
+      phone: p.receiptPhone,
+      items: p.receiptItems ?? [],
+      totalKopecks: p.amountKopecks,
+    });
+  }
 
   try {
     const res = await fetch(`${getTBankApi()}/Init`, {

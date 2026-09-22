@@ -142,8 +142,8 @@ export function SiteFooter() {
                 <a href="mailto:storestage@yandex.ru" className="hover:text-white transition">
                   storestage@yandex.ru
                 </a>
-                <a href="tel:+74951234567" className="hover:text-white transition">
-                  +7 (495) 123-45-67
+                <a href={COMPANY.phoneHref} className="hover:text-white transition">
+                  {COMPANY.phone}
                 </a>
               </div>
               <div className="mt-4 text-xs leading-relaxed text-white/50">
