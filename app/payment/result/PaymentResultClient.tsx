@@ -46,11 +46,7 @@ export default function PaymentResultClient() {
       setStatus(q);
       return;
     }
-    // Банк вернул покупателя по адресу отказа — это явный отказ, ждать нечего.
-    if (search.get("failed") === "1") {
-      setStatus("failed");
-      return;
-    }
+
     if (status === null) setStatus(null);
   }, [search, status]);
 
@@ -62,7 +58,11 @@ export default function PaymentResultClient() {
     // Подтверждение от банка приходит отдельным запросом и обрабатывается
     // с задержкой в секунду-другую. Одной проверки мало: успевали спросить
     // раньше, чем заказ помечался оплаченным, и показывали ложный отказ.
-    const ATTEMPTS = 30;
+    // Адрес возврата от банка ненадёжен: он приводит на страницу «неудача»
+    // даже при успешном списании. Верим только подтверждению, которое банк
+    // присылает отдельным запросом. Метка лишь сокращает ожидание.
+    const bankSaysFailed = search.get("failed") === "1";
+    const ATTEMPTS = bankSaysFailed ? 6 : 30;
     const DELAY_MS = 2000;
 
     const check = async (): Promise<"success" | "pending" | "unknown"> => {
@@ -103,9 +103,9 @@ export default function PaymentResultClient() {
             await new Promise((res) => setTimeout(res, DELAY_MS));
           }
         }
-        // Банк не сказал, что отказ, — значит платёж ещё в обработке.
-        // Объявлять отказ здесь нельзя: деньги могли уйти.
-        if (alive) setStatus("processing");
+        // Подтверждение так и не пришло. Если банк при этом вернул по адресу
+        // неудачи — считаем отказом; иначе платёж ещё в обработке.
+        if (alive) setStatus(bankSaysFailed ? "failed" : "processing");
       } finally {
         if (alive) setChecking(false);
       }
@@ -114,7 +114,7 @@ export default function PaymentResultClient() {
     return () => {
       alive = false;
     };
-  }, [status, orderId, publicNumber]);
+  }, [status, orderId, publicNumber, search]);
 
   useEffect(() => {
     if (!isSuccess && !isFail) return;
