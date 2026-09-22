@@ -45,6 +45,11 @@ export default function PaymentResultClient() {
       setStatus(q);
       return;
     }
+    // Банк вернул покупателя по адресу отказа — это явный отказ, ждать нечего.
+    if (search.get("failed") === "1") {
+      setStatus("failed");
+      return;
+    }
     if (status === null) setStatus(null);
   }, [search, status]);
 
@@ -52,34 +57,58 @@ export default function PaymentResultClient() {
     if (status !== null) return;
     if (!orderId && !publicNumber) return;
     let alive = true;
+
+    // Подтверждение от банка приходит отдельным запросом и обрабатывается
+    // с задержкой в секунду-другую. Одной проверки мало: успевали спросить
+    // раньше, чем заказ помечался оплаченным, и показывали ложный отказ.
+    const ATTEMPTS = 10;
+    const DELAY_MS = 2000;
+
+    const check = async (): Promise<"success" | "pending" | "unknown"> => {
+      const qs = new URLSearchParams();
+      if (orderId) qs.set("orderId", String(orderId));
+      const res = await fetch(`/api/order/history?${qs.toString()}`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+      const orders = Array.isArray(data?.orders) ? data.orders : [];
+      const match = orders.find((o: any) => {
+        if (orderId && String(o.id) === String(orderId)) return true;
+        if (publicNumber && String(o.publicNumber) === String(publicNumber)) return true;
+        return false;
+      });
+      if (!match) return "unknown";
+      return match.status === "SUCCEEDED" || match.status === "PAID" ? "success" : "pending";
+    };
+
     (async () => {
+      setChecking(true);
       try {
-        setChecking(true);
-        const qs = new URLSearchParams();
-        if (orderId) qs.set("orderId", String(orderId));
-        const res = await fetch(`/api/order/history?${qs.toString()}`, {
-          credentials: "include",
-          cache: "no-store",
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!alive) return;
-        const orders = Array.isArray(data?.orders) ? data.orders : [];
-        const match = orders.find((o: any) => {
-          if (orderId && String(o.id) === String(orderId)) return true;
-          if (publicNumber && String(o.publicNumber) === String(publicNumber)) return true;
-          return false;
-        });
-        if (match && (match.status === "SUCCEEDED" || match.status === "PAID")) {
-          setStatus("success");
-        } else if (match) {
-          setStatus("failed");
+        for (let i = 0; i < ATTEMPTS; i++) {
+          if (!alive) return;
+          let r: "success" | "pending" | "unknown" = "unknown";
+          try {
+            r = await check();
+          } catch {
+            // сеть могла моргнуть — просто пробуем ещё раз
+          }
+          if (!alive) return;
+          if (r === "success") {
+            setStatus("success");
+            return;
+          }
+          if (i < ATTEMPTS - 1) {
+            await new Promise((res) => setTimeout(res, DELAY_MS));
+          }
         }
-      } catch {
-        // ignore
+        // За отведённое время оплата так и не подтвердилась.
+        if (alive) setStatus("failed");
       } finally {
         if (alive) setChecking(false);
       }
     })();
+
     return () => {
       alive = false;
     };
