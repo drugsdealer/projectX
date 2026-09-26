@@ -504,6 +504,24 @@ model PasswordResetCode {
   @@index([createdAt])
 }
 
+/// Код подтверждения телефона. Хранится хэшем: даже при доступе к базе
+/// код не прочитать. Привязан к номеру, а не к пользователю — нужен ещё
+/// до создания учётной записи.
+model PhoneVerification {
+  id         Int      @id @default(autoincrement())
+  phone      String   @unique
+  codeHash   String
+  channel    String   @default("sms") // telegram | sms — чем доставляли
+  attempts   Int      @default(0)     // неверные вводы; после лимита код гасится
+  sendCount  Int      @default(0)     // сколько раз запрашивали повтор
+  expiresAt  DateTime
+  verifiedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([expiresAt])
+}
+
 model UserLoginHistory {
   id         Int      @id @default(autoincrement())
   userId     Int

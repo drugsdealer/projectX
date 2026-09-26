@@ -12,22 +12,59 @@ export default function VerifyPhonePage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  const [correctCode, setCorrectCode] = useState("");
-
   const [savedPhone, setSavedPhone] = useState("ваш номер");
+  const [channel, setChannel] = useState<"telegram" | "sms" | null>(null);
+  const [busy, setBusy] = useState(false);
 
+  // Код проверяет сервер. Раньше он генерировался прямо здесь, в браузере,
+  // и сам себя сверял — такую проверку можно было обойти за десять секунд.
   useEffect(() => {
     const stored = localStorage.getItem("phone");
     if (stored) setSavedPhone(stored);
-
-    const generated = Array.from({ length: 6 }, () => Math.floor(Math.random() * 10)).join("");
-    setCorrectCode(generated);
   }, []);
 
-  const handleVerify = () => {
-    if (code.join("").replace(/\s/g, "") === correctCode) {
+  const requestCode = async (phone: string) => {
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/auth/phone/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data?.success) setChannel(data.channel ?? null);
+      else setError(data?.message || "Не удалось отправить код.");
+    } catch {
+      setError("Не удалось отправить код.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (savedPhone && savedPhone !== "ваш номер") requestCode(savedPhone);
+    // отправляем один раз при открытии страницы
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedPhone]);
+
+  const handleVerify = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/auth/phone/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: savedPhone, code: code.join("").replace(/\s/g, "") }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!data?.success) {
+        setError(data?.message || "Неверный код.");
+        setSuccess(false);
+        return;
+      }
+
       setSuccess(true);
-      setError("");
 
       const normalizedPhone = savedPhone.replace(/[^0-9]/g, "").replace(/^8/, "7");
 
@@ -51,11 +88,13 @@ export default function VerifyPhonePage() {
       }
 
       setTimeout(() => {
-        router.push("/"); // редирект на главную или профиль
+        router.push("/");
       }, 2000);
-    } else {
-      setError("Неверный код. Попробуйте снова.");
+    } catch {
+      setError("Не удалось проверить код. Попробуйте ещё раз.");
       setSuccess(false);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -79,7 +118,16 @@ export default function VerifyPhonePage() {
           </div>
 
           <p className="text-base text-gray-700 mb-2">
-            На номер <span className="font-bold">{savedPhone}</span> был выслан проверочный код.
+            {channel === "telegram" ? (
+              <>Код отправлен в <span className="font-bold">Telegram</span> на номер{" "}
+              <span className="font-bold">{savedPhone}</span>.</>
+            ) : channel === "sms" ? (
+              <>Код отправлен по СМС на номер <span className="font-bold">{savedPhone}</span>.</>
+            ) : busy ? (
+              <>Отправляем код на <span className="font-bold">{savedPhone}</span>…</>
+            ) : (
+              <>На номер <span className="font-bold">{savedPhone}</span> был выслан проверочный код.</>
+            )}
           </p>
           <p className="text-sm text-gray-500 mb-6">Пожалуйста, введите его ниже:</p>
 
