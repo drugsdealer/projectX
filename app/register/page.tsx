@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { getOptimizedImageUrl } from "@/lib/media";
 
 // Кадр для страницы регистрации. Нужен вертикальный, 4:5.
-const HERO_IMAGE = "https://ik.imagekit.io/qowmy92ny/pdp_1_pcmob.avif";
+const HERO_IMAGE = "https://ik.imagekit.io/qowmy92ny/dithered_no_logo.png";
 
 const SITE_LOGO_URL = "/ik/qowmy92ny/IMG_0363%20(1).PNG";
 
