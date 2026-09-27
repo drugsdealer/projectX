@@ -215,24 +215,33 @@ export default function RegisterPage() {
 
         {/* Правая часть с формой */}
         <div className="w-full lg:w-1/2">
-          {/* На телефоне картинка не нужна — важнее сразу дойти до формы */}
-          <div className="mb-5 block lg:hidden">
-            <p className="mb-3 text-base font-semibold text-slate-800">Почему стоит создать аккаунт</p>
-            <ul className="space-y-2">
-              {benefits.map((b) => (
-                <li key={b.id} className="flex items-center gap-2.5 text-sm text-slate-600">
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-900" />
-                  {b.title}
-                </li>
-              ))}
-            </ul>
+          {/* На телефоне кадр становится шапкой, а форма наезжает на него снизу —
+              так магазин заявляет о себе, но до полей всё равно один экран. */}
+          <div className="relative -mx-3 -mt-6 mb-0 block h-56 overflow-hidden sm:-mx-4 sm:-mt-10 sm:h-64 lg:hidden">
+            <img
+              src={getOptimizedImageUrl(HERO_IMAGE, { width: 900, quality: 80 })}
+              alt="Stage Store"
+              className="h-full w-full object-cover"
+              style={{ objectPosition: "center 38%" }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/20 to-black/70" />
+            <div className="absolute inset-x-0 bottom-0 px-6 pb-9 text-white">
+              <img
+                src={SITE_LOGO_URL}
+                alt="Stage Store"
+                className="h-9 w-auto drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)]"
+              />
+              <p className="mt-3 text-[15px] font-bold leading-snug tracking-[-0.02em]">
+                Отобранные вещи, проверенная подлинность, доставка по России
+              </p>
+            </div>
           </div>
 
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="w-full max-w-xl rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-xl backdrop-blur transition duration-300 sm:p-6 lg:h-screen lg:max-w-none lg:rounded-none lg:border-0 lg:px-16 lg:py-16 lg:shadow-none"
+            className="relative z-10 -mt-6 w-full max-w-xl rounded-t-3xl border border-slate-100 bg-white p-5 shadow-xl transition duration-300 sm:p-6 lg:mt-0 lg:h-screen lg:max-w-none lg:rounded-none lg:border-0 lg:bg-white/90 lg:px-16 lg:py-16 lg:shadow-none lg:backdrop-blur"
           >
             {activeSession && (
               <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
@@ -384,6 +393,16 @@ export default function RegisterPage() {
                 подтверждения при регистрации.
               </p>
             </div>
+
+            {/* Преимущества на телефоне — строкой, чтобы не растягивать экран */}
+            <ul className="mt-5 flex flex-wrap gap-x-4 gap-y-2 lg:hidden">
+              {benefits.map((b) => (
+                <li key={b.id} className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <span className="h-1 w-1 shrink-0 rounded-full bg-slate-400" />
+                  {b.title}
+                </li>
+              ))}
+            </ul>
 
             <div className="mt-6 text-center">
               <p className="text-sm">
