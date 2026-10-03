@@ -64,6 +64,20 @@ export default function VerifyPhonePage() {
         return;
       }
 
+      // Код верный — просим сервер создать учётную запись и выдать сессию.
+      const done = await fetch("/api/auth/phone/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ phone: savedPhone }),
+      });
+      const doneData = await done.json().catch(() => ({}));
+      if (!doneData?.success) {
+        setError(doneData?.message || "Не удалось завершить вход.");
+        setSuccess(false);
+        return;
+      }
+
       setSuccess(true);
 
       const normalizedPhone = savedPhone.replace(/[^0-9]/g, "").replace(/^8/, "7");
