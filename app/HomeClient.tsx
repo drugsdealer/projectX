@@ -676,13 +676,16 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
     const sleep = (ms: number) =>
       new Promise((resolve) => setTimeout(resolve, ms));
 
-    const fetchProducts = async () => {
+    const fetchProducts = async (firstChunk = false) => {
       try {
         attempts += 1;
-        const res = await fetch("/api/products?includePremium=1&take=1000", {
-          cache: "no-store",
-          credentials: "include",
-        });
+        // Главной нужен весь каталог: разделы собираются фильтрацией по брендам
+        // и признакам. Но ждать полмегабайта ради первого экрана не нужно —
+        // сначала берём первую сотню и показываем, следом дотягиваем остальное.
+        const res = await fetch(
+          `/api/products?includePremium=1&take=${firstChunk ? 100 : 1000}`,
+          { cache: "no-store", credentials: "include" }
+        );
         if (!res.ok) {
           throw new Error(`Failed to load products: ${res.status}`);
         }
@@ -737,7 +740,11 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
     };
 
     setIsProductsLoading(true);
-    fetchProducts();
+    // Первый заход — быстрая порция: страница оживает, не дожидаясь всего каталога.
+    // Затем в фоне подтягиваем полный список, разделы достраиваются сами.
+    fetchProducts(true).then(() => {
+      if (!cancelled) fetchProducts(false);
+    });
 
     return () => {
       cancelled = true;
