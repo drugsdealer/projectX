@@ -13,6 +13,7 @@ import { getOrCreateEventsSessionId, trackShopEvent } from '@/lib/events-client'
 import { shouldBypassNextImageOptimization } from '@/lib/media';
 import { productPath } from '@/lib/product-url';
 import { canUseOptionalClientData } from '@/lib/privacy-consent';
+import { useTrackSearch } from "@/hooks/useTrackBehavior";
 
 // -------------------- Data models --------------------
 
@@ -836,6 +837,13 @@ export default function SearchPage() {
 
   // input state (what user is typing)
   const [q, setQ] = useState(activeQuery);
+
+  // Запросы покупателя — сигнал для персональных подборок
+  const trackSearch = useTrackSearch();
+  useEffect(() => {
+    const term = (activeQuery || "").trim();
+    if (term.length >= 2) trackSearch(term);
+  }, [activeQuery, trackSearch]);
 
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);

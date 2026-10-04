@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { productPath } from '@/lib/product-url';
+import { useTrackCategoryVisit } from "@/hooks/useTrackBehavior";
 
 export type CategoryProduct = {
   id: string;
@@ -44,6 +45,9 @@ export default function CategoryClient({
   title: string;
   initialProducts: CategoryProduct[];
 }) {
+  // Посещение категории — сигнал для персональных подборок
+  useTrackCategoryVisit(slug, title);
+
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortKey>('new');
   const [activeSub, setActiveSub] = useState<string>('');

@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
+import { markPurchased } from "@/lib/user-behavior";
+import { canUseOptionalClientData } from "@/lib/privacy-consent";
 
 function formatOrderNumber(val: string | number | null | undefined) {
   if (val == null) return "STG-000000";
@@ -26,6 +28,29 @@ export default function PaymentResultClient() {
     if (publicNumber) return publicNumber;
     return formatOrderNumber(orderId || null);
   }, [publicNumber, orderId]);
+
+  // Покупка — самый весомый сигнал для подборок: он говорит о вкусе точнее,
+  // чем десяток просмотров.
+  useEffect(() => {
+    if (!isSuccess || !orderId) return;
+    if (!canUseOptionalClientData()) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/order/history?orderId=${orderId}`, {
+          credentials: "include",
+          cache: "no-store",
+        });
+        const data = await res.json().catch(() => ({}));
+        const order = (data?.orders || []).find((o: any) => String(o.id) === String(orderId));
+        for (const it of order?.items ?? order?.OrderItem ?? []) {
+          const pid = Number(it?.productId ?? it?.Product?.id);
+          if (Number.isFinite(pid) && pid > 0) markPurchased(pid);
+        }
+      } catch {
+        // необязательный сигнал — молча пропускаем
+      }
+    })();
+  }, [isSuccess, orderId]);
 
   useEffect(() => {
     if (!isSuccess) return;
