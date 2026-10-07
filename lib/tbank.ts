@@ -99,7 +99,7 @@ function buildReceipt(p: {
   phone?: string | null;
   items: TBankReceiptItem[];
   totalKopecks: number;
-}) {
+}): Record<string, unknown> | null {
   const taxation = process.env.TBANK_TAXATION?.trim() || "usn_income";
 
   let items = p.items
@@ -132,8 +132,20 @@ function buildReceipt(p: {
   }
 
   const receipt: Record<string, unknown> = { Taxation: taxation, Items: items };
-  if (p.email) receipt.Email = p.email;
-  if (p.phone) receipt.Phone = p.phone;
+
+  // Банк принимает телефон только цифрами с плюсом: «+7 942 321-23-12» он
+  // отвергает целиком, отвечая «Неверные параметры».
+  const digits = String(p.phone ?? "").replace(/\D/g, "");
+  if (digits.length === 11) {
+    receipt.Phone = "+" + (digits.startsWith("8") ? "7" + digits.slice(1) : digits);
+  }
+
+  const email = String(p.email ?? "").trim();
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) receipt.Email = email;
+
+  // Хотя бы один контакт обязателен — иначе чек некуда отправить.
+  if (!receipt.Phone && !receipt.Email) return null;
+
   return receipt;
 }
 
@@ -156,12 +168,13 @@ export async function tbankInit(p: InitParams): Promise<InitResult> {
   payload.Token = buildTBankToken(payload, cfg.password);
 
   if (p.receiptItems || p.receiptEmail || p.receiptPhone) {
-    payload.Receipt = buildReceipt({
+    const receipt = buildReceipt({
       email: p.receiptEmail,
       phone: p.receiptPhone,
       items: p.receiptItems ?? [],
       totalKopecks: p.amountKopecks,
     });
+    if (receipt) payload.Receipt = receipt;
   }
 
   try {
