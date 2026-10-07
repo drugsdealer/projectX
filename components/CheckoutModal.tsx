@@ -1552,42 +1552,52 @@ export default function CheckoutModal({
                 позиции не оплачиваются.
               </p>
             )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <button
-                onClick={() => handlePay("sbp")}
-                disabled={paying || activeCount === 0}
-                className={`flex items-center justify-center gap-2 py-3 px-4 rounded text-white transition ${
-                  paying
-                    ? "opacity-60 cursor-not-allowed"
-                    : "hover:opacity-90"
-                } bg-[#14174d]`}
-              >
-                {/* Логотип отдаём через свой домен: прямой ImageKit проходит не у всех операторов */}
+            {/* Одна кнопка вместо двух: способ оплаты выбирается уже на странице
+                банка, а наши кнопки обещали выбор, которого на самом деле не было —
+                параметр «способ» никуда не передавался. */}
+            <button
+              onClick={() => handlePay("card")}
+              disabled={paying || activeCount === 0}
+              className={`group relative w-full overflow-hidden rounded-2xl bg-black px-6 py-4 text-white transition ${
+                paying || activeCount === 0
+                  ? "opacity-60 cursor-not-allowed"
+                  : "hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(0,0,0,0.28)] active:translate-y-0"
+              }`}
+            >
+              <span className="flex items-center justify-center gap-3 text-base font-bold tracking-[-0.01em]">
+                {paying ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    Переходим к оплате…
+                  </>
+                ) : (
+                  <>
+                    Перейти к оплате
+                    {discountedTotal > 0 && (
+                      <span className="font-extrabold">
+                        {discountedTotal.toLocaleString("ru-RU")} ₽
+                      </span>
+                    )}
+                    <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+                  </>
+                )}
+              </span>
+            </button>
+
+            <div className="mt-3 flex flex-col items-center gap-2">
+              <div className="flex items-center gap-3 opacity-70">
                 <img
                   src="/ik/qowmy92ny/Faster_Payment_System_Russia_logo.svg"
                   alt="СБП"
-                  className="h-7 w-auto shrink-0"
+                  className="h-6 w-auto"
                 />
-                <span>
-                  {paying ? "Обработка..." : "Оплатить через СБП"}
-                </span>
-              </button>
-              <button
-                onClick={() => handlePay("card")}
-                disabled={paying || activeCount === 0}
-                className={`flex items-center justify-center gap-2 py-3 px-4 rounded border transition ${
-                  paying
-                    ? "opacity-60 cursor-not-allowed"
-                    : "hover:bg-black hover:text-white"
-                } bg-white text-black`}
-              >
-                <img src="/img/card.svg" alt="" aria-hidden="true" className="h-6 w-auto shrink-0" />
-                <span>
-                  {paying
-                    ? "Обработка..."
-                    : "Оплатить банковской картой"}
-                </span>
-              </button>
+                <span className="h-4 w-px bg-black/15" />
+                <img src="/img/card.svg" alt="Банковская карта" className="h-5 w-auto" />
+              </div>
+              <p className="text-center text-xs leading-relaxed text-black/45">
+                Оплата картой или через СБП на защищённой странице Т-Банка.
+                Данные карты на наш сайт не попадают.
+              </p>
             </div>
             {error && (
               <p className="text-red-600 text-sm mt-3">
