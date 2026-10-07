@@ -80,7 +80,7 @@ type InitParams = {
 
 export type InitResult =
   | { ok: true; paymentUrl: string; paymentId: string; status: string }
-  | { ok: false; message: string; errorCode?: string };
+  | { ok: false; message: string; errorCode?: string; details?: string };
 
 /** Создаёт платёж и возвращает ссылку на платёжную форму банка. */
 /**
@@ -167,7 +167,11 @@ export async function tbankInit(p: InitParams): Promise<InitResult> {
   // Подпись считается ДО добавления чека: вложенные объекты в неё не входят.
   payload.Token = buildTBankToken(payload, cfg.password);
 
-  if (p.receiptItems || p.receiptEmail || p.receiptPhone) {
+  // Если к терминалу ещё не подключена касса, банк отвергает запрос с чеком
+  // целиком. TBANK_RECEIPT=off позволяет временно принимать оплату без него.
+  const receiptDisabled = (process.env.TBANK_RECEIPT ?? "").trim().toLowerCase() === "off";
+
+  if (!receiptDisabled && (p.receiptItems || p.receiptEmail || p.receiptPhone)) {
     const receipt = buildReceipt({
       email: p.receiptEmail,
       phone: p.receiptPhone,
@@ -194,6 +198,8 @@ export async function tbankInit(p: InitParams): Promise<InitResult> {
         ok: false,
         message: data.Message || data.Details || "Банк отклонил создание платежа",
         errorCode: data.ErrorCode,
+        // Details банка называет конкретное поле — без него причину приходится угадывать
+        details: data.Details,
       };
     }
 

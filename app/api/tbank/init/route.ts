@@ -87,7 +87,15 @@ export async function POST(req: Request) {
   });
 
   if (!result.ok) {
-    console.error("[tbank.init] failed:", result.errorCode ?? "", result.message);
+    console.error(
+      "[tbank.init] failed:",
+      result.errorCode ?? "",
+      result.message,
+      "| детали банка:",
+      result.details ?? "нет",
+      "| чек передавался:",
+      (order.OrderItem?.length ?? 0) > 0 ? "да" : "нет"
+    );
     return NextResponse.json(
       { success: false, message: "Не удалось создать платёж" },
       { status: 502 }
