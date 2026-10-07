@@ -1562,7 +1562,12 @@ export default function CheckoutModal({
                     : "hover:opacity-90"
                 } bg-[#14174d]`}
               >
-                <img src="/img/sbp.svg" alt="СБП" className="h-8 w-8 shrink-0" />
+                {/* Логотип отдаём через свой домен: прямой ImageKit проходит не у всех операторов */}
+                <img
+                  src="/ik/qowmy92ny/Faster_Payment_System_Russia_logo.svg"
+                  alt="СБП"
+                  className="h-7 w-auto shrink-0"
+                />
                 <span>
                   {paying ? "Обработка..." : "Оплатить через СБП"}
                 </span>
