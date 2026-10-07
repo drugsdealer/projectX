@@ -28,8 +28,10 @@ function tbankHeaders(): Record<string, string> {
 }
 
 export function getTBankConfig() {
-  const terminalKey = process.env.TBANK_TERMINAL_KEY || "";
-  const password = process.env.TBANK_PASSWORD || "";
+  // Пробел или перенос строки, случайно скопированный вместе с ключом,
+  // ломает подпись: банк отвечает «Неверный токен» при верных реквизитах.
+  const terminalKey = (process.env.TBANK_TERMINAL_KEY ?? "").trim();
+  const password = (process.env.TBANK_PASSWORD ?? "").trim();
   if (!terminalKey || !password) return null;
   return { terminalKey, password };
 }

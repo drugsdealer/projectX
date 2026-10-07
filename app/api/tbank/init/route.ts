@@ -94,7 +94,21 @@ export async function POST(req: Request) {
       "| детали банка:",
       result.details ?? "нет",
       "| чек передавался:",
-      (order.OrderItem?.length ?? 0) > 0 ? "да" : "нет"
+      (order.OrderItem?.length ?? 0) > 0 ? "да" : "нет",
+      // Ключ терминала не является секретом; показываем хвост, чтобы было видно,
+      // боевой он или демонстрационный, и обновились ли оба значения разом.
+      "| терминал:",
+      (() => {
+        const k = (process.env.TBANK_TERMINAL_KEY ?? "").trim();
+        if (!k) return "не задан";
+        const demo = /demo$/i.test(k) ? "ДЕМО" : "боевой";
+        return `…${k.slice(-6)} (${demo}), длина ${k.length}`;
+      })(),
+      "| пароль:",
+      (() => {
+        const p2 = (process.env.TBANK_PASSWORD ?? "").trim();
+        return p2 ? `задан, длина ${p2.length}` : "НЕ ЗАДАН";
+      })()
     );
     return NextResponse.json(
       { success: false, message: "Не удалось создать платёж" },
