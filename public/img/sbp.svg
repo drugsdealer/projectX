@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="СБП — Система быстрых платежей">
+  <g fill="none" stroke-width="17" stroke-linecap="butt">
+    <path d="M18 24 L40 60" stroke="#5B57A2"/>
+    <path d="M40 60 L18 96" stroke="#D90751"/>
+    <path d="M40 60 L72 24" stroke="#FAB718"/>
+    <path d="M40 60 L72 96" stroke="#ED6F26"/>
+    <path d="M72 24 L104 42" stroke="#0FA8E0"/>
+    <path d="M72 96 L104 78" stroke="#1F5EAE"/>
+    <path d="M104 42 L104 78" stroke="#4CB32B"/>
+  </g>
+</svg>

@@ -1562,11 +1562,7 @@ export default function CheckoutModal({
                     : "hover:opacity-90"
                 } bg-[#14174d]`}
               >
-                <img
-                  src="/img/сбп.png"
-                  alt="СБП"
-                  className="h-10 w-auto"
-                />
+                <img src="/img/sbp.svg" alt="СБП" className="h-8 w-8 shrink-0" />
                 <span>
                   {paying ? "Обработка..." : "Оплатить через СБП"}
                 </span>
@@ -1580,9 +1576,7 @@ export default function CheckoutModal({
                     : "hover:bg-black hover:text-white"
                 } bg-white text-black`}
               >
-                <span role="img" aria-label="card">
-                  💳
-                </span>
+                <img src="/img/card.svg" alt="" aria-hidden="true" className="h-6 w-auto shrink-0" />
                 <span>
                   {paying
                     ? "Обработка..."

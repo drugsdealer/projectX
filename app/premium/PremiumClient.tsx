@@ -4332,23 +4332,6 @@ export default function PremiumPage() {
           );
         })}
       </section>
-        {/* Storytelling / Манифест */}
-        <section className="relative w-full h-[360px] md:h-[480px] mt-20 overflow-hidden">
-          <img src="/img/premium-why-bg.jpg" alt="Premium background" className="absolute inset-0 w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <div className="text-center text-white px-6 max-w-3xl">
-              <h2 className="text-3xl md:text-5xl font-extrabold mb-4">Почему Stage Premium?</h2>
-              <p className="text-lg md:text-xl leading-relaxed mb-6">Только эксклюзивные коллекции, прямые поставки от брендов и лимитированные дропы.</p>
-              <button
-                type="button"
-                onClick={() => router.push('/premium/why')}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-white text-black font-semibold rounded-md shadow hover:shadow-lg active:scale-[.98] transition"
-              >
-                Почему?
-              </button>
-            </div>
-          </div>
-        </section>
 
         <AnimatePresence>
           {whyOpen && (
@@ -4381,82 +4364,6 @@ export default function PremiumPage() {
           )}
         </AnimatePresence>
 
-        {/* Newsletter */}
-        <motion.section
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-60px" }}
-          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          className="relative overflow-hidden bg-[#0b0b0b] px-6 py-12 sm:px-12 sm:py-16 -mb-16"
-        >
-          {/* Decorative blobs */}
-          <div className="pointer-events-none absolute inset-0">
-            <div className="absolute -left-20 -top-20 h-72 w-72 rounded-full bg-violet-600/20 blur-3xl" />
-            <div className="absolute right-[-60px] bottom-[-60px] h-64 w-64 rounded-full bg-amber-500/15 blur-[80px]" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_60%_0%,rgba(255,255,255,0.04),transparent_70%)]" />
-          </div>
-
-          <div className="relative max-w-[560px] mx-auto">
-            {/* Floating badges */}
-            <motion.div
-              className="flex flex-wrap gap-2 mb-6"
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              variants={{ visible: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } } }}
-            >
-              {["✦ Только дропы", "✦ Без спама", "✦ Закрытые акции", "✦ Отписка в клик"].map((badge) => (
-                <motion.span
-                  key={badge}
-                  variants={{
-                    hidden: { opacity: 0, y: 10, scale: 0.9 },
-                    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, ease: "easeOut" } },
-                  }}
-                  className="inline-flex items-center px-3 py-1 rounded-full border border-white/10 bg-white/6 text-[11px] text-white/50 font-medium"
-                >
-                  {badge}
-                </motion.span>
-              ))}
-            </motion.div>
-
-            {/* Headline */}
-            <motion.h2
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-              className="text-3xl sm:text-4xl font-black tracking-tight text-white leading-tight"
-            >
-              Дропы —<br />
-              <span className="text-white/40">первыми</span>
-            </motion.h2>
-
-            <motion.p
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-              className="mt-3 text-sm text-white/50 leading-relaxed"
-            >
-              Подпишитесь и получайте уведомления о Premium-новинках и&nbsp;закрытых акциях раньше всех.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.4, duration: 0.5 }}
-              className="mt-8"
-            >
-              <NewsletterForm
-                source="premium"
-                variant="dark"
-                title=""
-                subtitle=""
-              />
-            </motion.div>
-          </div>
-        </motion.section>
 
         {/* Quick View Modal */}
         <AnimatePresence>
