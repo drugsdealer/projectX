@@ -31,7 +31,15 @@ export function getTBankConfig() {
   // Пробел или перенос строки, случайно скопированный вместе с ключом,
   // ломает подпись: банк отвечает «Неверный токен» при верных реквизитах.
   const terminalKey = (process.env.TBANK_TERMINAL_KEY ?? "").trim();
-  const password = (process.env.TBANK_PASSWORD ?? "").trim();
+
+  // Пароль терминала содержит служебные символы (#, & и подобные), которые
+  // теряются при передаче через панель. Поэтому основной способ — запись
+  // в кодировке base64: там только буквы, цифры и плюс со слешем.
+  const b64 = (process.env.TBANK_PASSWORD_B64 ?? "").trim();
+  const password = b64
+    ? Buffer.from(b64, "base64").toString("utf8").trim()
+    : (process.env.TBANK_PASSWORD ?? "").trim();
+
   if (!terminalKey || !password) return null;
   return { terminalKey, password };
 }

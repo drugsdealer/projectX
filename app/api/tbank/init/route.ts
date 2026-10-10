@@ -106,8 +106,13 @@ export async function POST(req: Request) {
       })(),
       "| пароль:",
       (() => {
+        const b64 = (process.env.TBANK_PASSWORD_B64 ?? "").trim();
+        if (b64) {
+          const decoded = Buffer.from(b64, "base64").toString("utf8").trim();
+          return `из base64, длина ${decoded.length}`;
+        }
         const p2 = (process.env.TBANK_PASSWORD ?? "").trim();
-        return p2 ? `задан, длина ${p2.length}` : "НЕ ЗАДАН";
+        return p2 ? `обычный, длина ${p2.length}` : "НЕ ЗАДАН";
       })()
     );
     return NextResponse.json(
