@@ -23,14 +23,21 @@ export async function POST(req: Request) {
     return new NextResponse("ERROR", { status: 400 });
   }
 
+  // Названия полей без значений: так видно, какие уведомления присылает банк
+  // (оплата, фискализация чека и т.п.), не записывая в журнал персональные данные.
+  const fieldNames = Object.keys(body as Record<string, unknown>).sort().join(",");
+  const kind = String((body as any).Type ?? (body as any).Status ?? "—");
+
   if (!verifyTBankNotification(body as Record<string, unknown>)) {
-    console.warn("[tbank.notification] invalid signature — rejected");
+    console.warn(`[tbank.notification] invalid signature — rejected | вид=${kind} | поля=${fieldNames}`);
     return new NextResponse("ERROR", { status: 403 });
   }
 
   const status = String((body as any).Status || "");
   const orderId = Number((body as any).OrderId);
   const paymentId = String((body as any).PaymentId ?? "");
+
+  console.log(`[tbank.notification] получено | вид=${kind} | поля=${fieldNames}`);
 
   if (!Number.isFinite(orderId) || orderId <= 0) {
     return new NextResponse("OK");
