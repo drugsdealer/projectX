@@ -144,9 +144,19 @@ function buildReceiptHtml(params: ReceiptParams): string {
                 <td style="padding:16px 18px">
                   <div style="font-size:13px;font-weight:700;color:#1a1a1a">Кассовый чек</div>
                   <div style="margin-top:6px;font-size:12px;line-height:1.55;color:#5c6066">
-                    Фискальный чек по 54-ФЗ формирует банк-эквайер и отправляет отдельным
-                    письмом на этот же адрес. Он зарегистрирован в ФНС и служит документом,
-                    подтверждающим оплату. Письмо ниже — подтверждение заказа от магазина.
+                    Официальный кассовый чек, зарегистрированный в ФНС, придёт отдельным письмом
+                    в течение нескольких минут. Его отправляет оператор фискальных данных, не магазин.
+                  </div>
+                  <table cellpadding="0" cellspacing="0" style="margin-top:12px;background:#ffffff;border:1px solid #e6e8ea;border-radius:10px">
+                    <tr>
+                      <td style="padding:10px 14px">
+                        <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#9aa0a6">Письмо придёт от</div>
+                        <div style="margin-top:3px;font-size:14px;font-weight:700;color:#1a1a1a;font-family:'SF Mono',Menlo,Consolas,monospace">noreply@chek.pofd.ru</div>
+                      </td>
+                    </tr>
+                  </table>
+                  <div style="margin-top:10px;font-size:11px;line-height:1.5;color:#8a8f96">
+                    Не видите письма? Проверьте папки «Спам» и «Промоакции».
                   </div>
                 </td>
               </tr>
