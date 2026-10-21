@@ -49,6 +49,8 @@ type Order = {
   handedAt?: string | null;
   createdAt: string; // ISO string
   token?: string | null;
+  cancelReason?: string | null;
+  canceledAt?: string | null;
   items: OrderItem[];
 };
 
@@ -192,7 +194,7 @@ function StatusPill({ status }: { status: Order['status'] }) {
       ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
       : status === 'PENDING'
       ? 'bg-amber-100 text-amber-700 border-amber-200'
-      : 'bg-rose-100 text-rose-700 border-rose-200';
+      : 'bg-stone-100 text-stone-500 border-stone-200';
 
   const text =
     status === 'SUCCEEDED'
@@ -205,6 +207,25 @@ function StatusPill({ status }: { status: Order['status'] }) {
     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${color}`}>
       {text}
     </span>
+  );
+}
+
+// Отменённый заказ: сдержанная плашка с причиной, без тревожных цветов
+function CancelNote({ reason, canceledAt }: { reason?: string | null; canceledAt?: string | null }) {
+  const at = safeDate(canceledAt);
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-stone-300 text-[11px] text-stone-400">
+        ✕
+      </span>
+      <div className="min-w-0">
+        <div className="text-sm font-medium text-stone-700">{reason || 'Оплата не была завершена'}</div>
+        <div className="mt-0.5 text-xs text-stone-400">
+          {at ? `Заказ отменён ${at.toLocaleDateString('ru-RU')} в ${at.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}. ` : 'Заказ отменён. '}
+          {/возвращ/i.test(reason || '') ? 'Деньги вернутся на карту в течение нескольких дней.' : 'Деньги не списывались.'}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -416,10 +437,14 @@ function OrderDetailsModal({ open, onClose, order }: ModalProps) {
           {/* body */}
           <div className="p-4 sm:p-5 md:p-8 space-y-8 overflow-y-auto">
             {/* steps */}
-            <div className="space-y-4">
-              <h3 className="text-lg md:text-xl font-semibold">Статус доставки</h3>
-              <StepTracker activeIndex={stage.index} />
-            </div>
+            {order.status === 'CANCELED' ? (
+              <CancelNote reason={order.cancelReason} canceledAt={order.canceledAt} />
+            ) : (
+              <div className="space-y-4">
+                <h3 className="text-lg md:text-xl font-semibold">Статус доставки</h3>
+                <StepTracker activeIndex={stage.index} />
+              </div>
+            )}
 
             {/* order info */}
             <div className="space-y-4">
@@ -658,7 +683,10 @@ export default function UserOrders() {
               const handed = safeDate(o.handedAt);
               const showDelivery = o.shippingStatus === 'ARRIVED' && !handed;
               return (
-                <div key={o.id} className="rounded-2xl bg-white/95 shadow-sm p-5">
+                <div
+                  key={o.id}
+                  className={`rounded-2xl bg-white/95 shadow-sm p-5 transition ${o.status === 'CANCELED' ? 'opacity-75 hover:opacity-100' : ''}`}
+                >
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                     <div className="space-y-0.5">
                       <div className="text-sm text-gray-500">
@@ -687,6 +715,12 @@ export default function UserOrders() {
                       </button>
                     </div>
                   </div>
+
+                  {o.status === 'CANCELED' && (
+                    <div className="mb-4">
+                      <CancelNote reason={o.cancelReason} canceledAt={o.canceledAt} />
+                    </div>
+                  )}
 
                   {showDelivery && (
                     <div className="mb-4 rounded-2xl border border-black/10 bg-white p-4">

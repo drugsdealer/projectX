@@ -226,7 +226,7 @@ export async function tbankInit(p: InitParams): Promise<InitResult> {
 
 /** Проверка реального статуса платежа на стороне банка (доверяем только этому). */
 export async function tbankGetState(paymentId: string): Promise<
-  { ok: true; status: string } | { ok: false; message: string }
+  { ok: true; status: string; errorCode?: string; message?: string } | { ok: false; message: string }
 > {
   const cfg = getTBankConfig();
   if (!cfg) return { ok: false, message: "T-Bank credentials are not configured" };
@@ -249,7 +249,12 @@ export async function tbankGetState(paymentId: string): Promise<
     if (!data || !data.Success) {
       return { ok: false, message: data?.Message || "Не удалось получить статус платежа" };
     }
-    return { ok: true, status: String(data.Status || "") };
+    return {
+      ok: true,
+      status: String(data.Status || ""),
+      errorCode: data.ErrorCode ? String(data.ErrorCode) : undefined,
+      message: data.Message ? String(data.Message) : undefined,
+    };
   } catch {
     return { ok: false, message: "Не удалось связаться с банком" };
   }
@@ -272,4 +277,46 @@ export function verifyTBankNotification(body: Record<string, unknown>): boolean 
     diff |= received.charCodeAt(i) ^ expected.charCodeAt(i);
   }
   return diff === 0;
+}
+
+
+/* ---------- отмена заказа по ответу банка ---------- */
+
+/** Статусы платежа, после которых оплаты уже не будет. */
+const FINAL_FAIL_STATUSES = new Set([
+  "REJECTED", "AUTH_FAIL", "CANCELED", "DEADLINE_EXPIRED", "REVERSED", "REFUNDED",
+]);
+
+export function isFinalFailStatus(status: string) {
+  return FINAL_FAIL_STATUSES.has(String(status || "").toUpperCase());
+}
+
+/**
+ * Понятная покупателю причина отмены. Банк присылает текст ошибки по-русски
+ * («Недостаточно средств на карте» и т.п.) — если он есть и выглядит прилично,
+ * показываем его, иначе берём формулировку по статусу.
+ */
+export function describeCancelReason(status: string, bankMessage?: string | null) {
+  const msg = String(bankMessage ?? "").trim();
+  const usable =
+    msg &&
+    msg.length <= 160 &&
+    /[а-яё]/i.test(msg) &&
+    !/^(ok|success|неверные параметры)\.?$/i.test(msg);
+
+  switch (String(status || "").toUpperCase()) {
+    case "REJECTED":
+      return usable ? msg : "Банк отклонил платёж";
+    case "AUTH_FAIL":
+      return "Не пройдена проверка 3-D Secure";
+    case "DEADLINE_EXPIRED":
+      return "Истёк срок оплаты";
+    case "CANCELED":
+    case "REVERSED":
+      return "Платёж отменён";
+    case "REFUNDED":
+      return "Средства возвращены";
+    default:
+      return usable ? msg : "Оплата не была завершена";
+  }
 }

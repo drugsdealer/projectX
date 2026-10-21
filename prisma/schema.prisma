@@ -162,6 +162,8 @@ model Order {
   deliveryPhone String?
   deliveryNotifiedAt DateTime?
   handedAt DateTime?
+  cancelReason String?   // почему заказ отменён: ответ банка или «оплата не завершена»
+  canceledAt   DateTime?
   promoCode   String?
   promoDiscountType DiscountType?
   promoDiscountValue Int?

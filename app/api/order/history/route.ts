@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { cookies, headers } from 'next/headers';
 import { getUserIdFromRequest, getGuestToken } from '@/lib/session';
 import type { Prisma } from '@prisma/client';
+import { reconcilePendingOrders } from '@/lib/order-payment-sync';
 
 // Disable any caching for this route handler
 export const dynamic = 'force-dynamic';
@@ -84,6 +85,9 @@ export async function GET(req: Request) {
         updatedAt: true,
         paidAt: true,
         publicNumber: true,
+        paymentId: true,
+        cancelReason: true,
+        canceledAt: true,
         OrderItem: {
           select: {
             id: true,
@@ -101,8 +105,11 @@ export async function GET(req: Request) {
       },
     });
 
+    // Зависшие заказы сверяем с банком: брошенная оплата становится отменённым заказом
+    await reconcilePendingOrders(orders as any[]);
+
     // Нормализуем paidAt и publicNumber в ответе
-    const normalized = (orders as any[]).map((o) => ({
+    const normalized = (orders as any[]).map(({ paymentId: _pid, ...o }) => ({
       ...o,
       // paidAt, если он выставлен, иначе — для совместимости берём updatedAt при успешном статусе
       paidAt:

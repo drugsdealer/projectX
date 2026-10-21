@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma";
-import { verifyTBankNotification } from "@/lib/tbank";
+import { verifyTBankNotification, isFinalFailStatus, describeCancelReason } from "@/lib/tbank";
 import { sendOrderNotificationToTelegram } from "@/lib/telegram";
 import { sendOrderReceipt } from "@/lib/receipt-email";
 import { redeemPromoForOrder } from "@/lib/promos";
@@ -43,6 +43,19 @@ export async function POST(req: Request) {
     return new NextResponse("OK");
   }
 
+  // Окончательный отказ банка — отменяем заказ и сохраняем причину для истории заказов.
+  // Оплаченный заказ не трогаем: уведомления могут прийти не по порядку.
+  if (isFinalFailStatus(status)) {
+    const reason = describeCancelReason(status, (body as any).Message ?? (body as any).Details);
+    await prisma.order
+      .updateMany({
+        where: { id: orderId, status: { not: "SUCCEEDED" } },
+        data: { status: "CANCELED", cancelReason: reason, canceledAt: new Date() },
+      })
+      .catch(() => console.error("[tbank.notification] не удалось отменить заказ"));
+    return new NextResponse("OK");
+  }
+
   // Успешной считаем только CONFIRMED (одностадийная оплата — списание прошло).
   if (status !== "CONFIRMED") {
     console.log(`[tbank.notification] order ${orderId} status=${status} — оплата не завершена`);
@@ -65,6 +78,8 @@ export async function POST(req: Request) {
       where: { id: order.id },
       data: {
         status: "SUCCEEDED",
+        cancelReason: null,
+        canceledAt: null,
         paidAt: new Date(),
         publicNumber,
         ...(paymentId ? { paymentId } : {}),
