@@ -172,11 +172,14 @@ const collabBrands = (rawProduct as any)?.collabBrands ?? [];
 - `NEXT_PUBLIC_SITE_URL` — https://stagestore.app
 - `IMAGEKIT_*` — ImageKit credentials
 - `TBANK_TERMINAL_KEY` — терминал эквайринга T-Bank (для теста — терминал с суффиксом DEMO)
-- `TBANK_PASSWORD` — пароль терминала T-Bank (участвует в подписи Token, наружу не отдаётся)
+- `TBANK_PASSWORD_B64` — пароль терминала T-Bank в base64 (в пароле есть `#` и `&`, в обычной записи панель Vercel их теряет). Резервно читается `TBANK_PASSWORD`
+- `TBANK_API_BASE`, `TBANK_PROXY_SECRET` — запросы к банку идут через российский посредник `pay.stagestore.app` (банк не отвечает зарубежным IP)
+- `TBANK_RECEIPT=off` — временно отключить фискальный чек
 
-**Оплата T-Bank (non-PCI):** `/api/tbank/init` создаёт платёж (сумма берётся из БД) → редирект
-на форму банка → `/api/tbank/notification` подтверждает оплату (проверка подписи обязательна).
-Без `TBANK_*` переменных чекаут откатывается на `/mock-bank`.
+**Оплата T-Bank (non-PCI):** оформление → `/payment/pay?orderId=` создаёт платёж через `/api/tbank/init`
+(сумма из БД, гость — по куке `order_token`) → редирект на форму банка → `/api/tbank/notification`
+подтверждает или отменяет заказ (подпись обязательна). При сбое `/payment/pay` показывает ошибку с повтором.
+Брошенные оплаты отменяются при открытии истории заказов (`lib/order-payment-sync.ts`). Заглушки оплаты нет.
 
 ---
 

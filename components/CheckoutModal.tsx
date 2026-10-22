@@ -995,7 +995,6 @@ export default function CheckoutModal({
 
       const data = await res.json().catch(() => ({} as any));
       const orderIdFromServer = data?.orderId ?? data?.id;
-      const token = data?.token;
 
       try {
         sessionStorage.removeItem("checkoutState");
@@ -1019,40 +1018,9 @@ export default function CheckoutModal({
         } catch {
           // ignore
         }
-        // Пробуем оплату через T-Bank. Если эквайринг не настроен или недоступен —
-        // молча откатываемся на прежний сценарий, чтобы оформление не ломалось.
-        try {
-          const payRes = await fetch("/api/tbank/init", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ orderId: Number(normalizedOrderId) }),
-          });
-          const payData = await payRes.json().catch(() => ({} as any));
-          if (payRes.ok && payData?.success && payData?.paymentUrl) {
-            window.location.href = payData.paymentUrl;
-            return;
-          }
-          // Не молчим: без этого причина отката на заглушку остаётся невидимой.
-          console.error(
-            `[pay] T-Bank не принял платёж — HTTP ${payRes.status}:`,
-            payData?.message || payData
-          );
-        } catch (e) {
-          console.error("[pay] запрос к /api/tbank/init не прошёл:", e);
-        }
-
-        router.push(`/mock-bank?orderId=${normalizedOrderId}`);
-        return;
-      }
-
-      if (token) {
-        try {
-          localStorage.setItem("pendingPurchasedScope", "active-only");
-        } catch {
-          // ignore
-        }
-        router.push(`/mock-bank?token=${encodeURIComponent(token)}`);
+        // Платёж создаёт отдельная страница: она показывает процесс, уводит в банк,
+        // а при сбое даёт сформировать оплату заново.
+        router.push(`/payment/pay?orderId=${normalizedOrderId}`);
         return;
       }
 

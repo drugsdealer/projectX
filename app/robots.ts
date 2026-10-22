@@ -17,7 +17,7 @@ export default function robots(): MetadataRoute.Robots {
           "/checkout/",
           "/verify-email",
           "/verify-phone",
-          "/mock-bank",
+          "/payment/pay",
           "/profile/",
         ],
       },

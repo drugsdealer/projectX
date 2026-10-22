@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
-import { getUserIdFromRequest } from "@/lib/session";
+import { getUserIdFromRequest, getGuestToken } from "@/lib/session";
 import { enforceSameOrigin } from "@/lib/security";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { requireJsonRequest } from "@/lib/api-hardening";
@@ -32,8 +32,11 @@ export async function POST(req: Request) {
     );
   }
 
+  // Платить может владелец заказа: вошедший пользователь — по сессии,
+  // гость — по личному ключу заказа из защищённой куки (выдаётся при оформлении).
   const userId = await getUserIdFromRequest();
-  if (!userId) {
+  const guestToken = await getGuestToken();
+  if (!userId && !guestToken) {
     return NextResponse.json({ success: false, message: "Требуется авторизация" }, { status: 401 });
   }
 
@@ -47,7 +50,7 @@ export async function POST(req: Request) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     select: {
-      id: true, userId: true, totalAmount: true, status: true, publicNumber: true,
+      id: true, userId: true, token: true, totalAmount: true, status: true, publicNumber: true,
       email: true, phone: true,
       OrderItem: { select: { name: true, price: true, quantity: true } },
     },
@@ -56,7 +59,9 @@ export async function POST(req: Request) {
   if (!order) {
     return NextResponse.json({ success: false, message: "Заказ не найден" }, { status: 404 });
   }
-  if (order.userId !== userId) {
+  const ownsAsUser = userId != null && order.userId === userId;
+  const ownsAsGuest = order.userId == null && !!guestToken && order.token === guestToken;
+  if (!ownsAsUser && !ownsAsGuest) {
     return NextResponse.json({ success: false, message: "Нет доступа к заказу" }, { status: 403 });
   }
   if (order.status === "SUCCEEDED") {
@@ -83,7 +88,7 @@ export async function POST(req: Request) {
       priceKopecks: Math.round(Number(i.price) * 100),
       quantity: i.quantity,
     })),
-    customerKey: String(userId),
+    ...(userId ? { customerKey: String(userId) } : {}),
   });
 
   if (!result.ok) {

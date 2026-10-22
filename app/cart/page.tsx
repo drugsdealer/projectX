@@ -670,7 +670,7 @@ useEffect(() => {
         return;
       }
 
-      // Persist order id/token in multiple client-visible cookies for compatibility with mock-bank
+      // Persist order id/token in client-visible cookies (результат оплаты и история заказов читают их)
       try {
         const orderIdStr = String(data.orderId);
         const expiry = 60 * 30; // 30 minutes
@@ -698,7 +698,7 @@ useEffect(() => {
       // give the browser a microtask to flush cookies before navigation
       await new Promise((r) => setTimeout(r, 0));
 
-      router.push(`/mock-bank?orderId=${data.orderId}`);
+      router.push(`/payment/pay?orderId=${data.orderId}`);
     } finally {
       setPosting(false);
     }
