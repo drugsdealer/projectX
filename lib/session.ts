@@ -136,16 +136,26 @@ export async function getUserIdFromRequest(): Promise<number | null> {
     }
   } catch {}
 
-  // 1) next-auth
-  try {
+  // 1) next-auth — только если своей сессии из базы нет.
+  // Раньше next-auth перекрывал сессию из базы. После переноса базы у
+  // пользователей сменились номера, а кука next-auth живёт 30 дней и несёт
+  // старый номер — человек «входил» под чужим или несуществующим id.
+  if (foundUserId === null) try {
     const session = await getServerSession(authOptions as any);
     // подстраховка на случай иной структуры user
     // @ts-ignore
     const sid = session?.user?.id ?? session?.id;
     if (sid !== undefined && sid !== null) {
       const n = Number(sid);
-      if (Number.isFinite(n)) {
-        foundUserId = n;
+      if (Number.isFinite(n) && n > 0) {
+        // Номер принимаем, только если он ведёт к тому же человеку, что в куке:
+        // старая кука могла сохранить номер, который теперь принадлежит другому.
+        // @ts-ignore
+        const email = String(session?.user?.email ?? "").trim().toLowerCase();
+        const u = await prisma.user.findUnique({ where: { id: n }, select: { email: true, deletedAt: true } });
+        if (u && !u.deletedAt && (!email || u.email.trim().toLowerCase() === email)) {
+          foundUserId = n;
+        }
       }
     }
   } catch {}
