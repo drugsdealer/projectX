@@ -1,5 +1,6 @@
 'use client';
 
+import { COMPANY } from "@/lib/company";
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 // Fisher-Yates shuffle utility
@@ -1947,14 +1948,14 @@ const handleCancel = () => {
                   <span className="text-xs text-gray-500">Нужна помощь с заказом?</span>
 
                   <a
-                    href="mailto:storestage@yandex.ru"
+                    href={`mailto:${COMPANY.email}`}
                     className="px-2 py-1 rounded-full border border-gray-300 bg-white text-[10px] sm:text-xs font-medium text-gray-800 hover:bg-gray-50 transition"
                   >
                     Написать на почту
                   </a>
 
                   <a
-                    href="https://t.me/i_like_drugs"
+                    href={COMPANY.telegramUrl}
                     target="_blank"
                     className="px-2 py-1 rounded-full border border-gray-900 bg-black text-[10px] sm:text-xs font-medium text-white hover:bg-gray-900 transition"
                   >
@@ -2163,12 +2164,12 @@ const handleCancel = () => {
 
                       return (
                         <>
-                          {perfumeVolume && (
+                          {Boolean(perfumeVolume) && (
                             <p>
                               <strong>• Объём флакона:</strong> {perfumeVolume} мл
                             </p>
                           )}
-                          {(top.length || middle.length || base.length) && (
+                          {top.length + middle.length + base.length > 0 && (
                             <div className="space-y-1 rounded-xl border border-black/10 bg-white/70 p-3">
                               <p>
                                 <strong>• Верхние ноты:</strong>{' '}
@@ -2813,14 +2814,14 @@ const handleCancel = () => {
               <span className="text-[10px] text-gray-500">Нужна помощь с заказом?</span>
 
               <a
-                href="mailto:storestage@yandex.ru"
+                href={`mailto:${COMPANY.email}`}
                 className="px-2 py-1 rounded-full border border-gray-300 bg-white text-[10px] font-medium text-gray-800 hover:bg-gray-50 transition"
               >
                 Почта
               </a>
 
               <a
-                href="https://t.me/i_like_drugs"
+                href={COMPANY.telegramUrl}
                 target="_blank"
                 className="px-2 py-1 rounded-full border border-gray-900 bg-black text-[10px] font-medium text-white hover:bg-gray-900 transition"
               >
@@ -3169,8 +3170,8 @@ const handleCancel = () => {
                   by Stage Store Worldwide 🌎🚛💨
                 </p>
                 <p className="text-xs text-gray-500 mt-2 text-left">
-                  Если у вас возникли вопросы, обратитесь на почту: <a href="mailto:eldheykrut@gmail.com" className="underline hover:text-black">eldheykrut@gmail.com</a><br />
-                  или напишите в Telegram: <a href="https://t.me/i_like_drugs" target="_blank" className="underline hover:text-black">@i_like_drugs</a>
+                  Если у вас возникли вопросы, обратитесь на почту: <a href={`mailto:${COMPANY.email}`} className="underline hover:text-black">{COMPANY.email}</a><br />
+                  или напишите в Telegram: <a href={COMPANY.telegramUrl} target="_blank" className="underline hover:text-black">{COMPANY.telegram}</a>
                 </p>
                 <button
                   onClick={() => setShowDeliveryModal(false)}
