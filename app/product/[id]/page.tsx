@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import ProductPageClient from "./ProductPageClient";
@@ -24,6 +25,7 @@ export async function generateMetadata({
         name: true,
         description: true,
         price: true,
+        deletedAt: true,
         imageUrl: true,
         Brand: { select: { name: true } },
         Category: { select: { name: true } },
@@ -32,7 +34,7 @@ export async function generateMetadata({
     { retries: 2, timeoutMs: 8000, label: `product metadata ${productId}` }
   ).catch(() => null);
 
-  if (!product) return {};
+  if (!product || product.deletedAt) return {};
 
   const brandName = product.Brand?.name;
   // Не дублируем бренд, если он уже есть в названии («Louis Vuitton L'Immensité»).
@@ -111,6 +113,7 @@ export default async function ProductPage({
         select: {
           name: true,
           price: true,
+          deletedAt: true,
           imageUrl: true,
           description: true,
           Brand: { select: { name: true } },
@@ -119,6 +122,8 @@ export default async function ProductPage({
       }),
       { retries: 2, timeoutMs: 8000, label: `product json-ld ${productId}` }
     ).catch(() => null);
+
+    if (p?.deletedAt) notFound();
 
     if (p) {
       const brandName = p.Brand?.name;
