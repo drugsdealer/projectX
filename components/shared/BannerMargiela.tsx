@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react
 import Image from 'next/image';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
+import { toProxiedImageUrl } from '@/lib/media';
 
 type Slide = {
   id: string;
@@ -12,6 +13,10 @@ type Slide = {
   // Video slide
   videoSrc?: string;       // desktop video
   videoSrcMobile?: string; // mobile video
+  videoStart?: number;     // с какой секунды начинать ролик
+  poster?: string;         // кадр, пока видео грузится или если оно недоступно
+  durationMs?: number;     // сколько держать слайд (по умолчанию AUTO_MS)
+  shade?: 'strong';        // плотное затемнение для светлых роликов, чтобы читался белый текст
   alt: string;
   eyebrow: string;
   title: string;
@@ -34,15 +39,19 @@ const SLIDES: Slide[] = [
     align: 'left',
   },
   {
-    id: 'ap-swatch',
-    videoSrc: 'https://ik.imagekit.io/qowmy92ny/swatch-x-AP_1920x917-v3.mov',
-    videoSrcMobile: 'https://ik.imagekit.io/qowmy92ny/swatch%20x%20AP%20v7%209-16.mov',
-    alt: 'Audemars Piguet × Swatch коллаборация',
-    eyebrow: 'Audemars Piguet × Swatch / Limited collaboration',
-    title: 'AP ×',
-    mutedTitle: 'Swatch',
-    text: 'Лимитированная коллаборация двух легенд: швейцарская точность встречает дерзкий дизайн.',
-    cta: { label: 'Смотреть коллаборацию', href: '/search' },
+    id: 'rimowa-margiela',
+    videoSrc: 'https://ik.imagekit.io/qowmy92ny/RIMOWAXMAISONMARGIELACOLLABORATION_DESK.mp4',
+    videoStart: 9,
+    poster:
+      'https://ik.imagekit.io/qowmy92ny/RIMOWAXMAISONMARGIELACOLLABORATION_DESK.mp4/ik-thumbnail.jpg?tr=so-9,w-1920,q-80',
+    durationMs: 9000,
+    shade: 'strong',
+    alt: 'RIMOWA × Maison Margiela — чемодан Classic Cabin и сумка 5AC XL в белом бьянкетто',
+    eyebrow: 'RIMOWA × Maison Margiela / Выход 19 ноября',
+    title: 'RIMOWA ×',
+    mutedTitle: 'Margiela',
+    text: 'Чемодан Classic Cabin и сумка 5AC XL, вручную выкрашенные в белый. Лимитированный тираж — открыт предзаказ.',
+    cta: { label: 'Смотреть коллаборацию', href: '/rimowa-x-maison-margiela' },
     align: 'left',
   },
 ];
@@ -63,10 +72,10 @@ function SlideBackground({ slide, priority }: { slide: Slide; priority: boolean 
   // autoplay video when it becomes active
   useEffect(() => {
     if (videoRef.current) {
-      videoRef.current.currentTime = 0;
+      videoRef.current.currentTime = slide.videoStart ?? 0;
       videoRef.current.play().catch(() => {});
     }
-  }, []);
+  }, [slide.videoStart]);
 
   const isRight = slide.align === 'right';
 
@@ -78,6 +87,8 @@ function SlideBackground({ slide, priority }: { slide: Slide; priority: boolean 
     // Mobile  → cap at 720px wide, quality 60
     const [base, file] = url.split('ik.imagekit.io/qowmy92ny/');
     if (!file) return url;
+    // Готовый mp4 на десктопе не пережимаем: ImageKit делает его только тяжелее.
+    if (!mobile && /\.mp4$/i.test(file)) return url;
     const params = mobile ? 'tr:w-720,q-60' : 'tr:w-1280,q-65';
     return `${base}ik.imagekit.io/qowmy92ny/${params}/${file}`;
   };
@@ -96,9 +107,21 @@ function SlideBackground({ slide, priority }: { slide: Slide; priority: boolean 
           loop
           playsInline
           preload="auto"
+          poster={slide.poster ? toProxiedImageUrl(slide.poster) : undefined}
+          onLoadedMetadata={(e) => {
+            if (slide.videoStart) e.currentTarget.currentTime = slide.videoStart;
+          }}
           className="absolute inset-0 h-full w-full object-cover object-center"
         />
-        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/60 to-transparent" />
+        {slide.shade === 'strong' ? (
+          <>
+            <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/45 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
+            <div className="absolute inset-y-0 left-0 w-2/3 bg-gradient-to-r from-black/35 to-transparent" />
+          </>
+        ) : (
+          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/60 to-transparent" />
+        )}
       </>
     );
   }
@@ -122,7 +145,7 @@ function SlideBackground({ slide, priority }: { slide: Slide; priority: boolean 
 export default function BannerMargiela() {
   const [index, setIndex] = useState(0);
   const [dir, setDir] = useState<1 | -1>(1);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchRef = useRef<{ x: number; y: number } | null>(null);
   const suppressTapRef = useRef(0);
 
@@ -136,15 +159,17 @@ export default function BannerMargiela() {
 
   const goNext = useCallback(() => go(index + 1, 1), [go, index]);
 
+  const slideMs = slide.durationMs ?? AUTO_MS;
+
   const resetTimer = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = setInterval(goNext, AUTO_MS);
-  }, [goNext]);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(goNext, slideMs);
+  }, [goNext, slideMs]);
 
   useEffect(() => {
     resetTimer();
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [resetTimer]);
 
@@ -209,7 +234,7 @@ export default function BannerMargiela() {
               <span
                 key={`mobile-progress-${index}`}
                 className="hero-banner-progress-line block h-full rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.82)]"
-                style={{ animationDuration: `${AUTO_MS}ms` }}
+                style={{ animationDuration: `${slideMs}ms` }}
               />
             ) : (
               <span className="block h-full w-0 rounded-full bg-white/58" />
@@ -303,7 +328,7 @@ export default function BannerMargiela() {
           <div
             key={`progress-${index}`}
             className="hero-banner-progress-line h-px bg-white"
-            style={{ animationDuration: `${AUTO_MS}ms` }}
+            style={{ animationDuration: `${slideMs}ms` }}
           />
         </div>
         <button
