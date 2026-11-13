@@ -97,6 +97,7 @@ export async function GET(req: Request) {
             size: true,
             quantity: true,
             image: true,
+            canceledAt: true,
             Product: {
               select: { id: true, name: true, imageUrl: true, price: true },
             },
@@ -124,6 +125,7 @@ export async function GET(req: Request) {
         size: it.size ?? null,
         quantity: it.quantity ?? 1,
         image: it.image ?? it.Product?.imageUrl ?? null,
+        canceledAt: it.canceledAt ?? null,
         product: it.Product ?? null,
       })),
     }));

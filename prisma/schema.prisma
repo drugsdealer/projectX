@@ -190,6 +190,17 @@ model OrderItem {
   quantity   Int
   image      String?
 
+  // Чек закупки этой позиции (фото или PDF). Заказ считается выполненным,
+  // когда чек есть у каждой неотменённой позиции.
+  receiptUrl     String?
+  receiptName    String?
+  receiptType    String?   // image | pdf
+  receiptAddedAt DateTime?
+  receiptAddedBy String?
+  // Отмена позиции: товара нет, клиенту оформлен возврат за неё
+  canceledAt     DateTime?
+  canceledBy     String?
+  cancelComment  String?
   Order      Order     @relation(fields: [orderId], references: [id])
   Product    Product   @relation(fields: [productId], references: [id])
   CartItem   CartItem? @relation(fields: [cartItemId], references: [id])

@@ -22,6 +22,7 @@ type OrderItem = {
   price: number;
   quantity: number;
   size?: string | null;
+  canceledAt?: string | null;
   product?: {
     id: number;
     name?: string | null;
@@ -493,14 +494,20 @@ function OrderDetailsModal({ open, onClose, order }: ModalProps) {
                   const brandName = it.product?.brandName || guessBrandName(title);
                   const brandLogo = it.product?.brandLogoUrl || undefined;
 
+                  const itemCanceled = Boolean(it.canceledAt);
                   const row = (
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border border-black/5 p-4 hover:bg-black/[0.02]">
-                      <img src={img} alt={title} className="w-full sm:w-24 h-40 sm:h-24 object-cover rounded-md border border-black/10" />
+                    <div className={`flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border p-4 ${itemCanceled ? 'border-stone-200 bg-stone-50' : 'border-black/5 hover:bg-black/[0.02]'}`}>
+                      <img src={img} alt={title} className={`w-full sm:w-24 h-40 sm:h-24 object-cover rounded-md border border-black/10 ${itemCanceled ? 'grayscale opacity-50' : ''}`} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <BrandBadge name={brandName || undefined} logo={brandLogo} />
                         </div>
-                        <div className="text-sm md:text-base font-medium whitespace-normal leading-snug">{title}</div>
+                        <div className={`text-sm md:text-base font-medium whitespace-normal leading-snug ${itemCanceled ? 'text-stone-400' : ''}`}>{title}</div>
+                        {itemCanceled && (
+                          <span className="mt-1.5 inline-flex rounded-full border border-stone-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-stone-500">
+                            Отменён · деньги за товар вернутся
+                          </span>
+                        )}
                         <div className="text-xs text-gray-500 mt-1 space-y-0.5">
                           <div>{sizeClean ? `Размер: ${sizeClean}` : 'Размер: —'}</div>
                           {qty > 1 && <div>Количество: {qty}</div>}
@@ -508,7 +515,7 @@ function OrderDetailsModal({ open, onClose, order }: ModalProps) {
                       </div>
                       <div className="text-left sm:text-right min-w-[120px]">
                         <div className="text-sm text-gray-500">Цена</div>
-                        <div className="text-base md:text-lg font-semibold">{fmt(subtotal)} ₽</div>
+                        <div className={`text-base md:text-lg font-semibold ${itemCanceled ? 'text-stone-400 line-through' : ''}`}>{fmt(subtotal)} ₽</div>
                         <div className="text-xs text-gray-500 mt-1">
                           {qty > 1 ? (
                             <>
@@ -822,9 +829,10 @@ export default function UserOrders() {
                       const brandName = it.product?.brandName || guessBrandName(title);
                       const brandLogo = it.product?.brandLogoUrl || undefined;
 
+                      const itemCanceled = Boolean(it.canceledAt);
                       const content = (
-                        <div className="flex gap-3 rounded-xl border border-black/5 p-3 hover:bg-black/[0.03]">
-                          <div className="relative w-16 h-16 flex-shrink-0 rounded-md overflow-hidden bg-white">
+                        <div className={`flex gap-3 rounded-xl border p-3 ${itemCanceled ? 'border-stone-200 bg-stone-50' : 'border-black/5 hover:bg-black/[0.03]'}`}>
+                          <div className={`relative w-16 h-16 flex-shrink-0 rounded-md overflow-hidden bg-white ${itemCanceled ? 'grayscale opacity-50' : ''}`}>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={img}
@@ -838,12 +846,13 @@ export default function UserOrders() {
                             <div className="flex items-center gap-2 mb-0.5">
                               <BrandBadge name={brandName || undefined} logo={brandLogo} />
                             </div>
-                            <div className="text-sm font-medium whitespace-normal leading-snug">{title}</div>
+                            <div className={`text-sm font-medium whitespace-normal leading-snug ${itemCanceled ? 'text-stone-400' : ''}`}>{title}</div>
+                            {itemCanceled && <div className="mt-0.5 text-[11px] font-semibold text-stone-500">Отменён</div>}
                             <div className="text-xs text-gray-500 mt-0.5">
                               {size}
                               {size && ' · '}×{qty}
                             </div>
-                            <div className="text-sm font-semibold mt-1">
+                            <div className={`text-sm font-semibold mt-1 ${itemCanceled ? 'text-stone-400 line-through' : ''}`}>
                               {fmt(subtotal)} ₽
                               {qty > 1 && <span className="text-gray-400 text-xs"> · {qty} × {fmt(price)} ₽</span>}
                             </div>

@@ -32,8 +32,18 @@ export async function GET(req: Request) {
       phone: true,
       address: true,
       deliveryMethod: true,
-      User: { select: { id: true, email: true } },
-      OrderItem: { select: { id: true, name: true, price: true, quantity: true, size: true, image: true } },
+      comment: true,
+      paidAt: true,
+      cancelReason: true,
+      User: { select: { id: true, email: true, fullName: true } },
+      OrderItem: {
+        orderBy: { id: "asc" },
+        select: {
+          id: true, productId: true, name: true, price: true, quantity: true, size: true, image: true,
+          receiptUrl: true, receiptName: true, receiptType: true, receiptAddedAt: true, receiptAddedBy: true,
+          canceledAt: true, canceledBy: true, cancelComment: true,
+        },
+      },
     },
   });
 

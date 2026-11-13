@@ -31,7 +31,7 @@ function safeFileName(name: string) {
   return normalized || `image-${Date.now()}.jpg`;
 }
 
-async function getImageKitAuth(): Promise<Required<Omit<ImageKitAuthResponse, "success" | "message">>> {
+export async function getImageKitAuth(): Promise<Required<Omit<ImageKitAuthResponse, "success" | "message">>> {
   const res = await fetch("/api/admin/imagekit/auth", {
     cache: "no-store",
     credentials: "include",
