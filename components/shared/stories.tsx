@@ -105,7 +105,7 @@ export function Stories({ initialStories }: { initialStories?: Story[] }) {
   const [canHover, setCanHover] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const touchStart = useRef<{ x: number; y: number; t: number } | null>(null);
+  const pointerStart = useRef<{ x: number; y: number; t: number; id: number } | null>(null);
 
   useEffect(() => {
     // Сторис уже пришли с сервера вместе с первым HTML (см. app/page.tsx) —
@@ -153,6 +153,13 @@ export function Stories({ initialStories }: { initialStories?: Story[] }) {
     setSheetOpen(false);
     if (prev) openStory(prev);
   }, [active, stories, openStory]);
+
+  // Переход к товару: закрываем сторис сразу, чтобы не осталась заблокированная прокрутка страницы.
+  const closeStories = useCallback(() => {
+    setSheetOpen(false);
+    setActive(null);
+    setActiveSlide(0);
+  }, []);
 
   // Предзагрузка: следующий слайд текущей сторис + обложки соседних сторис.
   useEffect(() => {
@@ -261,7 +268,7 @@ export function Stories({ initialStories }: { initialStories?: Story[] }) {
       ))}
 
       {active && currentSlide && (
-        <div className="fixed inset-0 bg-black z-[9999] flex items-center justify-center overflow-hidden animate-[fadeIn_0.25s_ease-out]">
+        <div className="fixed inset-0 bg-black z-[10001] flex items-center justify-center overflow-hidden animate-[fadeIn_0.25s_ease-out]">
           <button
             onClick={() => {
               setActive(null);
@@ -278,63 +285,6 @@ export function Stories({ initialStories }: { initialStories?: Story[] }) {
 
             <div
               className="relative shrink-0 w-full h-full md:w-[380px] md:h-[85%] lg:w-[420px] md:rounded-2xl overflow-hidden bg-neutral-900"
-              onMouseMove={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                setCursorSide(x > rect.width / 2 ? "right" : "left");
-              }}
-              onMouseLeave={() => setCursorSide(null)}
-              onTouchStart={(e) => {
-                setIsPaused(true);
-                const t = e.touches[0];
-                touchStart.current = { x: t.clientX, y: t.clientY, t: Date.now() };
-              }}
-              onTouchEnd={(e) => {
-                setIsPaused(false);
-                const start = touchStart.current;
-                touchStart.current = null;
-                if (!start) return;
-                const end = e.changedTouches[0];
-                const dx = end.clientX - start.x;
-                const dy = end.clientY - start.y;
-                const dt = Date.now() - start.t;
-                // Свайп — переключаем сторис целиком. Короткий тап — следующий/предыдущий слайд.
-                if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-                  if (dx < 0) goNext();
-                  else goPrev();
-                  return;
-                }
-                if (dt < 400 && Math.abs(dx) < 15 && Math.abs(dy) < 15) {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = end.clientX - rect.left;
-                  if (x > rect.width / 2) {
-                    if (activeSlide < active.slides.length - 1) setActiveSlide(activeSlide + 1);
-                    else goNext();
-                  } else {
-                    if (activeSlide > 0) setActiveSlide(activeSlide - 1);
-                    else goPrev();
-                  }
-                }
-              }}
-              onClick={() => {
-                if (!active || sheetOpen) return;
-                if (cursorSide === "right") {
-                  if (activeSlide < active.slides.length - 1) setActiveSlide(activeSlide + 1);
-                  else goNext();
-                } else if (cursorSide === "left") {
-                  if (activeSlide > 0) setActiveSlide(activeSlide - 1);
-                  else goPrev();
-                }
-              }}
-              style={{
-                cursor: canHover
-                  ? cursorSide === "right"
-                    ? "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\" fill=\"white\"><text x=\"0\" y=\"24\" font-size=\"28\">→</text></svg>') 16 16, auto"
-                    : cursorSide === "left"
-                    ? "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\" fill=\"white\"><text x=\"0\" y=\"24\" font-size=\"28\">←</text></svg>') 16 16, auto"
-                    : "default"
-                  : "default",
-              }}
             >
               <div
                 key={currentSlide.id}
@@ -347,6 +297,68 @@ export function Stories({ initialStories }: { initialStories?: Story[] }) {
                   fetchPriority="high"
                 />
               </div>
+
+              {/* Слой навигации лежит под кнопками и ссылками: нажатие на «Товары из сторис»
+                  или на товар до него не доходит и не перелистывает сторис. Только pointer-события,
+                  без onClick — иначе на телефоне тап срабатывает дважды и перескакивает слайд. */}
+              <div
+                className="absolute inset-0 z-10"
+                style={{
+                  touchAction: "none",
+                  cursor: canHover
+                    ? cursorSide === "right"
+                      ? "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\" fill=\"white\"><text x=\"0\" y=\"24\" font-size=\"28\">→</text></svg>') 16 16, auto"
+                      : cursorSide === "left"
+                      ? "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\" fill=\"white\"><text x=\"0\" y=\"24\" font-size=\"28\">←</text></svg>') 16 16, auto"
+                      : "default"
+                    : "default",
+                }}
+                onMouseMove={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setCursorSide(e.clientX - rect.left > rect.width / 2 ? "right" : "left");
+                }}
+                onMouseLeave={() => setCursorSide(null)}
+                onPointerDown={(e) => {
+                  if (!e.isPrimary || (e.pointerType === "mouse" && e.button !== 0)) return;
+                  pointerStart.current = { x: e.clientX, y: e.clientY, t: Date.now(), id: e.pointerId };
+                  setIsPaused(true);
+                }}
+                onPointerCancel={() => {
+                  pointerStart.current = null;
+                  setIsPaused(false);
+                }}
+                onPointerUp={(e) => {
+                  const start = pointerStart.current;
+                  pointerStart.current = null;
+                  setIsPaused(false);
+                  if (!start || start.id !== e.pointerId || !active) return;
+                  const dx = e.clientX - start.x;
+                  const dy = e.clientY - start.y;
+                  const dt = Date.now() - start.t;
+                  // Свайп вниз — закрыть, вбок — соседняя сторис.
+                  if (dy > 90 && dy > Math.abs(dx) * 1.5) {
+                    setActive(null);
+                    setActiveSlide(0);
+                    return;
+                  }
+                  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+                    if (dx < 0) goNext();
+                    else goPrev();
+                    return;
+                  }
+                  // Долгое удержание — это пауза, а не переход.
+                  if (dt > 450 || Math.abs(dx) > 15 || Math.abs(dy) > 15) return;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  // Левая треть — назад, остальное — вперёд, как в Instagram.
+                  if (e.clientX - rect.left > rect.width / 3) {
+                    if (activeSlide < active.slides.length - 1) setActiveSlide(activeSlide + 1);
+                    else goNext();
+                  } else {
+                    if (activeSlide > 0) setActiveSlide(activeSlide - 1);
+                    else goPrev();
+                  }
+                }}
+              />
 
               <div className="absolute top-2 left-2 right-2 flex gap-1.5">
                 {active.slides.map((slide, i) => (
@@ -380,9 +392,9 @@ export function Stories({ initialStories }: { initialStories?: Story[] }) {
                 (slideProducts.length > 0 ? (
                   <Link
                     href={slideProducts[0].href}
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={closeStories}
                     className="absolute left-4 right-4 z-20 text-white"
-                    style={{ bottom: "3.75rem" }}
+                    style={{ bottom: "calc(4.75rem + env(safe-area-inset-bottom))" }}
                   >
                     {currentSlide.caption && (
                       <div className="text-lg font-extrabold uppercase leading-tight">{currentSlide.caption}</div>
@@ -408,12 +420,12 @@ export function Stories({ initialStories }: { initialStories?: Story[] }) {
 
               {slideProducts.length > 0 && (
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  type="button"
+                  onClick={() => {
                     setIsPaused(true);
                     setSheetOpen(true);
                   }}
-                  className="absolute bottom-0 inset-x-0 z-20 flex flex-col items-center gap-0.5 pb-4 pt-2 text-white"
+                  className="absolute bottom-0 inset-x-0 z-20 flex flex-col items-center gap-0.5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 text-white"
                 >
                   <ChevronUp className="w-5 h-5" />
                   <span className="text-[13px] font-bold uppercase tracking-[0.2em]">Товары из сторис</span>
@@ -444,6 +456,7 @@ export function Stories({ initialStories }: { initialStories?: Story[] }) {
                     <Link
                       key={product.id}
                       href={product.href}
+                      onClick={closeStories}
                       className="flex items-center gap-3 rounded-xl border border-neutral-200 p-2.5 hover:border-black transition"
                     >
                       <div className="w-16 h-16 rounded-lg overflow-hidden bg-neutral-100 shrink-0">
