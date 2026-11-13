@@ -18,8 +18,8 @@ export default function TermsPage() {
       updatedAt="23 апреля 2025 г."
       relatedLinks={[
         { label: "Публичная оферта", href: "/offer" },
-        { label: "Политика конфиденциальности", href: "/privacy" },
-        { label: "Персональные данные", href: "/personal-data" },
+        { label: "Политика обработки персональных данных", href: "/privacy" },
+        { label: "Согласие на обработку персональных данных", href: "/personal-data" },
       ]}
       sections={[
         {

@@ -164,6 +164,7 @@ model Order {
   handedAt DateTime?
   cancelReason String?   // почему заказ отменён: ответ банка или «оплата не завершена»
   canceledAt   DateTime?
+  pdConsentAt  DateTime? // согласие на обработку ПДн, отмеченное при оформлении
   promoCode   String?
   promoDiscountType DiscountType?
   promoDiscountValue Int?
@@ -470,6 +471,7 @@ model User {
   loyaltyPoints    Int               @default(0)
   phone            String?           @db.VarChar(32)
   deletedAt        DateTime?         @db.Timestamp(6)
+  pdConsentAt      DateTime? // когда дал согласие на обработку персональных данных (галочка при регистрации)
   Cart             Cart?
   FavoriteBrand    FavoriteBrand[]
   FavoriteProduct  FavoriteProduct[]

@@ -84,6 +84,10 @@ export async function POST(req: NextRequest) {
     if (!name && !contact && !notes) {
       return NextResponse.json({ ok: false }, { status: 400 });
     }
+    // Заявка — ещё не покупка, поэтому без явного согласия на обработку ПДн данные не принимаем.
+    if ((body as { pdConsent?: unknown }).pdConsent !== true) {
+      return NextResponse.json({ ok: false, message: "Нужно согласие на обработку персональных данных" }, { status: 400 });
+    }
 
     const lines: string[] = [];
     lines.push("🧷 Новая заявка в консьерж-сервис");
@@ -93,6 +97,7 @@ export async function POST(req: NextRequest) {
     if (name) lines.push(`Имя: ${escapeTelegramHtml(name)}`);
     if (contact) lines.push(`Контакт: ${escapeTelegramHtml(contact)}`);
     if (category) lines.push(`Категория: ${escapeTelegramHtml(category)}`);
+    lines.push(`Согласие на обработку ПДн: дано ${new Date().toLocaleString("ru-RU", { timeZone: "Europe/Moscow" })} МСК`);
     if (size) lines.push(`Размер: ${escapeTelegramHtml(size)}`);
 
     if (notes) {

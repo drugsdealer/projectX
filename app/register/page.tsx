@@ -4,6 +4,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { getOptimizedImageUrl } from "@/lib/media";
+import PdConsentCheckbox from "@/components/legal/PdConsentCheckbox";
 
 // Кадр для страницы регистрации. Нужен вертикальный, 4:5.
 const HERO_IMAGE = "https://ik.imagekit.io/qowmy92ny/dithered_no_logo.png";
@@ -41,6 +42,7 @@ export default function RegisterPage() {
   const [confirmPasswordError, setConfirmPasswordError] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [err, setErr] = React.useState<string | null>(null);
+  const [pdConsent, setPdConsent] = React.useState(false);
   const [msg, setMsg] = React.useState<string | null>(null);
   const [activeSession, setActiveSession] = React.useState(false);
   const [activeEmail, setActiveEmail] = React.useState<string | null>(null);
@@ -110,6 +112,8 @@ export default function RegisterPage() {
 
     // Телефонный флоу оставляем как был
     if (!isEmail && isPhone) {
+      // Галочку согласия переносим на страницу кода: аккаунт создаётся там.
+      try { sessionStorage.setItem("pd_consent", "1"); } catch {}
       router.push("/verify-phone");
       return;
     }
@@ -120,7 +124,7 @@ export default function RegisterPage() {
       const r1 = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: normalizedEmail, password: passwordValue }),
+        body: JSON.stringify({ email: normalizedEmail, password: passwordValue, pdConsent: true }),
         credentials: "include",
       });
       const d1 = await r1.json().catch(() => ({} as any));
@@ -180,6 +184,7 @@ export default function RegisterPage() {
     !!inputValue.trim() &&
     !!passwordValue &&
     !!confirmPasswordValue &&
+    pdConsent &&
     !inputError &&
     !passwordError &&
     !confirmPasswordError;
@@ -374,6 +379,17 @@ export default function RegisterPage() {
                 </p>
               )}
               {confirmPasswordError && <p className="text-sm text-red-500">Пароли не совпадают</p>}
+
+              <div className="space-y-2">
+                <PdConsentCheckbox checked={pdConsent} onChange={setPdConsent} />
+                <p className="pl-7 text-xs leading-5 text-black/45">
+                  Регистрируясь, вы принимаете{" "}
+                  <a href="/terms" target="_blank" className="underline underline-offset-2 hover:text-black">
+                    условия использования
+                  </a>
+                  .
+                </p>
+              </div>
 
               <button
                 type="submit"

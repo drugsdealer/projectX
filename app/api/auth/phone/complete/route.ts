@@ -53,9 +53,17 @@ export async function POST(req: Request) {
   });
 
   if (!user) {
+    // Новый аккаунт — только с согласием на обработку ПДн (галочка на странице входа по номеру).
+    if (body?.pdConsent !== true) {
+      return NextResponse.json(
+        { success: false, message: "Нужно согласие на обработку персональных данных" },
+        { status: 400 }
+      );
+    }
     // Пароля у такой учётки нет: вход только по коду из сообщения.
     user = await prisma.user.create({
       data: {
+        pdConsentAt: new Date(),
         fullName: "Не указано",
         email: `${phone.replace("+", "")}@phone.stagestore.app`,
         password: randomBytes(32).toString("hex"),

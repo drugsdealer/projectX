@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { type FormEvent, useState } from "react";
+import PdConsentCheckbox from "@/components/legal/PdConsentCheckbox";
 
 type ConciergeState = "idle" | "sending" | "success" | "error";
 
@@ -10,10 +11,16 @@ export default function NotFoundPage() {
   const [contact, setContact] = useState("");
   const [notes, setNotes] = useState("");
   const [state, setState] = useState<ConciergeState>("idle");
+  const [pdConsent, setPdConsent] = useState(false);
+  const [pdError, setPdError] = useState(false);
 
   const submitConcierge = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!contact.trim()) return;
+    if (!pdConsent) {
+      setPdError(true);
+      return;
+    }
     setState("sending");
     try {
       const res = await fetch("/api/concierge", {
@@ -25,6 +32,7 @@ export default function NotFoundPage() {
           notes: notes.trim() || "Запрос с 404 страницы",
           source: "404-page",
           category: "Не найдена страница",
+          pdConsent: true,
         }),
       });
       if (!res.ok) throw new Error("bad-status");
@@ -111,6 +119,16 @@ export default function NotFoundPage() {
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Что ищете? Бренд, категория, бюджет, размер..."
               className="min-h-[108px] w-full rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white outline-none placeholder:text-white/45 focus:border-white/45"
+            />
+
+            <PdConsentCheckbox
+              tone="dark"
+              checked={pdConsent}
+              error={pdError}
+              onChange={(v) => {
+                setPdConsent(v);
+                if (v) setPdError(false);
+              }}
             />
 
             <button

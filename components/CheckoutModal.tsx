@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import PdConsentCheckbox from "@/components/legal/PdConsentCheckbox";
 import React, {
   useState,
   useEffect,
@@ -601,6 +602,9 @@ export default function CheckoutModal({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [agree, setAgree] = useState(false);
+  // Согласие на обработку ПДн — отдельная галочка, не вместе с офертой (156-ФЗ).
+  const [pdAgree, setPdAgree] = useState(false);
+  const [pdAgreeError, setPdAgreeError] = useState(false);
 
   const isPlaceholderName = (v?: string | null) => {
     const t = (v ?? "").toString().trim().toLowerCase();
@@ -885,6 +889,11 @@ export default function CheckoutModal({
         return;
       }
       setAgreeError(false);
+      if (!pdAgree) {
+        setPdAgreeError(true);
+        return;
+      }
+      setPdAgreeError(false);
 
       if (!user) {
         login({
@@ -970,6 +979,7 @@ export default function CheckoutModal({
         fullName: fio || "",
         email: email || "",
         deliveryMethod,
+        pdConsent: pdAgree,
         method,
         userId:
           user && !(user as any).isGuest && (user as any).id
@@ -1345,29 +1355,30 @@ export default function CheckoutModal({
                   }}
                 />
                 <span>
-                  Я согласен(а) с{" "}
-                  <a
-                    href="/privacy"
-                    target="_blank"
-                    className="text-black underline-offset-4 hover:underline transition-all duration-200"
-                  >
-                    обработкой персональных данных
-                  </a>{" "}
-                  и{" "}
+                  Я принимаю условия{" "}
                   <a
                     href="/offer"
                     target="_blank"
                     className="text-black underline-offset-4 hover:underline transition-all duration-200"
                   >
-                    публичной офертой
+                    публичной оферты
                   </a>
                 </span>
               </label>
               {agreeError && (
                 <p className="text-sm text-red-500 mt-1">
-                  Пожалуйста, подтвердите согласие
+                  Пожалуйста, примите условия оферты
                 </p>
               )}
+              <PdConsentCheckbox
+                className="mt-2"
+                checked={pdAgree}
+                error={pdAgreeError}
+                onChange={(v) => {
+                  setPdAgree(v);
+                  if (v) setPdAgreeError(false);
+                }}
+              />
             </div>
 
             <button

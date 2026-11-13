@@ -4,6 +4,7 @@ import React, { useState, useEffect, useContext } from "react";
 import { useRouter } from "next/navigation";
 import { UserContext } from "@/user/UserContext";
 import type { User } from "@/user/UserContext";
+import PdConsentCheckbox from "@/components/legal/PdConsentCheckbox";
 
 export default function VerifyPhonePage() {
   const router = useRouter();
@@ -15,6 +16,11 @@ export default function VerifyPhonePage() {
   const [savedPhone, setSavedPhone] = useState("ваш номер");
   const [channel, setChannel] = useState<"telegram" | "sms" | null>(null);
   const [busy, setBusy] = useState(false);
+  // Отмечено на странице регистрации — переносим; иначе человек ставит галочку здесь.
+  const [pdConsent, setPdConsent] = useState(false);
+  useEffect(() => {
+    try { if (sessionStorage.getItem("pd_consent") === "1") setPdConsent(true); } catch {}
+  }, []);
 
   // Код проверяет сервер. Раньше он генерировался прямо здесь, в браузере,
   // и сам себя сверял — такую проверку можно было обойти за десять секунд.
@@ -69,7 +75,7 @@ export default function VerifyPhonePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ phone: savedPhone }),
+        body: JSON.stringify({ phone: savedPhone, pdConsent }),
       });
       const doneData = await done.json().catch(() => ({}));
       if (!doneData?.success) {
@@ -190,6 +196,8 @@ export default function VerifyPhonePage() {
 
           {error && <p className="text-sm text-red-500 mb-2">{error}</p>}
           {success && <p className="text-sm text-green-600 mb-2">Код подтверждён! Перенаправление...</p>}
+
+          <PdConsentCheckbox className="mt-2 text-left" checked={pdConsent} onChange={setPdConsent} />
 
           <div className="mt-4">
             <button

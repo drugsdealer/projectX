@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import PdConsentCheckbox from "@/components/legal/PdConsentCheckbox";
 import { motion, AnimatePresence, useReducedMotion, Variants } from "framer-motion";
 import { useTitle } from "@/context/TitleContext";
 import { useUser } from "@/user/UserContext";
@@ -1244,6 +1245,8 @@ const ConciergeSlideArt: React.FC = () => {
   const [loading, setLoading] = React.useState(false);
   const [done, setDone] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [pdConsent, setPdConsent] = React.useState(false);
+  const [pdError, setPdError] = React.useState(false);
 
   const openConcierge = () => {
     // открыть полноразмерный модал (для вложений и расширенной анкеты)
@@ -1254,6 +1257,10 @@ const ConciergeSlideArt: React.FC = () => {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!pdConsent) {
+      setPdError(true);
+      return;
+    }
     setLoading(true);
     setDone(null);
     setError(null);
@@ -1263,7 +1270,7 @@ const ConciergeSlideArt: React.FC = () => {
       const resp = await fetch("/api/concierge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, source: "premium-intro" }),
+        body: JSON.stringify({ ...payload, source: "premium-intro", pdConsent: true }),
       });
       if (!resp.ok) throw new Error("Fail");
       setDone("Заявка отправлена! Мы свяжемся с вами.");
@@ -1356,6 +1363,16 @@ const ConciergeSlideArt: React.FC = () => {
             placeholder="Комментарий к запросу: что ищете, цвет, бюджет, ссылки…"
             className="w-full rounded-xl border border-black/10 bg-black/5 px-3 py-2 text-sm"
             />
+
+              <PdConsentCheckbox
+                tone="dark"
+                checked={pdConsent}
+                error={pdError}
+                onChange={(v) => {
+                  setPdConsent(v);
+                  if (v) setPdError(false);
+                }}
+              />
 
               {done && <div className="text-green-400 text-sm">{done}</div>}
               {error && <div className="text-red-400 text-sm">{error}</div>}

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import PdConsentCheckbox from "@/components/legal/PdConsentCheckbox";
 
 const LABELS: Record<string, string> = {
   footwear: 'Обувь',
@@ -18,6 +19,8 @@ export const PremiumConcierge: React.FC<ConciergeProps> = ({ open, setOpen }) =>
   const [loading, setLoading] = useState(false);
   const [ok, setOk] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [pdConsent, setPdConsent] = useState(false);
+  const [pdError, setPdError] = useState(false);
 
   // Лочим скролл страницы, пока открыт модал
   useEffect(() => {
@@ -50,6 +53,10 @@ export const PremiumConcierge: React.FC<ConciergeProps> = ({ open, setOpen }) =>
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!pdConsent) {
+      setPdError(true);
+      return;
+    }
     setLoading(true);
     setOk(null);
     setErr(null);
@@ -72,6 +79,7 @@ export const PremiumConcierge: React.FC<ConciergeProps> = ({ open, setOpen }) =>
       size: String(raw.size || "").trim(),
       notes: String(raw.notes || "").trim(),
       source: "premium-modal",
+      pdConsent: true,
     };
 
     // Файлы -> base64
@@ -260,9 +268,15 @@ export const PremiumConcierge: React.FC<ConciergeProps> = ({ open, setOpen }) =>
               )}
 
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pt-1">
-                <p className="text-[10px] md:text-[11px] text-white/40 leading-snug">
-                  Отправляя заявку, вы соглашаетесь с обработкой персональных данных.
-                </p>
+                <PdConsentCheckbox
+                  tone="dark"
+                  checked={pdConsent}
+                  error={pdError}
+                  onChange={(v) => {
+                    setPdConsent(v);
+                    if (v) setPdError(false);
+                  }}
+                />
                 <button
                   type="submit"
                   disabled={loading}

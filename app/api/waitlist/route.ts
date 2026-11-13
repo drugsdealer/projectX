@@ -46,6 +46,9 @@ export async function POST(req: NextRequest) {
     if (!Number.isFinite(productId) || productId <= 0 || !productName || !size || contact.length < 5) {
       return NextResponse.json({ ok: false }, { status: 400 });
     }
+    if (body?.pdConsent !== true) {
+      return NextResponse.json({ ok: false, message: "Нужно согласие на обработку персональных данных" }, { status: 400 });
+    }
 
     const lines: string[] = [];
     lines.push("📌 <b>Лист ожидания размера</b>");
@@ -55,6 +58,7 @@ export async function POST(req: NextRequest) {
     if (brand) lines.push(`<b>Бренд:</b> ${escapeTelegramHtml(brand)}`);
     lines.push(`<b>Размер:</b> ${escapeTelegramHtml(size)}`);
     lines.push(`<b>Контакт:</b> ${escapeTelegramHtml(contact)}`);
+    lines.push(`<b>Согласие на обработку ПДн:</b> дано ${new Date().toLocaleString("ru-RU", { timeZone: "Europe/Moscow" })} МСК`);
     if (pageUrl) lines.push(`<b>Страница:</b> ${escapeTelegramHtml(pageUrl)}`);
 
     await sendConciergeRequestToTelegram({ text: lines.join("\n") });

@@ -61,6 +61,17 @@ export function hasClientAccountSession() {
   );
 }
 
+// Необязательная обработка (Метрика, история действий, рекомендации) — только после явного
+// «Согласен» в баннере. Вход в аккаунт согласием на аналитику не считается.
 export function canUseOptionalClientData() {
-  return hasClientAccountSession() || getStoredPrivacyConsent() === "accepted";
+  return getStoredPrivacyConsent() === "accepted";
+}
+
+// Отзыв выбора: баннер появится снова, необязательная обработка выключится.
+export function resetStoredPrivacyConsent() {
+  safeLocalStorage()?.removeItem(PRIVACY_CONSENT_KEY);
+  writeCookie(PRIVACY_CONSENT_KEY, "", 0);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(PRIVACY_CONSENT_EVENT, { detail: null }));
+  }
 }

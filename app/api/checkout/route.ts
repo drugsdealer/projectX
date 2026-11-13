@@ -551,6 +551,7 @@ export async function POST(req: Request) {
         address,
         comment,
         deliveryMethod,
+        ...(body?.pdConsent === true ? { pdConsentAt: new Date() } : {}),
         ...(promoMeta
           ? {
               promoCode: promoMeta.code,

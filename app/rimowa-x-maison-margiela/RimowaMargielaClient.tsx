@@ -6,6 +6,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { toProxiedImageUrl } from "@/lib/media";
 import { COMPANY } from "@/lib/company";
+import PdConsentCheckbox from "@/components/legal/PdConsentCheckbox";
 
 // Релиз: 19 ноября 2026, по Москве.
 const RELEASE_AT = new Date("2026-11-19T00:00:00+03:00").getTime();
@@ -321,7 +322,7 @@ export default function RimowaMargielaClient() {
                   alt={o.alt}
                   fill
                   sizes="(min-width: 1024px) 50vw, 100vw"
-                  className="object-cover grayscale-[35%] transition duration-[1.4s] ease-out group-hover:scale-[1.03] group-hover:grayscale-0"
+                  className="object-cover grayscale-[35%] transition duration-[1400ms] ease-out group-hover:scale-[1.03] group-hover:grayscale-0"
                   unoptimized
                 />
                 <Label className="absolute left-4 top-4">
@@ -358,11 +359,12 @@ function PreorderSection() {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [comment, setComment] = useState("");
+  const [pdConsent, setPdConsent] = useState(false);
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSend = contact.trim().length >= 5 && !sending;
+  const canSend = contact.trim().length >= 5 && pdConsent && !sending;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -379,6 +381,7 @@ function PreorderSection() {
           category: `RIMOWA × Maison Margiela · ${choice}`,
           notes: comment.trim() ? `Комментарий: ${comment.trim()}` : "Предзаказ к выходу 19.11.2026",
           source: "Страница RIMOWA × Maison Margiela",
+          pdConsent: true,
         }),
       });
       if (!res.ok) throw new Error();
@@ -461,6 +464,8 @@ function PreorderSection() {
                 <input className={input} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Необязательно" maxLength={600} />
               </label>
 
+              <PdConsentCheckbox tone="dark" checked={pdConsent} onChange={setPdConsent} />
+
               {error && <p className="text-sm text-red-300">{error}</p>}
 
               <button
@@ -471,13 +476,6 @@ function PreorderSection() {
                 {sending ? "Отправляем…" : "Записаться на предзаказ"}
                 {!sending && <span className="ml-3 transition-transform group-hover:translate-x-1">→</span>}
               </button>
-              <p className="text-xs leading-5 text-white/35">
-                Нажимая кнопку, вы соглашаетесь на{" "}
-                <Link href="/personal-data" className="underline underline-offset-2 hover:text-white/60">
-                  обработку персональных данных
-                </Link>
-                .
-              </p>
             </form>
           )}
         </motion.div>

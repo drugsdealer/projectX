@@ -29,6 +29,14 @@ export async function POST(req: Request) {
     const email = rawEmail.trim().toLowerCase();
     const fullName = (nameInput || '').toString().trim() || 'Не указано';
 
+    // Согласие на обработку ПДн — отдельная галочка на форме (152-ФЗ, ст. 9). Без него аккаунт не создаём.
+    if (body?.pdConsent !== true) {
+      return NextResponse.json(
+        { success: false, message: 'Нужно согласие на обработку персональных данных' },
+        { status: 400 }
+      );
+    }
+
     const ip = getClientIp(req);
     const ipLimit = await rateLimit(`register:ip:${ip}`, 8, 60_000);
     if (!ipLimit.ok) {
@@ -68,6 +76,7 @@ export async function POST(req: Request) {
       const isVerified = existing.verified && existing.verified.getTime() > 0;
       // Если аккаунт уже есть, но не подтверждён — разрешаем продолжить, чтобы отправить код
       if (!isVerified) {
+        await prisma.user.update({ where: { id: existing.id }, data: { pdConsentAt: new Date() } });
         return NextResponse.json(
           { success: true, user: existing, existed: true, needsVerification: true },
           { status: 200 }
@@ -88,6 +97,7 @@ export async function POST(req: Request) {
         fullName,
         password: hash,
         verified: new Date(0), // требуем подтверждения
+        pdConsentAt: new Date(),
         updatedAt: new Date(),
         role: undefined,
       },

@@ -1,6 +1,7 @@
 'use client';
 
 import { COMPANY } from "@/lib/company";
+import PdConsentCheckbox from "@/components/legal/PdConsentCheckbox";
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 // Fisher-Yates shuffle utility
@@ -911,6 +912,7 @@ useTrackProduct({ product: trackInput });
   const [restockContact, setRestockContact] = useState("");
   const [restockSizeInput, setRestockSizeInput] = useState("");
   const [restockSubmitting, setRestockSubmitting] = useState(false);
+  const [restockPdConsent, setRestockPdConsent] = useState(false);
   const [restockTouched, setRestockTouched] = useState(false);
   const [restockSizeTouched, setRestockSizeTouched] = useState(false);
   const contactValid = React.useMemo(() => {
@@ -1394,7 +1396,7 @@ const handleCancel = () => {
   const handleRestockSubmit = async () => {
     setRestockTouched(true);
     setRestockSizeTouched(true);
-    if (!contactValid || !restockSizeValid || !product || restockSubmitting) return;
+    if (!contactValid || !restockSizeValid || !restockPdConsent || !product || restockSubmitting) return;
     setRestockSubmitting(true);
     try {
       const contact = restockContact.trim();
@@ -1409,6 +1411,7 @@ const handleCancel = () => {
           size: requestedSize,
           contact,
           pageUrl: window.location.href,
+          pdConsent: true,
         }),
       });
       if (!res.ok) throw new Error("waitlist_failed");
@@ -3107,13 +3110,14 @@ const handleCancel = () => {
                       className="flex-1 rounded-lg border border-gray-300 px-3 py-2 outline-none focus:ring-2 focus:ring-black/60"
                     />
                     <button
-                      disabled={!contactValid || !restockSizeValid || restockSubmitting}
+                      disabled={!contactValid || !restockSizeValid || !restockPdConsent || restockSubmitting}
                       onClick={handleRestockSubmit}
-                      className={`px-4 py-2 rounded-lg text-white transition ${contactValid && restockSizeValid && !restockSubmitting ? 'bg-black hover:bg-gray-800' : 'bg-gray-400 cursor-not-allowed'}`}
+                      className={`px-4 py-2 rounded-lg text-white transition ${contactValid && restockSizeValid && restockPdConsent && !restockSubmitting ? 'bg-black hover:bg-gray-800' : 'bg-gray-400 cursor-not-allowed'}`}
                     >
                       {restockSubmitting ? '...' : 'Отправить'}
                     </button>
                   </div>
+                  <PdConsentCheckbox checked={restockPdConsent} onChange={setRestockPdConsent} />
                 </div>
                 {restockTouched && !contactValid && (
                   <p className="mt-2 text-xs text-red-600">Укажите контакт для связи.</p>

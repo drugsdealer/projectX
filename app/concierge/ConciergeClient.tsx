@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
+import PdConsentCheckbox from "@/components/legal/PdConsentCheckbox";
 import { AnimatePresence, motion } from "framer-motion";
 import { COMPANY } from "@/lib/company";
 
@@ -30,6 +31,7 @@ export default function ConciergeClient() {
   const [timing, setTiming] = useState("");
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
+  const [pdConsent, setPdConsent] = useState(false);
 
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
@@ -38,8 +40,8 @@ export default function ConciergeClient() {
   const canNext = useMemo(() => {
     if (step === 0) return Boolean(category || brand.trim() || item.trim());
     if (step === 1) return true;
-    return Boolean(name.trim() && contact.trim());
-  }, [step, category, brand, item, name, contact]);
+    return Boolean(name.trim() && contact.trim() && pdConsent);
+  }, [step, category, brand, item, name, contact, pdConsent]);
 
   const summary = useMemo(
     () =>
@@ -78,6 +80,7 @@ export default function ConciergeClient() {
           size: size.trim(),
           notes,
           source: "Страница консьержа",
+          pdConsent: true,
         }),
       });
       if (!res.ok) throw new Error();
@@ -194,6 +197,7 @@ export default function ConciergeClient() {
                               placeholder="Телефон, @telegram или почта"
                             />
                           </Field>
+                          <PdConsentCheckbox tone="dark" checked={pdConsent} onChange={setPdConsent} />
                           <p className="text-xs leading-relaxed text-white/40">
                             Отвечаем в течение рабочего дня. Данные используем только для
                             обработки вашего запроса.

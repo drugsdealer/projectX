@@ -3,7 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { NewsletterForm } from "./NewsletterForm";
-import { COMPANY } from "@/lib/company";
+import { COMPANY, PICKUP } from "@/lib/company";
+import { resetStoredPrivacyConsent } from "@/lib/privacy-consent";
 
 const SITE_LOGO_URL = "/ik/qowmy92ny/IMG_0363%20(1).PNG";
 
@@ -23,8 +24,8 @@ const FOOTER_LINKS = {
   ],
   legal: [
     { label: "Публичная оферта", href: "/offer" },
-    { label: "Политика конфиденциальности", href: "/privacy" },
-    { label: "Персональные данные", href: "/personal-data" },
+    { label: "Политика обработки ПДн", href: "/privacy" },
+    { label: "Согласие на обработку ПДн", href: "/personal-data" },
     { label: "Условия использования", href: "/terms" },
   ],
 };
@@ -138,7 +139,7 @@ export function SiteFooter() {
             <div>
               <div className="text-sm font-semibold">Контакты и право</div>
               <div className="mt-3 space-y-2 text-sm text-white/70">
-                <div>Москва, ул. Тверская, 12</div>
+                <div>{PICKUP.address}</div>
                 <a href="mailto:storestage@yandex.ru" className="hover:text-white transition">
                   storestage@yandex.ru
                 </a>
@@ -177,6 +178,20 @@ export function SiteFooter() {
                     </Link>
                   </li>
                 ))}
+                <li>
+                  {/* Отзыв согласия на cookies: сбрасываем выбор и перезагружаем,
+                      чтобы уже загруженная Метрика тоже выключилась. */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetStoredPrivacyConsent();
+                      window.location.reload();
+                    }}
+                    className="text-left hover:text-white transition"
+                  >
+                    Настройки cookies
+                  </button>
+                </li>
               </ul>
             </div>
           </div>

@@ -3,9 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { useUser } from "@/user/UserContext";
 import {
-  canUseOptionalClientData,
   getStoredPrivacyConsent,
   PRIVACY_CONSENT_EVENT,
   setStoredPrivacyConsent,
@@ -13,17 +11,10 @@ import {
 } from "@/lib/privacy-consent";
 
 export function PrivacyConsentBanner() {
-  const { user } = useUser();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const sync = () => {
-      if (user?.id) {
-        setVisible(false);
-        return;
-      }
-      setVisible(!getStoredPrivacyConsent() && !canUseOptionalClientData());
-    };
+    const sync = () => setVisible(!getStoredPrivacyConsent());
 
     sync();
     window.addEventListener(PRIVACY_CONSENT_EVENT, sync);
@@ -32,7 +23,7 @@ export function PrivacyConsentBanner() {
       window.removeEventListener(PRIVACY_CONSENT_EVENT, sync);
       window.removeEventListener("auth:changed", sync);
     };
-  }, [user?.id]);
+  }, []);
 
   const choose = (value: PrivacyConsentValue) => {
     setStoredPrivacyConsent(value);
@@ -70,11 +61,11 @@ export function PrivacyConsentBanner() {
               </p>
               <div className="mt-2 flex flex-wrap gap-2 text-xs text-black/50">
                 <Link href="/privacy" className="underline underline-offset-4 hover:text-black">
-                  Политика конфиденциальности
+                  Политика обработки ПДн
                 </Link>
                 <span>·</span>
                 <Link href="/personal-data" className="underline underline-offset-4 hover:text-black">
-                  Персональные данные
+                  Согласие на обработку ПДн
                 </Link>
               </div>
             </div>
