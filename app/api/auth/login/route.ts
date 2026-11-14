@@ -8,7 +8,7 @@ import { attachUiCookies, setSessionOnResponse, setSessionTokenOnResponse, setSe
 import { cookies as nextCookies } from "next/headers";
 import { handleApiError } from "@/lib/errors";
 import { logAction } from "@/lib/logAction";
-import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { getClientIp, isViaDdosGuard, rateLimit } from "@/lib/rate-limit";
 import { randomBytes } from "crypto";
 import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
 import { withDbRetry } from "@/lib/db-retry";
@@ -53,19 +53,15 @@ const parseUserAgentInfo = (
 };
 
 const pickClientIp = (req: Request, fallback?: string) => {
-  const h = req.headers;
-  // cf-connecting-ip первым — его нельзя подделать
-  const cf = h.get("cf-connecting-ip");
-  if (cf) return cf.trim() || undefined;
-  const real = h.get("x-real-ip");
-  if (real) return real.trim() || undefined;
-  const xf = h.get("x-forwarded-for") || h.get("x-vercel-forwarded-for");
-  const raw = (xf || fallback || "").split(",")[0].trim();
-  return raw || undefined;
+  const ip = getClientIp(req);
+  if (ip && ip !== "unknown") return ip;
+  return (fallback || "").split(",")[0].trim() || undefined;
 };
 
 const pickGeo = (req: Request) => {
   const h = req.headers;
+  // За DDoS-Guard гео-заголовки Vercel описывают узел защиты — пусть город найдётся по IP
+  if (isViaDdosGuard(req)) return { city: undefined, country: undefined };
   const city =
     h.get("x-vercel-ip-city") ||
     h.get("x-ip-city") ||

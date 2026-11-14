@@ -41,9 +41,25 @@ async function getUpstash() {
   }
 }
 
+// Сеть DDoS-Guard (AS57724 и латиноамериканская AS262254). Номер сети Vercel вычисляет сам
+// по адресу подключения и перезаписывает заголовок — подделать его нельзя.
+const DDOS_GUARD_ASNS = new Set(["57724", "262254"]);
+
+// Запрос пришёл через DDoS-Guard: тогда Vercel видит адрес узла защиты, а не покупателя.
+export function isViaDdosGuard(req: Request): boolean {
+  return DDOS_GUARD_ASNS.has((req.headers.get("x-vercel-ip-as-number") || "").trim());
+}
+
 export function getClientIp(req: Request): string {
   const h = req.headers;
-  // Порядок доверия для деплоя на Vercel (без Cloudflare перед сайтом):
+  // 0) Сайт стоит за DDoS-Guard: настоящий адрес покупателя он передаёт в ddg-connecting-ip.
+  //    Доверяем ему только если запрос действительно пришёл из сети DDoS-Guard — в обход
+  //    защиты (напрямую на Vercel) этот заголовок может прислать кто угодно.
+  if (isViaDdosGuard(req)) {
+    const ddg = h.get("ddg-connecting-ip")?.trim();
+    if (ddg) return ddg;
+  }
+  // Дальше — порядок доверия для запросов напрямую на Vercel:
   // 1) x-vercel-forwarded-for — ставит инфраструктура Vercel, клиент подделать не может.
   const vercel = h.get("x-vercel-forwarded-for");
   if (vercel) return vercel.split(",")[0].trim();
