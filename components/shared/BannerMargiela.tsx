@@ -277,10 +277,10 @@ export default function BannerMargiela() {
               {slide.eyebrow}
             </p>
 
-            <h1 className="max-w-5xl text-[clamp(2.4rem,7vw,6.5rem)] font-bold uppercase leading-[0.88] tracking-[-0.06em]">
+            <h2 className="max-w-5xl text-[clamp(2.4rem,7vw,6.5rem)] font-bold uppercase leading-[0.88] tracking-[-0.06em]">
               {slide.title}
               <span className="block text-white/42">{slide.mutedTitle}</span>
-            </h1>
+            </h2>
 
             <div
               className="mt-7 flex max-w-2xl flex-col gap-5 sm:flex-row sm:items-center"

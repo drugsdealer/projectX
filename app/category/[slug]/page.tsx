@@ -83,7 +83,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     `${name} — купить в Stage Store. Оригинальная брендовая одежда, обувь и аксессуары с доставкой по России.`;
 
   return {
-    title: `${name} — оригинальные бренды`,
+    title: `${name} — купить оригинал в Москве`,
     description,
     openGraph: {
       title: `${name} — Stage Store`,

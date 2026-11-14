@@ -14,6 +14,7 @@ import MotionBudgetProvider from "@/components/MotionBudgetProvider";
 import SupportWidget from "@/components/shared/SupportWidget";
 import type { Metadata } from "next";
 import { safeJsonLd } from "@/lib/json-ld";
+import { COMPANY } from "@/lib/company";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
 const SITE_LOGO_URL = `${SITE_URL}/ik/qowmy92ny/IMG_0363%20(1).PNG`;
@@ -37,6 +38,11 @@ export const metadata: Metadata = {
     "доставка по Москве",
   ],
   authors: [{ name: "Stage Store" }],
+  // Коды подтверждения прав из Google Search Console и Яндекс Вебмастера — задаются в Vercel
+  verification: {
+    ...(process.env.GOOGLE_SITE_VERIFICATION ? { google: process.env.GOOGLE_SITE_VERIFICATION } : {}),
+    ...(process.env.YANDEX_VERIFICATION ? { yandex: process.env.YANDEX_VERIFICATION } : {}),
+  },
   creator: "Stage Store",
   icons: {
     icon: SITE_LOGO_URL,
@@ -77,9 +83,8 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  alternates: {
-    canonical: SITE_URL,
-  },
+  // canonical здесь не задаём: его унаследовали бы все страницы без своего и стали бы
+  // «дублями главной». Каждая публичная страница указывает canonical сама.
 };
 
 const nunito = Nunito({ 
@@ -139,10 +144,22 @@ export default function RootLayout({
                   sameAs: [
                     "https://t.me/stagestore",
                   ],
+                  telephone: COMPANY.phone,
+                  email: COMPANY.email,
+                  // Пункт выдачи — для карточки организации в Яндексе и Google
+                  address: {
+                    "@type": "PostalAddress",
+                    streetAddress: "ул. Молодогвардейская, д. 15",
+                    addressLocality: "Москва",
+                    addressCountry: "RU",
+                  },
+                  openingHours: "Mo-Su 10:00-21:00",
                   contactPoint: {
                     "@type": "ContactPoint",
                     contactType: "customer support",
-                    url: `${SITE_URL}/footer`,
+                    telephone: COMPANY.phone,
+                    email: COMPANY.email,
+                    url: `${SITE_URL}/contacts`,
                     availableLanguage: [{ "@type": "Language", name: "Russian" }],
                   },
                   hasOfferCatalog: {
@@ -167,6 +184,12 @@ export default function RootLayout({
                   alternateName: "Stage Store — брендовая одежда, обувь, Premium и Sale",
                   publisher: { "@id": `${SITE_URL}/#organization` },
                   inLanguage: "ru-RU",
+                  // Строка поиска по сайту прямо в выдаче Google
+                  potentialAction: {
+                    "@type": "SearchAction",
+                    target: { "@type": "EntryPoint", urlTemplate: `${SITE_URL}/search?q={search_term_string}` },
+                    "query-input": "required name=search_term_string",
+                  },
                 },
                 {
                   "@type": "SiteNavigationElement",

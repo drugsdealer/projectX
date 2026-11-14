@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { pingProductIndexNow } from "@/lib/indexnow";
 export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
@@ -268,6 +269,12 @@ export async function POST(req: Request) {
         })),
       });
     }
+
+    // Новый товар — сразу сообщаем Яндексу, чтобы он появился в поиске без ожидания обхода
+    const brandName = brandId
+      ? (await prisma.brand.findUnique({ where: { id: brandId }, select: { name: true } }))?.name
+      : null;
+    await pingProductIndexNow({ id: product.id, name: product.name, brandName }).catch(() => {});
 
     return NextResponse.json({ success: true, product });
   } catch (err) {

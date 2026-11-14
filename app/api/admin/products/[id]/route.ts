@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { pingProductIndexNow } from "@/lib/indexnow";
 export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
@@ -361,6 +362,11 @@ export async function PATCH(
     revalidatePath(`/premium/product/${id}`, "page");
     revalidatePath(`/api/products/${id}`);
   } catch {}
+
+  // Сообщаем Яндексу об изменении (цена, наличие, фото), чтобы выдача обновилась быстрее
+  if (updated) {
+    await pingProductIndexNow({ id, name: updated.name, brandName: (updated as any).Brand?.name }).catch(() => {});
+  }
 
   return NextResponse.json({ success: true, product: updated });
 }

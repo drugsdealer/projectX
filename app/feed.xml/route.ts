@@ -25,6 +25,7 @@ export async function GET() {
       description: true,
       price: true,
       imageUrl: true,
+      available: true,
       Brand: { select: { name: true } },
       Category: { select: { name: true } },
     },
@@ -55,7 +56,7 @@ export async function GET() {
       <g:link>${link}</g:link>
       <g:image_link>${image}</g:image_link>
       <g:price>${price} RUB</g:price>
-      <g:availability>in_stock</g:availability>
+      <g:availability>${p.available === false ? "out_of_stock" : "in_stock"}</g:availability>
       <g:condition>new</g:condition>
       <g:brand>${brand}</g:brand>
       <g:google_product_category>Apparel &amp; Accessories</g:google_product_category>

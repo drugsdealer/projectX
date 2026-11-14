@@ -28,7 +28,7 @@ function brandSlugFrom(name: string): string {
 const RECENT_STORAGE_KEY = "recent_products_v1";
 import { useTrackProduct, useTrackBrandClick, useTrackCartFavorite } from "@/hooks/useTrackBehavior";
 import { PremiumConcierge } from "@/components/PremiumConcierge";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -605,15 +605,27 @@ const BrandSizeChartTable = ({
   );
 };
 
-export default function ProductPage() {
+// Ответ /api/products/[id] → нормализованный товар и сырой объект (с цветовыми вариантами).
+function unpackProductResponse(oneJson: any): { p: Product | null; raw: any | null } {
+  const p = oneJson?.product ? normalizeProduct(oneJson.product) : null;
+  const raw = oneJson?.product ?? null;
+  const serverColorVariants = Array.isArray(oneJson?.colorVariants) ? oneJson.colorVariants : [];
+  if (p && serverColorVariants.length) (p as any).colorVariants = serverColorVariants;
+  if (raw && serverColorVariants.length) (raw as any).colorVariants = serverColorVariants;
+  return { p, raw };
+}
+
+// initialData приходит с сервера (page.tsx) — карточка сразу отрисовывается в HTML,
+// и поисковики видят название, цену и описание без выполнения JS.
+export default function ProductPage({ initialData = null }: { initialData?: any | null }) {
   const { id } = useParams<{ id: string }>();
-  const searchParams = useSearchParams();
   const productId = parseProductPathId(id) ?? -1;
-  const [product, setProduct] = useState<Product | null>(null);
+  const initial = React.useMemo(() => unpackProductResponse(initialData), [initialData]);
+  const [product, setProduct] = useState<Product | null>(initial.p);
   // сырой объект из API, без normalizeProduct — нужен как безопасный источник размеров/объёма
-  const [rawProduct, setRawProduct] = useState<any | null>(null);
+  const [rawProduct, setRawProduct] = useState<any | null>(initial.raw);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initial.p);
 
   // Всегда начинаем просмотр товара с вершины страницы
   useEffect(() => {
@@ -624,8 +636,10 @@ export default function ProductPage() {
 
   useEffect(() => {
     let cancelled = false;
-    // Reset loading state each time productId changes so navigation never shows stale "not found"
-    setLoading(true);
+    // Reset loading state each time productId changes so navigation never shows stale "not found".
+    // Если сервер уже прислал этот товар — не мигаем скелетоном, просто обновляем данные в фоне.
+    const hasServerData = initial.p && Number((initial.p as any).id) === productId;
+    if (!hasServerData) setLoading(true);
 
     const fetchWithRetry = async (url: string, retries = 2, opts?: RequestInit): Promise<Response> => {
       for (let i = 0; i <= retries; i++) {
@@ -650,21 +664,8 @@ export default function ProductPage() {
         const oneJson = oneRes.ok ? await oneRes.json() : null;
         const listJson = listRes.ok ? await listRes.json() : null;
 
-        // Нормализованный товар с бэка
-        const p = oneJson?.product ? normalizeProduct(oneJson.product) : null;
-        const raw = oneJson?.product ?? null;
-
-        // Цветовые варианты приходят отдельным полем из API — аккуратно пробрасываем их в объект товара
-        const serverColorVariants = Array.isArray(oneJson?.colorVariants)
-          ? oneJson.colorVariants
-          : [];
-
-        if (p && serverColorVariants.length) {
-          (p as any).colorVariants = serverColorVariants;
-        }
-        if (raw && serverColorVariants.length) {
-          (raw as any).colorVariants = serverColorVariants;
-        }
+        // Нормализованный товар с бэка; цветовые варианты приходят отдельным полем
+        const { p, raw } = unpackProductResponse(oneJson);
 
         const list = Array.isArray(listJson?.products)
           ? listJson.products.map((item: any) => normalizeProduct(item))
@@ -686,6 +687,8 @@ export default function ProductPage() {
     })();
 
     return () => { cancelled = true; };
+    // initial — только стартовое значение, перезапускать загрузку из-за него не нужно
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId]);
   // Premium flag
   const isPremium = Boolean((product as any)?.premium);
@@ -720,7 +723,9 @@ const brandLogoSrc: string | undefined = (product as any)?.brandLogo;
 const { addToCart } = useCart();
 const [noBox, setNoBox] = useState(false);
 const [selectedVariant, setSelectedVariant] = useState<any | null>(null);
-const [displayedImages, setDisplayedImages] = useState<string[]>([]);
+const [displayedImages, setDisplayedImages] = useState<string[]>(
+  () => (initial.p?.images?.length ? initial.p.images : initial.p?.imageUrl ? [initial.p.imageUrl] : [])
+);
 const stickyImageSrc = React.useMemo(
   () => getOptimizedImageUrl(displayedImages[0], { width: 160, quality: 78 }) || "/img/placeholder.svg",
   [displayedImages]

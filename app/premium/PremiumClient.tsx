@@ -10,7 +10,7 @@ import { useMotionBudget } from "@/components/MotionBudgetProvider";
 import Link from "next/link";
 import { PremiumConcierge } from "@/components/PremiumConcierge";
 import { NewsletterForm } from "@/components/shared/NewsletterForm";
-import { usePathname, useSearchParams, useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ChevronDown, Search, Filter, X, Menu, Crown } from "lucide-react";
 import { safeJsonLd } from "@/lib/json-ld";
 import { premiumProductPath } from "@/lib/product-url";
@@ -2072,7 +2072,8 @@ export default function PremiumPage() {
   const { motionLevel, reduceMotion: adaptiveReduceMotion, isMotionPaused } = useMotionBudget();
   const { user } = useUser();
   const [whyOpen, setWhyOpen] = useState(false);
-  const searchParams = useSearchParams();
+  // Адрес читаем напрямую из window в эффектах: useSearchParams сделал бы всю страницу
+  // браузерной, и поисковики получали бы пустой HTML.
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -2420,7 +2421,7 @@ export default function PremiumPage() {
 
   // Инициализация пола из URL → sessionStorage → профиль пользователя
   useEffect(() => {
-    const fromUrl = searchParams.get('gender');
+    const fromUrl = new URLSearchParams(window.location.search).get('gender');
     const fromStorage = typeof window !== 'undefined' ? sessionStorage.getItem('premium_gender') : null;
     const fromProfile: Gender = profileGender;
     const initial = normalizePremiumGenderMode(fromUrl) ?? normalizePremiumGenderMode(fromStorage) ?? fromProfile ?? "all";
@@ -2940,10 +2941,10 @@ export default function PremiumPage() {
   const buildProductHref = useCallback((item: { id: string | number; name?: string | null; brand?: string | null; brandName?: string | null }) => {
     const params = new URLSearchParams();
     params.set('origin', 'premium');
-    const g = gender || searchParams.get('gender');
+    const g = gender || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('gender') : null);
     if (g === 'men' || g === 'women') params.set('gender', g);
     return `${premiumProductPath(item)}?${params.toString()}`;
-  }, [gender, searchParams]);
+  }, [gender]);
 
 
 

@@ -6,6 +6,7 @@ import ProductPageClient from "./ProductPageClient";
 import { safeJsonLd } from "@/lib/json-ld";
 import { withDbRetry } from "@/lib/db-retry";
 import { parseProductPathId, productPath } from "@/lib/product-url";
+import { GET as getProductApi } from "../../api/products/[id]/route";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
 
@@ -37,21 +38,23 @@ export async function generateMetadata({
   if (!product || product.deletedAt) return {};
 
   const brandName = product.Brand?.name;
+  const productName = product.name.replace(/\s+/g, " ").trim();
   // Не дублируем бренд, если он уже есть в названии («Louis Vuitton L'Immensité»).
   const nameHasBrand =
-    !!brandName && product.name.toLowerCase().includes(brandName.toLowerCase());
+    !!brandName && productName.toLowerCase().includes(brandName.toLowerCase());
   const core = nameHasBrand
-    ? product.name
+    ? productName
     : brandName
-      ? `${brandName} ${product.name}`
-      : product.name;
-  // Добавляем покупательский интент — «купить». Суффикс «| Stage Store» добавит шаблон в layout.
-  const title = `${core} — купить`;
+      ? `${brandName} ${productName}`
+      : productName;
+  // Покупательский интент — «купить оригинал». Суффикс «| Stage Store» добавит шаблон в layout.
+  const title = `${core} — купить оригинал`;
   const prettyPath = productPath({ id: productId, name: product.name, brandName });
   const price = product.price ? `${Number(product.price).toLocaleString("ru-RU")} ₽` : "";
-  const description = product.description
-    ? product.description.slice(0, 160)
-    : `${core} — купить оригинал${price ? ` за ${price}` : ""} в интернет-магазине Stage Store. Гарантия подлинности, доставка по России.`;
+  // Сниппет: цена и условия — то, на что кликают в выдаче; затем начало описания товара.
+  const lead = `${core}${price ? ` — ${price}` : ""}. Оригинал с проверкой подлинности, доставка по России, самовывоз в Москве.`;
+  const about = (product.description || "").replace(/\s+/g, " ").trim();
+  const description = about ? `${lead} ${about}`.slice(0, 200) : lead;
 
   const images = product.imageUrl ? [{ url: product.imageUrl, width: 800, height: 800, alt: title }] : [];
 
@@ -216,6 +219,18 @@ export default async function ProductPage({
     }
   }
 
+  // Тот же ответ, что карточка запрашивает у /api/products/[id] — отдаём его сразу,
+  // чтобы товар был в HTML для Google и Яндекса.
+  let initialData: any = null;
+  if (productId) {
+    try {
+      const res = await getProductApi(new Request(`${SITE_URL}/api/products/${productId}`), {
+        params: Promise.resolve({ id: String(productId) }),
+      });
+      if (res.ok) initialData = await res.json();
+    } catch {}
+  }
+
   return (
     <>
       {jsonLd && (
@@ -229,7 +244,7 @@ export default async function ProductPage({
           <p className="text-xl text-gray-400">Загрузка товара...</p>
         </div>
       }>
-        <ProductPageClient />
+        <ProductPageClient initialData={initialData} />
       </Suspense>
     </>
   );

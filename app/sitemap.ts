@@ -21,7 +21,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   const staticPages: MetadataRoute.Sitemap = [
+    { url: `${siteUrl}/brands`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
+    { url: `${siteUrl}/concierge`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
     { url: `${siteUrl}/premium/why`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
+    { url: `${siteUrl}/shipping`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.4 },
+    { url: `${siteUrl}/returns`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.4 },
+    { url: `${siteUrl}/contacts`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.4 },
+    { url: `${siteUrl}/about`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.4 },
+    { url: `${siteUrl}/size-guide`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.3 },
     { url: `${siteUrl}/rimowa-x-maison-margiela`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.6 },
   ];
 
@@ -30,7 +37,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const products = await prisma.product.findMany({
       where: { deletedAt: null },
-      select: { id: true, name: true, updatedAt: true, premium: true, Brand: { select: { name: true } } },
+      select: { id: true, name: true, updatedAt: true, premium: true, imageUrl: true, Brand: { select: { name: true } } },
       orderBy: { updatedAt: "desc" },
       take: 5000,
     });
@@ -40,6 +47,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: p.updatedAt,
         changeFrequency: "weekly" as const,
         priority: 0.55,
+        // Фото товара — для поиска по картинкам Google и Яндекса
+        ...(p.imageUrl && /^https?:\/\//.test(p.imageUrl) ? { images: [p.imageUrl] } : {}),
       }];
     });
   } catch {}

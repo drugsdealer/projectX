@@ -4,7 +4,7 @@ import { Title } from "@/components/shared/title";
 import { TopBar } from "@/components/shared/top-bar";
 import { ProductsGroupList } from "@/components/shared/products-group-list";
 import { useState, useEffect, useRef, useMemo, useCallback, memo, Fragment, type MutableRefObject } from "react";
-import { useSearchParams } from "next/navigation";
+import SearchParamsWatcher from "@/components/shared/SearchParamsWatcher";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -1083,8 +1083,9 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
     }
     return grouped;
   }, [cmsPromos]);
-  // URL search params (must be hoisted for sortKey)
-  const searchParams = useSearchParams();
+  // URL search params (must be hoisted for sortKey). Читаются через SearchParamsWatcher,
+  // чтобы главная рендерилась на сервере.
+  const [searchParams, setSearchParams] = useState<URLSearchParams>(() => new URLSearchParams());
   // --- НОРМАЛИЗАЦИЯ КАТЕГОРИЙ / ПОРЯДОК (hoisted, used below) ---
   const ORDER = ["footwear", "clothes", "bags", "accessories", "fragrance", "headwear"] as const;
 
@@ -1686,6 +1687,9 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
 
   return (
     <>
+      <SearchParamsWatcher onChange={setSearchParams} />
+      {/* Главный заголовок страницы для поисковиков и экранных читалок; визуально его роль играет баннер */}
+      <h1 className="sr-only">Stage Store — интернет-магазин оригинальной брендовой одежды, обуви, сумок и аксессуаров в Москве</h1>
       {/* Анимация Premium */}
       <AnimatePresence>
         {showAnimation && (

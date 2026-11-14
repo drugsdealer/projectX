@@ -683,11 +683,14 @@ export default function BrandClient({
 
           <div className="flex flex-1 flex-col items-center justify-center pb-16 pt-24 text-center sm:pb-20 sm:pt-28">
             {brandLogo ? (
-              <img
-                src={brandLogo}
-                alt={`${brandName} logo`}
-                className="max-h-28 w-[min(74vw,460px)] max-w-full object-contain sm:max-h-36"
-              />
+              // Логотип внутри h1: у страницы бренда всегда есть заголовок с названием для поисковиков.
+              <h1 className="flex justify-center">
+                <img
+                  src={brandLogo}
+                  alt={brandName}
+                  className="max-h-28 w-[min(74vw,460px)] max-w-full object-contain sm:max-h-36"
+                />
+              </h1>
             ) : (
               <h1 className="max-w-4xl text-[clamp(2.8rem,12vw,7.2rem)] font-black uppercase leading-[0.86] tracking-[-0.07em]">
                 {brandName}

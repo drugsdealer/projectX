@@ -37,10 +37,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     { retries: 2, timeoutMs: 8000, label: `brand metadata ${slug}` }
   ).catch(() => null);
   if (!brand) return {};
-  const description = brand.description || `Коллекция бренда ${brand.name} в Stage Store. Оригинальная брендовая одежда и аксессуары с доставкой по России.`;
+  // Сниппет с покупательским интентом; описание бренда из админки — продолжением.
+  const lead = `Купить оригинальные вещи ${brand.name} в Stage Store: проверка подлинности, доставка по России, самовывоз в Москве.`;
+  const about = (brand.description || "").replace(/\s+/g, " ").trim();
+  const description = about ? `${lead} ${about}`.slice(0, 200) : lead;
   const images = brand.logoUrl ? [{ url: brand.logoUrl, width: 400, height: 400, alt: brand.name }] : [];
   return {
-    title: brand.name,
+    title: `${brand.name} — купить оригинал в Москве`,
     description,
     alternates: {
       canonical: `${SITE_URL}/brand/${slug}`,
