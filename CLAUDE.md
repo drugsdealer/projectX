@@ -190,6 +190,10 @@ const collabBrands = (rawProduct as any)?.collabBrands ?? [];
 
 ---
 
+## DDoS-Guard (доступ из России)
+- DNS у Vercel. A-запись `stagestore.app` → `185.178.208.148` (DDoS-Guard, тариф Basic), тот проксирует на Vercel `76.76.21.21`. `www`, `pay`, почтовые записи — без изменений. Откат: A-запись обратно на `76.76.21.21`.
+- IP покупателя брать только через `getClientIp()` из `lib/rate-limit.ts`: за DDoS-Guard Vercel видит адрес узла, настоящий — в `ddg-connecting-ip` (доверяем только при `x-vercel-ip-as-number` = 57724). Гео-заголовки `x-vercel-ip-*` за DDoS-Guard описывают узел, а не покупателя.
+
 ## SEO
 - Фиды: `/feed.xml` (Google, RSS g:), `/yml.xml` (Яндекс, YML). `robots.txt` — route в `app/robots.txt/route.ts` (Clean-param для Яндекса).
 - IndexNow: `lib/indexnow.ts`, ключ-файл в `public/`. Вызывается при создании/правке товара в админке.
