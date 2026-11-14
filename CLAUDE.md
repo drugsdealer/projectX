@@ -175,6 +175,7 @@ const collabBrands = (rawProduct as any)?.collabBrands ?? [];
 - `TBANK_PASSWORD_B64` — пароль терминала T-Bank в base64 (в пароле есть `#` и `&`, в обычной записи панель Vercel их теряет). Резервно читается `TBANK_PASSWORD`
 - `TBANK_API_BASE`, `TBANK_PROXY_SECRET` — запросы к банку идут через российский посредник `pay.stagestore.app` (банк не отвечает зарубежным IP)
 - `TBANK_RECEIPT=off` — временно отключить фискальный чек
+- `GOOGLE_SITE_VERIFICATION`, `YANDEX_VERIFICATION` — коды подтверждения Search Console / Яндекс Вебмастера (meta в layout)
 
 **Оплата T-Bank (non-PCI):** оформление → `/payment/pay?orderId=` создаёт платёж через `/api/tbank/init`
 (сумма из БД, гость — по куке `order_token`) → редирект на форму банка → `/api/tbank/notification`
@@ -186,3 +187,13 @@ const collabBrands = (rawProduct as any)?.collabBrands ?? [];
 ## Пользователь
 Владелец проекта, не технический специалист. Работает через Claude Code.  
 Предпочитает: коммитить и пушить после каждого набора изменений, видеть результат на живом сайте.
+
+---
+
+## SEO
+- Фиды: `/feed.xml` (Google, RSS g:), `/yml.xml` (Яндекс, YML). `robots.txt` — route в `app/robots.txt/route.ts` (Clean-param для Яндекса).
+- IndexNow: `lib/indexnow.ts`, ключ-файл в `public/`. Вызывается при создании/правке товара в админке.
+- canonical в корневом layout НЕ задаём — каждая публичная страница ставит свой (иначе все страницы становятся «дублями главной»).
+- `useSearchParams` на ISR-страницах не использовать напрямую — вся страница уходит в браузерный рендер и пропадает из HTML. Читать через `components/shared/SearchParamsWatcher.tsx` или `window.location` в эффекте.
+- Карточка товара получает данные с сервера (`initialData` из `app/product/[id]/page.tsx`).
+
