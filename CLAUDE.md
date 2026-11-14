@@ -192,6 +192,7 @@ const collabBrands = (rawProduct as any)?.collabBrands ?? [];
 
 ## DDoS-Guard (доступ из России)
 - DNS у Vercel. A-запись `stagestore.app` → `185.178.208.148` (DDoS-Guard, тариф Basic), тот проксирует на Vercel `76.76.21.21`. `www`, `pay`, почтовые записи — без изменений. Откат: A-запись обратно на `76.76.21.21`.
+- Браузер не должен ходить на `ik.imagekit.io` / `res.cloudinary.com` напрямую — из России они открываются не у всех. Любой `src`/`poster` с внешней картинкой — через `getOptimizedImageUrl()` или `toProxiedImageUrl()` (→ `/ik/…`, `/cl/…`), видео — `toProxiedVideoUrl()` (→ `/ikv/…`, с докачкой). Литералы в коде писать сразу как `/ik/qowmy92ny/…`.
 - IP покупателя брать только через `getClientIp()` из `lib/rate-limit.ts`: за DDoS-Guard Vercel видит адрес узла, настоящий — в `ddg-connecting-ip` (доверяем только при `x-vercel-ip-as-number` = 57724). Гео-заголовки `x-vercel-ip-*` за DDoS-Guard описывают узел, а не покупателя.
 
 ## SEO
