@@ -130,6 +130,9 @@ export const Header: React.FC<Props> = ({ className }) => {
 
   const isHome = pathname === "/";
   const isBrandPage = pathname?.startsWith("/brand/");
+  // Промо-страницы бренда с тёмным первым экраном (id="brand-hero"): хедер поверх него прозрачный
+  const isBrandLanding = pathname === "/stone-island";
+  const overHero = isHome || isBrandPage || isBrandLanding;
   const { user } = useUser();
   // Всегда true на первом рендере — совпадает с SSR. useLayoutEffect ниже синхронно
   // поправляет значение на isHome/isBrandPage до отрисовки, так что мигания не будет.
@@ -170,10 +173,10 @@ export const Header: React.FC<Props> = ({ className }) => {
   }, []);
 
 useLayoutEffect(() => {
-  if (!isHome && !isBrandPage) return;
+  if (!overHero) return;
 
   const handleScroll = () => {
-    const hero = document.getElementById(isBrandPage ? "brand-hero" : "home-hero");
+    const hero = document.getElementById(isHome ? "home-hero" : "brand-hero");
     if (hero) {
       const rect = hero.getBoundingClientRect();
       const h = headerRef.current?.offsetHeight ?? 80;
@@ -203,7 +206,7 @@ useLayoutEffect(() => {
     window.removeEventListener("scroll", handleScroll);
     window.removeEventListener("resize", handleScroll);
   };
-}, [isHome, isBrandPage]);
+}, [isHome, overHero]);
 
   // Discount state is restored in DiscountProvider; avoid overriding here.
 
@@ -331,7 +334,7 @@ useLayoutEffect(() => {
   }, []);
 
   // Прозрачность снимается при наведении мышью — тогда хедер обретает белый фон.
-  const transparentHeader = (isHome || isBrandPage) && isAtTop && !isHeaderHovered;
+  const transparentHeader = overHero && isAtTop && !isHeaderHovered;
   // Оставляем исходную логику: на странице бренда хедер наверху пропускает клики сквозь себя
   // (pointer-events-none), поэтому hover тут не участвует — иначе события мыши не дошли бы.
   const brandTransparentHeader = isBrandPage && isAtTop;
@@ -342,7 +345,7 @@ useLayoutEffect(() => {
       onMouseEnter={() => setIsHeaderHovered(true)}
       onMouseLeave={() => setIsHeaderHovered(false)}
       className={cn(
-        (isHome || isBrandPage) ? 'fixed top-0 left-0' : 'relative',
+        overHero ? 'fixed top-0 left-0' : 'relative',
         'w-full z-40 transition-all duration-500',
         // when curator is open we visually push header to background
         curatorOpenRemote ? 'opacity-40 blur-sm' : '',

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { toProxiedImageUrl } from "@/lib/media";
 
 // Компас Stone Island
-function CompassBadge({ size = 48, color = "#fff", opacity = 1 }) {
+export function CompassBadge({ size = 48, color = "#fff", opacity = 1 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 80 80" fill="none" style={{ opacity }}>
       <circle cx="40" cy="40" r="37" stroke={color} strokeWidth="1.5" fill="none"/>
@@ -265,7 +265,7 @@ export default function StoneIslandBanner() {
             <div className="si-line">а также термочувствительные ткани.</div>
           </div>
           <a
-            href="https://stagestore.app/?search=stone%20island"
+            href="/stone-island"
             className="si-cta"
           >
             Смотреть коллекцию →

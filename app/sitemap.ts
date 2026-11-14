@@ -30,6 +30,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${siteUrl}/about`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.4 },
     { url: `${siteUrl}/size-guide`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.3 },
     { url: `${siteUrl}/rimowa-x-maison-margiela`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.6 },
+    { url: `${siteUrl}/stone-island`, lastModified: new Date(), changeFrequency: "daily", priority: 0.7 },
   ];
 
   // Products
