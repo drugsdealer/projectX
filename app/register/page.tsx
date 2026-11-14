@@ -3,7 +3,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { getOptimizedImageUrl } from "@/lib/media";
+import { getOptimizedImageUrl, toProxiedImageUrl } from "@/lib/media";
 import PdConsentCheckbox from "@/components/legal/PdConsentCheckbox";
 
 // Кадр для страницы регистрации. Нужен вертикальный, 4:5.
@@ -206,7 +206,7 @@ export default function RegisterPage() {
           {/* Логотип чёрно-красный, поэтому он вверху, на светлой части кадра —
               внизу, на затемнении, он бы просто пропал. */}
           <img
-            src={SITE_LOGO_URL}
+            src={toProxiedImageUrl(SITE_LOGO_URL)}
             alt="Stage Store"
             className="absolute left-10 top-10 h-14 w-auto drop-shadow-[0_2px_10px_rgba(0,0,0,0.35)]"
           />
@@ -232,7 +232,7 @@ export default function RegisterPage() {
             <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/20 to-black/70" />
             <div className="absolute inset-x-0 bottom-0 px-6 pb-9 text-white">
               <img
-                src={SITE_LOGO_URL}
+                src={toProxiedImageUrl(SITE_LOGO_URL)}
                 alt="Stage Store"
                 className="h-9 w-auto drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)]"
               />
@@ -254,7 +254,7 @@ export default function RegisterPage() {
               </div>
             )}
             <div className="flex items-center gap-3 pb-5 sm:pb-6">
-              <img src={SITE_LOGO_URL} alt="StageStore Logo" className="hidden h-10 w-auto lg:block" />
+              <img src={toProxiedImageUrl(SITE_LOGO_URL)} alt="StageStore Logo" className="hidden h-10 w-auto lg:block" />
               <div>
                 <h1 className="text-xl font-bold leading-tight sm:text-2xl lg:text-3xl">Регистрация в StageStore</h1>
                 <p className="text-xs text-slate-500 sm:text-sm lg:text-base">

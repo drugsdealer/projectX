@@ -22,7 +22,7 @@ import Image from "next/image";
 import { getTopBrands } from "@/lib/user-behavior";
 import { canUseOptionalClientData } from "@/lib/privacy-consent";
 import { productPath } from "@/lib/product-url";
-import { getOptimizedImageUrl, shouldBypassNextImageOptimization } from "@/lib/media";
+import { getOptimizedImageUrl, shouldBypassNextImageOptimization, toProxiedImageUrl } from "@/lib/media";
 
 interface SpotlightProduct {
   id: number;
@@ -118,7 +118,7 @@ export default function BrandSpotlightCard() {
               {logoOptimized ? (
                 <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-white/90 ring-1 ring-white/20">
                   <Image
-                    src={logoOptimized}
+                    src={toProxiedImageUrl(logoOptimized)}
                     alt={brand.name}
                     fill
                     sizes="48px"
@@ -185,7 +185,7 @@ export default function BrandSpotlightCard() {
                 <div className="relative aspect-[4/5] bg-white">
                   {optimized ? (
                     <Image
-                      src={optimized}
+                      src={toProxiedImageUrl(optimized)}
                       alt={p.name}
                       fill
                       sizes="(max-width: 640px) 50vw, 182px"

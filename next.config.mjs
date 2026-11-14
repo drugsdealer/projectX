@@ -29,6 +29,14 @@ const nextConfig = {
       hostname,
     })),
   },
+  // Cloudinary и видео ImageKit отдаём со своего домена (см. lib/media.ts): из России
+  // эти хосты открываются не у всех. Только свои аккаунты — не открытый прокси.
+  async rewrites() {
+    return [
+      { source: "/cl/:path*", destination: "https://res.cloudinary.com/dhufbfxcy/:path*" },
+      { source: "/ikv/qowmy92ny/:path*", destination: "https://ik.imagekit.io/qowmy92ny/:path*" },
+    ];
+  },
 };
 
 import { withSentryConfig } from "@sentry/nextjs";

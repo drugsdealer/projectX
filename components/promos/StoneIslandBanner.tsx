@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { toProxiedImageUrl } from "@/lib/media";
 
 // Компас Stone Island
 function CompassBadge({ size = 48, color = "#fff", opacity = 1 }) {
@@ -238,7 +239,7 @@ export default function StoneIslandBanner() {
         )}
         <img
           className="si-img"
-          src={BANNER}
+          src={toProxiedImageUrl(BANNER)}
           alt="Stone Island AW Collection"
           onLoad={() => setLoaded(true)}
         />
@@ -254,7 +255,7 @@ export default function StoneIslandBanner() {
         {/* низ */}
         <div className="si-bottom">
           {/* логотип над линией */}
-          <img className="si-logo" src={LOGO} alt="Stone Island" />
+          <img className="si-logo" src={toProxiedImageUrl(LOGO)} alt="Stone Island" />
 
           <div className="si-rule" />
 

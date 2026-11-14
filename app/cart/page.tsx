@@ -14,6 +14,7 @@ import { productPath } from "@/lib/product-url";
 
 const CheckoutModal = dynamic(() => import("@/components/CheckoutModal"), { ssr: false });
 import { useRouter } from "next/navigation";
+import { toProxiedImageUrl } from "@/lib/media";
 
 // --- Local Product shape (API-backed) ---
 type Product = {
@@ -739,7 +740,7 @@ useEffect(() => {
                       <div className="group border rounded-xl overflow-hidden shadow hover:shadow-lg transition-all bg-white hover:ring-2 hover:ring-gray-300">
                         <div className="relative w-full h-48 bg-gray-100">
                           <Image
-                            src={item.images?.[0] || item.imageUrl || "/img/placeholder.svg"}
+                            src={toProxiedImageUrl(item.images?.[0] || item.imageUrl || "/img/placeholder.svg")}
                             alt={item.name}
                             fill
                             className="object-cover object-center group-hover:scale-105 transition-transform duration-300"

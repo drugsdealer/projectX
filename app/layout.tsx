@@ -58,7 +58,7 @@ export const metadata: Metadata = {
       "Оригинальная брендовая одежда, обувь и аксессуары. Premium коллекция, Sale и доставка по России.",
     images: [
       {
-        url: "https://ik.imagekit.io/qowmy92ny/stage/products/gallery/Tabi_HeroBanner_16x9.jpg",
+        url: `${SITE_URL}/ik/qowmy92ny/stage/products/gallery/Tabi_HeroBanner_16x9.jpg`,
         width: 1200,
         height: 630,
         alt: "Stage Store — Брендовая одежда и аксессуары",
@@ -70,7 +70,7 @@ export const metadata: Metadata = {
     title: "Stage Store — брендовая одежда, обувь, Premium и Sale",
     description:
       "Оригинальная брендовая одежда, обувь, аксессуары, Premium коллекция и Sale.",
-    images: ["https://ik.imagekit.io/qowmy92ny/stage/products/gallery/Tabi_HeroBanner_16x9.jpg"],
+    images: [`${SITE_URL}/ik/qowmy92ny/stage/products/gallery/Tabi_HeroBanner_16x9.jpg`],
   },
   robots: {
     index: true,
@@ -101,8 +101,6 @@ export default function RootLayout({
   return (
     <html lang="ru" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://ik.imagekit.io" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://ik.imagekit.io" />
         <meta
           name="viewport"
           content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
@@ -128,7 +126,7 @@ export default function RootLayout({
                   },
                   image: {
                     "@type": "ImageObject",
-                    url: "https://ik.imagekit.io/qowmy92ny/stage/products/gallery/Tabi_HeroBanner_16x9.jpg",
+                    url: `${SITE_URL}/ik/qowmy92ny/stage/products/gallery/Tabi_HeroBanner_16x9.jpg`,
                     width: 1200,
                     height: 630,
                   },

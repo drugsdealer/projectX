@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { productPath } from "@/lib/product-url";
+import { toProxiedImageUrl } from "@/lib/media";
 
 type FavItem = {
   id: number | string;
@@ -472,7 +473,7 @@ export default function FavoritesPage() {
                           <div className="aspect-[4/3] w-full bg-white flex items-center justify-center overflow-hidden rounded-xl">
                             {item.imageUrl ? (
                               <Image
-                                src={item.imageUrl}
+                                src={toProxiedImageUrl(item.imageUrl)}
                                 alt={item.name}
                                 width={400}
                               height={300}

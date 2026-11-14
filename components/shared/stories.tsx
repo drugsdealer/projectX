@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Link from "next/link";
 import { ChevronUp, ChevronRight, X } from "lucide-react";
+import { toProxiedImageUrl } from "@/lib/media";
 
 type StoryProduct = {
   id: number;
@@ -60,7 +61,7 @@ function loadSeen(): number[] {
 function preload(src?: string | null) {
   if (!src || typeof window === "undefined") return;
   const img = new Image();
-  img.src = src;
+  img.src = toProxiedImageUrl(src);
 }
 
 function PeekCard({
@@ -83,11 +84,11 @@ function PeekCard({
         side === "left" ? "origin-right" : "origin-left"
       }`}
     >
-      <img src={cover.image} alt={story.title} className="w-full h-full object-cover" loading="lazy" />
+      <img src={toProxiedImageUrl(cover.image)} alt={story.title} className="w-full h-full object-cover" loading="lazy" />
       <div className="absolute inset-0 bg-black/35" />
       <div className="absolute top-3 left-3 right-3 flex items-center gap-2">
         <div className="w-7 h-7 rounded-full overflow-hidden ring-1 ring-white/70 shrink-0 bg-white/20">
-          <img src={cover.thumb} alt="" className="w-full h-full object-cover" />
+          <img src={toProxiedImageUrl(cover.thumb)} alt="" className="w-full h-full object-cover" />
         </div>
         <span className="text-[11px] font-semibold text-white/90 truncate">{story.title}</span>
       </div>
@@ -255,7 +256,7 @@ export function Stories({ initialStories }: { initialStories?: Story[] }) {
             }`}
           >
             <img
-              src={story.slides[0]?.thumb}
+              src={toProxiedImageUrl(story.slides[0]?.thumb)}
               alt={story.title}
               loading="lazy"
               className="w-full h-full object-cover"
@@ -291,7 +292,7 @@ export function Stories({ initialStories }: { initialStories?: Story[] }) {
                 className="w-full h-full transition-opacity duration-300 opacity-0 animate-[fadeSlide_0.3s_ease-out_forwards]"
               >
                 <img
-                  src={currentSlide.image}
+                  src={toProxiedImageUrl(currentSlide.image)}
                   alt={active.title}
                   className="w-full h-full object-cover"
                   fetchPriority="high"
@@ -379,7 +380,7 @@ export function Stories({ initialStories }: { initialStories?: Story[] }) {
 
               <div className="absolute top-6 left-3 right-3 flex items-center gap-2">
                 <div className="w-7 h-7 rounded-full overflow-hidden ring-1 ring-white/70 shrink-0 bg-white/20">
-                  <img src={active.slides[0]?.thumb} alt="" className="w-full h-full object-cover" />
+                  <img src={toProxiedImageUrl(active.slides[0]?.thumb)} alt="" className="w-full h-full object-cover" />
                 </div>
                 <span className="text-xs font-semibold text-white/95 truncate">{active.title}</span>
               </div>
@@ -460,7 +461,7 @@ export function Stories({ initialStories }: { initialStories?: Story[] }) {
                       className="flex items-center gap-3 rounded-xl border border-neutral-200 p-2.5 hover:border-black transition"
                     >
                       <div className="w-16 h-16 rounded-lg overflow-hidden bg-neutral-100 shrink-0">
-                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                        <img src={toProxiedImageUrl(product.image)} alt={product.name} className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-semibold text-black truncate">{product.name}</div>

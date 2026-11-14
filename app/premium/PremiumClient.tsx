@@ -14,7 +14,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ChevronDown, Search, Filter, X, Menu, Crown } from "lucide-react";
 import { safeJsonLd } from "@/lib/json-ld";
 import { premiumProductPath } from "@/lib/product-url";
-import { getOptimizedImageUrl } from "@/lib/media";
+import { getOptimizedImageUrl, toProxiedImageUrl } from "@/lib/media";
 
 const wrapIndex = (min: number, max: number, v: number) => {
   const range = max - min;
@@ -206,7 +206,7 @@ const SwipeablePreview = React.memo(function SwipeablePreviewComponent({
         pool.forEach((src) => {
           if (!src) return;
           const img = new window.Image();
-          img.src = src;
+          img.src = toProxiedImageUrl(src);
         });
       } catch {}
     },
@@ -375,7 +375,7 @@ const SwipeablePreview = React.memo(function SwipeablePreviewComponent({
           style={{ willChange: reduceMotion ? "opacity" : "transform, clip-path" }}
         >
           <img
-            src={optimizedDisplaySrc || "/img/placeholder.svg"}
+            src={toProxiedImageUrl(optimizedDisplaySrc || "/img/placeholder.svg")}
             alt={alt}
             className="absolute inset-0 w-full h-full object-contain"
             loading="lazy"
@@ -754,7 +754,7 @@ const PremiumAura: React.FC = () => {
               <span className="relative inline-block">
                 Premium
                 <img
-                  src="https://ik.imagekit.io/qowmy92ny/%D0%B7%D0%B2%D0%B5%D0%B7%D0%B4%D0%BE%D1%87%D0%BA%D0%B0.png"
+                  src="/ik/qowmy92ny/%D0%B7%D0%B2%D0%B5%D0%B7%D0%B4%D0%BE%D1%87%D0%BA%D0%B0.png"
                   alt="Premium"
                   className="absolute -top-1 right-[-6px] md:-top-2 md:-right-3 w-5 h-5 md:w-6 md:h-6 drop-shadow-[0_0_6px_rgba(0,0,0,0.15)]"
                 />
@@ -780,7 +780,7 @@ const DiagonalBelts: React.FC<{ images1: string[]; images2: string[] }> = ({ ima
       <div className="absolute left-[-20%] right-[-20%] top-[22%] -rotate-[14deg]">
         <div className="premium-belt-track premium-belt-track--ltr">
           {track1.map((src, i) => (
-            <img key={`b1-${i}`} src={src} alt="" className="premium-belt-img" />
+            <img key={`b1-${i}`} src={toProxiedImageUrl(src)} alt="" className="premium-belt-img" />
           ))}
         </div>
       </div>
@@ -789,7 +789,7 @@ const DiagonalBelts: React.FC<{ images1: string[]; images2: string[] }> = ({ ima
       <div className="absolute left-[-20%] right-[-20%] bottom-[18%] rotate-[14deg]">
         <div className="premium-belt-track premium-belt-track--rtl">
           {track2.map((src, i) => (
-            <img key={`b2-${i}`} src={src} alt="" className="premium-belt-img" />
+            <img key={`b2-${i}`} src={toProxiedImageUrl(src)} alt="" className="premium-belt-img" />
           ))}
         </div>
       </div>
@@ -1458,7 +1458,7 @@ const CollageMosaic: React.FC<{ images?: string[]; mode?: 'images' | 'brandTiles
             {/* image (optional) */}
             {c.images && c.images[0] && (
               <img
-                src={c.images[0]}
+                src={toProxiedImageUrl(c.images[0])}
                 alt={c.title}
                 className="absolute inset-0 w-full h-full object-contain pt-4 px-4 pb-16 opacity-95"
                 style={{ objectPosition: 'center 32%', transform: 'translateY(-6%)' }}
@@ -1495,7 +1495,7 @@ const CollageMosaic: React.FC<{ images?: string[]; mode?: 'images' | 'brandTiles
           animate={{ y: [0, -6, 0] }}
           transition={{ duration: 6 + idx * 0.35, repeat: Infinity, ease: "easeInOut" }}
         >
-          <img src={src} alt="" className="max-w-[90%] max-h-[90%] object-contain" />
+          <img src={toProxiedImageUrl(src)} alt="" className="max-w-[90%] max-h-[90%] object-contain" />
         </motion.div>
       ))}
     </div>
@@ -1926,7 +1926,7 @@ function IntroSlides({
                     if (imgs.length <= 1) {
                       return (
                         <img
-                          src={imgs[0] || ''}
+                          src={toProxiedImageUrl(imgs[0] || '')}
                           alt="premium slide"
                           className="max-w-[90%] max-h-[90%] object-contain"
                         />
@@ -1938,7 +1938,7 @@ function IntroSlides({
                         {imgs.slice(0, 3).map((src, idx) => (
                           <img
                             key={idx}
-                            src={src}
+                            src={toProxiedImageUrl(src)}
                             alt={`premium ${idx + 1}`}
                             className="max-w-full max-h-full object-contain"
                           />

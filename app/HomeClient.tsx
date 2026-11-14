@@ -26,7 +26,7 @@ import BrandSpotlightCard from "@/components/home/BrandSpotlightCard";
 import { Sparkles } from "lucide-react";
 import type { HomeCmsPromoConfig, HomePromoProduct } from "@/components/home/promos/types";
 import { useMotionBudget, type MotionLevel } from "@/components/MotionBudgetProvider";
-import { getOptimizedImageUrl, shouldBypassNextImageOptimization } from "@/lib/media";
+import { getOptimizedImageUrl, shouldBypassNextImageOptimization, toProxiedImageUrl } from "@/lib/media";
 import { productPath } from "@/lib/product-url";
 import { canUseOptionalClientData } from "@/lib/privacy-consent";
 import { getTopBrands, getTopCategories, getRepeatViewedProducts } from "@/lib/user-behavior";
@@ -257,7 +257,7 @@ const ProductCardImage = memo(function ProductCardImage({
         pool.forEach((src) => {
           if (!src) return;
           const img = new window.Image();
-          img.src = src;
+          img.src = toProxiedImageUrl(src);
         });
       } catch {}
     },
@@ -413,7 +413,7 @@ const ProductCardImage = memo(function ProductCardImage({
           style={{ willChange: reduceMotion ? "opacity" : isTouchDevice ? "transform, opacity" : "transform, clip-path" }}
         >
           <Image
-            src={optimizedDisplaySrc || "/img/placeholder.svg"}
+            src={toProxiedImageUrl(optimizedDisplaySrc || "/img/placeholder.svg")}
             alt={alt}
             fill
             unoptimized={shouldBypassNextImageOptimization(optimizedDisplaySrc)}
@@ -1859,7 +1859,7 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
             >
               {/* Background photo */}
               <Image
-                src="https://ik.imagekit.io/qowmy92ny/stage/products/gallery/2026-06-05%2017.18.55.jpg"
+                src="/ik/qowmy92ny/stage/products/gallery/2026-06-05%2017.18.55.jpg"
                 alt=""
                 fill
                 sizes="(max-width: 768px) 100vw, 50vw"
@@ -1924,7 +1924,7 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
               >
                 {item.image && (
                   <Image
-                    src={item.image}
+                    src={toProxiedImageUrl(item.image)}
                     alt=""
                     fill
                     sizes="(max-width: 768px) 50vw, 50vw"
@@ -1970,7 +1970,7 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
                 className="group relative min-h-[160px] overflow-hidden rounded-[26px] bg-black text-white shadow-md"
               >
                 <Image
-                  src={item.image}
+                  src={toProxiedImageUrl(item.image)}
                   alt=""
                   fill
                   sizes="(max-width: 1024px) 50vw, 20vw"

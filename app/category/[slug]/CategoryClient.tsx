@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { productPath } from '@/lib/product-url';
 import { useTrackCategoryVisit } from "@/hooks/useTrackBehavior";
+import { toProxiedImageUrl } from "@/lib/media";
 
 export type CategoryProduct = {
   id: string;
@@ -211,7 +212,7 @@ export default function CategoryClient({
 
                 {img ? (
                   <Image
-                    src={img}
+                    src={toProxiedImageUrl(img)}
                     alt={p.name}
                     fill
                     sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"

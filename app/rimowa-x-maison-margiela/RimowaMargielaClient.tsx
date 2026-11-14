@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { toProxiedImageUrl } from "@/lib/media";
+import { toProxiedImageUrl, toProxiedVideoUrl } from "@/lib/media";
 import { COMPANY } from "@/lib/company";
 import PdConsentCheckbox from "@/components/legal/PdConsentCheckbox";
 
@@ -182,8 +182,8 @@ export default function RimowaMargielaClient() {
         <video
           ref={videoRef}
           key={isMobile ? "m" : "d"}
-          src={isMobile ? FILM_MOBILE : FILM}
-          poster={STILL_ROOM}
+          src={toProxiedVideoUrl(isMobile ? FILM_MOBILE : FILM)}
+          poster={toProxiedImageUrl(STILL_ROOM)}
           autoPlay
           muted
           loop
@@ -287,7 +287,7 @@ export default function RimowaMargielaClient() {
       {/* ---------- Комплект ---------- */}
       <section className="relative">
         <div className="relative h-[70svh] min-h-[460px] w-full overflow-hidden">
-          <Image src={STILL_SET} alt="Сумка 5AC XL на ручке чемодана Classic Cabin в выбеленной парижской квартире" fill sizes="100vw" className="object-cover" unoptimized />
+          <Image src={toProxiedImageUrl(STILL_SET)} alt="Сумка 5AC XL на ручке чемодана Classic Cabin в выбеленной парижской квартире" fill sizes="100vw" className="object-cover" unoptimized />
           <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
           <div className="absolute inset-x-0 bottom-0 mx-auto flex max-w-7xl items-end justify-between gap-6 px-5 pb-8 text-white sm:px-8 lg:px-12">
             <p className="max-w-md font-mono text-[11px] uppercase leading-5 tracking-[0.22em] text-white/80">
@@ -318,7 +318,7 @@ export default function RimowaMargielaClient() {
             <motion.article key={o.n} {...reveal} transition={{ ...reveal.transition, delay: i * 0.12 }}>
               <div className="group relative aspect-[4/3] overflow-hidden bg-[#e7e3dc]">
                 <Image
-                  src={o.image}
+                  src={toProxiedImageUrl(o.image)}
                   alt={o.alt}
                   fill
                   sizes="(min-width: 1024px) 50vw, 100vw"

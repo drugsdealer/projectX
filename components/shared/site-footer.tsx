@@ -5,6 +5,7 @@ import Image from "next/image";
 import { NewsletterForm } from "./NewsletterForm";
 import { COMPANY, PICKUP } from "@/lib/company";
 import { resetStoredPrivacyConsent } from "@/lib/privacy-consent";
+import { toProxiedImageUrl } from "@/lib/media";
 
 const SITE_LOGO_URL = "/ik/qowmy92ny/IMG_0363%20(1).PNG";
 
@@ -82,7 +83,7 @@ export function SiteFooter() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr] gap-8">
             <div>
               <div className="flex items-center gap-3">
-                <Image unoptimized src={SITE_LOGO_URL} alt="Stage Store" width={64} height={56} className="object-contain" />
+                <Image unoptimized src={toProxiedImageUrl(SITE_LOGO_URL)} alt="Stage Store" width={64} height={56} className="object-contain" />
                 <div>
                   <div className="text-lg font-extrabold tracking-tight">STAGE STORE</div>
                   <div className="text-[11px] uppercase tracking-[0.2em] text-white/60">Concept Store</div>

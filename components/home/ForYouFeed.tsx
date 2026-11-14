@@ -10,7 +10,7 @@ import {
 } from "@/lib/user-behavior";
 import { canUseOptionalClientData } from "@/lib/privacy-consent";
 import { productPath } from "@/lib/product-url";
-import { getOptimizedImageUrl, shouldBypassNextImageOptimization } from "@/lib/media";
+import { getOptimizedImageUrl, shouldBypassNextImageOptimization, toProxiedImageUrl } from "@/lib/media";
 
 // ─── Repeat-viewed ("Снова смотришь") ─────────────────────────────────────────
 
@@ -65,7 +65,7 @@ export function RepeatViewedSection() {
               <div className="relative aspect-square bg-white overflow-hidden">
                 {optimized ? (
                   <Image
-                    src={optimized}
+                    src={toProxiedImageUrl(optimized)}
                     alt={p.name}
                     fill
                     sizes="(max-width: 640px) 50vw, 180px"
@@ -208,7 +208,7 @@ export function ForYouFeed({ limit = 12 }: ForYouFeedProps) {
               <div className="relative aspect-square bg-white overflow-hidden">
                 {optimized ? (
                   <Image
-                    src={optimized}
+                    src={toProxiedImageUrl(optimized)}
                     alt={item.name}
                     fill
                     sizes="(max-width: 640px) 50vw, 25vw"

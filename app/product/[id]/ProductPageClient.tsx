@@ -37,7 +37,7 @@ import { FreeMode, Mousewheel, Navigation, Pagination } from "swiper/modules";
 import SizeSelector from '@/components/shared/SizeSelector';
 import { useToast } from "@/context/ToastContext";
 import { useCart } from "@/context/CartContext";
-import { getOptimizedImageUrl, shouldBypassNextImageOptimization } from "@/lib/media";
+import { getOptimizedImageUrl, shouldBypassNextImageOptimization, toProxiedImageUrl } from "@/lib/media";
 import { parseProductPathId, productPath } from "@/lib/product-url";
 import { canUseOptionalClientData } from "@/lib/privacy-consent";
 import { useUser } from "@/user/UserContext";
@@ -262,7 +262,7 @@ const BagVisualization = ({
     <div className="relative w-full bg-white rounded-xl p-6 flex flex-col items-center gap-6">
       <div className="relative w-60 h-60 rounded-xl overflow-visible">
         <Image
-          src="https://ik.imagekit.io/qowmy92ny/%D1%81%D1%83%D0%BC%D0%BA%D0%B0%20(1).png"
+          src="/ik/qowmy92ny/%D1%81%D1%83%D0%BC%D0%BA%D0%B0%20(1).png"
           alt="Сумка"
           fill
           unoptimized
@@ -1732,7 +1732,7 @@ const handleCancel = () => {
                 <div className="flex items-center gap-3">
                   <div className="relative w-10 h-10 rounded overflow-hidden">
                     <Image
-                      src={stickyImageSrc}
+                      src={toProxiedImageUrl(stickyImageSrc)}
                       alt={product.name}
                       fill
                       unoptimized={shouldBypassNextImageOptimization(stickyImageSrc)}
@@ -1802,7 +1802,7 @@ const handleCancel = () => {
                 className="relative w-5 h-5 flex items-center justify-center flex-shrink-0"
               >
                 <Image
-                  src="https://ik.imagekit.io/qowmy92ny/%D0%B3%D0%B0%D0%BB%D0%BE%D1%87%D0%BA%D0%B0%202.png"
+                  src="/ik/qowmy92ny/%D0%B3%D0%B0%D0%BB%D0%BE%D1%87%D0%BA%D0%B0%202.png"
                   alt="Оригинальный товар"
                   unoptimized
                   width={18}
@@ -2128,7 +2128,7 @@ const handleCancel = () => {
             {product && (
               <div className="p-4 md:p-6 border rounded-xl bg-gray-50 mt-6 space-y-4">
                 <div className="flex items-center gap-3 mb-2">
-                  <Image src="https://ik.imagekit.io/qowmy92ny/%D0%B8%D0%BD%D1%84%D0%BE%D1%80%D0%BC%D0%B0%D1%86%D0%B8%D1%8F.png?updatedAt=1779373444537" alt="Информация" width={24} height={24} unoptimized />
+                  <Image src="/ik/qowmy92ny/%D0%B8%D0%BD%D1%84%D0%BE%D1%80%D0%BC%D0%B0%D1%86%D0%B8%D1%8F.png?updatedAt=1779373444537" alt="Информация" width={24} height={24} unoptimized />
                   <h3 className="text-lg lg:text-xl font-semibold">Описание товара</h3>
                 </div>
 
@@ -2468,7 +2468,7 @@ const handleCancel = () => {
                   onClick={() => setShowDeliveryModal(true)}
                   className="flex items-center gap-4 p-5 md:p-6 bg-white border border-black/10 rounded-lg w-full text-left hover:bg-black/[0.03] transition min-h-[88px]"
                 >
-                  <Image src="https://ik.imagekit.io/qowmy92ny/%D0%B3%D1%80%D1%83%D0%B7%D0%BE%D0%B2%D0%B8%D0%BA.png?updatedAt=1779373447087" alt="Иконка доставки" width={36} height={36} unoptimized />
+                  <Image src="/ik/qowmy92ny/%D0%B3%D1%80%D1%83%D0%B7%D0%BE%D0%B2%D0%B8%D0%BA.png?updatedAt=1779373447087" alt="Иконка доставки" width={36} height={36} unoptimized />
                   <p className="font-bold text-black text-sm sm:text-base">
                     Доставка до 14 рабочих дней
                   </p>
@@ -2511,7 +2511,7 @@ const handleCancel = () => {
                     >
                       {brandLogoSrc ? (
                         <div className="relative shrink-0 w-36 h-16">
-                          <Image src={optimizedBrandLogoSrc || brandLogoSrc} alt={primaryBrand!} fill className="object-contain" unoptimized={shouldBypassNextImageOptimization(optimizedBrandLogoSrc || brandLogoSrc)} />
+                          <Image src={toProxiedImageUrl(optimizedBrandLogoSrc || brandLogoSrc)} alt={primaryBrand!} fill className="object-contain" unoptimized={shouldBypassNextImageOptimization(optimizedBrandLogoSrc || brandLogoSrc)} />
                         </div>
                       ) : (
                         <span className="shrink-0 text-base font-bold uppercase tracking-wider text-black/60">{primaryBrand}</span>
@@ -2543,7 +2543,7 @@ const handleCancel = () => {
                           style={{ marginLeft: i === 0 ? 0 : -18, zIndex: 10 - i }}
                         >
                           {b.logoUrl ? (
-                            <Image src={b.logoUrl} alt={b.name} fill className="object-contain p-0.5" unoptimized={shouldBypassNextImageOptimization(b.logoUrl)} />
+                            <Image src={toProxiedImageUrl(b.logoUrl)} alt={b.name} fill className="object-contain p-0.5" unoptimized={shouldBypassNextImageOptimization(b.logoUrl)} />
                           ) : (
                             <span className="flex items-center justify-center w-full h-full text-[8px] font-black text-black/60">{b.name.charAt(0)}</span>
                           )}
@@ -2569,7 +2569,7 @@ const handleCancel = () => {
                         >
                           {b.logoUrl ? (
                             <div className="relative w-10 h-6 shrink-0">
-                              <Image src={b.logoUrl} alt={b.name} fill className="object-contain" unoptimized={shouldBypassNextImageOptimization(b.logoUrl)} />
+                              <Image src={toProxiedImageUrl(b.logoUrl)} alt={b.name} fill className="object-contain" unoptimized={shouldBypassNextImageOptimization(b.logoUrl)} />
                             </div>
                           ) : (
                             <span className="text-sm font-bold text-black/60">{b.name.charAt(0)}</span>
@@ -2598,7 +2598,7 @@ const handleCancel = () => {
                       >
                         <div className="relative w-16 h-16 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-50 shrink-0">
                           <Image
-                            src={colorProduct.images[0] || '/img/placeholder.svg'}
+                            src={toProxiedImageUrl(colorProduct.images[0] || '/img/placeholder.svg')}
                             alt={colorProduct.name}
                             fill
                             unoptimized={shouldBypassNextImageOptimization(colorProduct.images[0])}
@@ -2730,7 +2730,7 @@ const handleCancel = () => {
                               >
                                 <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-white">
                                   <Image
-                                    src={colorProduct.images[0] || '/img/placeholder.svg'}
+                                    src={toProxiedImageUrl(colorProduct.images[0] || '/img/placeholder.svg')}
                                     alt={colorProduct.name}
                                     fill
                                     unoptimized={shouldBypassNextImageOptimization(colorProduct.images[0])}
@@ -2867,7 +2867,7 @@ const handleCancel = () => {
                     <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
                       <div className="relative aspect-square w-full bg-white">
                         <Image
-                          src={similarProduct.images[0] || "/img/placeholder.svg"}
+                          src={toProxiedImageUrl(similarProduct.images[0] || "/img/placeholder.svg")}
                           alt={similarProduct.name}
                           fill
                           unoptimized={shouldBypassNextImageOptimization(similarProduct.images[0])}
@@ -2881,7 +2881,7 @@ const handleCancel = () => {
                           {(similarProduct as any)?.brandLogo && (
                             <div className="w-10 h-10 relative hidden sm:block">
                               <Image
-                                src={(similarProduct as any).brandLogo}
+                                src={toProxiedImageUrl((similarProduct as any).brandLogo)}
                                 alt="Логотип бренда"
                                 fill
                                 unoptimized={shouldBypassNextImageOptimization((similarProduct as any).brandLogo)}
@@ -2948,7 +2948,7 @@ const handleCancel = () => {
                     <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
                       <div className="relative aspect-square w-full bg-white">
                         <Image
-                          src={best.images[0] || "/img/placeholder.svg"}
+                          src={toProxiedImageUrl(best.images[0] || "/img/placeholder.svg")}
                           alt={best.name}
                           fill
                           unoptimized={shouldBypassNextImageOptimization(best.images[0])}
@@ -3002,7 +3002,7 @@ const handleCancel = () => {
                       <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
                         <div className="relative aspect-square w-full bg-gray-50 overflow-hidden">
                           <Image
-                            src={r.images[0] || "/img/placeholder.svg"}
+                            src={toProxiedImageUrl(r.images[0] || "/img/placeholder.svg")}
                             alt={r.name}
                             fill
                             unoptimized={shouldBypassNextImageOptimization(r.images[0])}
@@ -3155,7 +3155,7 @@ const handleCancel = () => {
               >
                 <div className="flex items-center justify-center gap-3 mb-4">
                   <Image
-                    src={SITE_LOGO_URL}
+                    src={toProxiedImageUrl(SITE_LOGO_URL)}
                     alt="StageStore Logo"
                     width={32}
                     height={32}

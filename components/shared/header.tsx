@@ -16,6 +16,7 @@ import { useUser } from "@/user/UserContext";
 import { useAutocomplete } from "@/hooks/useAutocomplete";
 import { SearchBar } from "./SearchBar";
 import { productPath } from "@/lib/product-url";
+import { toProxiedImageUrl } from "@/lib/media";
 
 type ProductLite = {
   id: number | string;
@@ -379,7 +380,7 @@ useLayoutEffect(() => {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Image unoptimized src={SITE_LOGO_URL} alt="Logo" width={54} height={50} />
+                    <Image unoptimized src={toProxiedImageUrl(SITE_LOGO_URL)} alt="Logo" width={54} height={50} />
                     <div className="text-sm font-semibold">Stage Store</div>
                   </div>
                   <button
@@ -509,7 +510,7 @@ useLayoutEffect(() => {
 
             {/* CENTER LOGO */}
             <Link href={logoTarget} onClick={handleLogoClick} className="flex items-center justify-center" aria-label="На главную">
-              <Image unoptimized src={SITE_LOGO_URL} alt="Logo" width={70} height={66} />
+              <Image unoptimized src={toProxiedImageUrl(SITE_LOGO_URL)} alt="Logo" width={70} height={66} />
             </Link>
 
             {/* RIGHT ICONS: profile/login, cart */}
@@ -653,7 +654,7 @@ useLayoutEffect(() => {
                         >
                           <div className="w-9 h-9 rounded-lg overflow-hidden bg-black/5 shrink-0">
                             {p.imageUrl
-                              ? <Image src={p.imageUrl} alt={p.name} width={36} height={36} className="w-full h-full object-cover" />
+                              ? <Image src={toProxiedImageUrl(p.imageUrl)} alt={p.name} width={36} height={36} className="w-full h-full object-cover" />
                               : <div className="w-full h-full" />
                             }
                           </div>
@@ -722,7 +723,7 @@ useLayoutEffect(() => {
                             <button key={String(p.id)} onClick={() => { router.push(productPath({ id: p.id, name: p.name, brandName: (p as any).brandName ?? (p as any).Brand?.name ?? (p as any).brand?.name })); closeMobileSearch(); }} className="text-left">
                               <div className="aspect-square w-full overflow-hidden rounded-md bg-black/5">
                                 {p.imageUrl
-                                  ? <Image src={p.imageUrl} alt={p.name} width={200} height={200} className="w-full h-full object-cover" />
+                                  ? <Image src={toProxiedImageUrl(p.imageUrl)} alt={p.name} width={200} height={200} className="w-full h-full object-cover" />
                                   : <div className="w-full h-full flex items-center justify-center text-xs opacity-60">no image</div>
                                 }
                               </div>
@@ -757,7 +758,7 @@ useLayoutEffect(() => {
           </div>
           <div className="absolute left-1/2 transform -translate-x-1/2 z-10">
             <Link href={logoTarget} onClick={handleLogoClick} className="flex items-center gap-4 hover:opacity-80 transition">
-              <Image unoptimized src={SITE_LOGO_URL} alt="Logo" width={85} height={80} />
+              <Image unoptimized src={toProxiedImageUrl(SITE_LOGO_URL)} alt="Logo" width={85} height={80} />
               <div className="sr-only">{title}</div>
             </Link>
           </div>

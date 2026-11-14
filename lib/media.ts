@@ -19,10 +19,19 @@ export function isImageKitUrl(url?: string | null) {
 // Прямой ik.imagekit.io не проходит у части российских операторов, а наш сервер
 // до него достучаться может — nginx проксирует и кэширует запросы.
 export const IMAGE_PROXY_PREFIX = "/ik";
+// Cloudinary (старые картинки Premium, логотипы брендов) и видео ImageKit — тоже через свой
+// домен: rewrites в next.config.mjs. Видео нельзя гнать через /ik — там нет докачки (Range).
+const CLOUDINARY_ORIGIN = "https://res.cloudinary.com/dhufbfxcy/";
+const CLOUDINARY_PROXY_PREFIX = "/cl";
+const VIDEO_PROXY_PREFIX = "/ikv";
 
+// Любую картинку ImageKit или Cloudinary переводит на свой домен; остальное — как есть.
+// Повторный вызов на уже проксированном адресе ничего не меняет.
 export function toProxiedImageUrl(url?: string | null) {
   const src = normalizeMediaUrl(url);
-  if (!src || !isImageKitUrl(src)) return src;
+  if (!src) return src;
+  if (src.startsWith(CLOUDINARY_ORIGIN)) return `${CLOUDINARY_PROXY_PREFIX}/${src.slice(CLOUDINARY_ORIGIN.length)}`;
+  if (!isImageKitUrl(src)) return src;
   try {
     const parsed = new URL(src);
     return `${IMAGE_PROXY_PREFIX}${parsed.pathname}${parsed.search}`;
@@ -31,10 +40,17 @@ export function toProxiedImageUrl(url?: string | null) {
   }
 }
 
+export function toProxiedVideoUrl(url?: string | null) {
+  const src = normalizeMediaUrl(url);
+  if (!src || !/^https:\/\/ik\.imagekit\.io\/qowmy92ny\//i.test(src)) return src;
+  const parsed = new URL(src);
+  return `${VIDEO_PROXY_PREFIX}${parsed.pathname}${parsed.search}`;
+}
+
 export function shouldBypassNextImageOptimization(url?: string | null) {
   const src = normalizeMediaUrl(url);
   // Проксированные картинки уже сжаты параметрами tr= — оптимизатор Next не нужен.
-  if (src.startsWith(`${IMAGE_PROXY_PREFIX}/`)) return true;
+  if (src.startsWith(`${IMAGE_PROXY_PREFIX}/`) || src.startsWith(`${CLOUDINARY_PROXY_PREFIX}/`)) return true;
   // Локальные файлы из /public отдаём через оптимизатор Next — он рядом, это дёшево.
   if (!/^https?:\/\//i.test(src)) return false;
   if (isSvgUrl(src)) return true;
@@ -77,7 +93,7 @@ export function imageKitTransform(options: ImageKitTransformOptions = {}) {
 
 export function getOptimizedImageUrl(url?: string | null, options: ImageKitTransformOptions = {}) {
   const src = normalizeMediaUrl(url);
-  if (!src || !isImageKitUrl(src) || isSvgUrl(src)) return src;
+  if (!src || !isImageKitUrl(src) || isSvgUrl(src)) return toProxiedImageUrl(src);
 
   try {
     const parsed = new URL(src);
@@ -103,7 +119,7 @@ export function getStoryImageUrl(url?: string | null, width = 480) {
   const src = normalizeMediaUrl(url);
   if (!src) return src;
   if (isImageKitUrl(src)) return getOptimizedImageUrl(src, { width, quality: "auto" });
-  if (isCloudinaryUrl(src)) return cloudinaryTransform(src, width);
+  if (isCloudinaryUrl(src)) return toProxiedImageUrl(cloudinaryTransform(src, width));
   return src;
 }
 

@@ -6,7 +6,7 @@ import type { ProductWithImages } from './types';
 import { useUser } from '@/user/UserContext';
 import { trackAnalyticsEvent } from '@/lib/analytics-client';
 import { productPath } from '@/lib/product-url';
-import { getOptimizedImageUrl } from '@/lib/media';
+import { getOptimizedImageUrl, toProxiedImageUrl, toProxiedVideoUrl } from '@/lib/media';
 import { AnimatePresence, motion } from 'framer-motion';
 
 // -- localStorage keys (keep both for backward compatibility) --
@@ -334,7 +334,7 @@ function BrandCardPreview({ images, alt }: { images: string[]; alt: string }) {
             opacity: { duration: 0.16, ease: 'linear' },
             scale: { duration: 0.32, ease: [0.22, 1, 0.36, 1] },
           }}
-          src={optimizedActiveSrc || '/img/placeholder.svg'}
+          src={toProxiedImageUrl(optimizedActiveSrc || '/img/placeholder.svg')}
           alt={alt}
           className="absolute inset-0 w-full h-full object-contain"
           loading="lazy"
@@ -560,7 +560,7 @@ export default function BrandClient({
     img.onerror = () => {
       if (!cancelled) setHeroTone('dark');
     };
-    img.src = heroFallbackImage;
+    img.src = toProxiedImageUrl(heroFallbackImage);
 
     return () => {
       cancelled = true;
@@ -620,12 +620,12 @@ export default function BrandClient({
           {brandVideo ? (
             <video
               className="h-full w-full object-cover"
-              src={brandVideo}
+              src={toProxiedVideoUrl(brandVideo)}
               autoPlay
               muted
               loop
               playsInline
-              poster={heroFallbackImage}
+              poster={toProxiedImageUrl(heroFallbackImage)}
             />
           ) : (
             <img
@@ -686,7 +686,7 @@ export default function BrandClient({
               // Логотип внутри h1: у страницы бренда всегда есть заголовок с названием для поисковиков.
               <h1 className="flex justify-center">
                 <img
-                  src={brandLogo}
+                  src={toProxiedImageUrl(brandLogo)}
                   alt={brandName}
                   className="max-h-28 w-[min(74vw,460px)] max-w-full object-contain sm:max-h-36"
                 />

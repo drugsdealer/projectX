@@ -9,6 +9,7 @@ import { Search, X, Clock, TrendingUp } from "lucide-react";
 import { useAutocomplete } from "@/hooks/useAutocomplete";
 import { cn } from "@/lib/utils";
 import { productPath } from "@/lib/product-url";
+import { toProxiedImageUrl } from "@/lib/media";
 
 const HISTORY_KEY = "searchHistory.v1";
 const POPULAR = ["Yeezy", "Supreme", "Nike Dunk", "New Balance 990", "Adidas Campus"];
@@ -218,7 +219,7 @@ export function SearchBar({ isTransparent = false }: Props) {
                     <div className="w-8 h-8 rounded-lg overflow-hidden bg-black/5 shrink-0">
                       {p.imageUrl ? (
                         <Image
-                          src={p.imageUrl}
+                          src={toProxiedImageUrl(p.imageUrl)}
                           alt={p.name}
                           width={32}
                           height={32}

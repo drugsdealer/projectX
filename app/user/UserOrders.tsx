@@ -12,6 +12,7 @@ function Portal({ children }: { children: React.ReactNode }) {
 import Link from 'next/link';
 import { useOrders } from "../../hooks/useOrders";
 import { productPath } from '@/lib/product-url';
+import { toProxiedImageUrl } from "@/lib/media";
 
 type OrderItem = {
   id: number;
@@ -176,7 +177,7 @@ function BrandBadge({ name, logo }: { name?: string | null; logo?: string | null
       <span className="inline-flex items-center justify-center w-6 h-6 rounded-full border border-black/10 bg-white overflow-hidden">
         {logo ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={logo} alt={text || 'brand'} className="w-full h-full object-contain" />
+          <img src={toProxiedImageUrl(logo)} alt={text || 'brand'} className="w-full h-full object-contain" />
         ) : (
           <span className="text-[10px] font-semibold text-gray-700">
             {initials(text) || '•'}
@@ -497,7 +498,7 @@ function OrderDetailsModal({ open, onClose, order }: ModalProps) {
                   const itemCanceled = Boolean(it.canceledAt);
                   const row = (
                     <div className={`flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border p-4 ${itemCanceled ? 'border-stone-200 bg-stone-50' : 'border-black/5 hover:bg-black/[0.02]'}`}>
-                      <img src={img} alt={title} className={`w-full sm:w-24 h-40 sm:h-24 object-cover rounded-md border border-black/10 ${itemCanceled ? 'grayscale opacity-50' : ''}`} />
+                      <img src={toProxiedImageUrl(img)} alt={title} className={`w-full sm:w-24 h-40 sm:h-24 object-cover rounded-md border border-black/10 ${itemCanceled ? 'grayscale opacity-50' : ''}`} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <BrandBadge name={brandName || undefined} logo={brandLogo} />
@@ -835,7 +836,7 @@ export default function UserOrders() {
                           <div className={`relative w-16 h-16 flex-shrink-0 rounded-md overflow-hidden bg-white ${itemCanceled ? 'grayscale opacity-50' : ''}`}>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
-                              src={img}
+                              src={toProxiedImageUrl(img)}
                               alt={title}
                               className="w-full h-full object-cover"
                               loading="lazy"

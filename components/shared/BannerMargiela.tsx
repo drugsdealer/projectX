@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react
 import Image from 'next/image';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
-import { toProxiedImageUrl } from '@/lib/media';
+import { toProxiedImageUrl, toProxiedVideoUrl } from '@/lib/media';
 
 type Slide = {
   id: string;
@@ -101,7 +101,7 @@ function SlideBackground({ slide, priority }: { slide: Slide; priority: boolean 
         <video
           ref={videoRef}
           key={rawSrc}
-          src={src}
+          src={toProxiedVideoUrl(src)}
           autoPlay
           muted
           loop
@@ -129,7 +129,7 @@ function SlideBackground({ slide, priority }: { slide: Slide; priority: boolean 
   return (
     <>
       <Image
-        src={slide.src!}
+        src={toProxiedImageUrl(slide.src!)}
         alt={slide.alt}
         fill
         priority={priority}

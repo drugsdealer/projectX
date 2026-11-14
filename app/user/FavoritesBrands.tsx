@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useUser } from '@/user/UserContext';
 import { createPortal } from 'react-dom';
+import { toProxiedImageUrl } from "@/lib/media";
 
 // ===== localStorage helpers (merge two keys for back-compat) =====
 const LS_KEY = 'favoriteBrands';
@@ -361,7 +362,7 @@ export default function FavoritesBrands() {
                 <div className="relative w-28 h-28 sm:w-32 sm:h-32">
                   {getLogoUrl(b) ? (
                     <img
-                      src={getLogoUrl(b) || ''}
+                      src={toProxiedImageUrl(getLogoUrl(b) || '')}
                       alt={getDisplayName(b)}
                       className="absolute inset-0 w-full h-full object-contain"
                       loading="lazy"

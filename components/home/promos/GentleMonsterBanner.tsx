@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { productPath } from "@/lib/product-url";
+import { toProxiedImageUrl } from "@/lib/media";
 
 const BANNER_PC =
   "https://ik.imagekit.io/qowmy92ny/plp_0_pc_3840_1800.avif";
@@ -73,7 +74,7 @@ function ProductCard({
       >
         {product.imageUrl ? (
           <img
-            src={product.imageUrl}
+            src={toProxiedImageUrl(product.imageUrl)}
             alt={product.name}
             style={{
               width: "100%",
@@ -189,9 +190,9 @@ export default function GentleMonsterBanner({
         }}
       >
         <picture>
-          <source media="(max-width: 768px)" srcSet={BANNER_MOB} />
+          <source media="(max-width: 768px)" srcSet={toProxiedImageUrl(BANNER_MOB)} />
           <img
-            src={BANNER_PC}
+            src={toProxiedImageUrl(BANNER_PC)}
             alt="Gentle Monster 2025 FALL"
             style={{ width: "100%", display: "block", objectFit: "cover" }}
           />

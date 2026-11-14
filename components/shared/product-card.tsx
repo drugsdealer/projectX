@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { getOptimizedImageUrl, shouldBypassNextImageOptimization } from "@/lib/media";
+import { getOptimizedImageUrl, shouldBypassNextImageOptimization, toProxiedImageUrl } from "@/lib/media";
 import { productPath } from "@/lib/product-url";
 import { slugify } from "@/lib/slug";
 
@@ -407,7 +407,7 @@ export const ProductCard: React.FC<Props> = ({
           }}
         >
           <Image
-            src={optimizedDisplayImage || "/img/placeholder.svg"}
+            src={toProxiedImageUrl(optimizedDisplayImage || "/img/placeholder.svg")}
             alt={name}
             fill
             unoptimized={shouldBypassNextImageOptimization(optimizedDisplayImage)}
@@ -428,14 +428,14 @@ export const ProductCard: React.FC<Props> = ({
                 e.stopPropagation();
               }}
             >
-              <Image src={optimizedBrandLogo || brandLogo} alt={brandForButton} fill unoptimized={shouldBypassNextImageOptimization(optimizedBrandLogo || brandLogo)} className="object-contain" />
+              <Image src={toProxiedImageUrl(optimizedBrandLogo || brandLogo)} alt={brandForButton} fill unoptimized={shouldBypassNextImageOptimization(optimizedBrandLogo || brandLogo)} className="object-contain" />
             </Link>
           )}
           <h3 className="font-bold text-xs md:text-sm line-clamp-2 inline-flex items-center gap-1">
             {name}
             {premium && (
               <Image
-                src={premiumBadgeIcon || "/img/star-icon.svg"}
+                src={toProxiedImageUrl(premiumBadgeIcon || "/img/star-icon.svg")}
                 alt="Premium badge"
                 width={14}
                 height={14}

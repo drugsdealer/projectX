@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, memo, type MutableRe
 import Image from 'next/image';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
-import { getOptimizedImageUrl, shouldBypassNextImageOptimization } from '@/lib/media';
+import { getOptimizedImageUrl, shouldBypassNextImageOptimization, toProxiedImageUrl } from '@/lib/media';
 import { productPath } from '@/lib/product-url';
 
 type CategoryProduct = {
@@ -92,7 +92,7 @@ const ProductCardImage = memo(function ProductCardImage({
         [nextSrc, prevSrc].forEach((src) => {
           if (!src) return;
           const img = new window.Image();
-          img.src = src;
+          img.src = toProxiedImageUrl(src);
         });
       } catch {}
     },
@@ -240,7 +240,7 @@ const ProductCardImage = memo(function ProductCardImage({
           style={{ willChange: 'transform, clip-path' }}
         >
           <Image
-            src={optimizedActiveSrc || '/img/placeholder.svg'}
+            src={toProxiedImageUrl(optimizedActiveSrc || '/img/placeholder.svg')}
             alt={alt}
             fill
             unoptimized={shouldBypassNextImageOptimization(optimizedActiveSrc)}

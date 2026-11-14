@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import type { HomePromoProduct } from '@/components/home/promos/types';
-import { shouldBypassNextImageOptimization, getOptimizedImageUrl } from '@/lib/media';
+import { shouldBypassNextImageOptimization, getOptimizedImageUrl, toProxiedImageUrl } from '@/lib/media';
 import { productPath } from '@/lib/product-url';
 
 const BANNER =
@@ -108,7 +108,7 @@ export default function GentleMonsterSpotlight({ items = [] }: Props) {
       {/* Banner image */}
       <div style={{ display: 'block', position: 'relative', margin: isMobile ? '0 16px' : '0' }}>
         <picture>
-          <source media="(max-width: 768px)" srcSet={BANNER_MOBILE} />
+          <source media="(max-width: 768px)" srcSet={toProxiedImageUrl(BANNER_MOBILE)} />
           <Image
             src={getOptimizedImageUrl(BANNER, { width: 640 }) || BANNER}
             alt="Gentle Monster 2025 FALL"
