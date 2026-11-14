@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     type: "website",
     url: `${SITE_URL}/stone-island`,
     title: "Stone Island — Stage Store",
-    description: "Лаборатория материалов с 1982 года. Вся коллекция Stone Island в наличии в Stage Store.",
+    description: "Лаборатория материалов с 1982 года. Stone Island под заказ с доставкой в Москву и проверкой подлинности.",
     images: [{ url: `${SITE_URL}/ik/qowmy92ny/53faf8c56abbe89ac97550a20101dc00%20(2).jpg`, width: 1200, height: 595, alt: "Stone Island" }],
   },
   robots: { index: true, follow: true },

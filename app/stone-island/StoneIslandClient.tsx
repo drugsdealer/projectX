@@ -371,7 +371,7 @@ export default function StoneIslandClient({ items, hero }: { items: SiItem[]; he
             </motion.p>
             <motion.dl {...reveal} className="grid grid-cols-3 gap-4 lg:col-span-6 lg:pl-10">
               {[
-                { k: "В наличии", v: String(items.length) },
+                { k: "Моделей", v: String(items.length) },
                 { k: "Цены от", v: minPrice ? formatPrice(minPrice) : "—" },
                 { k: "Подлинность", v: "100%" },
               ].map((s) => (
@@ -541,7 +541,7 @@ export default function StoneIslandClient({ items, hero }: { items: SiItem[]; he
               Как отличить оригинал
             </h2>
             <p className="mt-5 text-sm leading-relaxed text-[#ece8df]/60">
-              Stone Island — одна из самых подделываемых марок. Мы проверяем каждую вещь перед отправкой и продаём только оригинал.
+              Stone Island — одна из самых подделываемых марок. Мы проверяем каждую вещь на всём пути до Москвы и продаём только оригинал.
             </p>
           </motion.div>
           <div className="grid gap-px bg-[#ece8df]/10 sm:grid-cols-2 lg:col-span-8">
@@ -563,8 +563,8 @@ export default function StoneIslandClient({ items, hero }: { items: SiItem[]; he
               },
               {
                 n: "04",
-                t: "Проверка Stage Store",
-                d: "Каждую вещь осматриваем до отправки: бирки, нашивку, фурнитуру, швы. Если сомневаетесь — покажем вещь вживую в Москве.",
+                t: "Проверка на каждом этапе",
+                d: "Вещи привозим под заказ, и подлинность проверяем на каждом этапе — с момента выкупа и до того, как вещь приедет к вам в Москву: бирки, нашивку, фурнитуру, швы.",
               },
             ].map((x, i) => (
               <motion.div
