@@ -64,13 +64,23 @@ export async function GET(req: Request) {
     return NextResponse.json({ items: [] }, { status: 429 });
   }
 
+  // Параметры — только целые числа. Мусор («180/2», «12.5», «abc») — 400, а не тихая подмена
+  // значением по умолчанию: иначе сканеры безопасности принимают совпадение ответов за SQL-инъекцию.
   const url = new URL(req.url);
-  const limitRaw = Number(url.searchParams.get("limit") || "12");
-  const limit = Math.max(1, Math.min(50, Number.isFinite(limitRaw) ? limitRaw : 12));
-  const daysRaw = Number(url.searchParams.get("days") || "90");
-  const days = Math.max(7, Math.min(365, Number.isFinite(daysRaw) ? daysRaw : 90));
-  const categoryIdRaw = Number(url.searchParams.get("categoryId"));
-  const categoryId = Number.isFinite(categoryIdRaw) && categoryIdRaw > 0 ? categoryIdRaw : null;
+  const parseIntParam = (name: string) => {
+    const raw = url.searchParams.get(name);
+    if (raw == null || raw === "") return null;
+    return /^\d{1,6}$/.test(raw) ? Number(raw) : NaN;
+  };
+  const limitParam = parseIntParam("limit");
+  const daysParam = parseIntParam("days");
+  const categoryParam = parseIntParam("categoryId");
+  if (Number.isNaN(limitParam) || Number.isNaN(daysParam) || Number.isNaN(categoryParam)) {
+    return NextResponse.json({ success: false, error: "invalid_params", items: [] }, { status: 400 });
+  }
+  const limit = Math.max(1, Math.min(50, limitParam ?? 12));
+  const days = Math.max(7, Math.min(365, daysParam ?? 90));
+  const categoryId = categoryParam && categoryParam > 0 ? categoryParam : null;
 
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
