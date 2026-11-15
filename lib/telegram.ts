@@ -1,13 +1,19 @@
 // lib/telegram.ts
 import { Buffer } from "buffer";
 
+// Получателей у бота может быть несколько: в переменной через запятую ("111,222").
+// Каждый должен один раз нажать /start в боте — иначе Telegram не даст ему написать.
+function parseChatIds(value?: string) {
+  return (value || "").split(",").map((s) => s.trim()).filter(Boolean);
+}
+
 // Бот для заказов
 const ORDER_BOT_TOKEN = process.env.TELEGRAM_ORDER_BOT_TOKEN;
-const ORDER_CHAT_ID = process.env.TELEGRAM_ORDER_CHAT_ID;
+const ORDER_CHAT_IDS = parseChatIds(process.env.TELEGRAM_ORDER_CHAT_ID);
 
 // Бот для консьержа
 const CONCIERGE_BOT_TOKEN = process.env.TELEGRAM_CONCIERGE_BOT_TOKEN;
-const CONCIERGE_CHAT_ID = process.env.TELEGRAM_CONCIERGE_CHAT_ID;
+const CONCIERGE_CHAT_IDS = parseChatIds(process.env.TELEGRAM_CONCIERGE_CHAT_ID);
 
 function escapeTelegramHtml(value: unknown, maxLength = 1000) {
   return String(value ?? "")
@@ -51,6 +57,15 @@ async function sendTelegramMessage(botToken: string, chatId: string, text: strin
   }
 }
 
+// Рассылка всем получателям бота параллельно: сбой у одного не мешает остальным.
+async function sendToAll(botToken: string | undefined, chatIds: string[], send: (chatId: string) => Promise<void>) {
+  if (!botToken || !chatIds.length) {
+    console.error("[telegram] no token or chat id", { botToken: !!botToken, chatIds: chatIds.length });
+    return;
+  }
+  await Promise.allSettled(chatIds.map((chatId) => send(chatId)));
+}
+
 // ===================
 //   ЗАКАЗЫ (как было)
 // ===================
@@ -76,11 +91,7 @@ export async function sendOrderNotificationToTelegram(payload: {
 
   const text = lines.join("\n");
 
-  await sendTelegramMessage(
-    ORDER_BOT_TOKEN as string,
-    ORDER_CHAT_ID as string,
-    text
-  );
+  await sendToAll(ORDER_BOT_TOKEN, ORDER_CHAT_IDS, (chatId) => sendTelegramMessage(ORDER_BOT_TOKEN as string, chatId, text));
 }
 
 export async function sendDeliveryRequestToTelegram(payload: {
@@ -101,7 +112,7 @@ export async function sendDeliveryRequestToTelegram(payload: {
   if (phone) lines.push(`<b>Телефон:</b> ${escapeTelegramHtml(phone, 80)}`);
 
   const text = lines.join("\n");
-  await sendTelegramMessage(ORDER_BOT_TOKEN as string, ORDER_CHAT_ID as string, text);
+  await sendToAll(ORDER_BOT_TOKEN, ORDER_CHAT_IDS, (chatId) => sendTelegramMessage(ORDER_BOT_TOKEN as string, chatId, text));
 }
 
 // ============================
@@ -164,25 +175,17 @@ export async function sendConciergeRequestToTelegram(payload: {
 }) {
   const { text, attachments } = payload;
 
-  // 1) текст
-  await sendTelegramMessage(
-    CONCIERGE_BOT_TOKEN as string,
-    CONCIERGE_CHAT_ID as string,
-    text
-  );
+  await sendToAll(CONCIERGE_BOT_TOKEN, CONCIERGE_CHAT_IDS, async (chatId) => {
+    // 1) текст
+    await sendTelegramMessage(CONCIERGE_BOT_TOKEN as string, chatId, text);
 
-  // 2) файлы — отдельными сообщениями
-  if (attachments && attachments.length) {
-    for (const file of attachments) {
+    // 2) файлы — отдельными сообщениями
+    for (const file of attachments ?? []) {
       try {
-        await sendTelegramDocument(
-          CONCIERGE_BOT_TOKEN as string,
-          CONCIERGE_CHAT_ID as string,
-          file
-        );
+        await sendTelegramDocument(CONCIERGE_BOT_TOKEN as string, chatId, file);
       } catch (e) {
         console.error("[telegram] failed to send concierge attachment", e);
       }
     }
-  }
+  });
 } 
