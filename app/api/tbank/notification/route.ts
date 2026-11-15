@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma";
-import { verifyTBankNotification, isFinalFailStatus, describeCancelReason } from "@/lib/tbank";
+import { verifyTBankNotification, isFinalFailStatus, describeCancelReason, parseTBankOrderId } from "@/lib/tbank";
 import { sendOrderNotificationToTelegram } from "@/lib/telegram";
 import { sendOrderReceipt } from "@/lib/receipt-email";
 import { redeemPromoForOrder } from "@/lib/promos";
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   }
 
   const status = String((body as any).Status || "");
-  const orderId = Number((body as any).OrderId);
+  const orderId = parseTBankOrderId((body as any).OrderId);
   const paymentId = String((body as any).PaymentId ?? "");
 
   console.log(`[tbank.notification] получено | вид=${kind} | поля=${fieldNames}`);
@@ -45,11 +45,13 @@ export async function POST(req: Request) {
 
   // Окончательный отказ банка — отменяем заказ и сохраняем причину для истории заказов.
   // Оплаченный заказ не трогаем: уведомления могут прийти не по порядку.
+  // Отменяем, только если отказ по последней попытке оплаты: истёкшая старая форма
+  // не должна отменять заказ, который покупатель сейчас оплачивает заново.
   if (isFinalFailStatus(status)) {
     const reason = describeCancelReason(status, (body as any).Message ?? (body as any).Details);
     await prisma.order
       .updateMany({
-        where: { id: orderId, status: { not: "SUCCEEDED" } },
+        where: { id: orderId, status: { not: "SUCCEEDED" }, ...(paymentId ? { paymentId } : {}) },
         data: { status: "CANCELED", cancelReason: reason, canceledAt: new Date() },
       })
       .catch(() => console.error("[tbank.notification] не удалось отменить заказ"));

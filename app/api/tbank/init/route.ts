@@ -6,9 +6,11 @@ import { getUserIdFromRequest, getGuestToken } from "@/lib/session";
 import { enforceSameOrigin } from "@/lib/security";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { requireJsonRequest } from "@/lib/api-hardening";
-import { tbankInit, getTBankConfig } from "@/lib/tbank";
+import { tbankInit, getTBankConfig, tbankOrderIdForAttempt, tbankGetState, tbankCancel } from "@/lib/tbank";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
+// Статусы, при которых деньги уже списаны или заблокированы — новый платёж не нужен.
+const PAID_STATUSES = new Set(["AUTHORIZED", "CONFIRMED", "CONFIRMING"]);
 
 export async function POST(req: Request) {
   const csrf = enforceSameOrigin(req);
@@ -50,7 +52,7 @@ export async function POST(req: Request) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     select: {
-      id: true, userId: true, token: true, totalAmount: true, status: true, publicNumber: true,
+      id: true, userId: true, token: true, totalAmount: true, status: true, publicNumber: true, paymentId: true,
       email: true, phone: true,
       OrderItem: { select: { name: true, price: true, quantity: true } },
     },
@@ -68,6 +70,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, message: "Заказ уже оплачен" }, { status: 400 });
   }
 
+  // Повторная попытка: если прошлый платёж уже прошёл, второй не создаём.
+  const previousPaymentId = order.paymentId || null;
+  if (previousPaymentId) {
+    const prev = await tbankGetState(previousPaymentId);
+    if (prev.ok && PAID_STATUSES.has(prev.status)) {
+      return NextResponse.json({ success: false, message: "Заказ уже оплачен" }, { status: 400 });
+    }
+  }
+
   const rubles = Number(order.totalAmount || 0);
   if (!rubles || rubles <= 0) {
     return NextResponse.json({ success: false, message: "Некорректная сумма заказа" }, { status: 400 });
@@ -76,7 +87,7 @@ export async function POST(req: Request) {
   const result = await tbankInit({
     // T-Bank принимает сумму в копейках
     amountKopecks: Math.round(rubles * 100),
-    orderId: String(order.id),
+    orderId: tbankOrderIdForAttempt(order.id),
     description: `Заказ ${order.publicNumber || `#${order.id}`} — Stage Store`,
     successUrl: `${SITE_URL}/payment/result?orderId=${order.id}`,
     failUrl: `${SITE_URL}/payment/result?orderId=${order.id}&failed=1`,
@@ -130,6 +141,12 @@ export async function POST(req: Request) {
   await prisma.order
     .update({ where: { id: order.id }, data: { paymentId: result.paymentId } })
     .catch((e) => console.error("[tbank.init] failed to save paymentId", e));
+
+  // Старую форму закрываем уже ПОСЛЕ сохранения нового PaymentId: тогда уведомление
+  // банка об отмене старого платежа не совпадёт с заказом и не отменит его.
+  if (previousPaymentId && previousPaymentId !== result.paymentId) {
+    await tbankCancel(previousPaymentId).catch(() => false);
+  }
 
   return NextResponse.json({
     success: true,

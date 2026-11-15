@@ -73,6 +73,18 @@ export function buildTBankToken(
   return createHash("sha256").update(concatenated, "utf8").digest("hex");
 }
 
+// Номер заказа для банка: id заказа + метка попытки. Банк не принимает повторный Init
+// с тем же OrderId («Заказ с таким order_id уже существует»), а покупатель может
+// формировать оплату заново, если закрыл форму или она не открылась.
+export function tbankOrderIdForAttempt(orderId: number) {
+  return `${orderId}-${Date.now().toString(36)}`;
+}
+
+// Обратно: из OrderId уведомления — id нашего заказа (старый формат без метки тоже понимает).
+export function parseTBankOrderId(value: unknown) {
+  return Number(String(value ?? "").split("-")[0]);
+}
+
 type InitParams = {
   /** Сумма в КОПЕЙКАХ */
   amountKopecks: number;
@@ -257,6 +269,32 @@ export async function tbankGetState(paymentId: string): Promise<
     };
   } catch {
     return { ok: false, message: "Не удалось связаться с банком" };
+  }
+}
+
+/** Отменяет неоплаченный платёж (статусы NEW / FORM_SHOWED), чтобы по старой форме нельзя было заплатить второй раз. */
+export async function tbankCancel(paymentId: string): Promise<boolean> {
+  const cfg = getTBankConfig();
+  if (!cfg) return false;
+
+  const payload: Record<string, unknown> = {
+    TerminalKey: cfg.terminalKey,
+    PaymentId: paymentId,
+  };
+  payload.Token = buildTBankToken(payload, cfg.password);
+
+  try {
+    const res = await fetch(`${getTBankApi()}/Cancel`, {
+      method: "POST",
+      headers: tbankHeaders(),
+      body: JSON.stringify(payload),
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
+    const data: any = await res.json().catch(() => null);
+    return Boolean(data?.Success);
+  } catch {
+    return false;
   }
 }
 

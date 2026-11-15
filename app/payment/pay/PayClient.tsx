@@ -25,6 +25,9 @@ export default function PayClient() {
   const [step, setStep] = useState(0);
   const [errorText, setErrorText] = useState<string>("");
   const [canRetry, setCanRetry] = useState(true);
+  // Ссылка на форму банка: если браузер не ушёл на неё за 12 секунд, показываем кнопку и подсказку
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  const [slowRedirect, setSlowRedirect] = useState(false);
   const started = useRef(false);
 
   const form = useCallback(async () => {
@@ -38,15 +41,19 @@ export default function PayClient() {
     setPhase("forming");
     setErrorText("");
     setStep(0);
+    setPaymentUrl(null);
+    setSlowRedirect(false);
     // Шаги идут сами, пока ждём банк: человек видит, что процесс идёт
     const t1 = setTimeout(() => setStep(1), 700);
 
     try {
+      // Без ограничения по времени зависший запрос оставлял бы бесконечную загрузку
       const res = await fetch("/api/tbank/init", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ orderId }),
+        signal: AbortSignal.timeout(35_000),
       });
       const data = await res.json().catch(() => ({} as any));
       clearTimeout(t1);
@@ -54,6 +61,8 @@ export default function PayClient() {
       if (res.ok && data?.success && data?.paymentUrl) {
         setStep(2);
         setPhase("redirecting");
+        setPaymentUrl(data.paymentUrl);
+        setTimeout(() => setSlowRedirect(true), 12_000);
         window.location.href = data.paymentUrl;
         return;
       }
@@ -131,9 +140,25 @@ export default function PayClient() {
                 })}
               </ol>
 
-              <p className="mt-8 text-xs leading-relaxed text-black/40">
-                Оплата картой или через СБП на защищённой странице Т-Банка.
-              </p>
+              {slowRedirect && paymentUrl ? (
+                <div className="mt-8 rounded-2xl bg-black/[0.04] p-5 text-left">
+                  <p className="text-sm font-semibold">Страница банка открывается дольше обычного</p>
+                  <p className="mt-1.5 text-xs leading-relaxed text-black/55">
+                    Если включён VPN — выключите его: страница оплаты Т-Банка не открывается через зарубежные сервера.
+                    Потом нажмите кнопку ниже.
+                  </p>
+                  <a
+                    href={paymentUrl}
+                    className="mt-4 block w-full rounded-2xl bg-black px-6 py-3.5 text-center text-sm font-bold text-white transition hover:-translate-y-0.5"
+                  >
+                    Открыть страницу оплаты →
+                  </a>
+                </div>
+              ) : (
+                <p className="mt-8 text-xs leading-relaxed text-black/40">
+                  Оплата картой или через СБП на защищённой странице Т-Банка.
+                </p>
+              )}
             </motion.div>
           ) : (
             <motion.div
