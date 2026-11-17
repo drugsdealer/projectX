@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/admin";
-import { encryptSecret, decryptSecret, generateTotpSecret, totpKeyUri } from "@/lib/totp";
+import { encryptSecret, decryptSecret } from "@/lib/totp";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function GET(req: Request) {
@@ -26,6 +26,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
   }
 
+  const { authenticator } = await import("otplib");
+  authenticator.options = { step: 30, digits: 6, window: 2 };
   const issuer = "StageStore Admin";
   const { default: QRCode } = await import("qrcode");
 
@@ -43,7 +45,7 @@ export async function GET(req: Request) {
         });
       }
       // Если секрет есть, но не подтверждён — показываем QR повторно.
-      const otpauthUrl = totpKeyUri(user.email, issuer, secret);
+      const otpauthUrl = authenticator.keyuri(user.email, issuer, secret);
       const qr = await QRCode.toDataURL(otpauthUrl, { margin: 1, width: 240 });
       return NextResponse.json({
         success: true,
@@ -57,8 +59,8 @@ export async function GET(req: Request) {
     }
   }
 
-  const secret = generateTotpSecret();
-  const otpauthUrl = totpKeyUri(user.email, issuer, secret);
+  const secret = authenticator.generateSecret();
+  const otpauthUrl = authenticator.keyuri(user.email, issuer, secret);
   const qr = await QRCode.toDataURL(otpauthUrl, { margin: 1, width: 240 });
 
   await prisma.user.update({

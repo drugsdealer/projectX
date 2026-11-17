@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
 import { requireAdminApi } from "@/lib/admin";
-import { encryptSecret, generateTotpSecret, totpKeyUri } from "@/lib/totp";
+import { encryptSecret } from "@/lib/totp";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
@@ -29,9 +29,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, message: "User not found" }, { status: 404 });
   }
 
-  const secret = generateTotpSecret();
+  const { authenticator } = await import("otplib");
+  authenticator.options = { step: 30, digits: 6, window: 1 };
+  const secret = authenticator.generateSecret();
   const issuer = "StageStore Admin";
-  const otpauthUrl = totpKeyUri(user.email, issuer, secret);
+  const otpauthUrl = authenticator.keyuri(user.email, issuer, secret);
   const { default: QRCode } = await import("qrcode");
   const qr = await QRCode.toDataURL(otpauthUrl, { margin: 1, width: 240 });
 
