@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { NewsletterForm } from "./NewsletterForm";
-import { COMPANY, PICKUP } from "@/lib/company";
+import { COMPANY } from "@/lib/company";
 import { resetStoredPrivacyConsent } from "@/lib/privacy-consent";
 import { toProxiedImageUrl } from "@/lib/media";
 
@@ -140,7 +140,6 @@ export function SiteFooter() {
             <div>
               <div className="text-sm font-semibold">Контакты и право</div>
               <div className="mt-3 space-y-2 text-sm text-white/70">
-                <div>{PICKUP.address}</div>
                 <a href="mailto:storestage@yandex.ru" className="hover:text-white transition">
                   storestage@yandex.ru
                 </a>

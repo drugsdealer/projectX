@@ -146,6 +146,40 @@ const SUBCATEGORY_OPTIONS: { slug: string; label: string }[] = [
   { slug: 'aftershave', label: 'Лосьон после бритья' },
 ];
 
+// Подкатегории, созданные в блоке «Добавить подкатегорию» (из базы), показываем первыми —
+// только для выбранной категории. Ниже — стандартный список. Если у товара сохранена подкатегория,
+// которой нет ни там, ни там, добавляем её отдельной строкой, чтобы она не «пропадала» из списка.
+function SubcategoryOptions({
+  categoryId,
+  subcategories,
+  current,
+}: {
+  categoryId: string;
+  subcategories: Subcategory[];
+  current: string;
+}) {
+  const catId = Number(categoryId);
+  const own = categoryId && Number.isFinite(catId) ? subcategories.filter((s) => s.categoryId === catId) : [];
+  const known = new Set([...own.map((s) => s.slug), ...SUBCATEGORY_OPTIONS.map((s) => s.slug)]);
+  const value = current.trim().toLowerCase();
+  return (
+    <>
+      <option value="">Подкатегория</option>
+      {value && !known.has(value) && <option value={value}>{value}</option>}
+      {own.length > 0 && (
+        <optgroup label="Подкатегории этой категории">
+          {own.map((s) => <option key={`db-${s.id}`} value={s.slug}>{s.name}</option>)}
+        </optgroup>
+      )}
+      <optgroup label="Стандартные">
+        {SUBCATEGORY_OPTIONS.filter((s) => !own.some((o) => o.slug === s.slug)).map((s) => (
+          <option key={s.slug} value={s.slug}>{s.label}</option>
+        ))}
+      </optgroup>
+    </>
+  );
+}
+
 const FRAGRANCE_SLUGS = new Set([
   'fragrances', 'parfum', 'eau-de-parfum', 'eau-de-toilette',
   'eau-de-cologne', 'body-mist', 'aftershave',
@@ -874,13 +908,12 @@ export default function AdminProductsPage() {
                 onUploaded={(url) => setGalleryText((prev) => (prev.trim() ? `${prev.trim()}\n${url}` : url))}
               />
             </div>
-            <select className={inputCls} value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setSubcategoryId(""); }}>
+            <select className={inputCls} value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setSubcategoryId(""); setSubcategorySlug(""); }}>
               <option value="">Категория</option>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
             <select className={inputCls} value={subcategorySlug} onChange={(e) => setSubcategorySlug(e.target.value)}>
-              <option value="">Подкатегория</option>
-              {SUBCATEGORY_OPTIONS.map((s) => <option key={s.slug} value={s.slug}>{s.label}</option>)}
+              <SubcategoryOptions categoryId={categoryId} subcategories={subcategories} current={subcategorySlug} />
             </select>
             {!subcategoriesEnabled && <div className="sm:col-span-2 text-xs text-red-600">Подкатегории недоступны. Выполни `npx prisma db push` и `npx prisma generate`, затем перезапусти сервер.</div>}
             <select className={inputCls} value={brandId} onChange={(e) => setBrandId(e.target.value)}>
@@ -1347,8 +1380,7 @@ export default function AdminProductsPage() {
                         {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
                       <select className={inputCls} value={editForm.subcategory} onChange={(e) => setEditField("subcategory", e.target.value)}>
-                        <option value="">Подкатегория</option>
-                        {SUBCATEGORY_OPTIONS.map((s) => <option key={s.slug} value={s.slug}>{s.label}</option>)}
+                        <SubcategoryOptions categoryId={editForm.categoryId} subcategories={subcategories} current={editForm.subcategory} />
                       </select>
                       <select className={inputCls} value={editForm.brandId} onChange={(e) => setEditField("brandId", e.target.value)}>
                         <option value="">Бренд</option>

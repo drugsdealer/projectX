@@ -19,6 +19,7 @@ export async function GET(req: Request) {
     }),
     hasSubcategories
       ? subcategoryModel.findMany({
+          where: { deletedAt: null },
           orderBy: { name: "asc" },
           select: { id: true, name: true, slug: true, categoryId: true },
         })
