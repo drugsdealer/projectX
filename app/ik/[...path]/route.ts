@@ -25,14 +25,30 @@ export async function GET(
     target.searchParams.set(key, value);
   });
 
-  try {
-    const upstream = await fetch(target, {
+  // Ошибку не кешируем нигде: иначе разовый сбой ImageKit «залипает» и фото пропадает
+  // для всех, пока кеш не истечёт.
+  const NO_STORE = { "cache-control": "no-store" };
+  const load = () =>
+    fetch(target, {
       headers: { accept: req.headers.get("accept") ?? "image/*" },
       next: { revalidate: 2592000 },
     });
 
+  try {
+    let upstream: Response | null = null;
+    try {
+      upstream = await load();
+    } catch {
+      upstream = null;
+    }
+    // Один повтор при сбое сети или ответе 5xx/429 — у ImageKit такое бывает кратковременно.
+    if (!upstream || upstream.status >= 500 || upstream.status === 429) {
+      await new Promise((r) => setTimeout(r, 300));
+      upstream = await load();
+    }
+
     if (!upstream.ok || !upstream.body) {
-      return new NextResponse("Image not available", { status: upstream.status || 502 });
+      return new NextResponse("Image not available", { status: upstream.status || 502, headers: NO_STORE });
     }
 
     return new NextResponse(upstream.body, {
@@ -43,6 +59,6 @@ export async function GET(
       },
     });
   } catch {
-    return new NextResponse("Image fetch failed", { status: 502 });
+    return new NextResponse("Image fetch failed", { status: 502, headers: NO_STORE });
   }
 }
