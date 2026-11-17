@@ -44,6 +44,7 @@ export interface ProductSignal {
   brandName: string | null;
   brandSlug: string | null;
   categorySlug: string | null;
+  subcategory?: string | null;
   views: number;
   totalDwellMs: number;
   addedToCart: boolean;
@@ -181,6 +182,7 @@ export interface TrackProductViewInput {
   brandName?: string | null;
   brandSlug?: string | null;
   categorySlug?: string | null;
+  subcategory?: string | null;
   gender?: string | null;
   dwellMs?: number;
   addedToCart?: boolean;
@@ -203,7 +205,8 @@ export function trackProductView(input: TrackProductViewInput): void {
     brandId: input.brandId ?? null,
     brandName: input.brandName ?? null,
     brandSlug: input.brandSlug ?? null,
-    categorySlug: input.categorySlug ?? null,
+    categorySlug: input.categorySlug ?? existing?.categorySlug ?? null,
+    subcategory: input.subcategory ?? existing?.subcategory ?? null,
     views: (existing?.views ?? 0) + 1,
     totalDwellMs: (existing?.totalDwellMs ?? 0) + (input.dwellMs ?? 0),
     addedToCart: existing?.addedToCart || Boolean(input.addedToCart),
@@ -239,8 +242,10 @@ export function trackProductView(input: TrackProductViewInput): void {
   }
 
   // Track gender preference
-  if (input.gender && (input.gender === "men" || input.gender === "women" || input.gender === "unisex")) {
-    profile.genderCounts[input.gender] = (profile.genderCounts[input.gender] ?? 0) + 1;
+  const g = String(input.gender ?? "").toLowerCase();
+  const genderKey = g === "male" ? "men" : g === "female" ? "women" : g;
+  if (genderKey === "men" || genderKey === "women" || genderKey === "unisex") {
+    profile.genderCounts[genderKey] = (profile.genderCounts[genderKey] ?? 0) + 1;
   }
 
   // Track price range
@@ -402,6 +407,117 @@ export function getProfileSnapshot(): {
     excludeProductIds: excludeIds,
     avgPrice,
     gender: dominantGender,
+  };
+}
+
+// ─── Модель интересов для ленты ───────────────────────────────────────────────
+
+export interface InterestModel {
+  /** Доля интереса по категориям (сырые слаги, сумма = 1). */
+  categories: Record<string, number>;
+  /** Доля интереса по подкатегориям (сумма = 1). */
+  subcategories: Record<string, number>;
+  /** Сила интереса к бренду 0..1 по brandId и по названию (lowercase). */
+  brandIds: Record<number, number>;
+  brandNames: Record<string, number>;
+  /** Сколько раз пользователь смотрел товар (для повторных просмотров). */
+  productViews: Record<number, number>;
+  purchasedIds: number[];
+  avgPrice: number | null;
+  gender: "men" | "women" | null;
+  /** Сколько всего сигналов — по нему решаем, есть ли смысл персонализировать. */
+  signalCount: number;
+}
+
+/**
+ * Считает интересы «на сейчас»: каждое действие затухает со временем (полураспад 7 дней),
+ * поэтому вчерашний интерес к косметике весит больше, чем месячный интерес к обуви.
+ * Вес товара: просмотр + время на странице + повторные заходы + корзина/избранное.
+ */
+export function getInterestModel(now = Date.now()): InterestModel {
+  const profile = loadProfile();
+  const cats: Record<string, number> = {};
+  const subs: Record<string, number> = {};
+  const brandIds: Record<number, number> = {};
+  const brandNames: Record<string, number> = {};
+  const productViews: Record<number, number> = {};
+  const purchasedIds: number[] = [];
+  let signalCount = 0;
+
+  const add = (map: Record<string, number>, key: string | null | undefined, w: number) => {
+    const k = String(key ?? "").trim().toLowerCase();
+    if (!k || !(w > 0)) return;
+    map[k] = (map[k] ?? 0) + w;
+  };
+
+  for (const p of Object.values(profile.products)) {
+    const r = recencyFactor(p.lastSeenAt, now);
+    const dwellMin = Math.min(p.totalDwellMs / 60000, 5);
+    const intent =
+      1 +
+      Math.min(p.views - 1, 4) * 0.6 +
+      dwellMin * 0.5 +
+      (p.addedToCart ? 3 : 0) +
+      (p.favorited ? 2 : 0) +
+      (p.purchased ? 2 : 0);
+    const w = intent * r;
+    signalCount += p.views;
+    productViews[p.productId] = p.views;
+    if (p.purchased) purchasedIds.push(p.productId);
+    add(cats, p.categorySlug, w);
+    add(subs, p.subcategory, w);
+    if (p.brandId) brandIds[p.brandId] = (brandIds[p.brandId] ?? 0) + w;
+    add(brandNames, p.brandName, w);
+  }
+
+  // Заходы в категорию — более слабый сигнал, чем просмотр конкретного товара.
+  for (const c of Object.values(profile.categories)) {
+    const r = recencyFactor(c.lastSeenAt, now);
+    add(cats, c.slug, Math.min(c.visits, 10) * 0.7 * r);
+  }
+  // Клики по брендам (страница бренда).
+  for (const b of Object.values(profile.brands)) {
+    const r = recencyFactor(b.lastSeenAt, now);
+    const w = Math.min(b.clicks, 10) * 0.8 * r;
+    if (w > 0) {
+      brandIds[b.brandId] = (brandIds[b.brandId] ?? 0) + w;
+      add(brandNames, b.brandName, w);
+    }
+    signalCount += b.clicks;
+  }
+  for (const c of Object.values(profile.categories)) signalCount += Math.min(c.visits, 10);
+
+  const share = (map: Record<string, number>) => {
+    const total = Object.values(map).reduce((a, b) => a + b, 0);
+    if (total <= 0) return {};
+    return Object.fromEntries(Object.entries(map).map(([k, v]) => [k, v / total]));
+  };
+  const scaleToMax = <K extends string | number>(map: Record<K, number>) => {
+    const max = Math.max(0, ...Object.values<number>(map));
+    if (max <= 0) return map;
+    for (const k of Object.keys(map) as K[]) map[k] = map[k] / max;
+    return map;
+  };
+
+  const avgPrice =
+    profile.priceRange && profile.priceRange.samples > 0
+      ? profile.priceRange.sum / profile.priceRange.samples
+      : null;
+  const men = profile.genderCounts.men ?? 0;
+  const women = profile.genderCounts.women ?? 0;
+  // Пол считаем выраженным, только если перевес явный (2:1 и хотя бы 3 просмотра).
+  const gender = men >= 3 && men >= women * 2 ? "men" : women >= 3 && women >= men * 2 ? "women" : null;
+
+  return {
+    categories: share(cats),
+    subcategories: share(subs),
+    brandIds: scaleToMax(brandIds),
+    brandNames: scaleToMax(brandNames),
+    productViews,
+    purchasedIds,
+    avgPrice,
+    gender,
+    signalCount,
   };
 }
 

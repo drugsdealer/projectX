@@ -18,8 +18,8 @@ const LABELS: Record<string, string> = {
   fragrance: "Парфюмерия",
   cosmetics: "Косметика",
   headwear: "Головные уборы",
+  "for-you": "Для вас",
 };
-const ORDER = ["footwear", "clothes", "bags", "accessories", "fragrance", "cosmetics", "headwear"];
 const SUBCATS: Record<string, string[]> = {
   footwear: ["Кроссовки", "Ботинки", "Сникеры", "Сандалии"],
   clothes: ["Худи", "Футболки", "Деним", "Куртки"],
@@ -74,9 +74,9 @@ export function Categories({ mode = "inline", subcatsByCat, activeSub, onSelectS
     if (!sections.length) return;
     const keys = sections.map((el) => el.getAttribute("data-anchor") || "").filter(Boolean) as string[];
     const uniq = Array.from(new Set(keys));
-    const known = ORDER.filter((k) => uniq.includes(k));
-    const rest = uniq.filter((k) => !ORDER.includes(k));
-    const ordered = [...known, ...rest];
+    // Порядок вкладок = порядок разделов на странице: главная уже ставит наверх
+    // персональную ленту и категории, которые интересны пользователю.
+    const ordered = uniq;
 
     setTabs(ordered.map((k) => ({ key: k, label: LABELS[k] ?? k })));
     if (!active && ordered.length) setActive(ordered[0]);

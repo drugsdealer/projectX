@@ -21,7 +21,7 @@ import HomePromoRail from "@/components/home/HomePromoRail";
 import CmsPromoBlock from "@/components/home/promos/CmsPromoBlock";
 import GentleMonsterBanner from "@/components/home/promos/GentleMonsterBanner";
 import StoneIslandBanner from "@/components/promos/StoneIslandBanner";
-import { RepeatViewedSection, ForYouFeed } from "@/components/home/ForYouFeed";
+import { RepeatViewedSection } from "@/components/home/ForYouFeed";
 import BrandSpotlightCard from "@/components/home/BrandSpotlightCard";
 import { Sparkles } from "lucide-react";
 import type { HomeCmsPromoConfig, HomePromoProduct } from "@/components/home/promos/types";
@@ -29,7 +29,8 @@ import { useMotionBudget, type MotionLevel } from "@/components/MotionBudgetProv
 import { getOptimizedImageUrl, shouldBypassNextImageOptimization, toProxiedImageUrl } from "@/lib/media";
 import { productPath } from "@/lib/product-url";
 import { canUseOptionalClientData } from "@/lib/privacy-consent";
-import { getTopBrands, getTopCategories, getRepeatViewedProducts } from "@/lib/user-behavior";
+import { getTopBrands, getTopCategories, getRepeatViewedProducts, getInterestModel, type InterestModel } from "@/lib/user-behavior";
+import { buildPersonalMix, categoryShares, orderSectionsByInterest, scoreProduct, PERSONAL_MIX_KEY } from "@/lib/personal-feed";
 import type { ActiveStory } from "@/lib/stories";
 // Локальные подписи основных категорий
 const LABELS: Record<string, string> = {
@@ -40,6 +41,7 @@ const LABELS: Record<string, string> = {
   fragrance: 'Парфюмерия',
   cosmetics: 'Косметика',
   headwear: 'Головные уборы',
+  [PERSONAL_MIX_KEY]: 'Подобрано для вас',
 };
 
 const HOME_GATEWAYS = [
@@ -662,7 +664,11 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
     brandRank: Map<number, number>; // brandId -> ранг (0 = самый любимый)
     brandNames: Map<string, number>;// brandName(lowercase) -> ранг (на случай, если в товаре нет brandId)
     repeatIds: Set<number>;         // товары, что смотрел повторно и не купил
+    interest: InterestModel | null; // доли интереса по категориям/подкатегориям/брендам (с затуханием)
   } | null>(null);
+  // Своё случайное зерно на каждое открытие страницы: лента немного меняется от захода к заходу,
+  // но не «прыгает» во время просмотра.
+  const [feedSeed] = useState(() => Math.floor(Math.random() * 1e9));
   // Форма консьерж-сервиса открывается прямо с главной
   const [cmsPromos, setCmsPromos] = useState<HomeCmsPromoConfig[]>([]);
   const [publicPromoCodes, setPublicPromoCodes] = useState<any[]>([]);
@@ -819,9 +825,14 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
     if (typeof window === "undefined") return;
     if (!canUseOptionalClientData()) { setAffinity(null); return; }
     try {
-      const catSlugs = getTopCategories(8)
-        .map((c) => (c?.slug ? String(c.slug).toLowerCase() : ""))
-        .filter(Boolean);
+      const interest = getInterestModel();
+      // Категории по актуальному интересу (с затуханием), а не по накопленным счётчикам.
+      const catSlugs = Object.entries(interest.categories)
+        .sort(([, a], [, b]) => b - a)
+        .map(([slug]) => slug);
+      if (!catSlugs.length) {
+        for (const c of getTopCategories(8)) if (c?.slug) catSlugs.push(String(c.slug).toLowerCase());
+      }
 
       const brandRank = new Map<number, number>();
       const brandNames = new Map<string, number>();
@@ -849,7 +860,7 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
       if (catSlugs.length === 0 && brandRank.size === 0 && brandNames.size === 0 && repeatIds.size === 0) {
         setAffinity(null);
       } else {
-        setAffinity({ catSlugs, brandRank, brandNames, repeatIds });
+        setAffinity({ catSlugs, brandRank, brandNames, repeatIds, interest });
       }
     } catch {
       setAffinity(null);
@@ -1277,6 +1288,34 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
   // Сортировка поверх фильтра
   const visibleProducts = useMemo(() => sortItems(filtered, sortKey), [filtered, sortKey]);
 
+  // Смешанная персональная лента: категории вперемешку, пропорционально интересу.
+  // Только при сортировке «популярное» — если человек сам выбрал сортировку по цене, не вмешиваемся.
+  const personalMix = useMemo(() => {
+    const interest = affinity?.interest;
+    if (!interest || sortKey !== "popular" || !catalog.length) return [] as any[];
+    return buildPersonalMix(
+      catalog as any[],
+      interest,
+      {
+        categoryOf: (p: any) => normalizeCategory(getRawCategory(p)),
+        subcategoryOf: (p: any) => productSubNormalized(p),
+        normalizeCategory: (slug: string) => normalizeCategory(slug),
+      },
+      { limit: 60, seed: feedSeed }
+    );
+  }, [affinity, sortKey, catalog, normalizeCategory, getRawCategory, productSubNormalized, feedSeed]);
+
+  // Подпись к ленте: 1–2 главные категории интереса.
+  const mixTopLabels = useMemo(() => {
+    const interest = affinity?.interest;
+    if (!interest || !personalMix.length) return [] as string[];
+    return Object.entries(categoryShares(interest, normalizeCategory))
+      .filter(([k, w]) => w >= 0.2 && LABELS[k])
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 2)
+      .map(([k]) => LABELS[k].toLowerCase());
+  }, [affinity, personalMix, normalizeCategory]);
+
   // Группировка отфильтрованных товаров по основным категориям
   const groupedVisible = useMemo(() => {
     const result: Record<string, any[]> = {};
@@ -1288,7 +1327,17 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
     // Персонализация порядка товаров внутри секций — только для дефолтной сортировки «популярное».
     // При явном выборе сортировки по цене уважаем выбор пользователя и не вмешиваемся.
     if (affinity && sortKey === "popular") {
+      const interest = affinity.interest;
+      const helpers = {
+        categoryOf: (p: any) => normalizeCategory(getRawCategory(p)),
+        subcategoryOf: (p: any) => productSubNormalized(p),
+      };
       const scoreOf = (p: any): number => {
+        if (interest && interest.signalCount > 0) {
+          // Та же оценка, что у персональной ленты (без случайной добавки) + повторные просмотры наверх.
+          const pid = Number(p?.id);
+          return scoreProduct(p, interest, helpers) + (affinity.repeatIds.has(pid) ? 5 : 0);
+        }
         let s = 0;
         const bid = Number(p?.brandId);
         if (Number.isFinite(bid) && affinity.brandRank.has(bid)) {
@@ -1309,17 +1358,25 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
       }
     }
 
+    // Персональная лента «Подобрано для вас» — отдельным разделом над категориями.
+    if (personalMix.length) result[PERSONAL_MIX_KEY] = personalMix;
+
     return result;
-  }, [visibleProducts, normalizeCategory, getRawCategory, affinity, sortKey]);
+  }, [visibleProducts, normalizeCategory, getRawCategory, productSubNormalized, affinity, sortKey, personalMix]);
 
   // Порядок секций на странице (из ORDER, затем остальные по алфавиту)
   const sectionOrder = useMemo(() => {
-    const present = Object.keys(groupedVisible);
+    const present = Object.keys(groupedVisible).filter((k) => k !== PERSONAL_MIX_KEY);
     const known = ORDER.filter((k) => present.includes(k as string)) as string[];
     const rest = present.filter((k) => !(ORDER as readonly string[]).includes(k)).sort();
     const base = [...known, ...rest];
+    const mixFirst = groupedVisible[PERSONAL_MIX_KEY]?.length ? [PERSONAL_MIX_KEY] : [];
 
-    // Персонализация порядка СЕКЦИЙ: любимые категории пользователя поднимаются наверх.
+    // Персонализация порядка СЕКЦИЙ: категории с заметным интересом — наверх, по силе интереса.
+    const interest = affinity?.interest;
+    if (interest && Object.keys(interest.categories).length) {
+      return [...mixFirst, ...orderSectionsByInterest(base, categoryShares(interest, normalizeCategory))];
+    }
     if (affinity && affinity.catSlugs.length) {
       const prefKeys: string[] = [];
       for (const slug of affinity.catSlugs) {
@@ -1327,10 +1384,10 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
         if (base.includes(key) && !prefKeys.includes(key)) prefKeys.push(key);
       }
       if (prefKeys.length) {
-        return [...prefKeys, ...base.filter((k) => !prefKeys.includes(k))];
+        return [...mixFirst, ...prefKeys, ...base.filter((k) => !prefKeys.includes(k))];
       }
     }
-    return base;
+    return [...mixFirst, ...base];
   }, [groupedVisible, affinity, normalizeCategory]);
 
   // --- "Показать больше" per category ---
@@ -2086,11 +2143,6 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
                           <BrandSpotlightCard />
                         </div>
                       )}
-                      {sectionIndex === 6 && (
-                        <div className="px-3 sm:px-0">
-                          <ForYouFeed limit={12} />
-                        </div>
-                      )}
 
                       <div
                         key={`sec-${main}`}
@@ -2100,7 +2152,19 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
                         style={{ scrollMarginTop: 'calc(var(--header-h,72px) + 16px)' }}
                       >
                       <div className="mb-3 flex items-baseline justify-between">
-                        <h3 className="text-lg sm:text-xl font-bold">{LABELS[main] ?? main}</h3>
+                        {main === PERSONAL_MIX_KEY ? (
+                          <div>
+                            <p className="text-[11px] uppercase tracking-[0.12em] text-black/40 font-semibold mb-0.5">Персонально</p>
+                            <h3 className="text-lg sm:text-xl font-bold">{LABELS[main]}</h3>
+                            {mixTopLabels.length > 0 && (
+                              <p className="mt-0.5 text-xs text-black/45">
+                                Больше всего из того, что вы смотрите: {mixTopLabels.join(", ")}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <h3 className="text-lg sm:text-xl font-bold">{LABELS[main] ?? main}</h3>
+                        )}
                         {canShowLess && (
                           <button
                             type="button"

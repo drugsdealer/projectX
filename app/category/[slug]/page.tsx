@@ -7,12 +7,14 @@ import { safeJsonLd } from '@/lib/json-ld';
 import { withDbRetry } from '@/lib/db-retry';
 import {
   getParentSubcategories,
+  getSubcategoryParent,
   getSubcategoryAliases,
   normalizeCategorySlug,
   normalizeSubcategorySlug,
   resolveProductTaxonomy,
 } from '@/lib/catalog-taxonomy';
 import CategoryProductGrid from './CategoryProductGrid';
+import TrackCategoryVisit from '@/components/shared/TrackCategoryVisit';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://stagestore.app';
 
@@ -510,6 +512,8 @@ export default async function CategoryPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
+      {/* В профиль интересов пишем основную категорию (для /category/sneakers — footwear) */}
+      <TrackCategoryVisit slug={getSubcategoryParent(normalizedSlug) ?? normalizedSlug} name={displayLabel} />
       <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-10">
         <section className="relative overflow-hidden rounded-[32px] border border-black/10 bg-white/80 p-6 sm:p-8 shadow-[0_30px_80px_rgba(0,0,0,0.08)] backdrop-blur">
           <div className="absolute inset-0 bg-gradient-to-r from-[#ff6b2c]/10 via-transparent to-[#ffd66d]/25" />

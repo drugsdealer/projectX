@@ -49,17 +49,24 @@ export function useTrackProduct({ product, enabled = true }: UseTrackProductOpti
     dwellRef.current = 0;
     flushedRef.current = false;
 
+    // Просмотр записываем и при закрытии/сворачивании вкладки — раньше он сохранялся только
+    // при переходе внутри сайта, и большая часть просмотров терялась.
     const onVisibility = () => {
       if (document.hidden) {
         dwellRef.current += Date.now() - startRef.current;
+        startRef.current = Date.now();
+        flush();
       } else {
         startRef.current = Date.now();
       }
     };
+    const onPageHide = () => flush();
 
     document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onPageHide);
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onPageHide);
       flush();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps

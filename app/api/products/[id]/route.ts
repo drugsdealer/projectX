@@ -402,6 +402,7 @@ export async function GET(
       images,
       sizeType: pAny?.sizeType ?? null,
       brandId: pAny?.brandId ?? null,
+      gender: pAny?.gender ?? null,
       colorId: pAny?.colorId ?? null,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,

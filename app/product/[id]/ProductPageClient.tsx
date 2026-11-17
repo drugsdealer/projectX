@@ -746,18 +746,23 @@ const { onAddedToCart: behaviorOnCart, onFavorited: behaviorOnFav } = useTrackCa
 const trackInput = React.useMemo(() => {
   if (!product?.id) return null;
   const anyP = product as any;
+  // brandId / categorySlug / subCategorySlug normalizeProduct() вырезает — берём из rawProduct,
+  // иначе профиль интересов не узнаёт ни категорию, ни бренд просмотренного товара.
+  const raw = (rawProduct as any) ?? {};
+  const rawBrandId = Number(raw?.brandId ?? anyP?.brandId);
   return {
     productId: product.id,
     name: product.name ?? "",
-    imageUrl: anyP?.imageUrl ?? null,
+    imageUrl: anyP?.imageUrl ?? raw?.imageUrl ?? null,
     price: typeof anyP?.price === "number" ? anyP.price : null,
-    brandId: typeof anyP?.brandId === "number" ? anyP.brandId : null,
-    brandName: anyP?.brand ?? anyP?.brandName ?? null,
-    brandSlug: anyP?.brandSlug ?? null,
-    categorySlug: anyP?.categorySlug ?? null,
-    gender: anyP?.gender ?? null,
+    brandId: Number.isFinite(rawBrandId) && rawBrandId > 0 ? rawBrandId : null,
+    brandName: anyP?.brand ?? raw?.brand ?? anyP?.brandName ?? null,
+    brandSlug: anyP?.brandSlug ?? raw?.brandSlug ?? null,
+    categorySlug: raw?.categorySlug ?? anyP?.categorySlug ?? null,
+    subcategory: raw?.subCategorySlug ?? null,
+    gender: raw?.gender ?? anyP?.gender ?? null,
   };
-}, [product]);
+}, [product, rawProduct]);
 useTrackProduct({ product: trackInput });
 
   // Sticky header state and refs
