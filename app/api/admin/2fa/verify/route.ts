@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
 import { requireAdminApi, sign2FACookie } from "@/lib/admin";
-import { decryptSecret } from "@/lib/totp";
+import { decryptSecret, verifyTotp } from "@/lib/totp";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
@@ -35,9 +35,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, message: "2FA не настроен" }, { status: 400 });
   }
 
-  const { authenticator } = await import("otplib");
-  authenticator.options = { step: 30, digits: 6, window: 2 };
-
   let secret = "";
   try {
     secret = decryptSecret(user.adminTotpSecretEnc);
@@ -49,8 +46,15 @@ export async function POST(req: Request) {
     );
   }
 
-  const delta = authenticator.checkDelta(code, secret);
+  let delta: number | null = null;
+  try {
+    delta = verifyTotp(code, secret, 2);
+  } catch {
+    console.error("[admin.2fa.verify] secret is not valid base32");
+  }
   if (delta === null) {
+    // Без кода и секрета — только время сервера, чтобы видеть расхождение часов в логах.
+    console.warn(`[admin.2fa.verify] code mismatch user=${user.id} serverTime=${new Date().toISOString()} node=${process.version}`);
     return NextResponse.json(
       {
         success: false,
@@ -60,6 +64,8 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
+
+  if (delta !== 0) console.info(`[admin.2fa.verify] accepted with clock drift ${delta * 30}s`);
 
   await prisma.user.update({
     where: { id: user.id },
