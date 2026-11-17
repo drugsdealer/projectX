@@ -16,6 +16,7 @@ export const DB_CATEGORY_TO_UI: Record<string, string> = {
   "аксессуары": "accessories",
   "сумки-и-рюкзаки": "bags",
   "парфюмерия": "fragrance",
+  "косметика": "cosmetics",
   "premium": "premium",
 };
 
@@ -48,6 +49,10 @@ const CATEGORY_ALIASES: Record<string, string> = {
   fragrances: "fragrance",
   headwear: "headwear",
   hats: "headwear",
+  cosmetics: "cosmetics",
+  cosmetic: "cosmetics",
+  beauty: "cosmetics",
+  makeup: "cosmetics",
 };
 
 export const SUBCATEGORY_PARENT: Record<string, string> = {

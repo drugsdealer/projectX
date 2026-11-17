@@ -16,9 +16,10 @@ const LABELS: Record<string, string> = {
   bags: "Сумки",
   accessories: "Аксессуары",
   fragrance: "Парфюмерия",
+  cosmetics: "Косметика",
   headwear: "Головные уборы",
 };
-const ORDER = ["footwear", "clothes", "bags", "accessories", "fragrance", "headwear"];
+const ORDER = ["footwear", "clothes", "bags", "accessories", "fragrance", "cosmetics", "headwear"];
 const SUBCATS: Record<string, string[]> = {
   footwear: ["Кроссовки", "Ботинки", "Сникеры", "Сандалии"],
   clothes: ["Худи", "Футболки", "Деним", "Куртки"],

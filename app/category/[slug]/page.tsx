@@ -41,6 +41,10 @@ const CATEGORY_SEO: Record<string, { name: string; description: string }> = {
     name: 'Головные уборы',
     description: 'Кепки, шапки и головные уборы Stage Store: оригинальные позиции для повседневных образов.',
   },
+  cosmetics: {
+    name: 'Косметика',
+    description: 'Оригинальная косметика в Stage Store: декоративная косметика и уход от мировых брендов с доставкой по России.',
+  },
 };
 
 export async function generateStaticParams() {
@@ -120,6 +124,8 @@ function prettyCategoryTitle(raw: string) {
     аксессуары: 'Аксессуары',
     парфюм: 'Парфюм',
     парфюмерия: 'Парфюмерия',
+    косметика: 'Косметика',
+    cosmetics: 'Косметика',
     'головные уборы': 'Головные уборы',
 
     footwear: 'Обувь',

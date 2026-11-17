@@ -38,6 +38,7 @@ const LABELS: Record<string, string> = {
   bags: 'Сумки',
   accessories: 'Аксессуары',
   fragrance: 'Парфюмерия',
+  cosmetics: 'Косметика',
   headwear: 'Головные уборы',
 };
 
@@ -71,7 +72,9 @@ const HOME_CATEGORY_LINKS = [
   { label: "Сумки", href: "/category/bags", image: "https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.43.43.jpg" },
   { label: "Аксессуары", href: "/category/accessories", image: "https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.43.49.jpg" },
   { label: "Парфюм", href: "/category/fragrance", image: "https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.43.55.jpg" },
-];
+  // Предметное фото на светлом фоне — плитка светлая, подпись тёмная.
+  { label: "Косметика", href: "/category/cosmetics", image: "https://ik.imagekit.io/qowmy92ny/Y0012000_C038300003_E01_ZHC.webp", light: true },
+] as Array<{ label: string; href: string; image: string; light?: boolean }>;
 
 const HOME_GENDER_SELECTIONS = [
   {
@@ -1087,7 +1090,7 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
   // чтобы главная рендерилась на сервере.
   const [searchParams, setSearchParams] = useState<URLSearchParams>(() => new URLSearchParams());
   // --- НОРМАЛИЗАЦИЯ КАТЕГОРИЙ / ПОРЯДОК (hoisted, used below) ---
-  const ORDER = ["footwear", "clothes", "bags", "accessories", "fragrance", "headwear"] as const;
+  const ORDER = ["footwear", "clothes", "bags", "accessories", "fragrance", "cosmetics", "headwear"] as const;
 
   // Источник «сырой» категории из товара: сначала slug из БД/АПИ, затем поле-объект и прочие устаревшие поля
   const getRawCategory = useCallback((p: any) => {
@@ -1181,7 +1184,14 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
       beanie: "headwear",
       "шапки": "headwear",
       "головные уборы": "headwear",
-      "головные-уборы": "headwear"
+      "головные-уборы": "headwear",
+
+      // cosmetics
+      cosmetics: "cosmetics",
+      cosmetic: "cosmetics",
+      beauty: "cosmetics",
+      makeup: "cosmetics",
+      "косметика": "cosmetics",
     };
     if (map[v]) return map[v];
 
@@ -1190,6 +1200,7 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
     if (/(bag|pack|рюкзак|сумк)/.test(v)) return "bags";
     if (/(accessor|аксесс)/.test(v)) return "accessories";
     if (/(perf|fragr|парф)/.test(v)) return "fragrance";
+    if (/(cosmet|космет|beauty|makeup)/.test(v)) return "cosmetics";
     if (/(hat|cap|beanie|head|шапк|кепк)/.test(v)) return "headwear";
     if (/\b(cloth|apparel|garment)s?\b/.test(v)) return "clothes";
 
@@ -1962,23 +1973,29 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
             ))}
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
             {HOME_CATEGORY_LINKS.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="group relative min-h-[160px] overflow-hidden rounded-[26px] bg-black text-white shadow-md"
+                className={`group relative min-h-[160px] overflow-hidden rounded-[26px] shadow-md ${
+                  item.light ? "bg-[#f2f2f4] text-black" : "bg-black text-white"
+                }`}
               >
                 <Image
                   src={toProxiedImageUrl(item.image)}
                   alt=""
                   fill
-                  sizes="(max-width: 1024px) 50vw, 20vw"
-                  className="object-cover opacity-80 transition duration-500 group-hover:scale-105 group-hover:opacity-100"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1280px) 33vw, 17vw"
+                  className={
+                    item.light
+                      ? "object-contain px-4 pt-3 pb-12 transition duration-500 group-hover:scale-105"
+                      : "object-cover opacity-80 transition duration-500 group-hover:scale-105 group-hover:opacity-100"
+                  }
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+                {!item.light && <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />}
                 <div className="absolute inset-x-0 bottom-0 p-4">
-                  <h3 className="text-lg font-black tracking-[-0.03em] drop-shadow-lg">
+                  <h3 className={`text-lg font-black tracking-[-0.03em] ${item.light ? "" : "drop-shadow-lg"}`}>
                     {item.label}
                   </h3>
                 </div>
@@ -2128,6 +2145,7 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
                               headwear: "Головной убор",
                               accessories: "Аксессуар",
                               fragrance: "Парфюм",
+                              cosmetics: "Косметика",
                               clothes: "Одежда",
                               footwear: "Обувь",
                             };

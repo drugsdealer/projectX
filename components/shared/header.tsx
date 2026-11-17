@@ -46,6 +46,7 @@ const BURGER_LINKS: Array<{ label: string; href: string; badge?: string }> = [
   { label: "Одежда", href: "/search?category=%D0%BE%D0%B4%D0%B5%D0%B6%D0%B4%D0%B0" },
   { label: "Аксессуары", href: "/search?category=%D0%B0%D0%BA%D1%81%D0%B5%D1%81%D1%81%D1%83%D0%B0%D1%80%D1%8B" },
   { label: "Парфюм", href: "/search?category=%D0%BF%D0%B0%D1%80%D1%84%D1%8E%D0%BC" },
+  { label: "Косметика", href: "/category/cosmetics" },
   { label: "Избранное", href: "/favorites_item" },
   { label: "Корзина", href: "/cart" },
   { label: "Поиск", href: "/search" },
