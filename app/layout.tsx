@@ -44,10 +44,7 @@ export const metadata: Metadata = {
     ...(process.env.YANDEX_VERIFICATION ? { yandex: process.env.YANDEX_VERIFICATION } : {}),
   },
   creator: "Stage Store",
-  icons: {
-    icon: SITE_LOGO_URL,
-    apple: SITE_LOGO_URL,
-  },
+  // Иконки — файлы app/favicon.ico, app/icon.png, app/apple-icon.png (Next подключает их сам).
   openGraph: {
     type: "website",
     locale: "ru_RU",
