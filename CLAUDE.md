@@ -24,7 +24,7 @@ GitHub: https://github.com/drugsdealer/projectX
 
 ## Критические правила
 
-1. **Деплой = git push** — `git add → commit → push origin main` → Vercel деплоит автоматически. Без push изменения не попадают на продакшен.
+1. **Сначала тест, потом прод.** Новые доработки делаются в ветке `dev` → `git push origin dev` → Vercel сам собирает https://test.stagestore.app (пароль). В `main` (= stagestore.app) переносить только когда владелец скажет «выкатывай»: `git checkout main && git merge dev && git push origin main`. Срочные мелкие исправления можно сразу в main, потом влить main в dev.
 2. **Prisma schema изменения** → всегда `npx prisma db push` после правок schema.prisma, затем push.
 3. **ISR кеш** → после изменений в админке вызывать `revalidatePath()` для нужных страниц.
 4. **ImageKit** → все медиа через `getOptimizedImageUrl()` из `lib/media.ts`. Не использовать `unoptimized` без `shouldBypassNextImageOptimization()`.
@@ -125,10 +125,14 @@ npx tsc --noEmit     # проверка типов без сборки
 npx prisma db push   # применить изменения schema к Neon DB
 npx prisma studio    # GUI для DB
 
-# Деплой (всегда так):
+# Доработка (на тестовый сайт):
+git checkout dev
 git add <files>
 git commit -m "коммитN: описание"
-git push origin main
+git push origin dev            # → test.stagestore.app
+
+# Выкатить на основной сайт (по команде владельца «выкатывай»):
+git checkout main && git merge dev && git push origin main && git checkout dev
 ```
 
 ---
@@ -189,6 +193,13 @@ const collabBrands = (rawProduct as any)?.collabBrands ?? [];
 Предпочитает: коммитить и пушить после каждого набора изменений, видеть результат на живом сайте.
 
 ---
+
+## Тестовый сайт (test.stagestore.app)
+- Ветка `dev` → Vercel preview; домен test.stagestore.app привязан к ветке dev. Ходит напрямую на Vercel (без DDoS-Guard) — из России может понадобиться VPN, владельца это устраивает.
+- Закрыт паролем: Basic Auth в `middleware.ts` при `VERCEL_ENV=preview` (`lib/staging.ts` → `IS_STAGING`), пароль — `STAGING_PASSWORD` (Preview, ветка dev). Логин любой (stage). Пароль в чат не выводить — он у владельца в файле на рабочем столе.
+- Своя база: `stagestore_test` на том же Neon-сервере (копия прода от 2026-11-19). `DATABASE_URL`/`DIRECT_URL` для ветки dev заданы в Vercel отдельно. Изменения schema.prisma сначала `db push` в тестовую базу, после «выкатывай» — в прод.
+- Встроенный вход Vercel (Deployment Protection) выключен — защита только нашим паролем.
+- Telegram с теста шлёт в рабочие чаты с пометкой «🧪 ТЕСТОВЫЙ САЙТ». Оплаты T-Bank на тесте нет (переменные TBANK только в Production).
 
 ## DDoS-Guard (доступ из России)
 - DNS у Vercel. A-запись `stagestore.app` → `185.178.208.148` (DDoS-Guard, тариф Basic), тот проксирует на Vercel `76.76.21.21`. `www`, `pay`, почтовые записи — без изменений. Откат: A-запись обратно на `76.76.21.21`.
