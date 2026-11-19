@@ -81,8 +81,10 @@ export async function sendOrderNotificationToTelegram(payload: {
   fullName?: string;
   phone?: string;
   email?: string;
+  /** Подарки по акциям, которые надо положить в заказ: ["косметичка Dior"]. */
+  gifts?: string[];
 }) {
-  const { orderId, amount, fullName, phone, email } = payload;
+  const { orderId, amount, fullName, phone, email, gifts } = payload;
 
   const lines: string[] = [];
   lines.push("🆕 <b>Новый заказ</b>");
@@ -92,6 +94,10 @@ export async function sendOrderNotificationToTelegram(payload: {
   if (fullName) lines.push(`<b>Имя:</b> ${escapeTelegramHtml(fullName, 160)}`);
   if (phone) lines.push(`<b>Телефон:</b> ${escapeTelegramHtml(phone, 80)}`);
   if (email) lines.push(`<b>Email:</b> ${escapeTelegramHtml(email, 160)}`);
+  for (const gift of gifts ?? []) {
+    lines.push("");
+    lines.push(`🎁 <b>Подарок по акции:</b> ${escapeTelegramHtml(gift, 120)} — положить в заказ`);
+  }
 
   const text = lines.join("\n");
 

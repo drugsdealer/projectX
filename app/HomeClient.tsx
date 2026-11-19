@@ -21,6 +21,8 @@ import HomePromoRail from "@/components/home/HomePromoRail";
 import CmsPromoBlock from "@/components/home/promos/CmsPromoBlock";
 import GentleMonsterBanner from "@/components/home/promos/GentleMonsterBanner";
 import StoneIslandBanner from "@/components/promos/StoneIslandBanner";
+import BeautyWeekBanner from "@/components/promos/beauty/BeautyWeekBanner";
+import { BEAUTY_PROMO, beautyBrandOf, isBeautyPromoActive } from "@/lib/promo-beauty";
 import { RepeatViewedSection } from "@/components/home/ForYouFeed";
 import BrandSpotlightCard from "@/components/home/BrandSpotlightCard";
 import { Sparkles } from "lucide-react";
@@ -1218,6 +1220,19 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
     return "other";
   }, []);
 
+  // Бренды акции «Бьюти-неделя», косметика которых есть в каталоге (нет товаров — нет баннера).
+  const beautyBrands = useMemo(() => {
+    if (!isBeautyPromoActive()) return [];
+    const found = new Set<string>();
+    for (const p of products) {
+      if (normalizeCategory(getRawCategory(p)) !== "cosmetics") continue;
+      const b = beautyBrandOf((p as any)?.brand || (p as any)?.brandName || extractBrand(p));
+      if (b) found.add(b.key);
+    }
+    return BEAUTY_PROMO.brands.filter((b) => found.has(b.key));
+  }, [products, extractBrand, normalizeCategory, getRawCategory]);
+
+
   // Каталог главной: исключаем premium-товары, но в промо-источниках они доступны.
   const catalog = useMemo(
     () => products.filter((item: any) => !Boolean(item?.premium)),
@@ -2115,6 +2130,11 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
                       {sectionIndex === 1 && gentleMonsterItems.length > 0 && (
                         <div className="px-3 sm:px-0">
                           <GentleMonsterBanner products={gentleMonsterItems} />
+                        </div>
+                      )}
+                      {sectionIndex === 2 && beautyBrands.length > 0 && (
+                        <div className="px-3 sm:px-0">
+                          <BeautyWeekBanner brands={beautyBrands} />
                         </div>
                       )}
                       {sectionIndex === 3 && (

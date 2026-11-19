@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
 import { verifyTBankNotification, isFinalFailStatus, describeCancelReason, parseTBankOrderId } from "@/lib/tbank";
 import { sendOrderNotificationToTelegram } from "@/lib/telegram";
+import { getOrderBeautyGifts } from "@/lib/promo-beauty-server";
 import { sendOrderReceipt } from "@/lib/receipt-email";
 import { redeemPromoForOrder } from "@/lib/promos";
 
@@ -107,6 +108,7 @@ export async function POST(req: Request) {
       try {
         await sendOrderNotificationToTelegram({
           orderId: full.publicNumber || full.id,
+        gifts: await getOrderBeautyGifts(full.id),
           token: full.token,
           amount: Number(full.totalAmount || 0),
           fullName: full.fullName || undefined,

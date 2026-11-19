@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { getUserIdFromRequest } from "@/lib/session";
 import { cookies } from "next/headers";
 import { sendOrderNotificationToTelegram } from "@/lib/telegram";
+import { getOrderBeautyGifts } from "@/lib/promo-beauty-server";
 import { redeemPromoForOrder } from "@/lib/promos";
 import { sendOrderReceipt } from "@/lib/receipt-email";
 import { emitServerEvents, type ServerTrackEventPayload } from "@/lib/events-server";
@@ -211,6 +212,7 @@ export async function POST(req: Request) {
     try {
       await sendOrderNotificationToTelegram({
         orderId: updated.publicNumber || updated.id,
+        gifts: await getOrderBeautyGifts(updated.id),
         token: updated.token ?? null,
         amount: Number(updated.totalAmount || 0),
         fullName: updated.fullName || undefined,

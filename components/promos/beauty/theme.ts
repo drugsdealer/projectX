@@ -1,0 +1,58 @@
+import { Cormorant_Garamond, JetBrains_Mono, Nunito, Oswald } from "next/font/google";
+import type { FloatItem } from "./FloatingBottles";
+
+// Шрифты акции (из референса): заголовки Oswald, бренды курсивом Cormorant, текст Nunito, подписи JetBrains Mono.
+export const fontDisplay = Oswald({ subsets: ["latin", "cyrillic"], weight: ["300", "400"], display: "swap" });
+export const fontSerif = Cormorant_Garamond({
+  subsets: ["latin", "cyrillic"],
+  weight: ["500"],
+  style: ["italic"],
+  display: "swap",
+});
+export const fontBody = Nunito({ subsets: ["latin", "cyrillic"], weight: ["400", "700"], display: "swap" });
+export const fontMono = JetBrains_Mono({ subsets: ["latin", "cyrillic"], weight: ["500"], display: "swap" });
+
+export const BEAUTY_COLORS = {
+  cream: "#FBF3EE",
+  blush: "#F6DCD8",
+  petal: "#EFB9BF",
+  line: "#D9B7B4",
+  ink: "#231A1B",
+  inkMuted: "#6B5A5C",
+  text: "#3A2D2F",
+  accent: "#A3274F",
+} as const;
+
+const IMG = "/promo/beauty-week";
+
+/** Флаконы вокруг арки на странице акции. Позиции — в % от блока с фото. */
+export const HERO_BOTTLES: FloatItem[] = [
+  { src: `${IMG}/glow-oil-berry.webp`, left: -10, top: 6, width: 17, depth: 0.85, rotate: -14, z: 3 },
+  { src: `${IMG}/glow-oil-orange.webp`, left: 84, top: 4, width: 13, depth: 0.45, rotate: 12, z: 3 },
+  { src: `${IMG}/glow-palette.webp`, left: 72, top: 58, width: 34, depth: 1, rotate: 8, z: 4 },
+  { src: `${IMG}/glow-oil-coral.webp`, left: 2, top: 66, width: 15, depth: 0.7, rotate: 10, z: 4 },
+  { src: `${IMG}/lip-max-pink.webp`, left: 90, top: 30, width: 8, depth: 0.3, rotate: -8, z: 0 },
+  { src: `${IMG}/glow-oil-cherry.webp`, left: 24, top: 86, width: 12, depth: 0.95, rotate: -6, z: 4 },
+  { src: `${IMG}/glow-oil-pink.webp`, left: -6, top: 40, width: 10, depth: 0.25, rotate: 6, z: 0 },
+];
+
+/** Флаконы в разделе подарка — поменьше и спокойнее. */
+export const GIFT_BOTTLES: FloatItem[] = [
+  { src: `${IMG}/glow-oil-bronze.webp`, left: 78, top: -10, width: 9, depth: 0.6, rotate: 14, z: 2 },
+  { src: `${IMG}/glow-oil-pink.webp`, left: 88, top: 62, width: 7, depth: 0.35, rotate: -10, z: 2 },
+];
+
+/** Флаконы баннера на главной (компьютер). Позиции — в % от правой части с фото. */
+export const BANNER_BOTTLES: FloatItem[] = [
+  { src: `${IMG}/glow-oil-berry.webp`, left: 2, top: 10, width: 9, depth: 0.8, rotate: -12, z: 3 },
+  { src: `${IMG}/glow-oil-coral.webp`, left: 30, top: 58, width: 8, depth: 0.55, rotate: 9, z: 3 },
+  { src: `${IMG}/glow-palette.webp`, left: 60, top: 8, width: 17, depth: 1, rotate: -7, z: 3 },
+  { src: `${IMG}/glow-oil-orange.webp`, left: 86, top: 52, width: 8, depth: 0.7, rotate: 12, z: 3 },
+];
+
+/** Флаконы баннера на телефоне — над фото. */
+export const BANNER_BOTTLES_MOBILE: FloatItem[] = [
+  { src: `${IMG}/glow-oil-berry.webp`, left: 4, top: 8, width: 17, depth: 0.8, rotate: -12, z: 3 },
+  { src: `${IMG}/glow-palette.webp`, left: 62, top: 34, width: 34, depth: 1, rotate: 8, z: 3 },
+  { src: `${IMG}/glow-oil-orange.webp`, left: 72, top: -4, width: 13, depth: 0.5, rotate: 12, z: 3 },
+];
