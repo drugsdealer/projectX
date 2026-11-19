@@ -1,5 +1,9 @@
 // lib/telegram.ts
 import { Buffer } from "buffer";
+import { IS_STAGING } from "@/lib/staging";
+
+// С тестового сайта сообщения идут в те же чаты, но с пометкой — чтобы не спутать с настоящим заказом.
+const STAGING_MARK = "🧪 <b>ТЕСТОВЫЙ САЙТ</b> — не настоящая заявка\n\n";
 
 // Получателей у бота может быть несколько: в переменной через запятую ("111,222").
 // Каждый должен один раз нажать /start в боте — иначе Telegram не даст ему написать.
@@ -38,7 +42,7 @@ async function sendTelegramMessage(botToken: string, chatId: string, text: strin
       },
       body: JSON.stringify({
         chat_id: chatId,
-        text,
+        text: IS_STAGING ? STAGING_MARK + text : text,
         parse_mode: "HTML",
       }),
     });
@@ -144,7 +148,8 @@ async function sendTelegramDocument(
 
     const form = new FormData();
     form.append("chat_id", chatId);
-    if (caption) form.append("caption", caption);
+    const finalCaption = IS_STAGING ? `🧪 ТЕСТОВЫЙ САЙТ${caption ? ` — ${caption}` : ""}` : caption;
+    if (finalCaption) form.append("caption", finalCaption);
     form.append("document", blob, file.name || "file");
 
     const res = await fetch(

@@ -106,9 +106,11 @@ async function fetchUser(request: NextRequest) {
   try {
     const meUrl = new URL("/api/auth/me", request.url);
     const res = await fetch(meUrl.toString(), {
-      headers: request.headers.get("cookie")
-        ? { cookie: request.headers.get("cookie") as string }
-        : {},
+      headers: {
+        ...(request.headers.get("cookie") ? { cookie: request.headers.get("cookie") as string } : {}),
+        // на тестовом сайте внутренний запрос тоже должен пройти пароль
+        ...(request.headers.get("authorization") ? { authorization: request.headers.get("authorization") as string } : {}),
+      },
       cache: 'no-store',
       signal: controller.signal,
     });
@@ -134,7 +136,39 @@ async function fetchUser(request: NextRequest) {
   }
 }
 
+// ── Тестовый сайт (test.stagestore.app, ветка dev) закрыт паролем ──
+// Пароль — переменная STAGING_PASSWORD в Vercel (только для Preview). Имя пользователя любое.
+const IS_STAGING = process.env.VERCEL_ENV === "preview";
+
+function stagingGate(request: NextRequest): NextResponse | null {
+  const password = process.env.STAGING_PASSWORD || "";
+  const header = request.headers.get("authorization") || "";
+  if (password && header.startsWith("Basic ")) {
+    try {
+      const decoded = atob(header.slice(6).trim());
+      const given = decoded.slice(decoded.indexOf(":") + 1);
+      const enc = new TextEncoder();
+      if (decoded.includes(":") && constantTimeEqual(enc.encode(given), enc.encode(password))) return null;
+    } catch {
+      /* битый заголовок — просим пароль заново */
+    }
+  }
+  return new NextResponse(password ? "Тестовый сайт Stage Store: нужен пароль" : "Тестовый сайт закрыт", {
+    status: password ? 401 : 503,
+    headers: {
+      ...(password ? { "WWW-Authenticate": 'Basic realm="Stage Store test", charset="UTF-8"' } : {}),
+      "X-Robots-Tag": "noindex, nofollow",
+      "Cache-Control": "no-store",
+      "Content-Type": "text/plain; charset=utf-8",
+    },
+  });
+}
+
 export async function middleware(request: NextRequest) {
+  if (IS_STAGING) {
+    const blocked = stagingGate(request);
+    if (blocked) return blocked;
+  }
   const { pathname } = request.nextUrl;
   const isApiPath = pathname.startsWith("/api/");
   const isAdminArea = pathname.startsWith("/admin") || pathname.startsWith("/liza");
@@ -163,7 +197,7 @@ export async function middleware(request: NextRequest) {
     res.headers.set("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
     res.headers.set("Cross-Origin-Opener-Policy", "same-origin");
     res.headers.set("Cross-Origin-Resource-Policy", "cross-origin");
-    if (isApiPath) {
+    if (isApiPath || IS_STAGING) {
       res.headers.set("X-Robots-Tag", "noindex, nofollow");
       // приватные API нельзя кэшировать в браузере/прокси
       if (isPrivateApiPath && !res.headers.has("Cache-Control")) {
