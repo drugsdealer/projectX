@@ -5,9 +5,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { toProxiedImageUrl, toProxiedVideoUrl } from '@/lib/media';
+import BeautyHeroSlide from '@/components/promos/beauty/BeautyHeroSlide';
+import { BEAUTY_PROMO, formatRub, isBeautyPromoActive } from '@/lib/promo-beauty';
 
 type Slide = {
   id: string;
+  // Свой фон-компонент вместо фото/видео
+  custom?: 'beauty';
   // Image slide
   src?: string;
   // Video slide
@@ -54,6 +58,23 @@ const SLIDES: Slide[] = [
     cta: { label: 'Смотреть коллаборацию', href: '/rimowa-x-maison-margiela' },
     align: 'left',
   },
+  // Акция «Бьюти-неделя» — слайд пропадает сам, когда акция закончится (BEAUTY_PROMO.endsAt).
+  ...(isBeautyPromoActive()
+    ? [
+        {
+          id: 'beauty-week',
+          custom: 'beauty' as const,
+          durationMs: 8000,
+          alt: `${BEAUTY_PROMO.title} — косметика ${BEAUTY_PROMO.brands[0].name}`,
+          eyebrow: `${BEAUTY_PROMO.brands[0].name} / Подарок от ${formatRub(BEAUTY_PROMO.threshold)}`,
+          title: 'Бьюти-',
+          mutedTitle: 'неделя',
+          text: `Закажите косметику ${BEAUTY_PROMO.brands[0].name} на ${formatRub(BEAUTY_PROMO.threshold)} и больше — ${BEAUTY_PROMO.brands[0].gift} в подарок.`,
+          cta: { label: 'Выбрать косметику', href: BEAUTY_PROMO.path },
+          align: 'left' as const,
+        },
+      ]
+    : []),
 ];
 
 const AUTO_MS = 7000;
@@ -92,6 +113,8 @@ function SlideBackground({ slide, priority }: { slide: Slide; priority: boolean 
     const params = mobile ? 'tr:w-720,q-60' : 'tr:w-1280,q-65';
     return `${base}ik.imagekit.io/qowmy92ny/${params}/${file}`;
   };
+
+  if (slide.custom === 'beauty') return <BeautyHeroSlide priority={priority} />;
 
   if (slide.videoSrc) {
     const rawSrc = isMobile && slide.videoSrcMobile ? slide.videoSrcMobile : slide.videoSrc;

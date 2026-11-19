@@ -2,10 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import FloatingBottles from "./FloatingBottles";
 import {
-  BANNER_BOTTLES,
-  BANNER_BOTTLES_MOBILE,
   BEAUTY_COLORS as C,
   fontBody,
   fontDisplay,
@@ -36,7 +33,6 @@ export default function BeautyWeekBanner({ brands }: { brands: BeautyBrand[] }) 
       <div className="md:hidden relative">
         <div className="relative h-[250px] overflow-hidden">
           <Image src={photos[2]} alt="" fill sizes="100vw" className="object-cover" style={{ objectPosition: "50% 40%" }} />
-          <FloatingBottles items={BANNER_BOTTLES_MOBILE} intensity={0.7} />
           <div className={`${label} absolute left-4 top-4 px-2.5 py-1.5`} style={{ background: C.cream, zIndex: 5 }}>
             Подарок от {THRESHOLD}
           </div>
@@ -103,7 +99,6 @@ export default function BeautyWeekBanner({ brands }: { brands: BeautyBrand[] }) 
               />
             </div>
           ))}
-          <FloatingBottles items={BANNER_BOTTLES} />
           <div
             className="absolute right-12 bottom-10 px-[18px] py-3.5"
             style={{

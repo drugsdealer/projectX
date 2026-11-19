@@ -41,18 +41,3 @@ export const GIFT_BOTTLES: FloatItem[] = [
   { src: `${IMG}/glow-oil-bronze.webp`, left: 78, top: -10, width: 9, depth: 0.6, rotate: 14, z: 2 },
   { src: `${IMG}/glow-oil-pink.webp`, left: 88, top: 62, width: 7, depth: 0.35, rotate: -10, z: 2 },
 ];
-
-/** Флаконы баннера на главной (компьютер). Позиции — в % от правой части с фото. */
-export const BANNER_BOTTLES: FloatItem[] = [
-  { src: `${IMG}/glow-oil-berry.webp`, left: 2, top: 10, width: 9, depth: 0.8, rotate: -12, z: 3 },
-  { src: `${IMG}/glow-oil-coral.webp`, left: 30, top: 58, width: 8, depth: 0.55, rotate: 9, z: 3 },
-  { src: `${IMG}/glow-palette.webp`, left: 60, top: 8, width: 17, depth: 1, rotate: -7, z: 3 },
-  { src: `${IMG}/glow-oil-orange.webp`, left: 86, top: 52, width: 8, depth: 0.7, rotate: 12, z: 3 },
-];
-
-/** Флаконы баннера на телефоне — над фото. */
-export const BANNER_BOTTLES_MOBILE: FloatItem[] = [
-  { src: `${IMG}/glow-oil-berry.webp`, left: 4, top: 8, width: 17, depth: 0.8, rotate: -12, z: 3 },
-  { src: `${IMG}/glow-palette.webp`, left: 62, top: 34, width: 34, depth: 1, rotate: 8, z: 3 },
-  { src: `${IMG}/glow-oil-orange.webp`, left: 72, top: -4, width: 13, depth: 0.5, rotate: 12, z: 3 },
-];
