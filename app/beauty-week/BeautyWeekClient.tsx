@@ -130,7 +130,7 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
       </div>
 
       {/* ── Первый экран ── */}
-      <section className="mx-auto max-w-[1280px] px-4 md:px-10">
+      <section className="mx-auto max-w-[1280px] px-4 md:px-10" style={{ overflowX: "clip" }}>
         <div className="flex flex-col md:flex-row md:items-center gap-10 md:gap-14 pt-8 pb-16 md:pt-12 md:pb-24">
           <div className="flex-1 min-w-0">
             <div className={label} style={{ color: C.inkMuted, marginBottom: 28 }}>
@@ -181,8 +181,7 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
                 style={{
                   left: "-2%",
                   top: "9%",
-                  width: "36%",
-                  minWidth: 130,
+                  width: "max(36%, 150px)",
                   transform: "rotate(-6deg)",
                   background: C.cream,
                   border: `1px solid ${C.ink}`,
@@ -197,7 +196,7 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
                 <div className={label} style={{ color: C.inkMuted, fontSize: 10 }}>
                   Подарок
                 </div>
-                <div className={`${fontDisplay.className} uppercase`} style={{ fontSize: 22, lineHeight: "24px", marginTop: 6 }}>
+                <div className={`${fontDisplay.className} uppercase`} style={{ fontSize: 22, lineHeight: "24px", marginTop: 6, whiteSpace: "nowrap" }}>
                   от {THRESHOLD}
                 </div>
                 <div style={{ fontSize: 13, lineHeight: "18px", marginTop: 6, color: C.text }}>косметичка бренда</div>
@@ -296,9 +295,9 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
               </div>
             </div>
 
-            <div className="flex-[1.25] min-w-0 flex flex-col sm:flex-row gap-6">
+            <div className="flex-[1.25] min-w-0 flex flex-col sm:flex-row gap-6 md:justify-end">
               {shownBrands.map((b) => (
-                <div key={b.key} className="flex-1 min-w-0">
+                <div key={b.key} className={`flex-1 min-w-0 ${shownBrands.length === 1 ? "w-full max-w-[460px] md:mx-auto" : ""}`}>
                   <div
                     className="relative flex items-center justify-center overflow-hidden"
                     style={{ background: C.cream, aspectRatio: "4 / 5", border: `1px solid ${C.line}` }}
