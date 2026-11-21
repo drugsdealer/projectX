@@ -51,5 +51,4 @@ export const HERO_BOTTLES_MIX: FloatItem[] = [
 /** Флаконы в разделе подарка — поменьше и спокойнее. */
 export const GIFT_BOTTLES: FloatItem[] = [
   { src: `${IMG}/glow-oil-bronze.webp`, left: 78, top: -10, width: 9, depth: 0.6, rotate: 14, z: 2 },
-  { src: `${IMG}/gucci-lipstick-rose.webp`, left: 90, top: 58, width: 5, depth: 0.35, rotate: -10, z: 2 },
 ];
