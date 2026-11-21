@@ -1,5 +1,6 @@
 /**
- * Акция «Бьюти-неделя»: косметичка бренда в подарок к заказу косметики этого бренда от THRESHOLD ₽.
+ * Акция «Бьюти-неделя»: одна косметичка на выбор (любого бренда акции) в подарок к заказу,
+ * в котором косметики и парфюма брендов акции (Dior, Gucci — вместе) на THRESHOLD ₽ и больше.
  *
  * Все условия акции — здесь. Страница /beauty-week, баннер на главной и пометка о подарке
  * в Telegram-уведомлении о заказе читают их отсюда.
@@ -11,7 +12,7 @@
 export const BEAUTY_PROMO = {
   path: "/beauty-week",
   title: "Бьюти-неделя",
-  /** Минимальная сумма заказа косметики одного бренда, ₽. */
+  /** Минимальная общая сумма косметики и парфюма брендов акции в заказе, ₽. */
   threshold: 10_000,
   /** Категории, покупки в которых идут в зачёт. */
   categorySlugs: ["cosmetics", "fragrance"] as const,
@@ -67,33 +68,32 @@ export function isBeautyCategory(slug: unknown) {
 export type BeautyLine = { brand: unknown; category: unknown; price: number; quantity: number };
 
 export type BeautyProgress = {
-  brand: BeautyBrand;
+  /** Сумма косметики и парфюма брендов акции (все бренды вместе). */
   total: number;
   remaining: number;
   eligible: boolean;
+  /** Бренды акции, которые есть в заказе — по убыванию суммы. */
+  brands: BeautyBrand[];
 };
 
-/** Сколько набрано по каждому бренду акции. Пустой массив — в заказе нет косметики брендов акции. */
-export function beautyProgress(lines: BeautyLine[]): BeautyProgress[] {
-  const totals = new Map<string, number>();
+/** Сколько набрано на подарок. Бренды акции суммируются: Gucci 6 000 + Dior 4 000 = 10 000. */
+export function beautyProgress(lines: BeautyLine[]): BeautyProgress {
+  const byBrand = new Map<string, number>();
   for (const l of lines) {
     const brand = beautyBrandOf(l.brand);
     if (!brand || !isBeautyCategory(l.category)) continue;
     const sum = Math.max(0, Number(l.price) || 0) * Math.max(0, Number(l.quantity) || 0);
-    totals.set(brand.key, (totals.get(brand.key) ?? 0) + sum);
+    byBrand.set(brand.key, (byBrand.get(brand.key) ?? 0) + sum);
   }
-  return BEAUTY_PROMO.brands
-    .filter((b) => totals.has(b.key))
-    .map((brand) => {
-      const total = Math.round(totals.get(brand.key) ?? 0);
-      return {
-        brand,
-        total,
-        remaining: Math.max(0, BEAUTY_PROMO.threshold - total),
-        eligible: total >= BEAUTY_PROMO.threshold,
-      };
-    })
-    .sort((a, b) => b.total - a.total);
+  const total = Math.round([...byBrand.values()].reduce((a, b) => a + b, 0));
+  return {
+    total,
+    remaining: Math.max(0, BEAUTY_PROMO.threshold - total),
+    eligible: total >= BEAUTY_PROMO.threshold,
+    brands: BEAUTY_PROMO.brands
+      .filter((b) => byBrand.has(b.key))
+      .sort((a, b) => (byBrand.get(b.key) ?? 0) - (byBrand.get(a.key) ?? 0)),
+  };
 }
 
 /** Акция идёт (если дата окончания не задана — идёт). */
@@ -105,44 +105,51 @@ export function isBeautyPromoActive(now = new Date()) {
 export const formatRub = (n: number) => `${Math.round(n).toLocaleString("ru-RU")} ₽`;
 
 // ── Выбор косметички ──────────────────────────────────────────────────────────
-// Покупатель выбирает на странице акции; выбор лежит в куке и при оформлении попадает в заказ
+// Одна косметичка на заказ, любого бренда акции (можно заказать Gucci и выбрать Dior).
+// Покупатель выбирает на странице акции; id лежит в куке и при оформлении попадает в заказ
 // (Order.giftChoice). Не выбрал — менеджер получает случайную, выбранную при уведомлении.
 
 export const BEAUTY_GIFT_COOKIE = "beauty_gift";
 
-export type BeautyPouch = BeautyBrand["pouches"][number];
-export type BeautyGiftChoice = Partial<Record<string, string>>;
+export type BeautyPouch = BeautyBrand["pouches"][number] & { brand: BeautyBrand };
 
-/** Оставляет только известные бренды и косметички — кука приходит от браузера. */
-export function sanitizeGiftChoice(raw: unknown): BeautyGiftChoice {
-  let obj: any = raw;
-  if (typeof raw === "string") {
-    try {
-      obj = JSON.parse(raw);
-    } catch {
-      try {
-        obj = JSON.parse(decodeURIComponent(raw));
-      } catch {
-        return {};
-      }
-    }
-  }
-  if (!obj || typeof obj !== "object") return {};
-  const out: BeautyGiftChoice = {};
-  for (const b of BEAUTY_PROMO.brands) {
-    const id = obj[b.key];
-    if (typeof id === "string" && b.pouches.some((p) => p.id === id)) out[b.key] = id;
-  }
-  return out;
+/** Все косметички акции по порядку брендов. */
+export const BEAUTY_POUCHES: BeautyPouch[] = BEAUTY_PROMO.brands.flatMap((brand) =>
+  brand.pouches.map((p) => ({ ...p, brand }))
+);
+
+export function findPouch(id?: string | null): BeautyPouch | null {
+  return (id && BEAUTY_POUCHES.find((p) => p.id === id)) || null;
 }
 
-export function findPouch(brand: BeautyBrand, id?: string | null): BeautyPouch | null {
-  return (id && brand.pouches.find((p) => p.id === id)) || null;
+/**
+ * id выбранной косметички или null. Кука приходит от браузера, поэтому принимаем только
+ * известные id: просто строку, JSON {"pouch":"…"} или старый формат {"dior":"…"}.
+ */
+export function sanitizeGiftChoice(raw: unknown): string | null {
+  let value: any = raw;
+  if (typeof value === "string") {
+    let text = value.trim();
+    try {
+      text = decodeURIComponent(text);
+    } catch {
+      /* уже раскодировано */
+    }
+    if (findPouch(text)) return text;
+    try {
+      value = JSON.parse(text);
+    } catch {
+      return null;
+    }
+  }
+  if (!value || typeof value !== "object") return null;
+  const candidates = [value.pouch, ...Object.values(value)];
+  for (const c of candidates) if (typeof c === "string" && findPouch(c)) return c;
+  return null;
 }
 
 /** Случайная, но стабильная для заказа косметичка (одна и та же при повторных уведомлениях). */
-export function randomPouch(brand: BeautyBrand, seed: number): BeautyPouch {
-  const i = Math.abs(Math.imul(seed ^ 0x9e3779b9, 2654435761)) % brand.pouches.length;
-  return brand.pouches[i];
+export function randomPouch(seed: number): BeautyPouch {
+  const i = Math.abs(Math.imul(seed ^ 0x9e3779b9, 2654435761)) % BEAUTY_POUCHES.length;
+  return BEAUTY_POUCHES[i];
 }
-

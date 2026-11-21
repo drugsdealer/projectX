@@ -540,7 +540,7 @@ export async function POST(req: Request) {
         : {}),
     }));
 
-    // Выбранные на странице «Бьюти-недели» косметички (кука). Подойдёт ли заказ под акцию,
+    // Выбранная на странице «Бьюти-недели» косметичка (кука, id). Подойдёт ли заказ под акцию,
     // решается при уведомлении менеджеру — здесь только сохраняем выбор.
     const giftChoice = sanitizeGiftChoice((await cookies()).get(BEAUTY_GIFT_COOKIE)?.value ?? null);
 
@@ -556,7 +556,7 @@ export async function POST(req: Request) {
         address,
         comment,
         deliveryMethod,
-        ...(Object.keys(giftChoice).length ? { giftChoice: JSON.stringify(giftChoice) } : {}),
+        ...(giftChoice ? { giftChoice } : {}),
         ...(body?.pdConsent === true ? { pdConsentAt: new Date() } : {}),
         ...(promoMeta
           ? {

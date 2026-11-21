@@ -1,93 +1,96 @@
 "use client";
 
 /**
- * Выбор косметички в подарок.
- *  • PouchCollage — «парящие полароиды»: все косметички вперемешку, по клику — выбрать.
- *  • PouchPicker — по бренду: три модели + «Сюрприз» (не выбирать — положим случайную).
- * Выбор хранится в куке beauty_gift и при оформлении заказа попадает в Order.giftChoice.
+ * Выбор косметички в подарок — одна на заказ, любого бренда акции.
+ *  • PouchCollage — вырезанные косметички «парят» над фоном; по клику — выбрать.
+ *  • PouchPicker — все модели карточками + «Сюрприз» (не выбирать — положим случайную).
+ * Выбор (id) хранится в куке beauty_gift и при оформлении заказа попадает в Order.giftChoice.
  */
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { BEAUTY_COLORS as C, fontDisplay, fontMono } from "./theme";
 import {
   BEAUTY_GIFT_COOKIE,
-  BEAUTY_PROMO,
+  BEAUTY_POUCHES,
   findPouch,
-  formatRub,
   sanitizeGiftChoice,
   type BeautyBrand,
-  type BeautyGiftChoice,
+  type BeautyPouch,
 } from "@/lib/promo-beauty";
 
 const COOKIE_DAYS = 45;
 
-function readCookie(): BeautyGiftChoice {
-  if (typeof document === "undefined") return {};
+function readCookie(): string | null {
+  if (typeof document === "undefined") return null;
   const m = document.cookie.match(new RegExp(`(?:^|;\\s*)${BEAUTY_GIFT_COOKIE}=([^;]*)`));
-  return m ? sanitizeGiftChoice(decodeURIComponent(m[1])) : {};
+  return m ? sanitizeGiftChoice(m[1]) : null;
 }
 
-function writeCookie(choice: BeautyGiftChoice) {
-  const value = encodeURIComponent(JSON.stringify(choice));
+function writeCookie(id: string | null) {
   const secure = location.protocol === "https:" ? "; Secure" : "";
-  document.cookie = `${BEAUTY_GIFT_COOKIE}=${value}; Path=/; Max-Age=${COOKIE_DAYS * 86400}; SameSite=Lax${secure}`;
+  document.cookie = id
+    ? `${BEAUTY_GIFT_COOKIE}=${encodeURIComponent(id)}; Path=/; Max-Age=${COOKIE_DAYS * 86400}; SameSite=Lax${secure}`
+    : `${BEAUTY_GIFT_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
 }
 
-/** Выбор косметичек: { dior: "dior-miss-bow" }. Отсутствие ключа — «сюрприз». */
+/** id выбранной косметички; null — «сюрприз» (положим случайную). */
 export function useGiftChoice() {
-  const [choice, setChoice] = useState<BeautyGiftChoice>({});
+  const [choice, setChoice] = useState<string | null>(null);
   useEffect(() => setChoice(readCookie()), []);
-  const choose = useCallback((brandKey: string, pouchId: string | null) => {
-    setChoice((prev) => {
-      const next = { ...prev };
-      if (pouchId) next[brandKey] = pouchId;
-      else delete next[brandKey];
-      writeCookie(next);
-      return next;
-    });
+  const choose = useCallback((id: string | null) => {
+    setChoice(id);
+    writeCookie(id);
   }, []);
   return { choice, choose };
 }
 
-// Раскладка полароидов: позиция и наклон в % от блока (до 6 штук).
+/** Косметички брендов, у которых есть товары в акции (порядок — как в настройках). */
+export function pouchesFor(brands: BeautyBrand[]) {
+  const keys = new Set(brands.map((b) => b.key));
+  return BEAUTY_POUCHES.filter((p) => keys.has(p.brand.key));
+}
+
+// Раскладка «парящих» косметичек: позиция, ширина и наклон в % от блока (до 6 штук).
 const SLOTS = [
-  { left: 2, top: 4, width: 46, rot: -7 },
-  { left: 50, top: 0, width: 44, rot: 5 },
-  { left: 27, top: 30, width: 46, rot: 2 },
-  { left: 0, top: 54, width: 44, rot: 5 },
-  { left: 54, top: 50, width: 44, rot: -5 },
-  { left: 26, top: 70, width: 44, rot: -2 },
+  { left: 0, top: 4, width: 46, rot: -8 },
+  { left: 52, top: 0, width: 46, rot: 6 },
+  { left: 26, top: 30, width: 48, rot: -2 },
+  { left: 2, top: 56, width: 44, rot: 7 },
+  { left: 54, top: 52, width: 44, rot: -6 },
+  { left: 28, top: 76, width: 42, rot: 3 },
 ];
 
 export function PouchCollage({
-  brands,
+  pouches,
   choice,
   onChoose,
 }: {
-  brands: BeautyBrand[];
-  choice: BeautyGiftChoice;
-  onChoose: (brandKey: string, pouchId: string) => void;
+  pouches: BeautyPouch[];
+  choice: string | null;
+  onChoose: (id: string) => void;
 }) {
   // Чередуем бренды, чтобы рядом лежали разные: Dior, Gucci, Dior…
-  const list: { brand: BeautyBrand; pouch: BeautyBrand["pouches"][number] }[] = [];
-  const max = Math.max(...brands.map((b) => b.pouches.length));
-  for (let i = 0; i < max; i++) for (const b of brands) if (b.pouches[i]) list.push({ brand: b, pouch: b.pouches[i] });
-  const items = list.slice(0, SLOTS.length);
+  const groups = new Map<string, BeautyPouch[]>();
+  for (const p of pouches) groups.set(p.brand.key, [...(groups.get(p.brand.key) ?? []), p]);
+  const lists = [...groups.values()];
+  const mixed: BeautyPouch[] = [];
+  for (let i = 0; i < Math.max(0, ...lists.map((l) => l.length)); i++) for (const l of lists) if (l[i]) mixed.push(l[i]);
+  const items = mixed.slice(0, SLOTS.length);
   const tall = items.length > 3;
 
   return (
-    <div className="relative w-full max-w-[560px] mx-auto" style={{ aspectRatio: tall ? "1 / 1.12" : "1 / 0.8" }}>
-      {items.map(({ brand, pouch }, i) => {
+    <div className="relative w-full max-w-[560px] mx-auto" style={{ aspectRatio: tall ? "1 / 1.08" : "1 / 0.75" }}>
+      {items.map((p, i) => {
         const s = SLOTS[i];
-        const on = choice[brand.key] === pouch.id;
+        const on = choice === p.id;
         return (
           <button
-            key={pouch.id}
+            key={p.id}
             type="button"
-            onClick={() => onChoose(brand.key, pouch.id)}
+            onClick={() => onChoose(p.id)}
             aria-pressed={on}
-            aria-label={`Выбрать косметичку ${brand.name}: ${pouch.name}`}
-            className="bw-polaroid absolute block text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
+            aria-label={`Выбрать косметичку ${p.brand.name}: ${p.name}`}
+            className="bw-float absolute block focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
             style={
               {
                 left: `${s.left}%`,
@@ -100,34 +103,41 @@ export function PouchCollage({
               } as React.CSSProperties
             }
           >
-            <span
-              className="block bg-white p-[6%] pb-[4%] transition-[transform,box-shadow] duration-300"
-              style={{
-                boxShadow: on ? "0 22px 40px rgba(120,50,60,.32)" : "0 12px 26px rgba(120,50,60,.18)",
-                outline: on ? `2px solid ${C.accent}` : "none",
-                transform: on ? "scale(1.06)" : undefined,
-              }}
-            >
-              <span className="relative block" style={{ aspectRatio: "4 / 3" }}>
-                <Image src={pouch.image} alt="" fill sizes="(max-width: 768px) 44vw, 250px" className="object-contain" />
-              </span>
-              <span className={`${fontMono.className} mt-[5%] flex items-center justify-between gap-2 text-[9px] sm:text-[10px] uppercase tracking-[.12em]`} style={{ color: C.inkMuted }}>
-                <span className="truncate">{brand.name}</span>
-                {on && <span style={{ color: C.accent }}>Ваш выбор</span>}
-              </span>
+            <span className="bw-float-inner relative block" style={{ aspectRatio: "4 / 3", transform: on ? "scale(1.1)" : undefined }}>
+              <Image
+                src={p.image}
+                alt=""
+                fill
+                sizes="(max-width: 768px) 46vw, 260px"
+                className="object-contain"
+                style={{
+                  filter: on
+                    ? `drop-shadow(0 0 0.5px ${C.accent}) drop-shadow(0 18px 22px rgba(120,50,60,.38))`
+                    : "drop-shadow(0 14px 16px rgba(120,50,60,.24))",
+                }}
+              />
             </span>
+            {on && (
+              <span
+                className={`${fontMono.className} absolute left-1/2 -bottom-1 -translate-x-1/2 whitespace-nowrap px-2.5 py-1 text-[10px] uppercase tracking-[.12em]`}
+                style={{ background: C.ink, color: C.cream }}
+              >
+                Ваш выбор
+              </span>
+            )}
           </button>
         );
       })}
       <style>{`
-        .bw-polaroid { transform: rotate(var(--rot)); animation-name: bw-drift; animation-iteration-count: infinite; animation-timing-function: ease-in-out; animation-direction: alternate; }
-        .bw-polaroid:hover { z-index: 30 !important; }
-        .bw-polaroid:hover > span { transform: scale(1.05) !important; }
+        .bw-float { transform: rotate(var(--rot)); animation-name: bw-drift; animation-iteration-count: infinite; animation-timing-function: ease-in-out; animation-direction: alternate; }
+        .bw-float-inner { transition: transform .35s ease; }
+        .bw-float:hover { z-index: 30 !important; }
+        .bw-float:hover .bw-float-inner { transform: scale(1.08) !important; }
         @keyframes bw-drift {
           from { transform: rotate(var(--rot)) translate3d(0, 0, 0); }
-          to { transform: rotate(calc(var(--rot) * -0.4)) translate3d(0, -10px, 0); }
+          to { transform: rotate(calc(var(--rot) * -0.4)) translate3d(0, -12px, 0); }
         }
-        @media (prefers-reduced-motion: reduce) { .bw-polaroid { animation: none; } }
+        @media (prefers-reduced-motion: reduce) { .bw-float { animation: none; } }
       `}</style>
     </div>
   );
@@ -142,121 +152,106 @@ function CheckIcon() {
 }
 
 export function PouchPicker({
-  brands,
+  pouches,
   choice,
   onChoose,
 }: {
-  brands: BeautyBrand[];
-  choice: BeautyGiftChoice;
-  onChoose: (brandKey: string, pouchId: string | null) => void;
+  pouches: BeautyPouch[];
+  choice: string | null;
+  onChoose: (id: string | null) => void;
 }) {
-  const label = `${fontMono.className} text-[11px] leading-[14px] tracking-[.14em] uppercase`;
-  return (
-    <div className="flex flex-col gap-12 md:gap-14">
-      {brands.map((b) => {
-        const chosen = findPouch(b, choice[b.key]);
-        const options = [...b.pouches.map((p) => ({ ...p, surprise: false })), { id: "", name: "Сюрприз", note: "Положим случайную", image: "", surprise: true }];
-        return (
-          <div key={b.key}>
-            <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
-              <div>
-                <div className={label} style={{ color: C.inkMuted, marginBottom: 10 }}>
-                  К заказу {b.name} от {formatRub(BEAUTY_PROMO.threshold)}
-                </div>
-                <h3 className={`${fontDisplay.className} uppercase font-light m-0 text-[30px] md:text-[40px] leading-none`}>
-                  Косметичка {b.name}
-                </h3>
-              </div>
-              <div className="text-[14px] leading-5" style={{ color: C.text }} aria-live="polite">
-                {chosen ? (
-                  <>
-                    Ваш выбор: <b>{chosen.name}</b>
-                  </>
-                ) : (
-                  "Не выбрали — положим случайную"
-                )}
-              </div>
-            </div>
+  const label = `${fontMono.className} text-[10px] leading-[14px] tracking-[.14em] uppercase`;
+  const chosen = findPouch(choice);
+  const options = [
+    ...pouches.map((p) => ({ id: p.id, brand: p.brand.name, name: p.name, note: p.note, image: p.image, surprise: false })),
+    { id: "", brand: "Любая", name: "Сюрприз", note: "Положим случайную", image: "", surprise: true },
+  ];
 
-            <div
-              className="-mx-4 px-4 md:mx-0 md:px-0 flex md:grid md:grid-cols-4 gap-3 md:gap-5 overflow-x-auto md:overflow-visible snap-x snap-mandatory pb-2 md:pb-0"
-              role="radiogroup"
-              aria-label={`Косметичка ${b.name}`}
+  return (
+    <div>
+      <div className="mb-6 text-[15px] leading-6" style={{ color: C.text }} aria-live="polite">
+        {chosen ? (
+          <>
+            Ваш выбор: <b>{chosen.brand.name} — {chosen.name}</b>
+          </>
+        ) : (
+          "Пока не выбрали — положим случайную косметичку"
+        )}
+      </div>
+      <div
+        className="-mx-4 px-4 md:mx-0 md:px-0 flex md:grid md:grid-cols-4 gap-3 md:gap-5 overflow-x-auto md:overflow-visible snap-x snap-mandatory pb-2 md:pb-0"
+        role="radiogroup"
+        aria-label="Косметичка в подарок"
+      >
+        {options.map((o) => {
+          const on = o.surprise ? !chosen : chosen?.id === o.id;
+          return (
+            <button
+              key={o.id || "surprise"}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => onChoose(o.surprise ? null : o.id)}
+              className="group relative shrink-0 w-[68%] sm:w-[44%] md:w-auto snap-start text-left transition-transform duration-300 hover:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              style={{
+                background: on ? C.cream : "rgba(251,243,238,.55)",
+                border: on ? `2px solid ${C.ink}` : `1px solid ${C.line}`,
+                padding: on ? 0 : 1,
+              }}
             >
-              {options.map((o) => {
-                const on = o.surprise ? !chosen : chosen?.id === o.id;
-                return (
-                  <button
-                    key={o.id || "surprise"}
-                    type="button"
-                    role="radio"
-                    aria-checked={on}
-                    onClick={() => onChoose(b.key, o.surprise ? null : o.id)}
-                    className="group relative shrink-0 w-[68%] sm:w-[44%] md:w-auto snap-start text-left transition-transform duration-300 hover:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-                    style={{
-                      background: o.surprise ? C.cream : "#fff",
-                      border: on ? `2px solid ${C.ink}` : `1px solid ${C.line}`,
-                      padding: on ? 0 : 1,
-                    }}
+              <span className="relative block" style={{ aspectRatio: "4 / 3" }}>
+                {o.surprise ? (
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    {pouches.slice(0, 3).map((p, i) => (
+                      <span
+                        key={p.id}
+                        className="absolute"
+                        style={{
+                          width: "46%",
+                          aspectRatio: "4 / 3",
+                          transform: `translateX(${(i - 1) * 52}%) rotate(${(i - 1) * 10}deg)`,
+                          zIndex: i === 1 ? 2 : 1,
+                        }}
+                      >
+                        <Image src={p.image} alt="" fill sizes="120px" className="object-contain" style={{ filter: "drop-shadow(0 8px 10px rgba(120,50,60,.22))" }} />
+                      </span>
+                    ))}
+                    <span className={`${fontDisplay.className} absolute right-3 top-2 text-[34px] leading-none`} style={{ color: C.accent }} aria-hidden="true">
+                      ?
+                    </span>
+                  </span>
+                ) : (
+                  <Image
+                    src={o.image}
+                    alt={`Косметичка ${o.brand} — ${o.name}`}
+                    fill
+                    sizes="(max-width: 768px) 68vw, 280px"
+                    className="object-contain p-5 transition-transform duration-500 group-hover:scale-[1.06]"
+                    style={{ filter: "drop-shadow(0 14px 16px rgba(120,50,60,.22))" }}
+                  />
+                )}
+              </span>
+              <span className="block px-4 pb-4">
+                <span className={label} style={{ color: C.inkMuted }}>
+                  {o.brand}
+                </span>
+                <span className="flex items-center justify-between gap-2 mt-1">
+                  <span className="text-[15px] leading-5 font-bold">{o.name}</span>
+                  <span
+                    className="grid h-6 w-6 shrink-0 place-items-center rounded-full"
+                    style={{ background: on ? C.ink : "transparent", color: C.cream, border: on ? "none" : `1px solid ${C.line}` }}
                   >
-                    <span className="relative block" style={{ aspectRatio: "4 / 3" }}>
-                      {o.surprise ? (
-                        <span className="absolute inset-0 flex items-center justify-center">
-                          {b.pouches.map((p, i) => (
-                            <span
-                              key={p.id}
-                              className="absolute bg-white p-1.5 transition-transform duration-500"
-                              style={{
-                                width: "44%",
-                                transform: `translateX(${(i - 1) * 46}%) rotate(${(i - 1) * 9}deg)`,
-                                boxShadow: "0 8px 16px rgba(120,50,60,.18)",
-                                zIndex: i === 1 ? 2 : 1,
-                              }}
-                            >
-                              <span className="relative block" style={{ aspectRatio: "4 / 3" }}>
-                                <Image src={p.image} alt="" fill sizes="120px" className="object-contain" />
-                              </span>
-                            </span>
-                          ))}
-                          <span
-                            className={`${fontDisplay.className} absolute right-3 top-2 text-[34px] leading-none`}
-                            style={{ color: C.accent }}
-                            aria-hidden="true"
-                          >
-                            ?
-                          </span>
-                        </span>
-                      ) : (
-                        <Image
-                          src={o.image}
-                          alt={`Косметичка ${b.name} — ${o.name}`}
-                          fill
-                          sizes="(max-width: 768px) 68vw, 280px"
-                          className="object-contain p-4 transition-transform duration-500 group-hover:scale-[1.04]"
-                        />
-                      )}
-                    </span>
-                    <span className="block px-4 pt-1 pb-4" style={{ borderTop: o.surprise ? "none" : `1px solid ${C.blush}` }}>
-                      <span className="flex items-center justify-between gap-2 pt-3">
-                        <span className="text-[15px] leading-5 font-bold">{o.name}</span>
-                        <span
-                          className="grid h-6 w-6 shrink-0 place-items-center rounded-full"
-                          style={{ background: on ? C.ink : "transparent", color: C.cream, border: on ? "none" : `1px solid ${C.line}` }}
-                        >
-                          {on && <CheckIcon />}
-                        </span>
-                      </span>
-                      <span className="block text-[13px] leading-[18px] mt-1" style={{ color: C.inkMuted }}>
-                        {o.note}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
+                    {on && <CheckIcon />}
+                  </span>
+                </span>
+                <span className="block text-[13px] leading-[18px] mt-1" style={{ color: C.inkMuted }}>
+                  {o.note}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -165,7 +165,7 @@ model Order {
   cancelReason String?   // почему заказ отменён: ответ банка или «оплата не завершена»
   canceledAt   DateTime?
   pdConsentAt  DateTime? // согласие на обработку ПДн, отмеченное при оформлении
-  // Подарок по акции «Бьюти-неделя»: выбранные покупателем косметички, JSON {"dior":"dior-miss-bow"}
+  // Подарок по акции «Бьюти-неделя»: id выбранной покупателем косметички (dior-miss-bow)
   giftChoice  String?
   promoCode   String?
   promoDiscountType DiscountType?

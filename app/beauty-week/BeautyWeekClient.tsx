@@ -14,7 +14,7 @@ import {
   fontMono,
   fontSerif,
 } from "@/components/promos/beauty/theme";
-import { PouchCollage, PouchPicker, useGiftChoice } from "@/components/promos/beauty/PouchPicker";
+import { PouchCollage, PouchPicker, pouchesFor, useGiftChoice } from "@/components/promos/beauty/PouchPicker";
 import { getOptimizedImageUrl, shouldBypassNextImageOptimization } from "@/lib/media";
 import { BEAUTY_PROMO, beautyProgress, findPouch, formatRub, isBeautyPromoActive, type BeautyProgress } from "@/lib/promo-beauty";
 
@@ -50,9 +50,9 @@ function endsLabel() {
   return `до ${d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}`;
 }
 
-/** Корзина посетителя → сколько набрано по брендам акции. */
+/** Корзина посетителя → сколько набрано на подарок (бренды акции вместе). */
 function useCartProgress(items: BeautyItem[]) {
-  const [progress, setProgress] = useState<BeautyProgress[] | null>(null);
+  const [progress, setProgress] = useState<BeautyProgress | null>(null);
   const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
 
   useEffect(() => {
@@ -71,7 +71,7 @@ function useCartProgress(items: BeautyItem[]) {
           .filter(Boolean) as { brand: string; category: string; price: number; quantity: number }[];
         if (alive) setProgress(beautyProgress(lines));
       } catch {
-        if (alive) setProgress([]);
+        if (alive) setProgress(beautyProgress([]));
       }
     };
     load();
@@ -101,6 +101,9 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
   const hasFragrance = items.some((i) => i.category === "fragrance");
   const goods = hasFragrance ? "косметику или парфюм" : "косметику";
   const { choice, choose } = useGiftChoice();
+  const pouches = useMemo(() => pouchesFor(shownBrands), [shownBrands]);
+  const chosenPouch = findPouch(choice);
+  const brandsAnd = shownBrands.map((b) => b.name).join(" и ");
   const maxDiscount = items.reduce(
     (m, i) => (i.oldPrice ? Math.max(m, Math.round((1 - i.price / i.oldPrice) * 100)) : m),
     0
@@ -111,7 +114,7 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
   const visible = brandFilter === "all" ? items : items.filter((i) => i.brandKey === brandFilter);
 
   const progress = useCartProgress(items);
-  const top = progress?.[0] ?? null;
+  const top = progress && progress.total > 0 ? progress : null;
 
   const label = `${fontMono.className} text-[11px] leading-[14px] tracking-[.14em] uppercase`;
   const disp = `${fontDisplay.className} uppercase font-light tracking-[-.01em]`;
@@ -144,8 +147,8 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
             </p>
             <p className="text-[18px] leading-7 max-w-[460px] mt-8 mb-10" style={{ color: C.text }}>
               {maxDiscount >= 5 ? `Скидки до ${maxDiscount}% на косметику. ` : ""}
-              Закажите {goods} {shownBrands.length > 1 ? "одного бренда" : brandLine} на {THRESHOLD} и больше — и выберите
-              фирменную косметичку {shownBrands.length > 1 ? "этого бренда" : brandLine} в подарок.
+              Закажите {goods} {brandsAnd} на {THRESHOLD} и больше — {shownBrands.length > 1 ? "бренды можно смешивать" : "в любом сочетании"} —
+              и выберите любую косметичку в подарок.
             </p>
             <div className="flex flex-wrap gap-3">
               <a href="#catalog" className={btn} style={{ background: C.ink, color: C.cream, borderColor: C.ink }}>
@@ -219,16 +222,14 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
               </h2>
               <p className="text-[17px] leading-[26px] mt-6 mb-9 max-w-[420px]" style={{ color: C.text }}>
                 {shownBrands.length > 1
-                  ? `Косметичка — того же бренда, что и покупка: ${shownBrands
-                      .map((b) => `купили ${b.name} — выбираете из косметичек ${b.name}`)
-                      .join(", ")}.`
-                  : `К заказу ${brandLine} на ${THRESHOLD} и больше положим фирменную косметичку ${brandLine} — модель выбираете сами.`}
+                  ? `Считаем общую сумму ${goods === "косметику" ? "косметики" : "косметики и парфюма"} ${brandsAnd} в заказе. Косметичку выбираете любую — можно заказать ${shownBrands[shownBrands.length - 1].name}, а выбрать ${shownBrands[0].name}.`
+                  : `К заказу ${brandLine} на ${THRESHOLD} и больше положим фирменную косметичку — модель выбираете сами.`}
               </p>
               <ol className="list-none p-0 m-0 flex flex-col" style={{ borderTop: `1px solid ${C.line}` }}>
                 {[
-                  shownBrands.length > 1 ? `Выберите ${goods} одного бренда` : `Выберите ${goods} ${brandLine}`,
-                  `Соберите заказ на ${THRESHOLD} и больше`,
-                  "Выберите косметичку ниже — или положим случайную",
+                  `Добавьте в корзину ${goods} ${brandsAnd}`,
+                  `Соберите на ${THRESHOLD} и больше${shownBrands.length > 1 ? " — бренды суммируются" : ""}`,
+                  "Выберите одну косметичку ниже — или положим случайную",
                 ].map((text, i) => (
                   <li key={text} className="flex gap-5 py-[18px] items-baseline" style={{ borderBottom: `1px solid ${C.line}` }}>
                     <span className={label} style={{ color: C.inkMuted, minWidth: 24 }}>
@@ -247,7 +248,7 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
                 ) : top ? (
                   <>
                     <div className="flex justify-between gap-3 items-baseline">
-                      <span className={label}>В корзине · {top.brand.name}</span>
+                      <span className={label}>В корзине · {top.brands.map((b) => b.name).join(" + ")}</span>
                       <span className={fontMono.className} style={{ fontSize: 15 }}>
                         {formatRub(top.total)}
                       </span>
@@ -256,7 +257,7 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
                       className="my-3"
                       style={{ height: 6, background: "#F0D6D2" }}
                       role="progressbar"
-                      aria-label={`До подарка ${top.brand.name}`}
+                      aria-label="До подарка"
                       aria-valuemin={0}
                       aria-valuemax={BEAUTY_PROMO.threshold}
                       aria-valuenow={Math.min(top.total, BEAUTY_PROMO.threshold)}
@@ -272,10 +273,10 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
                     </div>
                     <div className="text-[14px] leading-5" style={{ color: C.text }}>
                       {top.eligible
-                        ? `Готово: ${top.brand.gift} будет в заказе — ${
-                            findPouch(top.brand, choice[top.brand.key])?.name ?? "выберите модель ниже или положим случайную"
-                          }.`
-                        : `Добавьте ещё на ${formatRub(top.remaining)}, и ${top.brand.gift} ваша.`}
+                        ? chosenPouch
+                          ? `Готово: косметичка ${chosenPouch.brand.name} «${chosenPouch.name}» будет в заказе.`
+                          : "Готово: косметичка ваша — выберите модель ниже или положим случайную."
+                        : `Добавьте ещё на ${formatRub(top.remaining)}, и косметичка ваша.`}
                     </div>
                   </>
                 ) : (
@@ -288,7 +289,7 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
                     </div>
                     <div className="my-3" style={{ height: 6, background: "#F0D6D2" }} />
                     <div className="text-[14px] leading-5" style={{ color: C.text }}>
-                      Добавьте {goods} {brandLine} на {THRESHOLD} — и косметичка ваша.
+                      Добавьте {goods} {brandsAnd} на {THRESHOLD} в сумме — и косметичка ваша.
                     </div>
                   </>
                 )}
@@ -296,7 +297,7 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
             </div>
 
             <div className="flex-[1.15] min-w-0 w-full">
-              <PouchCollage brands={shownBrands} choice={choice} onChoose={choose} />
+              <PouchCollage pouches={pouches} choice={choice} onChoose={choose} />
               <p className="text-center text-[13px] leading-5 mt-6" style={{ color: C.inkMuted }}>
                 Нажмите на косметичку, чтобы выбрать её
               </p>
@@ -308,10 +309,10 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
               Ваш подарок
             </div>
             <h2 className={`${disp} m-0 mb-10 md:mb-12 text-[40px] md:text-[56px] leading-none`}>Выберите косметичку</h2>
-            <PouchPicker brands={shownBrands} choice={choice} onChoose={choose} />
+            <PouchPicker pouches={pouches} choice={choice} onChoose={choose} />
             <p className="text-[13px] leading-5 mt-8 max-w-[640px]" style={{ color: C.inkMuted }}>
-              Выбор сохранится в этом браузере и попадёт в заказ при оформлении. Если не выберете — положим
-              случайную косметичку того же бренда.
+              Выбор сохранится в этом браузере и попадёт в заказ при оформлении. Одна косметичка на заказ; если не
+              выберете — положим случайную.
             </p>
           </div>
         </div>
@@ -418,9 +419,9 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
           </div>
           <div className="mt-12 pt-6 flex flex-wrap gap-6 justify-between" style={{ borderTop: "1px solid #4A3B3D" }}>
             <div className="text-[13px] leading-5 max-w-[640px]" style={{ color: C.line }}>
-              {ends ? `Акция действует ${ends}. ` : ""}Подарок добавляется к заказу, в котором косметики и парфюма одного бренда на{" "}
-              {THRESHOLD} и больше. Косметичка — того же бренда, что и покупка, модель вы выбираете на этой странице (не
-              выбрали — положим случайную); по одной косметичке каждого бренда на заказ.
+              {ends ? `Акция действует ${ends}. ` : ""}Подарок добавляется к заказу, в котором косметики и парфюма {brandsAnd} в
+              сумме на {THRESHOLD} и больше (бренды суммируются). Одна косметичка на заказ, любого бренда — модель вы
+              выбираете на этой странице, не выбрали — положим случайную.
             </div>
             <div className={label} style={{ color: C.line }}>
               Stage Store · Москва

@@ -1,15 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import {
-  beautyProgress,
-  findPouch,
-  isBeautyPromoActive,
-  randomPouch,
-  sanitizeGiftChoice,
-} from "@/lib/promo-beauty";
+import { beautyProgress, findPouch, isBeautyPromoActive, randomPouch, sanitizeGiftChoice } from "@/lib/promo-beauty";
 
 /**
- * Подарки по акции «Бьюти-неделя», положенные к заказу — строки для менеджера:
- * ["косметичка Dior: Miss Dior с бантом (выбор покупателя)"]. Ошибка — пустой список.
+ * Подарок по акции «Бьюти-неделя», положенный к заказу — строка для менеджера:
+ * ["косметичка Dior: Miss Dior с бантом (выбор покупателя)"]. Не положен или ошибка — пустой список.
  */
 export async function getOrderBeautyGifts(orderId: number): Promise<string[]> {
   if (!isBeautyPromoActive() || !Number.isFinite(orderId)) return [];
@@ -29,21 +23,20 @@ export async function getOrderBeautyGifts(orderId: number): Promise<string[]> {
       },
     });
     if (!order) return [];
-    const choice = sanitizeGiftChoice(order.giftChoice);
-    return beautyProgress(
+    const progress = beautyProgress(
       order.OrderItem.map((i) => ({
         brand: i.Product?.Brand?.name,
         category: i.Product?.Category?.slug,
         price: i.price,
         quantity: i.quantity,
       }))
-    )
-      .filter((p) => p.eligible)
-      .map(({ brand }) => {
-        const chosen = findPouch(brand, choice[brand.key]);
-        const pouch = chosen ?? randomPouch(brand, orderId);
-        return `${brand.gift}: ${pouch.name} (${chosen ? "выбор покупателя" : "покупатель не выбрал — случайная"})`;
-      });
+    );
+    if (!progress.eligible) return [];
+    const chosen = findPouch(sanitizeGiftChoice(order.giftChoice));
+    const pouch = chosen ?? randomPouch(orderId);
+    return [
+      `${pouch.brand.gift}: ${pouch.name} (${chosen ? "выбор покупателя" : "покупатель не выбрал — случайная"})`,
+    ];
   } catch {
     return [];
   }
