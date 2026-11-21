@@ -47,8 +47,3 @@ export const HERO_BOTTLES_MIX: FloatItem[] = [
   { src: `${IMG}/gucci-blush-poppy.webp`, left: 17, top: 82, width: 27, depth: 0.95, rotate: -7, z: 4 },
   { src: `${IMG}/gucci-flora-gardenia.webp`, left: 49, top: 80, width: 12, depth: 0.6, rotate: 5, z: 4 },
 ];
-
-/** Флаконы в разделе подарка — поменьше и спокойнее. */
-export const GIFT_BOTTLES: FloatItem[] = [
-  { src: `${IMG}/glow-oil-bronze.webp`, left: 78, top: -10, width: 9, depth: 0.6, rotate: 14, z: 2 },
-];

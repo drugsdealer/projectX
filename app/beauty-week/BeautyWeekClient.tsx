@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState } from "react";
 import FloatingBottles from "@/components/promos/beauty/FloatingBottles";
 import {
   BEAUTY_COLORS as C,
-  GIFT_BOTTLES,
   HERO_BOTTLES,
   HERO_BOTTLES_MIX,
   fontBody,
@@ -209,7 +208,6 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
 
       {/* ── Подарок ── */}
       <section id="gift" className="relative overflow-hidden scroll-mt-20" style={{ background: C.blush }}>
-        <FloatingBottles items={GIFT_BOTTLES} intensity={0.6} className="hidden md:block" />
         <div className="relative mx-auto max-w-[1280px] px-4 md:px-10 py-14 md:py-[88px]" style={{ zIndex: 2 }}>
           <div className="flex flex-col md:flex-row gap-10 md:gap-14 md:items-start">
             <div className="flex-1 min-w-0">
