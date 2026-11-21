@@ -8,13 +8,15 @@ import {
   BEAUTY_COLORS as C,
   GIFT_BOTTLES,
   HERO_BOTTLES,
+  HERO_BOTTLES_MIX,
   fontBody,
   fontDisplay,
   fontMono,
   fontSerif,
 } from "@/components/promos/beauty/theme";
+import { PouchCollage, PouchPicker, useGiftChoice } from "@/components/promos/beauty/PouchPicker";
 import { getOptimizedImageUrl, shouldBypassNextImageOptimization } from "@/lib/media";
-import { BEAUTY_PROMO, beautyProgress, formatRub, isBeautyPromoActive, type BeautyProgress } from "@/lib/promo-beauty";
+import { BEAUTY_PROMO, beautyProgress, findPouch, formatRub, isBeautyPromoActive, type BeautyProgress } from "@/lib/promo-beauty";
 
 export type BeautyItem = {
   id: number;
@@ -31,8 +33,12 @@ export type BeautyItem = {
 
 const THRESHOLD = formatRub(BEAUTY_PROMO.threshold);
 // Дальние флаконы — под фото, ближние — поверх (массивы постоянные, чтобы анимация не перезапускалась).
-const HERO_BACK = HERO_BOTTLES.filter((b) => (b.z ?? 1) === 0);
-const HERO_FRONT = HERO_BOTTLES.filter((b) => (b.z ?? 1) > 0);
+const split = (list: typeof HERO_BOTTLES) => ({
+  back: list.filter((b) => (b.z ?? 1) === 0),
+  front: list.filter((b) => (b.z ?? 1) > 0),
+});
+const HERO_DIOR = split(HERO_BOTTLES);
+const HERO_MIX = split(HERO_BOTTLES_MIX);
 
 function joinBrands(names: string[]) {
   return names.length > 1 ? `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}` : names[0] ?? "";
@@ -82,18 +88,6 @@ function useCartProgress(items: BeautyItem[]) {
   return progress;
 }
 
-function PouchIllustration({ label }: { label: string }) {
-  return (
-    <svg viewBox="0 0 160 100" role="img" aria-label={label} style={{ width: "78%" }}>
-      <path d="M8 92 C8 44 40 12 80 12 C120 12 152 44 152 92 Z" fill="#F0B8B0" stroke="#E3A097" strokeWidth="2" />
-      <rect x="52" y="36" width="56" height="40" fill="#FFFFFF" stroke="#231A1B" strokeWidth="2.4" />
-      <rect x="64" y="52" width="32" height="2.2" fill="#231A1B" />
-      <rect x="70" y="59" width="20" height="2" fill="#231A1B" />
-      <rect x="4" y="90" width="152" height="8" rx="4" fill="#E3A097" />
-    </svg>
-  );
-}
-
 export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
   const active = isBeautyPromoActive();
   const brands = useMemo(
@@ -102,7 +96,11 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
   );
   const shownBrands = brands.length ? brands : BEAUTY_PROMO.brands.slice(0, 1);
   const brandLine = joinBrands(shownBrands.map((b) => b.name));
-  const giftLine = shownBrands.map((b) => b.gift).join(" или ");
+  const giftLine = `косметичка ${shownBrands.map((b) => b.name).join(" или ")} на выбор`;
+  const hero = shownBrands.length > 1 ? HERO_MIX : HERO_DIOR;
+  const hasFragrance = items.some((i) => i.category === "fragrance");
+  const goods = hasFragrance ? "косметику или парфюм" : "косметику";
+  const { choice, choose } = useGiftChoice();
   const maxDiscount = items.reduce(
     (m, i) => (i.oldPrice ? Math.max(m, Math.round((1 - i.price / i.oldPrice) * 100)) : m),
     0
@@ -146,8 +144,8 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
             </p>
             <p className="text-[18px] leading-7 max-w-[460px] mt-8 mb-10" style={{ color: C.text }}>
               {maxDiscount >= 5 ? `Скидки до ${maxDiscount}% на косметику. ` : ""}
-              Закажите косметику {shownBrands.length > 1 ? "одного бренда" : brandLine} на {THRESHOLD} и больше, и
-              косметичка {shownBrands.length > 1 ? "того же бренда" : brandLine} достанется вам в подарок.
+              Закажите {goods} {shownBrands.length > 1 ? "одного бренда" : brandLine} на {THRESHOLD} и больше — и выберите
+              фирменную косметичку {shownBrands.length > 1 ? "этого бренда" : brandLine} в подарок.
             </p>
             <div className="flex flex-wrap gap-3">
               <a href="#catalog" className={btn} style={{ background: C.ink, color: C.cream, borderColor: C.ink }}>
@@ -161,7 +159,7 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
 
           <div className="w-full md:w-[46%] md:flex-none min-w-0">
             <div className="relative w-full max-w-[560px] mx-auto" style={{ aspectRatio: "9 / 10" }}>
-              <FloatingBottles items={HERO_BACK} eager />
+              <FloatingBottles items={hero.back} eager />
               <div
                 className="absolute overflow-hidden"
                 style={{ left: "8%", top: 0, width: "84%", height: "100%", borderRadius: "999px 999px 0 0", zIndex: 1 }}
@@ -175,7 +173,7 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
                   className="object-cover"
                 />
               </div>
-              <FloatingBottles items={HERO_FRONT} style={{ zIndex: 3 }} eager />
+              <FloatingBottles items={hero.front} style={{ zIndex: 3 }} eager />
               <div
                 className="absolute"
                 style={{
@@ -199,7 +197,7 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
                 <div className={`${fontDisplay.className} uppercase`} style={{ fontSize: 22, lineHeight: "24px", marginTop: 6, whiteSpace: "nowrap" }}>
                   от {THRESHOLD}
                 </div>
-                <div style={{ fontSize: 13, lineHeight: "18px", marginTop: 6, color: C.text }}>косметичка бренда</div>
+                <div style={{ fontSize: 13, lineHeight: "18px", marginTop: 6, color: C.text }}>косметичка на выбор</div>
               </div>
             </div>
           </div>
@@ -221,16 +219,16 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
               </h2>
               <p className="text-[17px] leading-[26px] mt-6 mb-9 max-w-[420px]" style={{ color: C.text }}>
                 {shownBrands.length > 1
-                  ? `Косметичка выдаётся того же бренда, что и покупка. ${shownBrands
-                      .map((b) => `Купили ${b.name} — получили ${b.name}`)
-                      .join(". ")}.`
-                  : `К заказу косметики ${brandLine} на ${THRESHOLD} и больше мы положим фирменную косметичку ${brandLine}.`}
+                  ? `Косметичка — того же бренда, что и покупка: ${shownBrands
+                      .map((b) => `купили ${b.name} — выбираете из косметичек ${b.name}`)
+                      .join(", ")}.`
+                  : `К заказу ${brandLine} на ${THRESHOLD} и больше положим фирменную косметичку ${brandLine} — модель выбираете сами.`}
               </p>
               <ol className="list-none p-0 m-0 flex flex-col" style={{ borderTop: `1px solid ${C.line}` }}>
                 {[
-                  shownBrands.length > 1 ? "Выберите косметику одного бренда" : `Выберите косметику ${brandLine}`,
+                  shownBrands.length > 1 ? `Выберите ${goods} одного бренда` : `Выберите ${goods} ${brandLine}`,
                   `Соберите заказ на ${THRESHOLD} и больше`,
-                  "Оформите заказ — косметичку положим в посылку",
+                  "Выберите косметичку ниже — или положим случайную",
                 ].map((text, i) => (
                   <li key={text} className="flex gap-5 py-[18px] items-baseline" style={{ borderBottom: `1px solid ${C.line}` }}>
                     <span className={label} style={{ color: C.inkMuted, minWidth: 24 }}>
@@ -274,7 +272,9 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
                     </div>
                     <div className="text-[14px] leading-5" style={{ color: C.text }}>
                       {top.eligible
-                        ? `Готово: ${top.brand.gift} будет в вашем заказе.`
+                        ? `Готово: ${top.brand.gift} будет в заказе — ${
+                            findPouch(top.brand, choice[top.brand.key])?.name ?? "выберите модель ниже или положим случайную"
+                          }.`
                         : `Добавьте ещё на ${formatRub(top.remaining)}, и ${top.brand.gift} ваша.`}
                     </div>
                   </>
@@ -288,45 +288,31 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
                     </div>
                     <div className="my-3" style={{ height: 6, background: "#F0D6D2" }} />
                     <div className="text-[14px] leading-5" style={{ color: C.text }}>
-                      Добавьте косметику {brandLine} на {THRESHOLD} — и косметичка ваша.
+                      Добавьте {goods} {brandLine} на {THRESHOLD} — и косметичка ваша.
                     </div>
                   </>
                 )}
               </div>
             </div>
 
-            <div className="flex-[1.25] min-w-0 flex flex-col sm:flex-row gap-6 md:justify-end">
-              {shownBrands.map((b) => (
-                <div key={b.key} className={`flex-1 min-w-0 ${shownBrands.length === 1 ? "w-full max-w-[460px] md:mx-auto" : ""}`}>
-                  <div
-                    className="relative flex items-center justify-center overflow-hidden"
-                    style={{ background: C.cream, aspectRatio: "4 / 5", border: `1px solid ${C.line}` }}
-                  >
-                    {b.giftPhoto ? (
-                      <Image
-                        src={b.giftPhoto}
-                        alt={`Подарок — ${b.gift}`}
-                        fill
-                        sizes="(max-width: 768px) 92vw, 420px"
-                        className="object-cover"
-                        style={{ objectPosition: "50% 75%" }}
-                      />
-                    ) : (
-                      <PouchIllustration label={`Подарок — ${b.gift}`} />
-                    )}
-                  </div>
-                  <div className="pt-4">
-                    <div className={label} style={{ color: C.inkMuted }}>
-                      Подарок к {b.name}
-                    </div>
-                    <div className="text-[22px] leading-7 font-bold mt-2">{b.name} — косметичка</div>
-                    <div className="text-[14px] leading-5 mt-1" style={{ color: C.text }}>
-                      К заказу на {b.name} от {THRESHOLD}
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div className="flex-[1.15] min-w-0 w-full">
+              <PouchCollage brands={shownBrands} choice={choice} onChoose={choose} />
+              <p className="text-center text-[13px] leading-5 mt-6" style={{ color: C.inkMuted }}>
+                Нажмите на косметичку, чтобы выбрать её
+              </p>
             </div>
+          </div>
+
+          <div id="pouches" className="mt-16 md:mt-24 pt-12 md:pt-16 scroll-mt-20" style={{ borderTop: `1px solid ${C.line}` }}>
+            <div className={label} style={{ color: C.inkMuted, marginBottom: 16 }}>
+              Ваш подарок
+            </div>
+            <h2 className={`${disp} m-0 mb-10 md:mb-12 text-[40px] md:text-[56px] leading-none`}>Выберите косметичку</h2>
+            <PouchPicker brands={shownBrands} choice={choice} onChoose={choose} />
+            <p className="text-[13px] leading-5 mt-8 max-w-[640px]" style={{ color: C.inkMuted }}>
+              Выбор сохранится в этом браузере и попадёт в заказ при оформлении. Если не выберете — положим
+              случайную косметичку того же бренда.
+            </p>
           </div>
         </div>
       </section>
@@ -338,7 +324,7 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
             <div className={label} style={{ color: C.inkMuted, marginBottom: 16 }}>
               {maxDiscount >= 5 ? `Скидки до ${maxDiscount}%` : `Подарок от ${THRESHOLD}`}
             </div>
-            <h2 className={`${disp} m-0 text-[40px] md:text-[56px] leading-none`}>Косметика {brandLine}</h2>
+            <h2 className={`${disp} m-0 text-[40px] md:text-[56px] leading-none`}>{hasFragrance ? "Косметика и парфюм" : "Косметика"} {brandLine}</h2>
           </div>
           {brands.length > 1 && (
             <div className="flex flex-wrap gap-2" role="group" aria-label="Фильтр по бренду">
@@ -432,8 +418,9 @@ export default function BeautyWeekClient({ items }: { items: BeautyItem[] }) {
           </div>
           <div className="mt-12 pt-6 flex flex-wrap gap-6 justify-between" style={{ borderTop: "1px solid #4A3B3D" }}>
             <div className="text-[13px] leading-5 max-w-[640px]" style={{ color: C.line }}>
-              {ends ? `Акция действует ${ends}. ` : ""}Подарок добавляется к заказу, в котором косметики одного бренда на{" "}
-              {THRESHOLD} и больше. Косметичка — того же бренда, что и покупка; по одной косметичке каждого бренда на заказ.
+              {ends ? `Акция действует ${ends}. ` : ""}Подарок добавляется к заказу, в котором косметики и парфюма одного бренда на{" "}
+              {THRESHOLD} и больше. Косметичка — того же бренда, что и покупка, модель вы выбираете на этой странице (не
+              выбрали — положим случайную); по одной косметичке каждого бренда на заказ.
             </div>
             <div className={label} style={{ color: C.line }}>
               Stage Store · Москва

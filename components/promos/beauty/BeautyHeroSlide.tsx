@@ -7,11 +7,11 @@
  */
 import Image from "next/image";
 import FloatingBottles from "./FloatingBottles";
-import { BEAUTY_COLORS as C, HERO_BOTTLES, fontDisplay } from "./theme";
+import { BEAUTY_COLORS as C, HERO_BOTTLES_MIX, fontDisplay } from "./theme";
 import { BEAUTY_PROMO, formatRub } from "@/lib/promo-beauty";
 
-const BACK = HERO_BOTTLES.filter((b) => (b.z ?? 1) === 0);
-const FRONT = HERO_BOTTLES.filter((b) => (b.z ?? 1) > 0);
+const BACK = HERO_BOTTLES_MIX.filter((b) => (b.z ?? 1) === 0);
+const FRONT = HERO_BOTTLES_MIX.filter((b) => (b.z ?? 1) > 0);
 
 export default function BeautyHeroSlide({ priority }: { priority?: boolean }) {
   const brand = BEAUTY_PROMO.brands[0];
@@ -61,7 +61,7 @@ export default function BeautyHeroSlide({ priority }: { priority?: boolean }) {
           <div className={`${fontDisplay.className} uppercase`} style={{ fontSize: 22, lineHeight: "24px", marginTop: 6, whiteSpace: "nowrap" }}>
             от {formatRub(BEAUTY_PROMO.threshold)}
           </div>
-          <div style={{ fontSize: 13, lineHeight: "18px", marginTop: 4, color: C.text }}>{brand.gift}</div>
+          <div style={{ fontSize: 13, lineHeight: "18px", marginTop: 4, color: C.text }}>косметичка на выбор</div>
         </div>
       </div>
       {/* Затемнение снизу и слева — под текст слайдера */}

@@ -36,8 +36,20 @@ export const HERO_BOTTLES: FloatItem[] = [
   { src: `${IMG}/glow-oil-pink.webp`, left: -6, top: 40, width: 10, depth: 0.25, rotate: 6, z: 0 },
 ];
 
+/** Флаконы вокруг арки, когда в акции и Dior, и Gucci: косметика и ароматы обоих брендов вперемешку. */
+export const HERO_BOTTLES_MIX: FloatItem[] = [
+  { src: `${IMG}/gucci-flora-jasmine.webp`, left: 88, top: 30, width: 11, depth: 0.3, rotate: 8, z: 0 },
+  { src: `${IMG}/glow-oil-pink.webp`, left: -7, top: 44, width: 10, depth: 0.25, rotate: 6, z: 0 },
+  { src: `${IMG}/glow-oil-berry.webp`, left: -11, top: 4, width: 15, depth: 0.85, rotate: -14, z: 3 },
+  { src: `${IMG}/gucci-flora-orchid.webp`, left: 79, top: -3, width: 17, depth: 0.55, rotate: 11, z: 3 },
+  { src: `${IMG}/glow-palette.webp`, left: 68, top: 60, width: 30, depth: 1, rotate: 8, z: 4 },
+  { src: `${IMG}/gucci-lipstick-rosso.webp`, left: 3, top: 60, width: 9, depth: 0.75, rotate: 14, z: 4 },
+  { src: `${IMG}/gucci-blush-poppy.webp`, left: 17, top: 82, width: 27, depth: 0.95, rotate: -7, z: 4 },
+  { src: `${IMG}/gucci-flora-gardenia.webp`, left: 49, top: 80, width: 12, depth: 0.6, rotate: 5, z: 4 },
+];
+
 /** Флаконы в разделе подарка — поменьше и спокойнее. */
 export const GIFT_BOTTLES: FloatItem[] = [
   { src: `${IMG}/glow-oil-bronze.webp`, left: 78, top: -10, width: 9, depth: 0.6, rotate: 14, z: 2 },
-  { src: `${IMG}/glow-oil-pink.webp`, left: 88, top: 62, width: 7, depth: 0.35, rotate: -10, z: 2 },
+  { src: `${IMG}/gucci-lipstick-rose.webp`, left: 90, top: 58, width: 5, depth: 0.35, rotate: -10, z: 2 },
 ];

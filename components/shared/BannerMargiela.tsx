@@ -30,6 +30,8 @@ type Slide = {
   align: 'left' | 'right';
 };
 
+const BEAUTY_BRAND_LINE = BEAUTY_PROMO.brands.map((b) => b.name).join(' & ');
+
 const SLIDES: Slide[] = [
   {
     id: 'maison-margiela',
@@ -65,11 +67,11 @@ const SLIDES: Slide[] = [
           id: 'beauty-week',
           custom: 'beauty' as const,
           durationMs: 8000,
-          alt: `${BEAUTY_PROMO.title} — косметика ${BEAUTY_PROMO.brands[0].name}`,
-          eyebrow: `${BEAUTY_PROMO.brands[0].name} / Подарок от ${formatRub(BEAUTY_PROMO.threshold)}`,
+          alt: `${BEAUTY_PROMO.title} — косметика ${BEAUTY_BRAND_LINE}`,
+          eyebrow: `${BEAUTY_BRAND_LINE} / Подарок от ${formatRub(BEAUTY_PROMO.threshold)}`,
           title: 'Бьюти-',
           mutedTitle: 'неделя',
-          text: `Закажите косметику ${BEAUTY_PROMO.brands[0].name} на ${formatRub(BEAUTY_PROMO.threshold)} и больше — ${BEAUTY_PROMO.brands[0].gift} в подарок.`,
+          text: `Закажите косметику или парфюм ${BEAUTY_BRAND_LINE} на ${formatRub(BEAUTY_PROMO.threshold)} и больше — и выберите фирменную косметичку в подарок.`,
           cta: { label: 'Выбрать косметику', href: BEAUTY_PROMO.path },
           align: 'left' as const,
         },

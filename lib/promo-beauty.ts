@@ -24,6 +24,11 @@ export const BEAUTY_PROMO = {
       gift: "косметичка Dior",
       cover: "/promo/beauty-week/dior-pink-scene.webp",
       giftPhoto: "/promo/beauty-week/dior-pouch-set.webp",
+      pouches: [
+        { id: "dior-miss-bow", name: "Miss Dior с бантом", note: "Нежно-розовая, металлический CD", image: "/promo/beauty-week/pouch-dior-miss-bow.webp" },
+        { id: "dior-white-cd", name: "Белая с тиснением CD", note: "Фактурная ткань, золотая молния", image: "/promo/beauty-week/pouch-dior-white-cd.webp" },
+        { id: "dior-red-stripe", name: "Christian Dior Paris", note: "Белый клатч с красной лентой", image: "/promo/beauty-week/pouch-dior-red-stripe.webp" },
+      ],
     },
     {
       key: "gucci",
@@ -31,6 +36,11 @@ export const BEAUTY_PROMO = {
       gift: "косметичка Gucci",
       cover: "/promo/beauty-week/gucci-bloom.webp",
       giftPhoto: null as string | null,
+      pouches: [
+        { id: "gucci-gold", name: "Золотистая Gucci beauty", note: "Мягкая, с тиснением логотипа", image: "/promo/beauty-week/pouch-gucci-gold.webp" },
+        { id: "gucci-black", name: "Чёрная с карманом", note: "Плотная, с наружным карманом", image: "/promo/beauty-week/pouch-gucci-black.webp" },
+        { id: "gucci-navy", name: "Тёмно-синий клатч", note: "Плоский, с петлёй на запястье", image: "/promo/beauty-week/pouch-gucci-navy.webp" },
+      ],
     },
   ],
 } as const;
@@ -93,3 +103,46 @@ export function isBeautyPromoActive(now = new Date()) {
 }
 
 export const formatRub = (n: number) => `${Math.round(n).toLocaleString("ru-RU")} ₽`;
+
+// ── Выбор косметички ──────────────────────────────────────────────────────────
+// Покупатель выбирает на странице акции; выбор лежит в куке и при оформлении попадает в заказ
+// (Order.giftChoice). Не выбрал — менеджер получает случайную, выбранную при уведомлении.
+
+export const BEAUTY_GIFT_COOKIE = "beauty_gift";
+
+export type BeautyPouch = BeautyBrand["pouches"][number];
+export type BeautyGiftChoice = Partial<Record<string, string>>;
+
+/** Оставляет только известные бренды и косметички — кука приходит от браузера. */
+export function sanitizeGiftChoice(raw: unknown): BeautyGiftChoice {
+  let obj: any = raw;
+  if (typeof raw === "string") {
+    try {
+      obj = JSON.parse(raw);
+    } catch {
+      try {
+        obj = JSON.parse(decodeURIComponent(raw));
+      } catch {
+        return {};
+      }
+    }
+  }
+  if (!obj || typeof obj !== "object") return {};
+  const out: BeautyGiftChoice = {};
+  for (const b of BEAUTY_PROMO.brands) {
+    const id = obj[b.key];
+    if (typeof id === "string" && b.pouches.some((p) => p.id === id)) out[b.key] = id;
+  }
+  return out;
+}
+
+export function findPouch(brand: BeautyBrand, id?: string | null): BeautyPouch | null {
+  return (id && brand.pouches.find((p) => p.id === id)) || null;
+}
+
+/** Случайная, но стабильная для заказа косметичка (одна и та же при повторных уведомлениях). */
+export function randomPouch(brand: BeautyBrand, seed: number): BeautyPouch {
+  const i = Math.abs(Math.imul(seed ^ 0x9e3779b9, 2654435761)) % brand.pouches.length;
+  return brand.pouches[i];
+}
+

@@ -1,6 +1,7 @@
 // app/api/checkout/route.ts
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { BEAUTY_GIFT_COOKIE, sanitizeGiftChoice } from '@/lib/promo-beauty';
 import prisma from '@/lib/prisma';
 import { getUserIdFromRequest } from '@/lib/session';
 import { validatePromo } from '@/lib/promos';
@@ -539,6 +540,10 @@ export async function POST(req: Request) {
         : {}),
     }));
 
+    // Выбранные на странице «Бьюти-недели» косметички (кука). Подойдёт ли заказ под акцию,
+    // решается при уведомлении менеджеру — здесь только сохраняем выбор.
+    const giftChoice = sanitizeGiftChoice((await cookies()).get(BEAUTY_GIFT_COOKIE)?.value ?? null);
+
     const order = await prisma.order.create({
       data: {
         ...(userId ? { User: { connect: { id: userId } } } : {}),
@@ -551,6 +556,7 @@ export async function POST(req: Request) {
         address,
         comment,
         deliveryMethod,
+        ...(Object.keys(giftChoice).length ? { giftChoice: JSON.stringify(giftChoice) } : {}),
         ...(body?.pdConsent === true ? { pdConsentAt: new Date() } : {}),
         ...(promoMeta
           ? {

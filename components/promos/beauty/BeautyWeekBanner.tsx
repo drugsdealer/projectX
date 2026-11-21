@@ -18,9 +18,12 @@ const THRESHOLD = formatRub(BEAUTY_PROMO.threshold);
 export default function BeautyWeekBanner({ brands }: { brands: BeautyBrand[] }) {
   if (!brands.length) return null;
   const brandLine = brands.length > 1 ? brands.map((b) => b.name).join(" & ") : brands[0].name;
-  const gifts = brands.map((b) => b.gift).join(" или ");
+  const gifts = `косметичка ${brands.map((b) => b.name).join(" или ")} на выбор`;
   const label = `${fontMono.className} text-[11px] md:text-[12px] tracking-[.14em] uppercase`;
-  const photos = [brands[0].cover, `${IMG}/dior-lipsticks.webp`, brands[0].giftPhoto ?? `${IMG}/dior-pouch-set.webp`];
+  const photos =
+    brands.length > 1
+      ? [brands[0].cover, brands[1].cover, `${IMG}/dior-pouch-set.webp`]
+      : [brands[0].cover, `${IMG}/dior-lipsticks.webp`, brands[0].giftPhoto ?? `${IMG}/dior-pouch-set.webp`];
 
   return (
     <Link
@@ -45,7 +48,7 @@ export default function BeautyWeekBanner({ brands }: { brands: BeautyBrand[] }) 
             {brandLine}
           </div>
           <div className="text-[15px] leading-[22px] mt-3" style={{ color: C.text }}>
-            Косметичка бренда в подарок к заказу косметики от {THRESHOLD}
+            Косметичка на выбор в подарок к заказу от {THRESHOLD}
           </div>
           <span
             className="mt-4 flex items-center justify-center min-h-[48px] text-[15px] font-bold"

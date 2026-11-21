@@ -1,20 +1,37 @@
 import { prisma } from "@/lib/prisma";
-import { beautyProgress, isBeautyPromoActive } from "@/lib/promo-beauty";
+import {
+  beautyProgress,
+  findPouch,
+  isBeautyPromoActive,
+  randomPouch,
+  sanitizeGiftChoice,
+} from "@/lib/promo-beauty";
 
-/** Подарки по акции «Бьюти-неделя», положенные к заказу: ["косметичка Dior"]. Ошибка — пустой список. */
+/**
+ * Подарки по акции «Бьюти-неделя», положенные к заказу — строки для менеджера:
+ * ["косметичка Dior: Miss Dior с бантом (выбор покупателя)"]. Ошибка — пустой список.
+ */
 export async function getOrderBeautyGifts(orderId: number): Promise<string[]> {
   if (!isBeautyPromoActive() || !Number.isFinite(orderId)) return [];
   try {
-    const items = await prisma.orderItem.findMany({
-      where: { orderId, canceledAt: null },
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
       select: {
-        price: true,
-        quantity: true,
-        Product: { select: { Brand: { select: { name: true } }, Category: { select: { slug: true } } } },
+        giftChoice: true,
+        OrderItem: {
+          where: { canceledAt: null },
+          select: {
+            price: true,
+            quantity: true,
+            Product: { select: { Brand: { select: { name: true } }, Category: { select: { slug: true } } } },
+          },
+        },
       },
     });
+    if (!order) return [];
+    const choice = sanitizeGiftChoice(order.giftChoice);
     return beautyProgress(
-      items.map((i) => ({
+      order.OrderItem.map((i) => ({
         brand: i.Product?.Brand?.name,
         category: i.Product?.Category?.slug,
         price: i.price,
@@ -22,7 +39,11 @@ export async function getOrderBeautyGifts(orderId: number): Promise<string[]> {
       }))
     )
       .filter((p) => p.eligible)
-      .map((p) => p.brand.gift);
+      .map(({ brand }) => {
+        const chosen = findPouch(brand, choice[brand.key]);
+        const pouch = chosen ?? randomPouch(brand, orderId);
+        return `${brand.gift}: ${pouch.name} (${chosen ? "выбор покупателя" : "покупатель не выбрал — случайная"})`;
+      });
   } catch {
     return [];
   }
