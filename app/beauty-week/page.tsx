@@ -11,18 +11,30 @@ export const revalidate = 300;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
 const URL_PATH = BEAUTY_PROMO.path;
 
+// Картинка превью — JPG 1200×630: Telegram, VK и WhatsApp не показывают WebP в превью ссылок
+// и подставляют общую картинку сайта.
+const OG_IMAGE = `${SITE_URL}/promo/beauty-week/og.jpg`;
+const OG_TITLE = `${BEAUTY_PROMO.title} Dior & Gucci — косметичка в подарок`;
+const OG_DESCRIPTION = `Косметика и парфюм Dior и Gucci. Заказ от ${formatRub(
+  BEAUTY_PROMO.threshold
+)} — фирменная косметичка на выбор в подарок. Оригинал, доставка по России.`;
+
 export const metadata: Metadata = {
-  title: `${BEAUTY_PROMO.title}: косметичка в подарок к заказу от ${formatRub(BEAUTY_PROMO.threshold)}`,
-  description: `Оригинальная косметика Dior с доставкой по России. Закажите косметику бренда на ${formatRub(
-    BEAUTY_PROMO.threshold
-  )} и больше — косметичка того же бренда в подарок.`,
+  title: `${BEAUTY_PROMO.title} Dior & Gucci: косметичка в подарок к заказу от ${formatRub(BEAUTY_PROMO.threshold)}`,
+  description: OG_DESCRIPTION,
   alternates: { canonical: `${SITE_URL}${URL_PATH}` },
   openGraph: {
     type: "website",
     url: `${SITE_URL}${URL_PATH}`,
-    title: `${BEAUTY_PROMO.title} — Stage Store`,
-    description: `Косметичка бренда в подарок к заказу косметики от ${formatRub(BEAUTY_PROMO.threshold)}.`,
-    images: [{ url: `${SITE_URL}/promo/beauty-week/dior-pouch-set.webp`, width: 1200, height: 1297, alt: "Косметичка Dior" }],
+    title: OG_TITLE,
+    description: OG_DESCRIPTION,
+    images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: "Бьюти-неделя Dior & Gucci — косметичка в подарок", type: "image/jpeg" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: OG_TITLE,
+    description: OG_DESCRIPTION,
+    images: [OG_IMAGE],
   },
   robots: { index: true, follow: true },
 };
