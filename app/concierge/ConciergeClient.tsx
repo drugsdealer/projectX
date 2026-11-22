@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import PdConsentCheckbox from "@/components/legal/PdConsentCheckbox";
 import { AnimatePresence, motion } from "framer-motion";
@@ -20,6 +20,125 @@ const BUDGETS = ["до 50 000 ₽", "50–150 000 ₽", "150–300 000 ₽", "о
 const TIMINGS = ["Не спешу", "В течение месяца", "Как можно скорее"];
 
 const STEPS = ["Что ищете", "Детали", "Контакты"] as const;
+
+// Ссылка в Telegram с готовым началом сообщения — человеку остаётся дописать, что ищет.
+const TG_URL = `${COMPANY.telegramUrl}?text=${encodeURIComponent("Здравствуйте! Хочу заказать через консьержа: ")}`;
+
+/* Мини-чат вверху страницы: кто не хочет заполнять форму — сразу пишет менеджеру.
+   Сообщения появляются по очереди, как в настоящей переписке, и проигрываются заново. */
+const CHAT = [
+  { me: true, text: "Здравствуйте! Ищу Rick Owens Geobasket, 43 EU" },
+  { me: false, text: "Добрый день! Сейчас проверим у байеров и пришлём варианты с ценой" },
+];
+
+function TgIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+      <path d="M21.94 4.3a1.2 1.2 0 0 0-1.62-1.33L2.9 9.7c-1.16.46-1.15 1.1-.2 1.4l4.47 1.4 1.72 5.3c.2.58.1.81.71.81.47 0 .68-.21.94-.47l2.26-2.2 4.7 3.47c.86.48 1.49.23 1.7-.8l2.74-14.3ZM8.6 12.2l9.63-6.07c.48-.29.92-.13.56.19l-8.25 7.44-.32 3.42L8.6 12.2Z" />
+    </svg>
+  );
+}
+
+function TelegramCard() {
+  const [shown, setShown] = useState(0);
+  const [typing, setTyping] = useState(false);
+
+  useEffect(() => {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setShown(CHAT.length);
+      return;
+    }
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const at = (ms: number, fn: () => void) => timers.push(setTimeout(fn, ms));
+    const play = (offset: number) => {
+      at(offset + 600, () => setShown(1));
+      at(offset + 1400, () => setTyping(true));
+      at(offset + 3000, () => {
+        setTyping(false);
+        setShown(2);
+      });
+      at(offset + 9000, () => setShown(0));
+    };
+    play(0);
+    const loop = setInterval(() => play(0), 9600);
+    return () => {
+      timers.forEach(clearTimeout);
+      clearInterval(loop);
+    };
+  }, []);
+
+  return (
+    <a
+      href={TG_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Написать менеджеру в Telegram"
+      className="group relative block overflow-hidden rounded-[28px] border border-white/12 bg-gradient-to-b from-[#1b2a3a] to-[#111a24] p-5 shadow-[0_30px_80px_-30px_rgba(42,171,238,.45)] transition-transform duration-300 hover:-translate-y-1 sm:p-6"
+    >
+      {/* голубое свечение Telegram */}
+      <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-[#2AABEE]/25 blur-3xl transition-opacity duration-500 group-hover:opacity-80" />
+
+      <div className="relative flex items-center gap-3">
+        <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#2AABEE] text-white">
+          <TgIcon className="h-6 w-6 -translate-x-[1px]" />
+          <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#16222f] bg-emerald-400" />
+        </span>
+        <div className="min-w-0">
+          <div className="text-sm font-bold leading-tight">Менеджер Stage Store</div>
+          <div className="mt-0.5 text-xs text-[#7cc7f0]">{typing ? "печатает…" : "на связи в Telegram"}</div>
+        </div>
+        <span className="ml-auto text-[10px] font-semibold uppercase tracking-[0.2em] text-white/35">без форм</span>
+      </div>
+
+      <div className="relative mt-5 flex h-[132px] flex-col justify-end gap-2" aria-hidden="true">
+        <AnimatePresence>
+          {CHAT.slice(0, shown).map((m) => (
+            <motion.div
+              key={m.text}
+              initial={{ opacity: 0, y: 10, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, transition: { duration: 0.25 } }}
+              transition={{ duration: 0.3 }}
+              className={`max-w-[85%] px-3.5 py-2 text-[13px] leading-snug ${
+                m.me
+                  ? "self-end rounded-2xl rounded-br-md bg-[#2AABEE] text-white"
+                  : "self-start rounded-2xl rounded-bl-md bg-white/10 text-white/90"
+              }`}
+            >
+              {m.text}
+            </motion.div>
+          ))}
+          {typing && (
+            <motion.div
+              key="typing"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="flex gap-1 self-start rounded-2xl rounded-bl-md bg-white/10 px-3.5 py-3"
+            >
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/60"
+                  style={{ animationDelay: `${i * 0.15}s` }}
+                />
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <div className="relative mt-5 flex items-center justify-center gap-2 rounded-full bg-[#2AABEE] px-6 py-3.5 text-sm font-bold text-white transition-colors group-hover:bg-[#3bb5f2]">
+        <TgIcon className="h-[18px] w-[18px]" />
+        Написать в Telegram
+        <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+      </div>
+      <p className="relative mt-3 text-center text-xs text-white/45">
+        Не хотите заполнять форму — просто опишите вещь в чате · {COMPANY.telegram}
+      </p>
+    </a>
+  );
+}
 
 export default function ConciergeClient() {
   const [step, setStep] = useState(0);
@@ -108,7 +227,8 @@ export default function ConciergeClient() {
           ← На главную
         </Link>
 
-        <header className="mt-8 sm:mt-12">
+        <header className="mt-8 grid items-center gap-10 sm:mt-12 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-12">
+          <div>
           <span className="inline-flex items-center gap-2 rounded-full border border-white/20 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-white/70">
             Личный подбор
           </span>
@@ -128,14 +248,22 @@ export default function ConciergeClient() {
             <span className="hidden sm:inline text-white/20">·</span>
             <span>Отвечаем в течение рабочего дня</span>
           </div>
+          </div>
+
+          <TelegramCard />
         </header>
 
-        <div className="mt-10 grid gap-8 sm:mt-14 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-12">
+        <div className="mt-12 grid gap-8 sm:mt-16 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-12">
           <section>
             {done ? (
               <Done />
             ) : (
               <>
+                <div className="mb-8 flex items-center gap-4 text-[10px] font-semibold uppercase tracking-[0.3em] text-white/35">
+                  <span className="h-px flex-1 bg-white/10" />
+                  или оставьте заявку — менеджер напишет сам
+                  <span className="h-px flex-1 bg-white/10" />
+                </div>
                 <Progress step={step} />
 
                 <div className="mt-8 min-h-[320px]">
@@ -569,7 +697,7 @@ function Done() {
       </p>
       <div className="mt-8 flex flex-wrap gap-3">
         <a
-          href="https://t.me/stagestore"
+          href={TG_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="rounded-full bg-white px-7 py-3 text-sm font-bold text-black"
