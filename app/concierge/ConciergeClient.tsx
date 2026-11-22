@@ -22,13 +22,15 @@ const TIMINGS = ["Не спешу", "В течение месяца", "Как м
 const STEPS = ["Что ищете", "Детали", "Контакты"] as const;
 
 // Ссылка в Telegram с готовым началом сообщения — человеку остаётся дописать, что ищет.
-const TG_URL = `${COMPANY.telegramUrl}?text=${encodeURIComponent("Здравствуйте! Хочу заказать через консьержа: ")}`;
+// Отдельный аккаунт консьержа (не общий @stagestore).
+const TG_HANDLE = "@stage_concierge";
+const TG_URL = `https://t.me/stage_concierge?text=${encodeURIComponent("Здравствуйте! Хочу заказать через консьержа: ")}`;
 
 /* Мини-чат вверху страницы: кто не хочет заполнять форму — сразу пишет менеджеру.
    Сообщения появляются по очереди, как в настоящей переписке, и проигрываются заново. */
 const CHAT = [
   { me: true, text: "Здравствуйте! Ищу Rick Owens Geobasket, 43 EU" },
-  { me: false, text: "Добрый день! Сейчас проверим у байеров и пришлём варианты с ценой" },
+  { me: false, text: "Добрый день! Сейчас узнаем" },
 ];
 
 function TgIcon({ className = "" }: { className?: string }) {
@@ -84,7 +86,7 @@ function TelegramCard() {
           <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#16222f] bg-emerald-400" />
         </span>
         <div className="min-w-0">
-          <div className="text-sm font-bold leading-tight">Менеджер Stage Store</div>
+          <div className="text-sm font-bold leading-tight">Консьерж Stage Store</div>
           <div className="mt-0.5 text-xs text-[#7cc7f0]">{typing ? "печатает…" : "на связи в Telegram"}</div>
         </div>
         <span className="ml-auto text-[10px] font-semibold uppercase tracking-[0.2em] text-white/35">без форм</span>
@@ -134,7 +136,7 @@ function TelegramCard() {
         <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
       </div>
       <p className="relative mt-3 text-center text-xs text-white/45">
-        Не хотите заполнять форму — просто опишите вещь в чате · {COMPANY.telegram}
+        Не хотите заполнять форму — просто опишите вещь в чате · {TG_HANDLE}
       </p>
     </a>
   );
