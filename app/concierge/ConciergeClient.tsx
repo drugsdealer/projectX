@@ -89,7 +89,6 @@ function TelegramCard() {
           <div className="text-sm font-bold leading-tight">Консьерж Stage Store</div>
           <div className="mt-0.5 text-xs text-[#7cc7f0]">{typing ? "печатает…" : "на связи в Telegram"}</div>
         </div>
-        <span className="ml-auto text-[10px] font-semibold uppercase tracking-[0.2em] text-white/35">без форм</span>
       </div>
 
       <div className="relative mt-5 flex h-[132px] flex-col justify-end gap-2" aria-hidden="true">
