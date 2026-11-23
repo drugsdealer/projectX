@@ -8,8 +8,18 @@ import { toProxiedImageUrl, toProxiedVideoUrl } from "@/lib/media";
 import { COMPANY } from "@/lib/company";
 import PdConsentCheckbox from "@/components/legal/PdConsentCheckbox";
 
-// Релиз: 19 ноября 2026, по Москве.
-const RELEASE_AT = new Date("2026-11-19T00:00:00+03:00").getTime();
+// Коллекция вышла 19.11.2026 — теперь её просто заказывают. Цену называет консьерж в Telegram.
+const TG_HANDLE = "@stage_concierge";
+const tgOrderUrl = (what: string) =>
+  `https://t.me/stage_concierge?text=${encodeURIComponent(`Здравствуйте! Хочу заказать RIMOWA × Maison Margiela: ${what}. Подскажите цену и сроки.`)}`;
+
+function TgIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+      <path d="M21.94 4.3a1.2 1.2 0 0 0-1.62-1.33L2.9 9.7c-1.16.46-1.15 1.1-.2 1.4l4.47 1.4 1.72 5.3c.2.58.1.81.71.81.47 0 .68-.21.94-.47l2.26-2.2 4.7 3.47c.86.48 1.49.23 1.7-.8l2.74-14.3ZM8.6 12.2l9.63-6.07c.48-.29.92-.13.56.19l-8.25 7.44-.32 3.42L8.6 12.2Z" />
+    </svg>
+  );
+}
 
 const FILM = "https://ik.imagekit.io/qowmy92ny/RIMOWAXMAISONMARGIELACOLLABORATION_DESK.mp4";
 const FILM_MOBILE = "https://ik.imagekit.io/qowmy92ny/tr:w-720,q-60/RIMOWAXMAISONMARGIELACOLLABORATION_DESK.mp4";
@@ -74,17 +84,6 @@ function useIsMobile() {
   return mobile;
 }
 
-function useCountdown() {
-  const [left, setLeft] = useState<number | null>(null);
-  useEffect(() => {
-    const tick = () => setLeft(Math.max(0, RELEASE_AT - Date.now()));
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, []);
-  return left;
-}
-
 // Белая бирка Margiela: пустой ярлык на четырёх стежках.
 function Label({ children, className = "relative" }: { children: ReactNode; className?: string }) {
   const stitch = "absolute h-[7px] w-[1.5px] rounded-full bg-black/20";
@@ -119,41 +118,6 @@ function NumberRow({ dark = false }: { dark?: boolean }) {
   );
 }
 
-function Countdown({ dark = true }: { dark?: boolean }) {
-  const left = useCountdown();
-  if (left === 0) {
-    return (
-      <div className={`font-mono text-xs uppercase tracking-[0.3em] ${dark ? "text-white/80" : "text-black/70"}`}>
-        Коллекция вышла · 19.11.2026
-      </div>
-    );
-  }
-  const parts =
-    left === null
-      ? ["––", "––", "––", "––"]
-      : [
-          Math.floor(left / 86_400_000),
-          Math.floor(left / 3_600_000) % 24,
-          Math.floor(left / 60_000) % 60,
-          Math.floor(left / 1000) % 60,
-        ].map((v) => String(v).padStart(2, "0"));
-  const units = ["дн", "ч", "мин", "сек"];
-  return (
-    <div className="flex items-end gap-4 sm:gap-6">
-      {parts.map((v, i) => (
-        <div key={units[i]} className="text-center">
-          <div className={`font-mono text-2xl font-light tabular-nums sm:text-4xl ${dark ? "text-white" : "text-black"}`}>
-            {v}
-          </div>
-          <div className={`mt-1 font-mono text-[10px] uppercase tracking-[0.28em] ${dark ? "text-white/45" : "text-black/40"}`}>
-            {units[i]}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 const reveal = {
   initial: { opacity: 0, y: 28 },
   whileInView: { opacity: 1, y: 0 },
@@ -175,7 +139,7 @@ export default function RimowaMargielaClient() {
   };
 
   return (
-    // -mb-16 снимает отступ подвала: тёмный блок предзаказа переходит прямо в тёмный подвал.
+    // -mb-16 снимает отступ подвала: тёмный блок заказа переходит прямо в тёмный подвал.
     <main className="-mb-16 min-h-screen text-[#191917]" style={{ backgroundColor: PAPER }}>
       {/* ---------- Фильм ---------- */}
       <section className="relative h-[82svh] min-h-[540px] w-full overflow-hidden bg-[#191917] text-white sm:h-[90vh]">
@@ -196,7 +160,7 @@ export default function RimowaMargielaClient() {
         <div className="relative z-10 mx-auto flex h-full max-w-7xl flex-col justify-between px-5 pb-10 pt-8 sm:px-8 sm:pb-14 lg:px-12">
           <div className="flex items-start justify-between gap-4">
             <span className="font-mono text-[10px] uppercase tracking-[0.34em] text-white/70">
-              Stage Store · Предзаказ
+              Stage Store · Можно заказать
             </span>
             <button
               type="button"
@@ -225,18 +189,28 @@ export default function RimowaMargielaClient() {
 
             <div className="mt-8 flex flex-col gap-7 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.3em] text-white/45">
-                  До выхода · 19.11.2026
+                <div className="font-mono text-xs uppercase tracking-[0.3em] text-white/80">
+                  Коллекция вышла · можно заказать
                 </div>
-                <Countdown />
+                <p className="mt-3 max-w-sm text-sm leading-6 text-white/55">
+                  Цену и сроки назовёт консьерж в Telegram — напишите, что вас интересует.
+                </p>
               </div>
-              <a
-                href="#preorder"
-                className="group inline-flex w-fit items-center rounded-full bg-white px-8 py-4 text-[11px] font-black uppercase tracking-[0.22em] text-black transition duration-300 hover:bg-[#f2efe9]"
-              >
-                Записаться на предзаказ
-                <span className="ml-3 transition-transform duration-300 group-hover:translate-x-1">→</span>
-              </a>
+              <div className="flex flex-col gap-3 sm:items-end">
+                <a
+                  href={tgOrderUrl("комплект или отдельные предметы")}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group inline-flex w-fit items-center gap-3 rounded-full bg-white px-8 py-4 text-[11px] font-black uppercase tracking-[0.22em] text-black transition duration-300 hover:bg-[#f2efe9]"
+                >
+                  <TgIcon className="h-[18px] w-[18px]" />
+                  Узнать цену в Telegram
+                  <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+                </a>
+                <a href="#order" className="font-mono text-[10px] uppercase tracking-[0.26em] text-white/50 underline-offset-4 hover:text-white hover:underline">
+                  или оставить заявку ↓
+                </a>
+              </div>
             </div>
           </motion.div>
         </div>
@@ -270,7 +244,7 @@ export default function RimowaMargielaClient() {
             </p>
             <div className="grid grid-cols-3 gap-px overflow-hidden border border-black/10 bg-black/10 pt-0 font-mono text-[11px] uppercase tracking-[0.18em]">
               {[
-                ["Выход", "19.11.2026"],
+                ["Вышла", "19.11.2026"],
                 ["Тираж", "Ограничен"],
                 ["Роспись", "Ручная"],
               ].map(([k, v]) => (
@@ -333,7 +307,14 @@ export default function RimowaMargielaClient() {
               </div>
               <div className="mt-7 flex items-baseline justify-between gap-4 border-b border-black/15 pb-5">
                 <h3 className="text-3xl font-bold tracking-[-0.04em] sm:text-4xl">{o.name}</h3>
-                <span className="font-mono text-[11px] uppercase tracking-[0.24em] text-black/40">19.11</span>
+                <a
+                  href={tgOrderUrl(o.name)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 font-mono text-[11px] uppercase tracking-[0.24em] text-black/60 underline-offset-4 transition hover:text-black hover:underline"
+                >
+                  Узнать цену →
+                </a>
               </div>
               <ul className="mt-5 space-y-3">
                 {o.lines.map((line) => (
@@ -348,13 +329,13 @@ export default function RimowaMargielaClient() {
         </div>
       </section>
 
-      {/* ---------- Предзаказ ---------- */}
-      <PreorderSection />
+      {/* ---------- Заказ ---------- */}
+      <OrderSection />
     </main>
   );
 }
 
-function PreorderSection() {
+function OrderSection() {
   const [choice, setChoice] = useState<(typeof CHOICES)[number]>("Комплект");
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
@@ -379,7 +360,7 @@ function PreorderSection() {
           name: name.trim(),
           contact: contact.trim(),
           category: `RIMOWA × Maison Margiela · ${choice}`,
-          notes: comment.trim() ? `Комментарий: ${comment.trim()}` : "Предзаказ к выходу 19.11.2026",
+          notes: comment.trim() ? `Комментарий: ${comment.trim()}` : "Заказ, нужна цена и сроки",
           source: "Страница RIMOWA × Maison Margiela",
           pdConsent: true,
         }),
@@ -397,18 +378,28 @@ function PreorderSection() {
     "w-full border-b border-white/20 bg-transparent py-3 text-base text-white outline-none transition placeholder:text-white/30 focus:border-white";
 
   return (
-    <section id="preorder" className="scroll-mt-20 text-white" style={{ backgroundColor: INK }}>
+    <section id="order" className="scroll-mt-20 text-white" style={{ backgroundColor: INK }}>
       <div className="mx-auto grid max-w-7xl gap-14 px-5 py-20 sm:px-8 sm:py-28 lg:grid-cols-2 lg:gap-20 lg:px-12">
         <motion.div {...reveal}>
-          <p className="font-mono text-[10px] uppercase tracking-[0.34em] text-white/45">N° 03 / Предзаказ</p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.34em] text-white/45">N° 03 / Заказ</p>
           <h2 className="mt-6 text-4xl font-bold leading-[0.95] tracking-[-0.05em] sm:text-6xl">
-            Тираж ограничен
-            <span className="block font-light text-white/45">займите место заранее</span>
+            Коллекция вышла
+            <span className="block font-light text-white/45">можно заказать</span>
           </h2>
           <p className="mt-8 max-w-md text-[15px] leading-7 text-white/60">
-            Оставьте контакт — консьерж Stage Store свяжется с вами, назовёт стоимость и сроки и
-            закрепит позицию за вами к выходу коллекции. Оригинал с гарантией подлинности.
+            Цену и сроки назовёт консьерж Stage Store — быстрее всего написать ему в Telegram.
+            Оригинал с гарантией подлинности.
           </p>
+          <a
+            href={tgOrderUrl(choice)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group mt-8 inline-flex w-full items-center justify-center gap-3 rounded-full bg-[#2AABEE] px-8 py-4 text-[11px] font-black uppercase tracking-[0.22em] text-white shadow-[0_18px_40px_-12px_rgba(42,171,238,.6)] transition hover:bg-[#3bb5f2] sm:w-auto"
+          >
+            <TgIcon className="h-[18px] w-[18px]" />
+            Написать консьержу {TG_HANDLE}
+            <span className="transition-transform group-hover:translate-x-1">→</span>
+          </a>
           <div className="mt-12 hidden lg:block">
             <NumberRow dark />
           </div>
@@ -418,9 +409,10 @@ function PreorderSection() {
           {done ? (
             <div className="flex h-full flex-col justify-center border border-white/15 p-8 sm:p-10">
               <p className="font-mono text-[10px] uppercase tracking-[0.34em] text-white/45">Заявка принята</p>
-              <div className="mt-4 text-3xl font-bold tracking-[-0.04em]">Вы в списке</div>
+              <div className="mt-4 text-3xl font-bold tracking-[-0.04em]">Спасибо!</div>
               <p className="mt-4 text-[15px] leading-7 text-white/60">
-                {choice} · RIMOWA × Maison Margiela. Мы напишем вам до 19 ноября.
+                {choice} · RIMOWA × Maison Margiela. Консьерж свяжется с вами в течение рабочего дня
+                и назовёт цену и сроки.
               </p>
               <Link
                 href="/brand/maison-margiela"
@@ -431,6 +423,7 @@ function PreorderSection() {
             </div>
           ) : (
             <form onSubmit={submit} className="space-y-8">
+              <p className="text-sm leading-6 text-white/50">Не пользуетесь Telegram? Оставьте контакт — консьерж напишет сам.</p>
               <div>
                 <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.3em] text-white/45">Что интересует</div>
                 <div className="flex flex-wrap gap-2">
@@ -473,7 +466,7 @@ function PreorderSection() {
                 disabled={!canSend}
                 className="group inline-flex w-full items-center justify-center rounded-full bg-white px-8 py-4 text-[11px] font-black uppercase tracking-[0.22em] text-black transition hover:bg-[#f2efe9] disabled:opacity-30 sm:w-auto"
               >
-                {sending ? "Отправляем…" : "Записаться на предзаказ"}
+                {sending ? "Отправляем…" : "Оставить заявку"}
                 {!sending && <span className="ml-3 transition-transform group-hover:translate-x-1">→</span>}
               </button>
             </form>

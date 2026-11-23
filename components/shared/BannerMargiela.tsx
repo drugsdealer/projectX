@@ -7,11 +7,13 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { toProxiedImageUrl, toProxiedVideoUrl } from '@/lib/media';
 import BeautyHeroSlide from '@/components/promos/beauty/BeautyHeroSlide';
 import { BEAUTY_PROMO, formatRub, isBeautyPromoActive } from '@/lib/promo-beauty';
+import GiveawayHeroSlide from '@/components/promos/giveaway/GiveawayHeroSlide';
+import { GIVEAWAY, isGiveawayActive } from '@/lib/promo-giveaway';
 
 type Slide = {
   id: string;
   // Свой фон-компонент вместо фото/видео
-  custom?: 'beauty';
+  custom?: 'beauty' | 'giveaway';
   // Image slide
   src?: string;
   // Video slide
@@ -26,13 +28,31 @@ type Slide = {
   title: string;
   mutedTitle: string;
   text: string;
-  cta: { label: string; href: string };
+  // external — ссылка на другой сайт (Telegram): открываем в новой вкладке
+  cta: { label: string; href: string; external?: boolean };
   align: 'left' | 'right';
 };
 
 const BEAUTY_BRAND_LINE = BEAUTY_PROMO.brands.map((b) => b.name).join(' & ');
 
 const SLIDES: Slide[] = [
+  // Розыгрыш в Telegram — первым, пока идёт; после GIVEAWAY.endsAt слайд пропадает сам.
+  ...(isGiveawayActive()
+    ? [
+        {
+          id: 'giveaway',
+          custom: 'giveaway' as const,
+          durationMs: 8000,
+          alt: 'Розыгрыш шапки MM6 и аромата Maison Margiela Replica',
+          eyebrow: `Розыгрыш в Telegram / Итоги ${GIVEAWAY.resultsDate}`,
+          title: 'Розыгрыш',
+          mutedTitle: 'MM6 + Replica',
+          text: 'Шапка MM6 Maison Margiela и аромат Replica на выбор. Участие бесплатное — в нашем Telegram-канале.',
+          cta: { label: 'Участвовать в Telegram', href: GIVEAWAY.postUrl, external: true },
+          align: 'left' as const,
+        },
+      ]
+    : []),
   {
     id: 'maison-margiela',
     src: 'https://ik.imagekit.io/qowmy92ny/stage/products/gallery/Tabi_HeroBanner_16x9.jpg',
@@ -53,11 +73,11 @@ const SLIDES: Slide[] = [
     durationMs: 9000,
     shade: 'strong',
     alt: 'RIMOWA × Maison Margiela — чемодан Classic Cabin и сумка 5AC XL в белом бьянкетто',
-    eyebrow: 'RIMOWA × Maison Margiela / Выход 19 ноября',
+    eyebrow: 'RIMOWA × Maison Margiela / Уже можно заказать',
     title: 'RIMOWA ×',
     mutedTitle: 'Margiela',
-    text: 'Чемодан Classic Cabin и сумка 5AC XL, вручную выкрашенные в белый. Лимитированный тираж — открыт предзаказ.',
-    cta: { label: 'Смотреть коллаборацию', href: '/rimowa-x-maison-margiela' },
+    text: 'Чемодан Classic Cabin и сумка 5AC XL, вручную выкрашенные в белый. Лимитированный тираж — уже можно заказать.',
+    cta: { label: 'Заказать', href: '/rimowa-x-maison-margiela' },
     align: 'left',
   },
   // Акция «Бьюти-неделя» — слайд пропадает сам, когда акция закончится (BEAUTY_PROMO.endsAt).
@@ -117,6 +137,7 @@ function SlideBackground({ slide, priority }: { slide: Slide; priority: boolean 
   };
 
   if (slide.custom === 'beauty') return <BeautyHeroSlide priority={priority} />;
+  if (slide.custom === 'giveaway') return <GiveawayHeroSlide priority={priority} />;
 
   if (slide.videoSrc) {
     const rawSrc = isMobile && slide.videoSrcMobile ? slide.videoSrcMobile : slide.videoSrc;
@@ -317,15 +338,27 @@ export default function BannerMargiela() {
               <p className="max-w-md text-sm font-medium leading-6 text-white/62 sm:text-base">
                 {slide.text}
               </p>
-              <Link
-                href={slide.cta.href}
-                className="group inline-flex w-fit shrink-0 items-center justify-center rounded-full bg-white px-7 py-3.5 text-[11px] font-black uppercase tracking-[0.22em] text-black transition duration-300 hover:bg-black hover:text-white"
-              >
-                {slide.cta.label}
-                <span className="ml-3 transition-transform duration-300 group-hover:translate-x-1">
-                  →
-                </span>
-              </Link>
+              {slide.cta.external ? (
+                <a
+                  href={slide.cta.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group inline-flex w-fit shrink-0 items-center justify-center rounded-full bg-[#2AABEE] px-7 py-3.5 text-[11px] font-black uppercase tracking-[0.22em] text-white shadow-[0_14px_34px_-10px_rgba(42,171,238,.7)] transition duration-300 hover:bg-[#3bb5f2]"
+                >
+                  {slide.cta.label}
+                  <span className="ml-3 transition-transform duration-300 group-hover:translate-x-1">→</span>
+                </a>
+              ) : (
+                <Link
+                  href={slide.cta.href}
+                  className="group inline-flex w-fit shrink-0 items-center justify-center rounded-full bg-white px-7 py-3.5 text-[11px] font-black uppercase tracking-[0.22em] text-black transition duration-300 hover:bg-black hover:text-white"
+                >
+                  {slide.cta.label}
+                  <span className="ml-3 transition-transform duration-300 group-hover:translate-x-1">
+                    →
+                  </span>
+                </Link>
+              )}
             </div>
           </motion.div>
         </AnimatePresence>
