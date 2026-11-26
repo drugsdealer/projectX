@@ -1,6 +1,7 @@
 'use client';
 
 import { COMPANY } from "@/lib/company";
+import TrustStrip from "@/components/shared/TrustStrip";
 import PdConsentCheckbox from "@/components/legal/PdConsentCheckbox";
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -2480,6 +2481,14 @@ const handleCancel = () => {
                 </button>
               );
             })()}
+            {/* Короткие гарантии: подлинность, доставка по Москве, возврат */}
+            <TrustStrip
+              variant="compact"
+              className="px-1"
+              noReturn={["fragrance", "perfume", "cosmetics"].includes(
+                String(trackInput?.categorySlug ?? product?.category ?? "").toLowerCase()
+              )}
+            />
             {/* ── Universal brand block: single brand OR collab ── */}
             {(() => {
               const collabBrands: { id: number; name: string; slug: string; logoUrl: string | null }[] =

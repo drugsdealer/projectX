@@ -599,6 +599,9 @@ export async function GET(req: Request) {
         categoryName:
           (p as any).category?.name ?? (p as any).Category?.name ?? null,
         createdAt: p.createdAt,
+        popularity: Number((p as any).popularity ?? 0),
+        // общий ключ модели у цветовых вариантов — главная не ставит их подряд
+        modelKey: (p as any).modelKey ?? null,
         images,
         imageUrl: images[0],
         subCategorySlug: subCategorySlug ? subCategorySlug.toLowerCase() : null,

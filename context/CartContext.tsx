@@ -8,6 +8,7 @@ import React, {
   ReactNode,
 } from "react";
 import { DiscountState, useDiscount } from "@/context/DiscountContext";
+import { ymGoal } from "@/lib/metrika";
 
 const normalizeCartItem = (it: any): CartItem => {
   const rawId = Number(it?.id);
@@ -210,6 +211,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
 
   const addToCart = async (item: CartItem) => {
+    ymGoal("add_to_cart", { price: item.price });
     const payload = {
       productId: (item as any)?.productId ?? item.id,
       productItemId: (item as any)?.productItemId ?? null,

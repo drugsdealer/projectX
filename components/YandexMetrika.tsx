@@ -3,8 +3,7 @@
 import { useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import Script from "next/script";
-
-const YM_ID = 108732905;
+import { YM_ID, ymGoal } from "@/lib/metrika";
 
 declare global {
   interface Window {
@@ -25,6 +24,22 @@ function YandexMetrikaTracker() {
     const url = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : "");
     window.ym?.(YM_ID, "hit", url);
   }, [pathname, searchParams]);
+
+  // Цель «переход в Telegram»: любая ссылка на t.me на любой странице.
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      const a = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a) return;
+      try {
+        const url = new URL(a.href, location.href);
+        if (url.hostname === "t.me" || url.hostname === "telegram.me") {
+          ymGoal("tg_click", { to: url.pathname, from: location.pathname });
+        }
+      } catch {}
+    };
+    document.addEventListener("click", onClick, { capture: true });
+    return () => document.removeEventListener("click", onClick, { capture: true });
+  }, []);
 
   return null;
 }

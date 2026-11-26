@@ -31,6 +31,7 @@ import {
 import { useCart } from "@/context/CartContext";
 import { useUser } from "@/user/UserContext";
 import { useDiscount } from "@/context/DiscountContext";
+import { ymGoal } from "@/lib/metrika";
 
 const MAPTILER_KEY =
   process.env.NEXT_PUBLIC_MAPTILER_KEY ||
@@ -1005,6 +1006,7 @@ export default function CheckoutModal({
 
       const data = await res.json().catch(() => ({} as any));
       const orderIdFromServer = data?.orderId ?? data?.id;
+      ymGoal("order_created");
 
       try {
         sessionStorage.removeItem("checkoutState");

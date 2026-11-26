@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
+import { ymGoal } from "@/lib/metrika";
 
 /*
   Формирование оплаты. Создаёт платёж в банке и сразу уводит на защищённую
@@ -47,6 +48,7 @@ export default function PayClient() {
     const t1 = setTimeout(() => setStep(1), 700);
 
     try {
+      ymGoal("payment_start");
       // Без ограничения по времени зависший запрос оставлял бы бесконечную загрузку
       const res = await fetch("/api/tbank/init", {
         method: "POST",

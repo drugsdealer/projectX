@@ -15,6 +15,7 @@ import { productPath } from "@/lib/product-url";
 const CheckoutModal = dynamic(() => import("@/components/CheckoutModal"), { ssr: false });
 import { useRouter } from "next/navigation";
 import { toProxiedImageUrl } from "@/lib/media";
+import { ymGoal } from "@/lib/metrika";
 
 // --- Local Product shape (API-backed) ---
 type Product = {
@@ -670,6 +671,7 @@ useEffect(() => {
         showToast({ title: "Ошибка оформления", details: data?.message || "Попробуйте чуть позже" });
         return;
       }
+      ymGoal("order_created", { order_price: data?.totalAmount });
 
       // Persist order id/token in client-visible cookies (результат оплаты и история заказов читают их)
       try {

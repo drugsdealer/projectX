@@ -8,6 +8,7 @@ import SearchParamsWatcher from "@/components/shared/SearchParamsWatcher";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import TrustStrip from "@/components/shared/TrustStrip";
 import { Stories } from "@/components/shared/stories";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
@@ -45,6 +46,55 @@ const LABELS: Record<string, string> = {
   headwear: 'Головные уборы',
   [PERSONAL_MIX_KEY]: 'Подобрано для вас',
 };
+
+// Короткие подборки над категориями: по 8 товаров, без повторов одной модели.
+const TRENDING_KEY = '__trending';
+const UNDER_KEY = '__under15';
+const NEW_KEY = '__new';
+const CURATED_KEYS = [TRENDING_KEY, UNDER_KEY, NEW_KEY] as const;
+const UNDER_PRICE = 15000;
+// Сколько товаров показывать в разделе главной до «Смотреть все»
+const HOME_SECTION_COUNT = 8;
+const CURATED_LABELS: Record<string, { title: string; eyebrow: string }> = {
+  [TRENDING_KEY]: { title: 'Сейчас смотрят', eyebrow: 'Популярное за месяц' },
+  [UNDER_KEY]: { title: 'До 15 000 ₽', eyebrow: 'Для первого заказа' },
+  [NEW_KEY]: { title: 'Новинки', eyebrow: 'Недавно в каталоге' },
+};
+// Куда ведёт «Смотреть все» у категорий
+const CATEGORY_PAGE: Record<string, string> = {
+  footwear: '/category/footwear',
+  clothes: '/category/clothes',
+  bags: '/category/bags',
+  accessories: '/category/accessories',
+  fragrance: '/category/fragrance',
+  cosmetics: '/category/cosmetics',
+  headwear: '/category/headwear',
+};
+
+// Ключ модели: цветовые варианты одной модели (Nike Air Max 90 в пяти цветах) считаем одним.
+const modelKeyOf = (p: any): string =>
+  String(p?.modelKey || p?.name || p?.id || '').trim().toLowerCase();
+
+/** Сначала по одному товару каждой модели (и не больше perBrand на бренд), затем остальные — порядок внутри сохраняется. */
+function diversify<T>(list: T[], perBrand = Infinity): T[] {
+  const first: T[] = [];
+  const rest: T[] = [];
+  const seen = new Set<string>();
+  const brandCount = new Map<string, number>();
+  for (const p of list) {
+    const key = modelKeyOf(p);
+    const brand = String((p as any)?.brand || (p as any)?.brandName || '').toLowerCase();
+    const n = brandCount.get(brand) ?? 0;
+    if (!seen.has(key) && (!brand || n < perBrand)) {
+      seen.add(key);
+      if (brand) brandCount.set(brand, n + 1);
+      first.push(p);
+    } else {
+      rest.push(p);
+    }
+  }
+  return [...first, ...rest];
+}
 
 const HOME_GATEWAYS = [
   {
@@ -659,6 +709,19 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
   const [productsReloadKey, setProductsReloadKey] = useState(0);
   const [personalizedHomeItems, setPersonalizedHomeItems] = useState<any[]>([]);
   const [bestsellerHomeItems, setBestsellerHomeItems] = useState<any[]>([]);
+  const [trendingIds, setTrendingIds] = useState<number[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/home/trending')
+      .then((r) => (r.ok ? r.json() : { ids: [] }))
+      .then((d) => {
+        if (!cancelled && Array.isArray(d?.ids)) setTrendingIds(d.ids.map(Number).filter(Number.isFinite));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [topBrandSignals, setTopBrandSignals] = useState<TopBrandSignal[]>([]);
   // Локальный профиль интересов (для персонализации ОСНОВНОЙ ленты: порядок секций + порядок товаров)
   const [affinity, setAffinity] = useState<{
@@ -1373,19 +1436,74 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
       }
     }
 
+    // Одинаковые модели разных цветов не ставим подряд: сначала по одной каждой модели.
+    if (sortKey === "popular") {
+      for (const key of Object.keys(result)) result[key] = diversify(result[key]);
+    }
+
     // Персональная лента «Подобрано для вас» — отдельным разделом над категориями.
     if (personalMix.length) result[PERSONAL_MIX_KEY] = personalMix;
 
+    // Подборки над категориями — только при обычной сортировке.
+    if (sortKey === "popular" && catalog.length) {
+      const priceOf = (p: any) => getMinPrice(p) || Number(p?.price) || 0;
+      const byId = new Map<number, any>(catalog.map((p: any) => [Number(p.id), p]));
+      const byPopularity = [...catalog].sort(
+        (a: any, b: any) => (Number(b?.popularity) || 0) - (Number(a?.popularity) || 0)
+      );
+      // «Сейчас смотрят»: реальные просмотры за месяц, добор — по популярности
+      const trending = diversify(
+        [...trendingIds.map((id) => byId.get(id)).filter(Boolean), ...byPopularity],
+        2
+      ).slice(0, 24);
+      // Что уже видно в первой восьмёрке соседней подборки — во второй не повторяем
+      const shown = new Set<number>(trending.slice(0, HOME_SECTION_COUNT).map((p: any) => Number(p.id)));
+      // «До 15 000 ₽»: вперемешку по категориям, чтобы были не только помады
+      const cheap = byPopularity.filter((p: any) => {
+        const price = priceOf(p);
+        return price > 0 && price <= UNDER_PRICE && !shown.has(Number(p.id));
+      });
+      const cheapByCat = new Map<string, any[]>();
+      for (const p of diversify(cheap, 3)) {
+        const c = normalizeCategory(getRawCategory(p));
+        (cheapByCat.get(c) ?? cheapByCat.set(c, []).get(c)!).push(p);
+      }
+      const cheapMixed: any[] = [];
+      const lists = [...cheapByCat.values()];
+      for (let i = 0; cheapMixed.length < 24 && lists.some((l) => l[i]); i++) {
+        for (const l of lists) if (l[i] && cheapMixed.length < 24) cheapMixed.push(l[i]);
+      }
+      for (const p of cheapMixed.slice(0, HOME_SECTION_COUNT)) shown.add(Number(p.id));
+      // «Новинки»: по дате добавления
+      const fresh = diversify(
+        [...catalog].filter((p: any) => !shown.has(Number(p.id))).sort(
+          (a: any, b: any) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime()
+        ),
+        2
+      ).slice(0, 24);
+      if (trending.length >= 4) result[TRENDING_KEY] = trending;
+      if (cheapMixed.length >= 4) result[UNDER_KEY] = cheapMixed;
+      if (fresh.length >= 4) result[NEW_KEY] = fresh;
+    }
+
     return result;
-  }, [visibleProducts, normalizeCategory, getRawCategory, productSubNormalized, affinity, sortKey, personalMix]);
+    // getMinPrice — обычная функция компонента, на результат не влияет между рендерами
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleProducts, normalizeCategory, getRawCategory, productSubNormalized, affinity, sortKey, personalMix, catalog, trendingIds]);
 
   // Порядок секций на странице (из ORDER, затем остальные по алфавиту)
   const sectionOrder = useMemo(() => {
-    const present = Object.keys(groupedVisible).filter((k) => k !== PERSONAL_MIX_KEY);
+    const curated = CURATED_KEYS.filter((k) => groupedVisible[k]?.length);
+    const present = Object.keys(groupedVisible).filter(
+      (k) => k !== PERSONAL_MIX_KEY && !(CURATED_KEYS as readonly string[]).includes(k)
+    );
     const known = ORDER.filter((k) => present.includes(k as string)) as string[];
     const rest = present.filter((k) => !(ORDER as readonly string[]).includes(k)).sort();
     const base = [...known, ...rest];
-    const mixFirst = groupedVisible[PERSONAL_MIX_KEY]?.length ? [PERSONAL_MIX_KEY] : [];
+    const mixFirst = [
+      ...(groupedVisible[PERSONAL_MIX_KEY]?.length ? [PERSONAL_MIX_KEY] : []),
+      ...curated,
+    ];
 
     // Персонализация порядка СЕКЦИЙ: категории с заметным интересом — наверх, по силе интереса.
     const interest = affinity?.interest;
@@ -1406,7 +1524,7 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
   }, [groupedVisible, affinity, normalizeCategory]);
 
   // --- "Показать больше" per category ---
-  const DEFAULT_COUNT = 20;  // initial items shown per category (was 12)
+  const DEFAULT_COUNT = HOME_SECTION_COUNT; // остальное — «Смотреть все» / «Показать ещё»
   const LOAD_STEP = 30;          // items to add on each "Показать больше"
   const [visibleByCat, setVisibleByCat] = useState<Record<string, number>>({});
 
@@ -1929,6 +2047,8 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
 
       <div className="h-4 sm:h-6" />
       <Container className="mt-10 pb-14">
+        {/* Как проходит заказ: подлинность, сроки, доставка, возврат */}
+        <TrustStrip className="mx-3 mb-10 sm:mx-0" />
         <section className="mb-14 px-3 sm:px-0">
           {/* Gateway grid: 2-col mobile (Premium full-width, Sale+Catalog side-by-side), 4-col desktop */}
           <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4">
@@ -2181,6 +2301,11 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
                                 Больше всего из того, что вы смотрите: {mixTopLabels.join(", ")}
                               </p>
                             )}
+                          </div>
+                        ) : CURATED_LABELS[main] ? (
+                          <div>
+                            <p className="text-[11px] uppercase tracking-[0.12em] text-black/40 font-semibold mb-0.5">{CURATED_LABELS[main].eyebrow}</p>
+                            <h3 className="text-lg sm:text-xl font-bold">{CURATED_LABELS[main].title}</h3>
                           </div>
                         ) : (
                           <h3 className="text-lg sm:text-xl font-bold">{LABELS[main] ?? main}</h3>
@@ -2465,8 +2590,17 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
                           })}
                       </motion.div>
 
-                      {/* Show more (always visible; disabled если нечего догружать) */}
+                      {/* У категорий — переход на страницу категории; у подборок — догрузить здесь же */}
                       <div className="mt-4 flex justify-center">
+                        {CATEGORY_PAGE[main] ? (
+                          <Link
+                            href={CATEGORY_PAGE[main]}
+                            className="inline-flex items-center gap-2 rounded-lg border border-black/15 px-4 py-2 text-sm transition hover:bg-black hover:text-white"
+                          >
+                            <span>Смотреть все{LABELS[main] ? ` · ${LABELS[main].toLowerCase()}` : ''}</span>
+                            <span aria-hidden>→</span>
+                          </Link>
+                        ) : hasMore ? (
                         <button
                           type="button"
                           onClick={() => {
@@ -2484,8 +2618,9 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
                           title={hasMore ? "Показать больше" : "Больше товаров нет"}
                         >
                           <span className="text-lg leading-none" aria-hidden>＋</span>
-                          <span>Показать больше</span>
+                          <span>Показать ещё</span>
                         </button>
+                        ) : null}
                       </div>
                       </div>
                     </Fragment>

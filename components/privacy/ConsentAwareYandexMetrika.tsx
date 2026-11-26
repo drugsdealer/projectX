@@ -19,6 +19,7 @@ export function ConsentAwareYandexMetrika() {
     };
   }, []);
 
-  if (!allowed) return null;
+  // На тестовом сайте Метрику не грузим — наши проверки не должны попадать в статистику.
+  if (!allowed || process.env.NEXT_PUBLIC_VERCEL_ENV === "preview") return null;
   return <YandexMetrika />;
 }
