@@ -9,6 +9,7 @@ import { getOrderBeautyGifts } from "@/lib/promo-beauty-server";
 import { sendOrderReceipt } from "@/lib/receipt-email";
 import { redeemPromoForOrder } from "@/lib/promos";
 import { reportProblem } from "@/lib/alerts";
+import { removePurchasedFromCart } from "@/lib/cart-purchased";
 
 /**
  * Нотификация от T-Bank о смене статуса платежа.
@@ -98,6 +99,11 @@ export async function POST(req: Request) {
         ...(paymentId ? { paymentId } : {}),
       },
     });
+
+    // Купленное — из корзины (у вошедшего покупателя; корзину гостя чистит страница «Оплата прошла»).
+    await removePurchasedFromCart(order.id).catch(() =>
+      console.error("[tbank.notification] не удалось убрать купленное из корзины")
+    );
 
     // Побочные эффекты не должны ломать ответ банку — каждый в своём try.
     const full = await prisma.order

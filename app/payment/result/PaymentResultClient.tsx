@@ -54,16 +54,29 @@ export default function PaymentResultClient() {
 
   useEffect(() => {
     if (!isSuccess) return;
+    // Купленные товары убираем из корзины, затем обновляем её (счётчик в шапке тоже).
+    (async () => {
+      if (orderId) {
+        try {
+          await fetch("/api/cart/purchased", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ orderId: Number(orderId) }),
+          });
+        } catch {}
+      }
+      try {
+        window.dispatchEvent(new Event("cart:refresh"));
+      } catch {}
+    })();
     try {
       const raw = localStorage.getItem("pendingPurchasedIds");
       if (raw) localStorage.removeItem("pendingPurchasedIds");
       localStorage.removeItem("pendingPurchasedScope");
       sessionStorage.removeItem("checkoutState");
     } catch {}
-    try {
-      window.dispatchEvent(new Event("cart:refresh"));
-    } catch {}
-  }, [isSuccess]);
+  }, [isSuccess, orderId]);
 
   useEffect(() => {
     const q = search.get("status");
