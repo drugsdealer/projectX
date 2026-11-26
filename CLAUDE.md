@@ -179,6 +179,7 @@ const collabBrands = (rawProduct as any)?.collabBrands ?? [];
 - `TBANK_PASSWORD_B64` — пароль терминала T-Bank в base64 (в пароле есть `#` и `&`, в обычной записи панель Vercel их теряет). Резервно читается `TBANK_PASSWORD`
 - `TBANK_API_BASE`, `TBANK_PROXY_SECRET` — запросы к банку идут через российский посредник `pay.stagestore.app` (банк не отвечает зарубежным IP)
 - `TBANK_RECEIPT=off` — временно отключить фискальный чек
+- `TELEGRAM_ALERTS_BOT_TOKEN`, `TELEGRAM_ALERTS_CHAT_ID` — чат «Ошибки сайта» (`lib/alerts.ts` → `reportProblem()`; из браузера — `reportClientProblem()` из `lib/report-client.ts`). Не заданы — пишет боту/в чаты заказов. Повтор одной ошибки не чаще раза в 30 мин, максимум 30 в час, без личных данных
 - `GOOGLE_SITE_VERIFICATION`, `YANDEX_VERIFICATION` — коды подтверждения Search Console / Яндекс Вебмастера (meta в layout)
 
 **Оплата T-Bank (non-PCI):** оформление → `/payment/pay?orderId=` создаёт платёж через `/api/tbank/init`
