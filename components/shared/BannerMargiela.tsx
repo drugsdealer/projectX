@@ -7,13 +7,11 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { toProxiedImageUrl, toProxiedVideoUrl } from '@/lib/media';
 import BeautyHeroSlide from '@/components/promos/beauty/BeautyHeroSlide';
 import { BEAUTY_PROMO, formatRub, isBeautyPromoActive } from '@/lib/promo-beauty';
-import GiveawayHeroSlide from '@/components/promos/giveaway/GiveawayHeroSlide';
-import { GIVEAWAY, isGiveawayActive } from '@/lib/promo-giveaway';
 
 type Slide = {
   id: string;
   // Свой фон-компонент вместо фото/видео
-  custom?: 'beauty' | 'giveaway';
+  custom?: 'beauty';
   // Image slide
   src?: string;
   // Video slide
@@ -36,23 +34,6 @@ type Slide = {
 const BEAUTY_BRAND_LINE = BEAUTY_PROMO.brands.map((b) => b.name).join(' & ');
 
 const SLIDES: Slide[] = [
-  // Розыгрыш в Telegram — первым, пока идёт; после GIVEAWAY.endsAt слайд пропадает сам.
-  ...(isGiveawayActive()
-    ? [
-        {
-          id: 'giveaway',
-          custom: 'giveaway' as const,
-          durationMs: 8000,
-          alt: 'Розыгрыш шапки MM6 и аромата Maison Margiela Replica',
-          eyebrow: `Розыгрыш в Telegram / Итоги ${GIVEAWAY.resultsDate}`,
-          title: 'Розыгрыш',
-          mutedTitle: 'MM6 + Replica',
-          text: 'Шапка MM6 Maison Margiela и аромат Replica на выбор. Участие бесплатное — в нашем Telegram-канале.',
-          cta: { label: 'Участвовать в Telegram', href: GIVEAWAY.postUrl, external: true },
-          align: 'left' as const,
-        },
-      ]
-    : []),
   {
     id: 'maison-margiela',
     src: 'https://ik.imagekit.io/qowmy92ny/stage/products/gallery/Tabi_HeroBanner_16x9.jpg',
@@ -137,7 +118,6 @@ function SlideBackground({ slide, priority }: { slide: Slide; priority: boolean 
   };
 
   if (slide.custom === 'beauty') return <BeautyHeroSlide priority={priority} />;
-  if (slide.custom === 'giveaway') return <GiveawayHeroSlide priority={priority} />;
 
   if (slide.videoSrc) {
     const rawSrc = isMobile && slide.videoSrcMobile ? slide.videoSrcMobile : slide.videoSrc;

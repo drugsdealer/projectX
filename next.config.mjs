@@ -31,6 +31,13 @@ const nextConfig = {
   },
   // Cloudinary и видео ImageKit отдаём со своего домена (см. lib/media.ts): из России
   // эти хосты открываются не у всех. Только свои аккаунты — не открытый прокси.
+  // Розыгрыш закончился (25.11.2026) — старые ссылки из рекламы и постов ведут на главную.
+  async redirects() {
+    return [
+      { source: "/giveaway", destination: "/", permanent: false },
+      { source: "/rozygrysh", destination: "/", permanent: false },
+    ];
+  },
   async rewrites() {
     return [
       { source: "/cl/:path*", destination: "https://res.cloudinary.com/dhufbfxcy/:path*" },
