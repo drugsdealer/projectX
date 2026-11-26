@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
 import { Resend } from "resend";
+import { reportProblem } from "@/lib/alerts";
 
 let _resend: Resend | null = null;
 function getResend(): Resend {
@@ -79,7 +80,7 @@ export async function POST(req: Request) {
 
     const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
     try {
-      await getResend().emails.send({
+      const { error: sendError } = await getResend().emails.send({
         from: `Stage Store <${fromEmail}>`,
         to: user.email,
         subject: "Восстановление пароля — Stage Store",
@@ -110,14 +111,17 @@ export async function POST(req: Request) {
   </table>
 </body></html>`,
       });
-    } catch {
+      if (sendError) throw new Error(`Resend: ${(sendError as any).name ?? ''} ${sendError.message ?? ''}`.trim());
+    } catch (emailErr) {
       // даже если письмо не ушло — не палим существование email
       console.error("[forgot-password/request] email send failed");
+      await reportProblem({ area: "password-reset", title: "Письмо для восстановления пароля не ушло", error: emailErr, path: "/api/auth/forgot-password/request" });
     }
 
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("[forgot-password/request] error");
+    await reportProblem({ area: "password-reset", title: "Восстановление пароля упало — ошибка сервера", error: e, path: "/api/auth/forgot-password/request" });
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }

@@ -6,6 +6,7 @@ import { getUserIdFromRequest } from "@/lib/session";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
 import { Resend } from "resend";
+import { reportProblem } from "@/lib/alerts";
 
 let _resend: Resend | null = null;
 function getResend(): Resend {
@@ -89,6 +90,7 @@ export async function POST(req: Request) {
 
     if (error) {
       console.error("[password-reset/request] email send failed");
+      await reportProblem({ area: "password-reset", title: "Письмо с кодом смены пароля не ушло", error: `Resend: ${error.message ?? ""}`, path: "/api/auth/password-reset/request" });
       return NextResponse.json({
         success: false,
         message: "Не удалось отправить письмо. Попробуйте позже.",
@@ -99,6 +101,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("[password-reset/request] error");
+    await reportProblem({ area: "password-reset", title: "Смена пароля упала — ошибка сервера", error: e, path: "/api/auth/password-reset/request" });
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }

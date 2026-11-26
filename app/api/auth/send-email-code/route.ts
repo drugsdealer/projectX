@@ -5,6 +5,7 @@ import { getClientIp, rateLimit } from '@/lib/rate-limit';
 import { Prisma } from '@prisma/client';
 import { blockIfCsrf, requireJsonRequest } from '@/lib/api-hardening';
 import { Resend } from 'resend';
+import { reportProblem } from '@/lib/alerts';
 
 export const runtime = 'nodejs';
 
@@ -99,7 +100,7 @@ export async function POST(req: Request) {
     // Отправляем код на email через Resend
     const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
     try {
-      await getResend().emails.send({
+      const { error: sendError } = await getResend().emails.send({
         from: `Stage Store <${fromEmail}>`,
         to: normalizedEmail,
         subject: 'Код подтверждения — Stage Store',
@@ -130,9 +131,11 @@ export async function POST(req: Request) {
   </table>
 </body></html>`,
       });
+      if (sendError) throw new Error(`Resend: ${(sendError as any).name ?? ''} ${sendError.message ?? ''}`.trim());
       console.log("[send-email-code] code sent");
     } catch (emailErr) {
       console.error('[send-email-code] failed to send email');
+      await reportProblem({ area: 'email-code', title: 'Письмо с кодом регистрации не ушло — покупатель не сможет подтвердить почту', error: emailErr, path: '/api/auth/send-email-code' });
     }
 
     const res = NextResponse.json({ success: true });
@@ -146,6 +149,7 @@ export async function POST(req: Request) {
     return res;
   } catch (e) {
     console.error('[send-email-code] error');
+    await reportProblem({ area: 'register', title: 'Не удалось запросить код регистрации — ошибка сервера', error: e, path: '/api/auth/send-email-code' });
     return NextResponse.json({ success: false, message: 'Ошибка сервера' }, { status: 500 });
   }
 }

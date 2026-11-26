@@ -10,6 +10,7 @@ import { handleApiError } from "@/lib/errors";
 import { logAction } from "@/lib/logAction";
 import { getClientIp, isViaDdosGuard, rateLimit } from "@/lib/rate-limit";
 import { randomBytes } from "crypto";
+import { reportProblem } from "@/lib/alerts";
 import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
 import { withDbRetry } from "@/lib/db-retry";
 
@@ -237,6 +238,7 @@ export async function POST(req: Request) {
       sessionToken = await createSessionTokenForUser(req, user.id, ip || undefined);
     } catch (e) {
       console.error("[LOGIN] failed to create DB session");
+      await reportProblem({ area: "login", title: "Пароль верный, но сессия не создалась — покупатель не смог войти", error: e, path: "/api/auth/login" });
       return NextResponse.json(
         { success: false, message: "Не удалось создать сессию. Попробуйте войти ещё раз." },
         { status: 503 }
@@ -300,6 +302,7 @@ export async function POST(req: Request) {
     return res;
   } catch (error) {
     console.error("[LOGIN] error:", error);
+    await reportProblem({ area: "login", title: "Вход не прошёл — ошибка сервера", error, path: "/api/auth/login" });
     return NextResponse.json(
       { success: false, message: "Временная ошибка. Попробуйте ещё раз." },
       { status: 503 }

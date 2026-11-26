@@ -6,6 +6,7 @@ import { getUserIdFromRequest, getGuestToken } from "@/lib/session";
 import { enforceSameOrigin } from "@/lib/security";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { requireJsonRequest } from "@/lib/api-hardening";
+import { reportProblem } from "@/lib/alerts";
 import { tbankInit, getTBankConfig, tbankOrderIdForAttempt, tbankGetState, tbankCancel } from "@/lib/tbank";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
@@ -28,6 +29,7 @@ export async function POST(req: Request) {
   }
 
   if (!getTBankConfig()) {
+    await reportProblem({ area: "payment", title: "Оплата выключена: на сервере не заданы ключи терминала T-Bank", path: "/api/tbank/init" });
     return NextResponse.json(
       { success: false, message: "Оплата временно недоступна" },
       { status: 503 }
@@ -131,6 +133,18 @@ export async function POST(req: Request) {
         return p2 ? `обычный, длина ${p2.length}` : "НЕ ЗАДАН";
       })()
     );
+    await reportProblem({
+      area: "payment",
+      title: "Банк не создал платёж — покупатель не может перейти к оплате",
+      error: [result.errorCode, result.message].filter(Boolean).join(" · ") || "нет ответа",
+      details: {
+        Заказ: order.publicNumber || `#${order.id}`,
+        Сумма: `${rubles.toLocaleString("ru-RU")} ₽`,
+        "Детали банка": result.details,
+      },
+      path: "/api/tbank/init",
+      dedupeKey: `tbank-init|${result.errorCode ?? ""}|${result.message ?? ""}`,
+    });
     return NextResponse.json(
       { success: false, message: "Не удалось создать платёж" },
       { status: 502 }

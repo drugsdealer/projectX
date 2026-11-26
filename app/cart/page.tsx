@@ -16,6 +16,7 @@ const CheckoutModal = dynamic(() => import("@/components/CheckoutModal"), { ssr:
 import { useRouter } from "next/navigation";
 import { toProxiedImageUrl } from "@/lib/media";
 import { ymGoal } from "@/lib/metrika";
+import { reportClientProblem } from "@/lib/report-client";
 
 // --- Local Product shape (API-backed) ---
 type Product = {
@@ -668,6 +669,13 @@ useEffect(() => {
       const data = await res.json().catch(() => ({} as any));
       if (!res.ok || !data?.orderId) {
         console.error("[cart] checkout failed");
+        // 500 сервер присылает сам; отказы (нет размера, неверный промокод и т.п.) — отсюда.
+        if (res.status !== 500 && res.status !== 429) {
+          reportClientProblem("checkout", "Покупателю отказали при оформлении заказа", data?.message || `HTTP ${res.status}`, {
+            Статус: res.status,
+            Товаров: active.length,
+          });
+        }
         showToast({ title: "Ошибка оформления", details: data?.message || "Попробуйте чуть позже" });
         return;
       }
@@ -702,6 +710,10 @@ useEffect(() => {
       await new Promise((r) => setTimeout(r, 0));
 
       router.push(`/payment/pay?orderId=${data.orderId}`);
+    } catch (err) {
+      console.error("[cart] checkout exception");
+      reportClientProblem("checkout", "Заказ не оформился — браузер покупателя не достучался до сервера", err);
+      showToast({ title: "Ошибка оформления", details: "Не удалось связаться с сервером. Проверьте интернет и попробуйте ещё раз" });
     } finally {
       setPosting(false);
     }

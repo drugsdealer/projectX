@@ -6,6 +6,7 @@ import { attachUiCookies, setSessionOnResponse, setSessionTokenOnResponse } from
 import { getClientIp, isViaDdosGuard, rateLimit } from "@/lib/rate-limit";
 import { randomBytes, timingSafeEqual } from "crypto";
 import { blockIfCsrf, requireJsonRequest } from "@/lib/api-hardening";
+import { reportProblem } from "@/lib/alerts";
 
 const parseUserAgentInfo = (
   uaRaw: string | null,
@@ -207,6 +208,7 @@ export async function POST(req: Request) {
         });
       } catch (e) {
         console.error("[VERIFY] failed to create DB session");
+        await reportProblem({ area: "register", title: "Почта подтверждена, но сессия не создалась", error: e, path: "/api/auth/verify-email" });
         return NextResponse.json(
           { success: false, message: "Email подтверждён, но сессию создать не удалось. Войдите ещё раз." },
           { status: 503 }
@@ -316,6 +318,7 @@ export async function POST(req: Request) {
       });
     } catch (e) {
       console.error("[VERIFY] failed to create DB session");
+      await reportProblem({ area: "register", title: "Почта подтверждена, но сессия не создалась", error: e, path: "/api/auth/verify-email" });
       return NextResponse.json(
         { success: false, message: "Email подтверждён, но сессию создать не удалось. Войдите ещё раз." },
         { status: 503 }
@@ -333,6 +336,7 @@ export async function POST(req: Request) {
     return res;
   } catch (e) {
     console.error("[VERIFY] exception");
+    await reportProblem({ area: "register", title: "Проверка кода из письма упала — ошибка сервера", error: e, path: "/api/auth/verify-email" });
     return bad("Ошибка проверки. Попробуйте позже.", 500);
   }
 }

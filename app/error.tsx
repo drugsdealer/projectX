@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { reportClientProblem } from "@/lib/report-client";
 
 export default function GlobalError({
   error,
@@ -12,6 +13,8 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     console.error("[GlobalError]", error);
+    // С кодом (digest) — ошибка сервера, о ней уже сообщил instrumentation.ts.
+    if (!error?.digest) reportClientProblem("page-crash", "Покупатель увидел «Что-то пошло не так»", error);
   }, [error]);
 
   return (

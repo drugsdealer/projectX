@@ -12,6 +12,7 @@ import ClientLayout from "@/components/ClientLayout";
 import RouteTransitions from "@/components/RouteTransitions";
 import MotionBudgetProvider from "@/components/MotionBudgetProvider";
 import SupportWidget from "@/components/shared/SupportWidget";
+import ClientErrorReporter from "@/components/ClientErrorReporter";
 import type { Metadata } from "next";
 import { safeJsonLd } from "@/lib/json-ld";
 import { COMPANY } from "@/lib/company";
@@ -278,6 +279,7 @@ export default function RootLayout({
                       </ClientLayout>
                       <ToastContainer />
                       <SupportWidget />
+                      <ClientErrorReporter />
                     </MotionBudgetProvider>
                   </TitleProvider>
                 </ToastProvider>

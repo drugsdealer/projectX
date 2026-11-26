@@ -6,6 +6,7 @@ import prisma from '@/lib/prisma';
 import { getUserIdFromRequest } from '@/lib/session';
 import { validatePromo } from '@/lib/promos';
 import { getClientIp, rateLimit } from '@/lib/rate-limit';
+import { reportProblem } from '@/lib/alerts';
 import {
   blockIfCsrf,
   privateJson,
@@ -635,6 +636,7 @@ export async function POST(req: Request) {
     return res;
   } catch (e: any) {
     console.error('[api.checkout] error');
+    await reportProblem({ area: 'checkout', title: 'Покупатель не смог оформить заказ — ошибка сервера', error: e, path: '/api/checkout' });
     return NextResponse.json(
       { ok: false, success: false, message: 'Server error' },
       { status: 500 },

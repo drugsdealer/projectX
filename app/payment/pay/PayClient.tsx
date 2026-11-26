@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { ymGoal } from "@/lib/metrika";
+import { reportClientProblem } from "@/lib/report-client";
 
 /*
   Формирование оплаты. Создаёт платёж в банке и сразу уводит на защищённую
@@ -85,9 +86,19 @@ export default function PayClient() {
         setErrorText("Банк не ответил вовремя. Это временная ошибка — попробуйте сформировать оплату ещё раз.");
       }
       console.error("[pay] не удалось создать платёж:", res.status, msg);
+      // 502/503 сервер уже прислал сам; здесь — то, чего сервер не видит (таймаут, сбой хостинга).
+      if (res.status >= 500 && res.status !== 502 && res.status !== 503) {
+        reportClientProblem("payment", "Форма оплаты не открылась — сервер не ответил", `HTTP ${res.status}`, { Заказ: orderId });
+      }
       setPhase("error");
-    } catch {
+    } catch (err) {
       clearTimeout(t1);
+      reportClientProblem(
+        "payment",
+        "Форма оплаты не открылась — браузер покупателя не достучался до сервера",
+        err instanceof Error && err.name === "TimeoutError" ? "Ждали ответа 35 секунд" : err,
+        { Заказ: orderId }
+      );
       setCanRetry(true);
       setErrorText("Не удалось связаться с сервером. Проверьте подключение и попробуйте ещё раз.");
       setPhase("error");

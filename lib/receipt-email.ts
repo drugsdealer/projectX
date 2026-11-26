@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { reportProblem } from "@/lib/alerts";
 
 let _resend: Resend | null = null;
 function getResend(): Resend {
@@ -209,6 +210,7 @@ export async function sendOrderReceipt(params: ReceiptParams): Promise<boolean> 
 
     if (error) {
       console.error("[receipt] Resend error");
+      await reportProblem({ area: "receipt", title: `Письмо-чек по заказу ${params.orderNumber} не ушло`, error: `Resend: ${error.message ?? ""}` });
       return false;
     }
 
@@ -216,6 +218,7 @@ export async function sendOrderReceipt(params: ReceiptParams): Promise<boolean> 
     return true;
   } catch (err) {
     console.error("[receipt] failed to send");
+    await reportProblem({ area: "receipt", title: `Письмо-чек по заказу ${params.orderNumber} не ушло`, error: err });
     return false;
   }
 }

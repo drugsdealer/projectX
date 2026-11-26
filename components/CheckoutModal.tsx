@@ -32,6 +32,7 @@ import { useCart } from "@/context/CartContext";
 import { useUser } from "@/user/UserContext";
 import { useDiscount } from "@/context/DiscountContext";
 import { ymGoal } from "@/lib/metrika";
+import { reportClientProblem } from "@/lib/report-client";
 
 const MAPTILER_KEY =
   process.env.NEXT_PUBLIC_MAPTILER_KEY ||
@@ -999,6 +1000,11 @@ export default function CheckoutModal({
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         console.error("[checkout] failed:", res.status, text);
+        if (res.status !== 500 && res.status !== 429) {
+          let reason = `HTTP ${res.status}`;
+          try { reason = JSON.parse(text)?.message || reason; } catch {}
+          reportClientProblem("checkout", "Покупателю отказали при оформлении заказа", reason, { Статус: res.status });
+        }
         setError(true);
         alert("Ошибка создания заказа: " + res.status);
         return;
@@ -1039,6 +1045,7 @@ export default function CheckoutModal({
       alert("Не удалось получить номер заказа. Попробуйте ещё раз.");
     } catch (e) {
       console.error("[checkout] exception:", e);
+      reportClientProblem("checkout", "Заказ не оформился — ошибка в браузере покупателя", e);
       setError(true);
       alert("Не удалось оформить заказ. Попробуйте еще раз.");
     } finally {

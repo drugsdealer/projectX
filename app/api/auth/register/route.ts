@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { getClientIp, rateLimit } from '@/lib/rate-limit';
 import { blockIfCsrf, requireJsonRequest } from '@/lib/api-hardening';
+import { reportProblem } from '@/lib/alerts';
 
 /**
  * Email+Password registration (direct, without OTP).
@@ -113,6 +114,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, user: created }, { status: 200 });
   } catch (e) {
     console.error('[REGISTER] exception');
+    await reportProblem({ area: 'register', title: 'Регистрация не прошла — ошибка сервера', error: e, path: '/api/auth/register' });
     return NextResponse.json(
       { success: false, message: 'Ошибка регистрации' },
       { status: 500 }

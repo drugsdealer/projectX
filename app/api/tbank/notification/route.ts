@@ -8,6 +8,7 @@ import { sendOrderNotificationToTelegram } from "@/lib/telegram";
 import { getOrderBeautyGifts } from "@/lib/promo-beauty-server";
 import { sendOrderReceipt } from "@/lib/receipt-email";
 import { redeemPromoForOrder } from "@/lib/promos";
+import { reportProblem } from "@/lib/alerts";
 
 /**
  * Нотификация от T-Bank о смене статуса платежа.
@@ -31,6 +32,12 @@ export async function POST(req: Request) {
 
   if (!verifyTBankNotification(body as Record<string, unknown>)) {
     console.warn(`[tbank.notification] invalid signature — rejected | вид=${kind} | поля=${fieldNames}`);
+    await reportProblem({
+      area: "payment-notify",
+      title: "Пришло уведомление об оплате с неверной подписью — отклонено. Если это банк, оплаты не подтверждаются: проверьте пароль терминала",
+      details: { Вид: kind },
+      path: "/api/tbank/notification",
+    });
     return new NextResponse("ERROR", { status: 403 });
   }
 
@@ -55,7 +62,10 @@ export async function POST(req: Request) {
         where: { id: orderId, status: { not: "SUCCEEDED" }, ...(paymentId ? { paymentId } : {}) },
         data: { status: "CANCELED", cancelReason: reason, canceledAt: new Date() },
       })
-      .catch(() => console.error("[tbank.notification] не удалось отменить заказ"));
+      .catch((e) => {
+        console.error("[tbank.notification] не удалось отменить заказ");
+        return reportProblem({ area: "payment-notify", title: "Банк отклонил оплату, но заказ не удалось отменить", error: e, details: { Заказ: orderId } });
+      });
     return new NextResponse("OK");
   }
 
@@ -117,6 +127,7 @@ export async function POST(req: Request) {
         });
       } catch {
         console.error("[tbank.notification] telegram notify failed");
+        await reportProblem({ area: "payment-notify", title: "Заказ оплачен, но сообщение о нём в Telegram не отправилось", details: { Заказ: full.publicNumber || full.id } });
       }
 
       if (full.email) {
@@ -157,6 +168,12 @@ export async function POST(req: Request) {
     return new NextResponse("OK");
   } catch (e) {
     console.error("[tbank.notification] processing error");
+    await reportProblem({
+      area: "payment-notify",
+      title: "Банк сообщил об оплате, но сайт не смог её обработать. Банк повторит попытку; если сообщение повторится — заказ может остаться неоплаченным",
+      error: e,
+      path: "/api/tbank/notification",
+    });
     // Отвечаем ошибкой, чтобы банк повторил попытку позже.
     return new NextResponse("ERROR", { status: 500 });
   }

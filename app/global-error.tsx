@@ -2,6 +2,7 @@
 
 import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
+import { reportClientProblem } from "@/lib/report-client";
 
 export default function GlobalError({
   error,
@@ -12,6 +13,8 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     Sentry.captureException(error);
+    // С кодом (digest) — ошибка сервера, о ней уже сообщил instrumentation.ts.
+    if (!error?.digest) reportClientProblem("page-crash", "Сайт целиком не открылся («Что-то пошло не так»)", error);
   }, [error]);
 
   return (

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sendPhoneCode, normalizePhone } from "@/lib/phone-verify";
 import { enforceSameOrigin } from "@/lib/security";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { reportProblem } from "@/lib/alerts";
 
 export const runtime = "nodejs";
 
@@ -26,6 +27,14 @@ export async function POST(req: Request) {
 
   const res = await sendPhoneCode(phone);
   if (!res.ok) {
+    if (res.reason === "no_channel") {
+      await reportProblem({
+        area: "phone-code",
+        title: "Код по телефону не ушёл ни в Telegram, ни по СМС — покупатель не может подтвердить номер",
+        details: { "Подсказка": "проверьте баланс Telegram Gateway и SMS.ru" },
+        path: "/api/auth/phone/send",
+      });
+    }
     const message =
       res.reason === "rate_limited"
         ? "Код запрашивали слишком часто. Подождите немного."
