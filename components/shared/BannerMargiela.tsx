@@ -4,7 +4,13 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react
 import Image from 'next/image';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
-import { toProxiedImageUrl, toProxiedVideoUrl } from '@/lib/media';
+import { getOptimizedImageUrl, toProxiedImageUrl, toProxiedVideoUrl } from '@/lib/media';
+import type { ImageLoaderProps } from 'next/image';
+
+// Фото баннера отдаём через ImageKit нужной ширины и в современном формате (AVIF/WebP)
+// вместо исходного JPG в полный размер (Tabi весил 600 КБ).
+const ikLoader = ({ src, width, quality }: ImageLoaderProps) =>
+  getOptimizedImageUrl(src, { width, quality: quality ?? 72 });
 import BeautyHeroSlide from '@/components/promos/beauty/BeautyHeroSlide';
 import { BEAUTY_PROMO, formatRub, isBeautyPromoActive } from '@/lib/promo-beauty';
 
@@ -155,13 +161,13 @@ function SlideBackground({ slide, priority }: { slide: Slide; priority: boolean 
   return (
     <>
       <Image
-        src={toProxiedImageUrl(slide.src!)}
+        src={slide.src!}
+        loader={ikLoader}
         alt={slide.alt}
         fill
         priority={priority}
         sizes="100vw"
         className="object-cover object-center"
-        unoptimized
       />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/60 to-transparent" />
     </>
@@ -177,6 +183,15 @@ export default function BannerMargiela() {
 
   const slide = SLIDES[index];
   const isRight = slide.align === 'right';
+  const nextSlide = SLIDES[(index + 1) % SLIDES.length];
+
+  // Пока показывается текущий слайд, тихо подгружаем следующий — смена без пустого кадра.
+  const [preloadIndex, setPreloadIndex] = useState<number | null>(null);
+  useEffect(() => {
+    setPreloadIndex(null);
+    const t = setTimeout(() => setPreloadIndex(index), 2500);
+    return () => clearTimeout(t);
+  }, [index]);
 
   const go = useCallback((next: number, direction: 1 | -1) => {
     setDir(direction);
@@ -283,6 +298,19 @@ export default function BannerMargiela() {
           <SlideBackground slide={slide} priority={index === 0} />
         </motion.div>
       </AnimatePresence>
+
+      {preloadIndex === index && nextSlide.id !== slide.id ? (
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 opacity-0">
+          {nextSlide.videoSrc ? (
+            nextSlide.poster ? (
+              // eslint-disable-next-line @next/next/no-img-element -- только прогрев кадра видео
+              <img src={toProxiedImageUrl(nextSlide.poster)} alt="" />
+            ) : null
+          ) : (
+            <SlideBackground slide={nextSlide} priority={false} />
+          )}
+        </div>
+      ) : null}
 
       {/* Text content */}
       <div

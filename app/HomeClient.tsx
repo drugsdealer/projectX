@@ -35,6 +35,7 @@ import { canUseOptionalClientData } from "@/lib/privacy-consent";
 import { getTopBrands, getTopCategories, getRepeatViewedProducts, getInterestModel, type InterestModel } from "@/lib/user-behavior";
 import { buildPersonalMix, categoryShares, orderSectionsByInterest, scoreProduct, PERSONAL_MIX_KEY } from "@/lib/personal-feed";
 import type { ActiveStory } from "@/lib/stories";
+import type { HomeCatalogItem } from "@/lib/home-catalog";
 // Локальные подписи основных категорий
 const LABELS: Record<string, string> = {
   footwear: 'Обувь',
@@ -126,8 +127,7 @@ const HOME_CATEGORY_LINKS = [
   { label: "Сумки", href: "/category/bags", image: "https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.43.43.jpg" },
   { label: "Аксессуары", href: "/category/accessories", image: "https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.43.49.jpg" },
   { label: "Парфюм", href: "/category/fragrance", image: "https://ik.imagekit.io/qowmy92ny/2026-05-21%2013.43.55.jpg" },
-  // Предметное фото на светлом фоне — плитка светлая, подпись тёмная.
-  { label: "Косметика", href: "/category/cosmetics", image: "https://ik.imagekit.io/qowmy92ny/Y0012000_C038300003_E01_ZHC.webp", light: true },
+  { label: "Косметика", href: "/category/cosmetics", image: "https://ik.imagekit.io/qowmy92ny/2026-11-27%2001.53.00.jpg" },
 ] as Array<{ label: string; href: string; image: string; light?: boolean }>;
 
 const HOME_GENDER_SELECTIONS = [
@@ -506,7 +506,14 @@ const ProductCardImage = memo(function ProductCardImage({
   );
 });
 
-export default function Home({ initialStories }: { initialStories?: ActiveStory[] }) {
+export default function Home({
+  initialStories,
+  initialProducts,
+}: {
+  initialStories?: ActiveStory[];
+  /** Облегчённый каталог с сервера (lib/home-catalog.ts) — подборки рисуются сразу. */
+  initialProducts?: HomeCatalogItem[] | null;
+}) {
   const { reduceMotion, motionLevel } = useMotionBudget();
   const balancedMotion = motionLevel === "balanced";
   const [isHydrated, setIsHydrated] = useState(false);
@@ -703,8 +710,41 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
     }
   }, []);
   // Products from API (DB) with manual fetch + normalization
-  const [products, setProducts] = useState<any[]>([]);
-  const [isProductsLoading, setIsProductsLoading] = useState<boolean>(true);
+  const normalizeCatalog = useCallback(
+    (arr: any[]) =>
+      arr.map((p: any) => ({
+        ...p,
+        images: Array.isArray(p?.images) && p.images.length
+          ? p.images
+          : (p?.imageUrl ? [p.imageUrl] : []),
+        price: p?.price ?? p?.minPrice ?? p?.amount ?? 0,
+        brand: (() => {
+          const str = (v: any) =>
+            typeof v === "string" ? v.trim() : "";
+          const fromObj = (o: any) =>
+            o && typeof o === "object"
+              ? (str(o.name) || str(o.title) || str(o.label) || str(o.slug))
+              : "";
+
+          const val =
+            str(p?.brand) ||
+            str(p?.brandName) ||
+            fromObj(p?.brand) ||
+            fromObj(p?.Brand) ||
+            (Array.isArray(p?.brands) && p.brands.length
+              ? str(p.brands[0])
+              : "");
+
+          return val || extractBrand(p) || "";
+        })(),
+      })),
+    [extractBrand]
+  );
+  const hasInitialProducts = Array.isArray(initialProducts) && initialProducts.length > 0;
+  const [products, setProducts] = useState<any[]>(() =>
+    hasInitialProducts ? normalizeCatalog(initialProducts as any[]) : []
+  );
+  const [isProductsLoading, setIsProductsLoading] = useState<boolean>(!hasInitialProducts);
   const [productsError, setProductsError] = useState<string | null>(null);
   const [productsReloadKey, setProductsReloadKey] = useState(0);
   const [personalizedHomeItems, setPersonalizedHomeItems] = useState<any[]>([]);
@@ -753,42 +793,13 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
     const fetchProducts = async () => {
       try {
         attempts += 1;
-        const res = await fetch("/api/products?includePremium=1&take=1000", {
-          cache: "no-store",
-          credentials: "include",
-        });
+        const res = await fetch("/api/products?includePremium=1&take=1000&lite=1");
         if (!res.ok) {
           throw new Error(`Failed to load products: ${res.status}`);
         }
         const json = await res.json();
         const arr = Array.isArray(json?.products) ? json.products : [];
-
-        const normalized = arr.map((p: any) => ({
-          ...p,
-          images: Array.isArray(p?.images) && p.images.length
-            ? p.images
-            : (p?.imageUrl ? [p.imageUrl] : []),
-          price: p?.price ?? p?.minPrice ?? p?.amount ?? 0,
-          brand: (() => {
-            const str = (v: any) =>
-              typeof v === "string" ? v.trim() : "";
-            const fromObj = (o: any) =>
-              o && typeof o === "object"
-                ? (str(o.name) || str(o.title) || str(o.label) || str(o.slug))
-                : "";
-
-            const val =
-              str(p?.brand) ||
-              str(p?.brandName) ||
-              fromObj(p?.brand) ||
-              fromObj(p?.Brand) ||
-              (Array.isArray(p?.brands) && p.brands.length
-                ? str(p.brands[0])
-                : "");
-
-            return val || extractBrand(p) || "";
-          })(),
-        }));
+        const normalized = normalizeCatalog(arr);
 
         if (!cancelled) {
           setProducts(normalized);
@@ -810,6 +821,13 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
       }
     };
 
+    // Каталог уже пришёл со страницей — первый раз не качаем (повтор только по кнопке «Обновить»).
+    if (hasInitialProducts && productsReloadKey === 0) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
     setIsProductsLoading(true);
     fetchProducts();
 
@@ -817,7 +835,8 @@ export default function Home({ initialStories }: { initialStories?: ActiveStory[
       cancelled = true;
       if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [extractBrand, productsReloadKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [normalizeCatalog, productsReloadKey]);
 
   const fetchHomeRecommendations = useCallback(async (rotate = false) => {
     setIsHomeRecsLoading(true);

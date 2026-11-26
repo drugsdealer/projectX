@@ -9,6 +9,7 @@ import {
   normalizeSubcategorySlug,
   resolveProductTaxonomy,
 } from "@/lib/catalog-taxonomy";
+import { getHomeCatalog } from "@/lib/home-catalog";
 
 // --- Runtime relation-name detector (handles category/brand vs Category/Brand) ---
 // --- Relation names for Product model (fixed to match Prisma schema) ---
@@ -474,6 +475,12 @@ export async function GET(req: Request) {
     if (takeRaw) {
       const t = Number(takeRaw);
       take = Number.isFinite(t) && t > 0 ? Math.min(t, 1000) : 300;
+    }
+
+    // Облегчённый список для главной: без размеров и полных описаний (см. lib/home-catalog.ts).
+    if (url.searchParams.get("lite") === "1") {
+      const products = await getHomeCatalog(take);
+      return NextResponse.json({ success: true, products }, { status: 200, headers: PUBLIC_CACHE_HEADERS });
     }
 
     const saleOnly = (url.searchParams.get("sale") ?? "") === "1";

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import HomeClient from "./HomeClient";
 import { safeJsonLd } from "@/lib/json-ld";
 import { getActiveStories } from "@/lib/stories";
+import { getHomeCatalog } from "@/lib/home-catalog";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://stagestore.app";
 
@@ -82,7 +83,11 @@ const homeJsonLd = {
 };
 
 export default async function Page() {
-  const initialStories = await getActiveStories().catch(() => []);
+  // Каталог для подборок кладём прямо в страницу — главная не ждёт отдельной загрузки.
+  const [initialStories, initialProducts] = await Promise.all([
+    getActiveStories().catch(() => []),
+    getHomeCatalog().catch(() => null),
+  ]);
 
   return (
     <>
@@ -95,7 +100,7 @@ export default async function Page() {
           <div className="hero-bleed-top min-h-[100svh] w-screen bg-black" aria-hidden="true" />
         }
       >
-        <HomeClient initialStories={initialStories} />
+        <HomeClient initialStories={initialStories} initialProducts={initialProducts} />
       </Suspense>
     </>
   );
